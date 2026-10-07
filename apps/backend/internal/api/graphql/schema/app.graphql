@@ -1,0 +1,63 @@
+# Root type declarations + core pipeline operations.
+# Per-table operations are added via extend in their own files.
+
+type Query {
+  vpnStatus: VpnStatus!
+  stream(url: String!, pluginName: String): StreamResult
+  checkProviderSpeeds(id: ID!): [ProviderSpeed!]!
+}
+
+type Mutation {
+  scrape(pluginName: String!, url: String!): ScrapePayload!
+  queueDownload(url: String!, title: String!, pluginName: String): ID!
+}
+
+type Subscription {
+  mediaAdded: MediaEvent!
+  jobUpdated: Job!
+  # Emits the media item's current playback sources whenever they change
+  # (new streams ingested, or a speed-check re-ranked them). Streams arrive
+  # ranked (verified first, then measured speed).
+  streamsChanged(mediaId: ID!): [Stream!]!
+  # Emits the scene's related scenes on connect and whenever a visit links
+  # new ones (the site's list, then background fallback searches).
+  relatedChanged(sceneId: ID!): [Scene!]!
+}
+
+type VpnStatus {
+  connected: Boolean!
+  interface: String
+}
+
+type StreamResult {
+  url: String!
+  mimeType: String!
+  quality: String
+  headers: [StreamHeader!]!
+  loadTimeMs: Float
+  speedBps: Float
+}
+
+type StreamHeader {
+  name: String!
+  value: String!
+}
+
+type ProviderSpeed {
+  url: String!
+  loadTimeMs: Float
+  speedBps: Float
+  error: String
+}
+
+type ScrapePayload {
+  success: Boolean!
+  error: String
+  mediaId: ID
+}
+
+type MediaEvent {
+  id: ID!
+  type: String!
+  title: String!
+}

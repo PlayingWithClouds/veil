@@ -1,0 +1,14 @@
+# Content categories exposed by a browse:categories-capable plugin.
+
+extend type Query {
+  pluginCategories(plugin: String!, limit: Int): [PluginCategory!]!
+}
+
+type PluginCategory {
+  id: ID!
+  name: String!
+  url: String!
+  count: Int!
+  # Preview thumbnail for the category tile.
+  poster: String
+}

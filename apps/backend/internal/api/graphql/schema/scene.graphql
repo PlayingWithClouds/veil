@@ -1,0 +1,59 @@
+# The core content entity: a single adult video.
+
+extend type Query {
+  # Browse/discovery listing with advanced filters. The blocklist is applied.
+  scenes(
+    limit: Int
+    offset: Int
+    search: String
+    studioId: ID
+    performerId: ID
+    # Matches the scene's own tags, its studio's tags, or any credited
+    # performer's tags; direct matches rank first.
+    tagId: ID
+    sort: String
+    minRating: Float
+    minDuration: Int
+    maxDuration: Int
+    dateFrom: String
+    dateTo: String
+    # Only scenes found through these plugins; empty = any.
+    sources: [String!]
+  ): [Scene!]!
+  scene(id: ID!): Scene
+
+  # A random selection of scenes, respecting the blocklist.
+  randomScenes(limit: Int): [Scene!]!
+
+  # The ranked personalized feed (see `recommendations` for the same list with
+  # reasons). Newest scenes and recent search results on a cold start.
+  recommendedFeed(limit: Int, offset: Int): [Scene!]!
+}
+
+type Scene {
+  id: ID!
+  externalId: String!
+  sourceUrl: String!
+  title: String!
+  details: String
+  # ISO 8601 release/publish date
+  date: String
+  durationSeconds: Int
+  rating: Float
+  viewCount: Int!
+  organized: Boolean!
+  posterPath: String
+  previewVideo: String
+  previewImages: [String!]!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  # "direct" | "inherited" — set when filtering by tagId; inherited means the
+  # tag came from the scene's studio or a credited performer.
+  tagMatch: String
+  # Scenes related to this one, filled when the scene is visited: the site's own
+  # related list first, then fallback searches by performer, tag and title.
+  related(limit: Int): [Scene!]!
+  createdAt: String!
+  updatedAt: String!
+}

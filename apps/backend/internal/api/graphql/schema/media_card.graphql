@@ -1,0 +1,15 @@
+# Normalized, source-agnostic card data for a heterogeneous set of media ids.
+# Lets the client resolve posters/titles for watch-history and watchlist rows
+# (which carry only media record ids) in a single round trip.
+
+extend type Query {
+  mediaCards(ids: [ID!]!): [MediaCard!]!
+}
+
+type MediaCard {
+  mediaId: ID!
+  mediaType: String!
+  title: String!
+  posterPath: String
+  backdropPath: String
+}

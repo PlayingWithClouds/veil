@@ -1,0 +1,45 @@
+# A performer appearing in scenes/galleries.
+
+extend type Query {
+  performers(limit: Int, offset: Int, search: String, tagId: ID, sort: String): [Performer!]!
+  performer(id: ID!): Performer
+}
+
+extend type Mutation {
+  setPerformerFavorite(id: ID!, favorite: Boolean!): Performer!
+  # Queues an enrich job to fill in the performer's details (photo, measurements,
+  # bio, etc.) via enrich-capable plugins. Returns true once queued.
+  enrichPerformer(id: ID!): Boolean!
+}
+
+type Performer {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  details: String
+  # female|male|transgender_female|transgender_male|intersex|non_binary
+  gender: String
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerLength: String
+  url: String
+  twitter: String
+  instagram: String
+  imagePath: String
+  favorite: Boolean!
+  rating: Float
+  tags: [Tag!]!
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}

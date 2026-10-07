@@ -1,0 +1,52 @@
+# Ordered collections of any entity type (scenes, galleries, images,
+# performers, studios). Collections are user-created or created by scraper
+# plugins (site series, DVDs, channels). No nesting.
+
+extend type Query {
+  # User-created and scraper-created collections.
+  # origin filters to "user" or "scraped".
+  collections(search: String, tagId: ID, origin: String, limit: Int, offset: Int): [Collection!]!
+  collection(id: ID!): Collection
+  # Members in manual sort order, shaped as cards for mixed-type rendering.
+  collectionMembers(collectionId: ID!): [CollectionMember!]!
+  # Ids of the user-created collections that already contain the given record,
+  # for toggling membership from a card or detail page.
+  collectionIdsForMedia(mediaId: ID!): [ID!]!
+}
+
+extend type Mutation {
+  createCollection(name: String!): Collection!
+  renameCollection(collectionId: ID!, name: String!): Collection!
+  deleteCollection(collectionId: ID!): Boolean!
+  addToCollection(collectionId: ID!, mediaId: ID!): Boolean!
+  removeFromCollection(collectionId: ID!, mediaId: ID!): Boolean!
+  # Sets the manual order of a collection to exactly the given member ids.
+  reorderCollection(collectionId: ID!, mediaIds: [ID!]!): Boolean!
+  setCollectionTags(collectionId: ID!, tagIds: [ID!]!): Collection!
+}
+
+type Collection {
+  id: ID!
+  name: String!
+  details: String
+  # Explicit cover, falling back to the first member's poster.
+  coverPath: String
+  itemCount: Int!
+  # "user" (user-created) | "scraped" (plugin-created)
+  origin: String!
+  sourceUrl: String
+  externalId: String
+  tags: [Tag!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type CollectionMember {
+  # Record id of the member (scene:x, gallery:y, ...).
+  mediaId: ID!
+  # scene | gallery | image | performer | studio
+  mediaType: String!
+  position: Int!
+  title: String!
+  posterPath: String
+}

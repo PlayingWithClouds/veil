@@ -1,0 +1,14 @@
+{
+  "name": "@playingwithclouds/veil-plugin-txxx-network",
+  "version": "0.5.0",
+  "description": "Veil plugin for the txxx network sites",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@playingwithclouds/veil-sdk": "file:../../../../packages/veil-sdk"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}

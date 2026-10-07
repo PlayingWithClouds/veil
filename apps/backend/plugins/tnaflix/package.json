@@ -1,0 +1,15 @@
+{
+  "name": "@playingwithclouds/veil-plugin-tnaflix",
+  "version": "0.5.0",
+  "description": "Veil plugin for tnaflix.com",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@playingwithclouds/veil-sdk": "file:../../../../packages/veil-sdk",
+    "node-html-parser": "^6.1.13"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}

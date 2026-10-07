@@ -1,0 +1,17 @@
+# "Save for later" list.
+
+extend type Query {
+  watchlist: [WatchlistItem!]!
+}
+
+extend type Mutation {
+  addToWatchlist(mediaId: ID!): WatchlistItem!
+  removeFromWatchlist(mediaId: ID!): Boolean!
+}
+
+type WatchlistItem {
+  id: ID!
+  # movie|series|episode record ID
+  media: ID!
+  createdAt: String!
+}

@@ -1,0 +1,25 @@
+# A production studio / source site.
+
+extend type Query {
+  studios(limit: Int, offset: Int, search: String, tagId: ID, sort: String): [Studio!]!
+  studio(id: ID!): Studio
+}
+
+extend type Mutation {
+  setStudioTags(studioId: ID!, tagIds: [ID!]!): Studio!
+}
+
+type Studio {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  url: String
+  parent: Studio
+  imagePath: String
+  details: String
+  # Tags on the studio itself; scenes/galleries inherit them in tag search.
+  tags: [Tag!]!
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}

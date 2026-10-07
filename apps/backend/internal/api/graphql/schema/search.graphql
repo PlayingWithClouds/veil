@@ -1,0 +1,74 @@
+extend type Query {
+  # Plugin-direct search across enabled search-capable source plugins. Selecting a
+  # result ingests it via resolvePluginResult. An optional pluginNames filter
+  # restricts the search to the named plugins (empty = all). The search is
+  # logged as a recommendation signal.
+  pluginSearch(query: String!, limit: Int, pluginNames: [String!]): [PluginSearchResult!]!
+
+  # Latest items from all enabled scene:list-capable plugins.
+  # Feeds the landing page; offset paginates for infinite scroll.
+  pluginBrowse(limit: Int, offset: Int): [PluginSearchResult!]!
+
+  # Taste-biased live fetch: per provider, one scene:find for the top
+  # taste category and one scene:list main page for diversity, interleaved
+  # category-first. Used to pull fresh videos once the local pool is drained.
+  recommendedBrowse(limit: Int): [PluginSearchResult!]!
+
+  # Ranked alternate sources for a scene, gathered live across every enabled
+  # search-capable plugin. Used to recover a scene that is unavailable or only a
+  # short teaser: matching is driven by performers, duration and poster
+  # similarity (not the title), so copies with different titles still surface.
+  findAlikeSources(sceneId: ID!, limit: Int): [AlikeCandidate!]!
+}
+
+extend type Mutation {
+  # Synchronously scrapes a plugin source URL and ingests the full record
+  # (title, performers, tags, streams), returning its canonical scene id. Used
+  # when opening a search/browse result so its detail page has real data.
+  # posterUrl backfills the poster from the listing, since some sources only
+  # expose it on the browse page, not the detail page.
+  resolvePluginResult(pluginName: String!, url: String!, posterUrl: String): ID!
+
+  # Scrapes a chosen alike-match and attaches its playback source(s) to an
+  # existing scene, deduped by URL — no duplicate scene is created. Returns the
+  # scene's ranked streams, including the newly attached ones.
+  attachAlikeSource(sceneId: ID!, pluginName: String!, url: String!): [Stream!]!
+}
+
+# One result from a source plugin's search/browse capability. Rendered as a
+# landscape banner with a cycling preview-frame strip.
+type PluginSearchResult {
+  externalId: String!
+  title: String!
+  mediaType: String!
+  # The plugin that produced this result; passed to resolvePluginResult on select.
+  plugin: String!
+  sourceUrl: String!
+  date: String
+  # Landscape banner image or poster.
+  posterUrl: String
+  # Preview frames for the hover thumbnail strip.
+  previewImages: [String!]!
+  # Optional short preview clip, played on hover when present.
+  previewVideo: String
+  # Runtime in seconds when the source listing shows one.
+  durationSeconds: Int
+}
+
+# One ranked alternate source for a scene: a PluginSearchResult plus how well it
+# matches the current scene and its runtime (filled once the candidate has been
+# scraped in the second matching stage).
+type AlikeCandidate {
+  externalId: String!
+  title: String!
+  plugin: String!
+  sourceUrl: String!
+  posterUrl: String
+  date: String
+  previewImages: [String!]!
+  previewVideo: String
+  # Candidate runtime in seconds, when known.
+  durationSeconds: Int
+  # Match confidence in 0..1; higher is more likely the same scene.
+  matchScore: Float!
+}

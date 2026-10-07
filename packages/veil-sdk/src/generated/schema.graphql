@@ -1,0 +1,751 @@
+type Query {
+  vpnStatus: VpnStatus!
+  stream(url: String!, pluginName: String): StreamResult
+  checkProviderSpeeds(id: ID!): [ProviderSpeed!]!
+  blocklist: [BlocklistEntry!]!
+  changes(targetId: ID!, key: String, limit: Int, offset: Int): [Change!]!
+  collections(search: String, tagId: ID, origin: String, limit: Int, offset: Int): [Collection!]!
+  collection(id: ID!): Collection
+  collectionMembers(collectionId: ID!): [CollectionMember!]!
+  collectionIdsForMedia(mediaId: ID!): [ID!]!
+  galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
+  gallery(id: ID!): Gallery
+  images(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, galleryId: ID, sort: String): [Image!]!
+  image(id: ID!): Image
+  jobs: [Job!]!
+  job(id: ID!): Job
+  downloadedScenes: [Scene!]!
+  mediaCards(ids: [ID!]!): [MediaCard!]!
+  oCount(mediaId: ID!): Int!
+  observation(id: ID!): Observation
+  observations(targetId: ID!, status: String, limit: Int, offset: Int): [Observation!]!
+  performers(limit: Int, offset: Int, search: String, tagId: ID, sort: String): [Performer!]!
+  performer(id: ID!): Performer
+  plugins: [Plugin!]!
+  plugin(id: ID!): Plugin
+  pluginPackages(query: String): [PluginPackage!]!
+  pluginCategories(plugin: String!, limit: Int): [PluginCategory!]!
+  recommendations(limit: Int, offset: Int, refresh: Boolean): [RecommendedScene!]!
+  recommendedRows(rowLimit: Int, perRow: Int): [RecommendationRow!]!
+  recommendedCategories(categoryLimit: Int, perCategory: Int): [RecommendedCategory!]!
+  recommendationPair: [Scene!]!
+  savedFilters: [SavedFilter!]!
+  scenes(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sort: String, minRating: Float, minDuration: Int, maxDuration: Int, dateFrom: String, dateTo: String, sources: [String!]): [Scene!]!
+  scene(id: ID!): Scene
+  randomScenes(limit: Int): [Scene!]!
+  recommendedFeed(limit: Int, offset: Int): [Scene!]!
+  sceneMarkers(mediaId: ID!): [SceneMarker!]!
+  pluginSearch(query: String!, limit: Int, pluginNames: [String!]): [PluginSearchResult!]!
+  pluginBrowse(limit: Int, offset: Int): [PluginSearchResult!]!
+  recommendedBrowse(limit: Int): [PluginSearchResult!]!
+  findAlikeSources(sceneId: ID!, limit: Int): [AlikeCandidate!]!
+
+  """
+  Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks.
+  """
+  searchSuggestions(query: String!, limit: Int = 12): [SearchSuggestion!]!
+  settings: Settings!
+  settingEntries(scope: String): [SettingEntry!]!
+  mediaStreams(mediaId: ID!): [Stream!]!
+  studios(limit: Int, offset: Int, search: String, tagId: ID, sort: String): [Studio!]!
+  studio(id: ID!): Studio
+  searchSubscriptions: [SearchSubscription!]!
+  searchSubscription(id: ID!): SearchSubscription
+  subscriptionForTarget(targetId: ID!): SearchSubscription
+  subscriptionFeed(filter: SubscriptionFeedFilter, limit: Int, offset: Int): [SubscriptionFeedItem!]!
+  tags(limit: Int, offset: Int, search: String, category: String): [Tag!]!
+  tag(id: ID!): Tag
+  userRating(mediaId: ID!): UserRating
+  userRatings(limit: Int, offset: Int): [UserRating!]!
+  watchHistory(limit: Int, offset: Int): [WatchHistory!]!
+  watchHistoryEntry(mediaId: ID!): WatchHistory
+  watchlist: [WatchlistItem!]!
+}
+
+type Mutation {
+  scrape(pluginName: String!, url: String!): ScrapePayload!
+  queueDownload(url: String!, title: String!, pluginName: String): ID!
+  addBlock(kind: String!, targetId: ID!, label: String): BlocklistEntry!
+  removeBlock(targetId: ID!): Boolean!
+  createCollection(name: String!): Collection!
+  renameCollection(collectionId: ID!, name: String!): Collection!
+  deleteCollection(collectionId: ID!): Boolean!
+  addToCollection(collectionId: ID!, mediaId: ID!): Boolean!
+  removeFromCollection(collectionId: ID!, mediaId: ID!): Boolean!
+  reorderCollection(collectionId: ID!, mediaIds: [ID!]!): Boolean!
+  setCollectionTags(collectionId: ID!, tagIds: [ID!]!): Collection!
+  ensureGalleryImages(galleryId: ID!): Gallery
+  setImageTags(imageId: ID!, tagIds: [ID!]!): Image!
+  deleteJob(id: ID!): Boolean!
+  deleteJobsByKind(kind: String!): Int!
+  clearJobs: Int!
+  reorderDownloads(jobIds: [ID!]!): Boolean!
+  retryJob(id: ID!): Boolean!
+  incrementOCount(mediaId: ID!): Int!
+  decrementOCount(mediaId: ID!): Int!
+  updateObservationStatus(id: ID!, status: ObservationStatus!): Observation!
+  setPerformerFavorite(id: ID!, favorite: Boolean!): Performer!
+  enrichPerformer(id: ID!): Boolean!
+  togglePlugin(name: String!, enabled: Boolean!): Boolean!
+  updatePluginSettings(pluginName: String!, values: [PluginSettingValueInput!]!): Boolean!
+  installPlugin(packageName: String!): Boolean!
+  uninstallPlugin(name: String!): Boolean!
+  updatePlugins: [String!]!
+  recordRecommendationChoice(chosenMediaId: ID!, rejectedMediaId: ID!): Boolean!
+  recordImpressions(impressions: [ImpressionInput!]!): Int!
+  createSavedFilter(name: String!, filter: SceneFilterInput!): SavedFilter!
+  deleteSavedFilter(filterId: ID!): Boolean!
+  createSceneMarker(mediaId: ID!, seconds: Float!, endSeconds: Float, tagName: String, label: String): SceneMarker!
+  deleteSceneMarker(markerId: ID!): Boolean!
+  resolvePluginResult(pluginName: String!, url: String!, posterUrl: String): ID!
+  attachAlikeSource(sceneId: ID!, pluginName: String!, url: String!): [Stream!]!
+
+  """Remembers a search the user ran (called when a search is submitted)."""
+  recordSearch(query: String!): Boolean!
+
+  """Removes a query from the recent searches."""
+  forgetSearch(query: String!): Boolean!
+  updateSettings(input: UpdateSettingsInput!): Settings!
+  upsertSettingEntry(input: UpsertSettingEntryInput!): SettingEntry!
+  deleteSettingEntry(id: ID!): Boolean!
+  createStream(input: CreateStreamInput!): Stream!
+  deleteStream(id: ID!): Boolean!
+  ensureSceneStreams(sceneId: ID!): [Stream!]!
+  setStudioTags(studioId: ID!, tagIds: [ID!]!): Studio!
+  subscribeSearch(query: String!, sources: [String!], intervalHours: Int): SearchSubscription!
+  subscribe(kind: SubscriptionKind!, targetId: ID!, intervalHours: Int): SearchSubscription!
+  updateSearchSubscription(id: ID!, intervalHours: Int, enabled: Boolean): SearchSubscription!
+  unsubscribeSearch(id: ID!): Boolean!
+  runSearchSubscription(id: ID!): SearchSubscription!
+  markSearchSubscriptionSeen(id: ID!): SearchSubscription!
+  upsertUserRating(input: UpsertUserRatingInput!): UserRating!
+  deleteUserRating(mediaId: ID!): Boolean!
+  upsertWatchHistory(input: UpsertWatchHistoryInput!): WatchHistory!
+  deleteWatchHistory(mediaId: ID!): Boolean!
+  addToWatchlist(mediaId: ID!): WatchlistItem!
+  removeFromWatchlist(mediaId: ID!): Boolean!
+}
+
+type Subscription {
+  mediaAdded: MediaEvent!
+  jobUpdated: Job!
+  streamsChanged(mediaId: ID!): [Stream!]!
+  relatedChanged(sceneId: ID!): [Scene!]!
+}
+
+type VpnStatus {
+  connected: Boolean!
+  interface: String
+}
+
+type StreamResult {
+  url: String!
+  mimeType: String!
+  quality: String
+  headers: [StreamHeader!]!
+  loadTimeMs: Float
+  speedBps: Float
+}
+
+type StreamHeader {
+  name: String!
+  value: String!
+}
+
+type ProviderSpeed {
+  url: String!
+  loadTimeMs: Float
+  speedBps: Float
+  error: String
+}
+
+type ScrapePayload {
+  success: Boolean!
+  error: String
+  mediaId: ID
+}
+
+type MediaEvent {
+  id: ID!
+  type: String!
+  title: String!
+}
+
+type BlocklistEntry {
+  id: ID!
+  kind: String!
+  targetId: ID!
+  label: String
+  createdAt: String!
+}
+
+type Change {
+  id: ID!
+  canonical: ID!
+  observation: ID!
+  plugin: String!
+  key: String!
+  action: String!
+  value: String
+  originalValue: String
+  iso6391: String
+  iso31661: String
+  score: Float!
+  mode: String!
+  changedBy: String
+  createdAt: String!
+}
+
+type Collection {
+  id: ID!
+  name: String!
+  details: String
+  coverPath: String
+  itemCount: Int!
+  origin: String!
+  sourceUrl: String
+  externalId: String
+  tags: [Tag!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type CollectionMember {
+  mediaId: ID!
+  mediaType: String!
+  position: Int!
+  title: String!
+  posterPath: String
+}
+
+type Gallery {
+  id: ID!
+  externalId: String!
+  sourceUrl: String!
+  title: String!
+  details: String
+  date: String
+  coverPath: String
+  imageCount: Int!
+  rating: Float
+  organized: Boolean!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  images: [Image!]!
+  tagMatch: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Image {
+  id: ID!
+  filePath: String!
+  title: String
+  details: String
+  date: String
+  sourceUrl: String
+  externalId: String
+  width: Int
+  height: Int
+  position: Int
+  rating: Float
+  organized: Boolean!
+  galleryId: ID
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  tagMatch: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Job {
+  id: ID!
+  kind: String!
+  status: String!
+  title: String
+  description: String
+  pluginName: String!
+  target: ID
+  error: String
+  attempts: Int!
+  maxAttempts: Int!
+  priority: Int!
+  runAt: String
+  startedAt: String
+  finishedAt: String
+  createdAt: String!
+  updatedAt: String!
+  downloadTitle: String
+  downloadUrl: String
+  downloadProgress: Float
+  downloadBytesReceived: Float
+  downloadBytesTotal: Float
+  scene: Scene
+}
+
+type MediaCard {
+  mediaId: ID!
+  mediaType: String!
+  title: String!
+  posterPath: String
+  backdropPath: String
+}
+
+enum ObservationStatus {
+  PENDING
+  MERGED
+  CONFLICTED
+  REJECTED
+}
+
+type Observation {
+  id: ID!
+  target: ID!
+  plugin: String!
+  sourceUrl: String!
+  confidence: Float!
+  status: ObservationStatus!
+  data: String
+  job: ID
+  observedAt: String!
+}
+
+type Performer {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  details: String
+  gender: String
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerLength: String
+  url: String
+  twitter: String
+  instagram: String
+  imagePath: String
+  favorite: Boolean!
+  rating: Float
+  tags: [Tag!]!
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PluginPackage {
+  name: String!
+  version: String!
+  description: String
+  installedVersion: String
+}
+
+type Plugin {
+  id: ID!
+  name: String!
+  packageName: String
+  localBuild: Boolean!
+  displayName: String
+  iconUrl: String
+  description: String
+  version: String!
+  capabilities: [String!]!
+  domains: [String!]!
+  enabled: Boolean!
+  requiresSolver: Boolean!
+  available: Boolean!
+  installedAt: String!
+  updatedAt: String!
+  settings: [PluginSettingField!]!
+  settingValues: [PluginSettingValue!]!
+}
+
+type PluginSettingField {
+  key: String!
+  label: String!
+  description: String
+  type: String!
+  required: Boolean!
+  default: String
+}
+
+type PluginSettingValue {
+  key: String!
+  value: String!
+}
+
+input PluginSettingValueInput {
+  key: String!
+  value: String!
+}
+
+type PluginCategory {
+  id: ID!
+  name: String!
+  url: String!
+  count: Int!
+  poster: String
+}
+
+input ImpressionInput {
+  mediaId: ID!
+  source: String
+  surface: String
+  position: Int
+  clicked: Boolean
+}
+
+type RecommendedScene {
+  scene: Scene!
+  source: String!
+  reason: RecommendationReason!
+  score: Float!
+}
+
+type RecommendationReason {
+  kind: String!
+  text: String!
+  entityId: ID
+  entityName: String
+}
+
+type RecommendationRow {
+  key: String!
+  title: String!
+  reason: RecommendationReason!
+  items: [RecommendedScene!]!
+}
+
+type RecommendedCategory {
+  tag: Tag!
+  scenes: [Scene!]!
+}
+
+input SceneFilterInput {
+  search: String
+  studioId: ID
+  performerId: ID
+  tagId: ID
+  minRating: Float
+  minDuration: Int
+  maxDuration: Int
+  dateFrom: String
+  dateTo: String
+  sort: String
+}
+
+type SceneFilter {
+  search: String
+  studioId: ID
+  performerId: ID
+  tagId: ID
+  minRating: Float
+  minDuration: Int
+  maxDuration: Int
+  dateFrom: String
+  dateTo: String
+  sort: String
+}
+
+type SavedFilter {
+  id: ID!
+  name: String!
+  filter: SceneFilter!
+  createdAt: String!
+}
+
+type Scene {
+  id: ID!
+  externalId: String!
+  sourceUrl: String!
+  title: String!
+  details: String
+  date: String
+  durationSeconds: Int
+  rating: Float
+  viewCount: Int!
+  organized: Boolean!
+  posterPath: String
+  previewVideo: String
+  previewImages: [String!]!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  tagMatch: String
+  related(limit: Int): [Scene!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SceneMarker {
+  id: ID!
+  tag: Tag
+  label: String
+  seconds: Float!
+  endSeconds: Float
+  personal: Boolean!
+  createdAt: String!
+}
+
+type PluginSearchResult {
+  externalId: String!
+  title: String!
+  mediaType: String!
+  plugin: String!
+  sourceUrl: String!
+  date: String
+  posterUrl: String
+  previewImages: [String!]!
+  previewVideo: String
+  durationSeconds: Int
+}
+
+type AlikeCandidate {
+  externalId: String!
+  title: String!
+  plugin: String!
+  sourceUrl: String!
+  posterUrl: String
+  date: String
+  previewImages: [String!]!
+  previewVideo: String
+  durationSeconds: Int
+  matchScore: Float!
+}
+
+enum SearchSuggestionKind {
+  RECENT
+  QUERY
+  TAG
+  PERFORMER
+  STUDIO
+}
+
+type SearchSuggestion {
+  kind: SearchSuggestionKind!
+
+  """Text to show and to search for when chosen."""
+  text: String!
+
+  """
+  Entity id (tag/performer/studio) when the suggestion is an entity, never the raw record id structure — plain string id like other *Id fields.
+  """
+  entityId: String
+
+  """Avatar/logo/profile image URL for performers/studios, null otherwise."""
+  imageUrl: String
+
+  """Short grey detail line, e.g. '128 videos' or 'Performer'."""
+  detail: String
+}
+
+type Settings {
+  maxConcurrentJobs: Int!
+  maxJobRetries: Int!
+  downloadSpeedLimitKBps: Int!
+  allowDownloadsWhileStreaming: Boolean!
+  autoEnrichAfterScrape: Boolean!
+  requireVpn: Boolean!
+  kindLimits: [KindRateLimit!]!
+}
+
+input UpdateSettingsInput {
+  maxConcurrentJobs: Int
+  maxJobRetries: Int
+  downloadSpeedLimitKBps: Int
+  allowDownloadsWhileStreaming: Boolean
+  autoEnrichAfterScrape: Boolean
+  requireVpn: Boolean
+  kindLimits: [KindRateLimitInput!]
+}
+
+type KindRateLimit {
+  kind: String!
+  maxConcurrent: Int!
+  retryInitialMs: Int!
+  retryMultiplier: Float!
+  retryMaxMs: Int!
+}
+
+input KindRateLimitInput {
+  kind: String!
+  maxConcurrent: Int
+  retryInitialMs: Int
+  retryMultiplier: Float
+  retryMaxMs: Int
+}
+
+type SettingEntry {
+  id: ID!
+  scope: String!
+  plugin: ID
+  key: String!
+  value: String
+  description: String
+  updatedAt: String!
+}
+
+input UpsertSettingEntryInput {
+  scope: String!
+  plugin: ID
+  key: String!
+  value: String!
+  description: String
+}
+
+type Stream {
+  id: ID!
+  mediaId: ID!
+  url: String!
+  kind: String!
+  label: String
+  provider: String
+  resolution: String
+  width: Int
+  height: Int
+  language: String
+  format: String
+  mimeType: String
+  expectedSpeedBps: Float
+  fileSizeBytes: Float
+  verified: Boolean!
+  pluginName: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+input CreateStreamInput {
+  mediaId: ID!
+  url: String!
+  kind: String
+  label: String
+  provider: String
+  resolution: String
+  width: Int
+  height: Int
+  language: String
+  format: String
+  mimeType: String
+  expectedSpeedBps: Float
+  fileSizeBytes: Float
+  verified: Boolean
+  pluginName: String
+}
+
+type Studio {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  url: String
+  parent: Studio
+  imagePath: String
+  details: String
+  tags: [Tag!]!
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input SubscriptionFeedFilter {
+  subscriptionId: ID
+  kinds: [SubscriptionKind!]
+  newOnly: Boolean
+  unwatchedOnly: Boolean
+}
+
+type SubscriptionFeedItem {
+  scene: Scene!
+  foundAt: String!
+  subscriptionId: ID!
+  isNew: Boolean!
+}
+
+enum SubscriptionKind {
+  SEARCH
+  STUDIO
+  PERFORMER
+  TAG
+}
+
+type SubscriptionTarget {
+  id: ID!
+  name: String!
+  imageUrl: String
+}
+
+type SearchSubscription {
+  id: ID!
+  kind: SubscriptionKind!
+  query: String!
+  target: SubscriptionTarget
+  sources: [String!]!
+  intervalHours: Int!
+  enabled: Boolean!
+  lastRunAt: String
+  nextRunAt: String
+  lastError: String
+  newCount: Int!
+  totalCount: Int!
+  createdAt: String!
+  scenes(limit: Int, offset: Int): [Scene!]!
+}
+
+type Tag {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String
+  category: String
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type UserRating {
+  id: ID!
+  media: ID!
+  rating: Float!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input UpsertUserRatingInput {
+  media: ID!
+  rating: Float!
+}
+
+type WatchHistory {
+  id: ID!
+  media: ID!
+  scene: Scene
+  startedAt: String!
+  finishedAt: String
+  progressSeconds: Int!
+  maxProgressSeconds: Int!
+  durationSeconds: Int
+  completed: Boolean!
+  updatedAt: String!
+}
+
+input UpsertWatchHistoryInput {
+  media: ID!
+  progressSeconds: Int!
+  durationSeconds: Int
+  completed: Boolean
+}
+
+type WatchlistItem {
+  id: ID!
+  media: ID!
+  createdAt: String!
+}

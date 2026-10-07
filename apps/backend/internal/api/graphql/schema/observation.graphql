@@ -1,0 +1,37 @@
+# Plugin fetch results before reconciliation with canonical records.
+
+extend type Query {
+  observation(id: ID!): Observation
+  observations(targetId: ID!, status: String, limit: Int, offset: Int): [Observation!]!
+}
+
+extend type Mutation {
+  # Manually advance the lifecycle status of an observation.
+  updateObservationStatus(id: ID!, status: ObservationStatus!): Observation!
+}
+
+enum ObservationStatus {
+  # not yet reconciled
+  PENDING
+  # fields applied to canonical record
+  MERGED
+  # contradicts another observation
+  CONFLICTED
+  # manually marked as bad data
+  REJECTED
+}
+
+type Observation {
+  id: ID!
+  # movie|series|season|episode|person record ID
+  target: ID!
+  plugin: String!
+  sourceUrl: String!
+  # 0.0 = completely unreliable, 1.0 = authoritative
+  confidence: Float!
+  status: ObservationStatus!
+  # full scraped payload (JSON)
+  data: String
+  job: ID
+  observedAt: String!
+}

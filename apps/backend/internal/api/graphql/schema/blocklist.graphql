@@ -1,0 +1,19 @@
+# Blocklist. Blocked tags/performers/studios are hidden from every feed.
+
+extend type Query {
+  blocklist: [BlocklistEntry!]!
+}
+
+extend type Mutation {
+  # kind is one of "tag" | "performer" | "studio".
+  addBlock(kind: String!, targetId: ID!, label: String): BlocklistEntry!
+  removeBlock(targetId: ID!): Boolean!
+}
+
+type BlocklistEntry {
+  id: ID!
+  kind: String!
+  targetId: ID!
+  label: String
+  createdAt: String!
+}

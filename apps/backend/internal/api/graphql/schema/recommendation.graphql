@@ -1,0 +1,82 @@
+# Recommendations: a ranked feed with reasons, titled rows, tag categories and
+# comparative A/B choices. See internal/recommend.
+
+extend type Query {
+  # The ranked personalized feed, each scene with why it was picked. offset 0
+  # re-ranks once the ranking is 10 minutes old, or always with refresh; later
+  # pages read the same ranking (for 30 minutes) so pages don't overlap.
+  # recommendedFeed is the same list without reasons.
+  recommendations(limit: Int, offset: Int, refresh: Boolean): [RecommendedScene!]!
+
+  # Recommendations grouped into titled rows by reason ("Because you watched
+  # X", "More from <performer>", "New for “<query>”", ...), strongest row
+  # first. Rows with fewer than three scenes are left out.
+  recommendedRows(rowLimit: Int, perRow: Int): [RecommendationRow!]!
+
+  # Recommended scenes grouped into categories: the tags with the highest
+  # taste affinity, each with its best-scored scenes. Empty when there is no
+  # signal yet (caller falls back to the flat feed).
+  recommendedCategories(categoryLimit: Int, perCategory: Int): [RecommendedCategory!]!
+
+  # Two taste-ranked scenes to show side by side. Returns 0 or 2 scenes.
+  recommendationPair: [Scene!]!
+}
+
+extend type Mutation {
+  # Records that the user picked `chosenMediaId` over `rejectedMediaId` when the
+  # two were shown side by side. Strong positive signal for the chosen scene.
+  recordRecommendationChoice(chosenMediaId: ID!, rejectedMediaId: ID!): Boolean!
+
+  # Logs recommended scenes the user was shown, and the ones they opened, in
+  # batches of at most 500. Showings never followed by a click or playback
+  # are a weak negative and make the feed rotate them out. Returns how many
+  # were stored.
+  recordImpressions(impressions: [ImpressionInput!]!): Int!
+}
+
+input ImpressionInput {
+  mediaId: ID!
+  # The RecommendedScene.source the scene was served with.
+  source: String
+  # Where it was shown, e.g. "feed" or "row".
+  surface: String
+  # Position within the surface.
+  position: Int
+  # true when the user opened it; absent/false when it was only shown.
+  clicked: Boolean
+}
+
+type RecommendedScene {
+  scene: Scene!
+  # Candidate source: related:site | related:performer | related:tag |
+  # related:title | subscription | affinity:performer | affinity:studio |
+  # affinity:tag | explore:adjacent | explore:random | search | newest
+  source: String!
+  reason: RecommendationReason!
+  score: Float!
+}
+
+type RecommendationReason {
+  # related | performer | studio | tag | explore | random | subscription |
+  # search | newest
+  kind: String!
+  # Display text, e.g. "Because you watched X", "More from <performer>".
+  text: String!
+  # What the reason points at: the seed scene (related), performer, studio,
+  # tag (tag, explore) or search subscription. Null for the other kinds.
+  entityId: ID
+  entityName: String
+}
+
+type RecommendationRow {
+  # Stable per reason, e.g. "performer:performer:abc".
+  key: String!
+  title: String!
+  reason: RecommendationReason!
+  items: [RecommendedScene!]!
+}
+
+type RecommendedCategory {
+  tag: Tag!
+  scenes: [Scene!]!
+}

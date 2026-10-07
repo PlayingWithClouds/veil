@@ -1,0 +1,74 @@
+# Installed plugin registry.
+
+extend type Query {
+  plugins: [Plugin!]!
+  plugin(id: ID!): Plugin
+  # Plugins published on npm (keyword "veil-plugin") matching query, all when empty.
+  pluginPackages(query: String): [PluginPackage!]!
+}
+
+extend type Mutation {
+  togglePlugin(name: String!, enabled: Boolean!): Boolean!
+  updatePluginSettings(pluginName: String!, values: [PluginSettingValueInput!]!): Boolean!
+  # Installs (or updates) an npm plugin package; it loads within a second.
+  installPlugin(packageName: String!): Boolean!
+  # Removes an installed plugin's folder.
+  uninstallPlugin(name: String!): Boolean!
+  # Installs newer npm versions of installed plugins; returns the updated package names.
+  updatePlugins: [String!]!
+}
+
+# A plugin package on npm.
+type PluginPackage {
+  name: String!
+  version: String!
+  description: String
+  # version installed here, null when not installed
+  installedVersion: String
+}
+
+type Plugin {
+  id: ID!
+  name: String!
+  # npm package the plugin was installed from
+  packageName: String
+  # bundled from the backend's own checkout (dev); never auto-updated
+  localBuild: Boolean!
+  displayName: String
+  iconUrl: String
+  description: String
+  version: String!
+  # discover|scrape|enrich
+  capabilities: [String!]!
+  # hostnames this plugin handles
+  domains: [String!]!
+  enabled: Boolean!
+  # site only works through FlareSolverr (Cloudflare challenge)
+  requiresSolver: Boolean!
+  # false when a requirement (e.g. FlareSolverr) is missing in this deployment
+  available: Boolean!
+  installedAt: String!
+  updatedAt: String!
+  # resolved at runtime from in-memory registry
+  settings: [PluginSettingField!]!
+  settingValues: [PluginSettingValue!]!
+}
+
+type PluginSettingField {
+  key: String!
+  label: String!
+  description: String
+  type: String!
+  required: Boolean!
+  default: String
+}
+
+type PluginSettingValue {
+  key: String!
+  value: String!
+}
+
+input PluginSettingValueInput {
+  key: String!
+  value: String!
+}

@@ -1,0 +1,28 @@
+# Search suggestions: recent searches, tags, performers, studios and
+# completions mined from scene titles, ranked for the search box.
+
+enum SearchSuggestionKind { RECENT QUERY TAG PERFORMER STUDIO }
+
+type SearchSuggestion {
+  kind: SearchSuggestionKind!
+  "Text to show and to search for when chosen."
+  text: String!
+  "Entity id (tag/performer/studio) when the suggestion is an entity, never the raw record id structure — plain string id like other *Id fields."
+  entityId: String
+  "Avatar/logo/profile image URL for performers/studios, null otherwise."
+  imageUrl: String
+  "Short grey detail line, e.g. '128 videos' or 'Performer'."
+  detail: String
+}
+
+extend type Query {
+  "Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks."
+  searchSuggestions(query: String!, limit: Int = 12): [SearchSuggestion!]!
+}
+
+extend type Mutation {
+  "Remembers a search the user ran (called when a search is submitted)."
+  recordSearch(query: String!): Boolean!
+  "Removes a query from the recent searches."
+  forgetSearch(query: String!): Boolean!
+}

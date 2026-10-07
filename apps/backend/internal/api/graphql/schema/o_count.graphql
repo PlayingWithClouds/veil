@@ -1,0 +1,12 @@
+# O-counter. Count is history-backed (one event per "o"); increment
+# adds an event, decrement removes the most recent. Each mutation returns the new
+# total.
+
+extend type Query {
+  oCount(mediaId: ID!): Int!
+}
+
+extend type Mutation {
+  incrementOCount(mediaId: ID!): Int!
+  decrementOCount(mediaId: ID!): Int!
+}

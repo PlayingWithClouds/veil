@@ -1,0 +1,46 @@
+# Crash-recoverable job queue.
+
+extend type Query {
+  jobs: [Job!]!
+  job(id: ID!): Job
+}
+
+extend type Mutation {
+  deleteJob(id: ID!): Boolean!
+  deleteJobsByKind(kind: String!): Int!
+  clearJobs: Int!
+  # Reorders the given jobs (download queue) so earlier ids run first.
+  reorderDownloads(jobIds: [ID!]!): Boolean!
+  # Queues a failed job again with fresh attempts.
+  retryJob(id: ID!): Boolean!
+}
+
+type Job {
+  id: ID!
+  # discover|scrape|enrich|refresh|download
+  kind: String!
+  # pending|running|completed|failed|cancelled
+  status: String!
+  title: String
+  description: String
+  pluginName: String!
+  # target media record ID
+  target: ID
+  error: String
+  attempts: Int!
+  maxAttempts: Int!
+  priority: Int!
+  runAt: String
+  startedAt: String
+  finishedAt: String
+  createdAt: String!
+  updatedAt: String!
+  # download-specific fields
+  downloadTitle: String
+  downloadUrl: String
+  downloadProgress: Float
+  downloadBytesReceived: Float
+  downloadBytesTotal: Float
+  # the target scene, when the job works on one
+  scene: Scene
+}

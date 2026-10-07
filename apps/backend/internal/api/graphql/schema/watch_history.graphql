@@ -1,0 +1,36 @@
+# Watch history with resume support.
+
+extend type Query {
+  watchHistory(limit: Int, offset: Int): [WatchHistory!]!
+  watchHistoryEntry(mediaId: ID!): WatchHistory
+}
+
+extend type Mutation {
+  upsertWatchHistory(input: UpsertWatchHistoryInput!): WatchHistory!
+  deleteWatchHistory(mediaId: ID!): Boolean!
+}
+
+type WatchHistory {
+  id: ID!
+  # movie|episode record ID
+  media: ID!
+  # The watched scene, resolved for rendering history cards.
+  scene: Scene
+  startedAt: String!
+  finishedAt: String
+  # playback position in seconds at last save
+  progressSeconds: Int!
+  # furthest position reached; seeking back doesn't lower it
+  maxProgressSeconds: Int!
+  # total runtime at time of watching
+  durationSeconds: Int
+  completed: Boolean!
+  updatedAt: String!
+}
+
+input UpsertWatchHistoryInput {
+  media: ID!
+  progressSeconds: Int!
+  durationSeconds: Int
+  completed: Boolean
+}

@@ -1,0 +1,10 @@
+shutterly
+go.sum
+*.env
+.env
+web/node_modules/
+plugins/*/node_modules/
+web/.svelte-kit/
+web/build/
+tmp/
+data/

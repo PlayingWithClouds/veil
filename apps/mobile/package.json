@@ -1,0 +1,28 @@
+{
+	"name": "veil-mobile",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"assets:android": "capacitor-assets generate --android && cp assets/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml && cp assets/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+		"build:web": "cd ../web && VEIL_TARGET=mobile bun run build",
+		"build:backend": "cd ../backend && CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o ../mobile/android/app/src/main/jniLibs/arm64-v8a/libveil.so ./cmd/server",
+		"build:plugins": "cd ../backend && bun scripts/bundle-plugins.ts --release --out ../mobile/android/app/src/main/assets/plugins",
+		"build": "bun run build:web && bun run build:backend && bun run build:plugins && cap sync android",
+		"apk": "bun run build && cd android && ./gradlew assembleDebug",
+		"android": "bun run build && cap run android",
+		"open": "cap open android"
+	},
+	"dependencies": {
+		"@capacitor/android": "^8.4.0",
+		"@capacitor/app": "^8.1.1",
+		"@capacitor/core": "^8.4.0",
+		"@capacitor/screen-orientation": "^8.0.1",
+		"@capacitor/splash-screen": "^8.0.0"
+	},
+	"devDependencies": {
+		"@capacitor/assets": "^3.0.5",
+		"@capacitor/cli": "^8.4.0",
+		"@types/node": "^24"
+	}
+}

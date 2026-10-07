@@ -1,0 +1,71 @@
+# Runs the whole Veil stack: infra via Docker Compose, apps natively (Go +
+# Bun) for fast reloads. Startup order: backend -> frontends; infra (FlareSolverr)
+# runs alongside and is optional.
+#
+#   process-compose up   # fixed default ports (see below)
+#   pcx up               # random-port launcher + TUI (~/Documents/process-compose-random-port)
+#
+# Every port is read from ${VAR:-default}. pcx injects a fresh free port per var;
+# plain process-compose falls back to the defaults, which must match
+# infra/docker-compose.yml. The browser talks to the backend directly on
+# http://localhost:${BACKEND_PORT}.
+#
+# Infra services are defined in infra/docker-compose.yml; the `infra` process
+# below brings them up and tears them down with process-compose. pcx runs its
+# own API server on a random port too, so the old PC_PORT_NUM=8088 workaround is
+# gone.
+
+version: "0.5"
+
+environment:
+  - "FLARESOLVERR_URL=http://127.0.0.1:${FLARESOLVERR_PORT:-8191}/v1"
+
+processes:
+  # --- infra (Docker Compose) ---------------------------------------------
+
+  infra:
+    command: docker compose -f infra/docker-compose.yml up
+    shutdown:
+      command: docker compose -f infra/docker-compose.yml stop
+
+  # --- backend -------------------------------------------------------------
+
+  # Bundles plugins/<name> into data/plugins and rebuilds one on every save;
+  # the backend hot-reloads it.
+  plugins:
+    command: bun scripts/bundle-plugins.ts --watch
+    working_dir: apps/backend
+    ready_log_line: "watching"
+
+  backend:
+    # air rebuilds + restarts the server on .go changes (config: apps/backend/.air.toml)
+    command: air
+    working_dir: apps/backend
+    environment:
+      - "PORT=${BACKEND_PORT:-8080}"
+      # Absolute base for stream-proxy and blob URLs the browser fetches.
+      - "PUBLIC_URL=http://localhost:${BACKEND_PORT:-8080}"
+    depends_on:
+      plugins:
+        condition: process_log_ready
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: ${BACKEND_PORT:-8080}
+        path: /health
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 30
+
+  # --- frontends -----------------------------------------------------------
+
+  web:
+    command: bun run dev --host 0.0.0.0 --port ${WEB_PORT:-3000}
+    working_dir: apps/web
+    environment:
+      # Browser and SSR both reach the API directly on localhost.
+      - "PUBLIC_API_URL=http://localhost:${BACKEND_PORT:-8080}"
+      - "INTERNAL_API_URL=http://localhost:${BACKEND_PORT:-8080}"
+    depends_on:
+      backend:
+        condition: process_healthy

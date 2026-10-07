@@ -1,0 +1,26 @@
+# Optional local infrastructure for Veil: FlareSolverr only. The backend keeps
+# its database (SQLite) and blobs on disk under DATA_DIR, so nothing else runs
+# as a service.
+#
+# Brought up by the `infra` process in process-compose.yaml.
+
+name: veil-infra
+
+services:
+  # Cloudflare challenge solver. Some source sites (e.g. missav search) sit
+  # behind a Cloudflare JS challenge that a plain fetch cannot clear; plugins
+  # route those requests through FlareSolverr, which runs a headless browser to
+  # obtain a valid cf_clearance and return the solved HTML.
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    ports:
+      - "${FLARESOLVERR_PORT:-8191}:8191"
+    environment:
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8191/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped

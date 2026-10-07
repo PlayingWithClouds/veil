@@ -1,0 +1,68 @@
+# Global and per-plugin key/value configuration.
+
+extend type Query {
+  settings: Settings!
+  settingEntries(scope: String): [SettingEntry!]!
+}
+
+extend type Mutation {
+  updateSettings(input: UpdateSettingsInput!): Settings!
+  upsertSettingEntry(input: UpsertSettingEntryInput!): SettingEntry!
+  deleteSettingEntry(id: ID!): Boolean!
+}
+
+type Settings {
+  maxConcurrentJobs: Int!
+  maxJobRetries: Int!
+  downloadSpeedLimitKBps: Int!
+  allowDownloadsWhileStreaming: Boolean!
+  autoEnrichAfterScrape: Boolean!
+  requireVpn: Boolean!
+  kindLimits: [KindRateLimit!]!
+}
+
+input UpdateSettingsInput {
+  maxConcurrentJobs: Int
+  maxJobRetries: Int
+  downloadSpeedLimitKBps: Int
+  allowDownloadsWhileStreaming: Boolean
+  autoEnrichAfterScrape: Boolean
+  requireVpn: Boolean
+  kindLimits: [KindRateLimitInput!]
+}
+
+type KindRateLimit {
+  kind: String!
+  maxConcurrent: Int!
+  retryInitialMs: Int!
+  retryMultiplier: Float!
+  retryMaxMs: Int!
+}
+
+input KindRateLimitInput {
+  kind: String!
+  maxConcurrent: Int
+  retryInitialMs: Int
+  retryMultiplier: Float
+  retryMaxMs: Int
+}
+
+# Individual entry in the setting table (scope=global|plugin).
+type SettingEntry {
+  id: ID!
+  scope: String!
+  plugin: ID
+  key: String!
+  # JSON-serialized value
+  value: String
+  description: String
+  updatedAt: String!
+}
+
+input UpsertSettingEntryInput {
+  scope: String!
+  plugin: ID
+  key: String!
+  value: String!
+  description: String
+}

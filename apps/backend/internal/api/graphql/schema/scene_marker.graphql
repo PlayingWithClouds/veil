@@ -1,0 +1,31 @@
+# Markers describe what happens at a point (or span) in a scene. Personal
+# markers are user-created; global markers are content annotations, e.g. plugin-detected positions. At least one of tag/label is set.
+
+extend type Query {
+  # Global and personal markers.
+  sceneMarkers(mediaId: ID!): [SceneMarker!]!
+}
+
+extend type Mutation {
+  createSceneMarker(
+    mediaId: ID!
+    seconds: Float!
+    endSeconds: Float
+    tagName: String
+    label: String
+  ): SceneMarker!
+  deleteSceneMarker(markerId: ID!): Boolean!
+}
+
+type SceneMarker {
+  id: ID!
+  tag: Tag
+  label: String
+  # Timestamp in seconds from the start of the scene.
+  seconds: Float!
+  # Set for span markers (e.g. a position lasting minutes).
+  endSeconds: Float
+  # True for user-created markers, false for global (plugin-created) ones.
+  personal: Boolean!
+  createdAt: String!
+}

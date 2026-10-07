@@ -1,0 +1,29 @@
+# Per-field change log, modelled after the TMDB /changes endpoint.
+
+extend type Query {
+  changes(targetId: ID!, key: String, limit: Int, offset: Int): [Change!]!
+}
+
+type Change {
+  id: ID!
+  # movie|series|season|episode|person record ID
+  canonical: ID!
+  observation: ID!
+  plugin: String!
+  # field name that changed, e.g. "title", "overview"
+  key: String!
+  # added|updated|deleted
+  action: String!
+  # new value (JSON)
+  value: String
+  # previous value (JSON); null when action=added
+  originalValue: String
+  iso6391: String
+  iso31661: String
+  # confidence from the source observation
+  score: Float!
+  # auto|manual
+  mode: String!
+  changedBy: String
+  createdAt: String!
+}

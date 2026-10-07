@@ -1,0 +1,42 @@
+schema:
+  - internal/api/graphql/schema/*.graphql
+
+exec:
+  filename: internal/api/graphql/generated/generated.go
+  package: generated
+
+model:
+  filename: internal/api/graphql/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/api/graphql
+  package: graphql
+  filename_template: "{name}.resolvers.go"
+
+models:
+  # Resolve the watched scene lazily, only when the query requests it — the
+  # progress store pulls hundreds of history rows without needing scene detail.
+  WatchHistory:
+    fields:
+      scene:
+        resolver: true
+  # A job's scene loads only when asked (the library's download cards).
+  Job:
+    fields:
+      scene:
+        resolver: true
+  # Related scenes load lazily, only when a query asks for them.
+  Scene:
+    fields:
+      related:
+        resolver: true
+  SearchSubscription:
+    fields:
+      scenes:
+        resolver: true
+      newCount:
+        resolver: true
+      totalCount:
+        resolver: true

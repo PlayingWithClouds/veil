@@ -1,0 +1,26 @@
+# User ratings (1.0–10.0, TMDB scale).
+
+extend type Query {
+  userRating(mediaId: ID!): UserRating
+  userRatings(limit: Int, offset: Int): [UserRating!]!
+}
+
+extend type Mutation {
+  upsertUserRating(input: UpsertUserRatingInput!): UserRating!
+  deleteUserRating(mediaId: ID!): Boolean!
+}
+
+type UserRating {
+  id: ID!
+  # movie|series|season|episode record ID
+  media: ID!
+  # 1.0–10.0, matching TMDB scale
+  rating: Float!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input UpsertUserRatingInput {
+  media: ID!
+  rating: Float!
+}

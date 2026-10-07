@@ -1,0 +1,35 @@
+# A set of images (photo shoot).
+
+extend type Query {
+  # sources: only galleries found through these plugins; empty = any.
+  galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
+  gallery(id: ID!): Gallery
+}
+
+extend type Mutation {
+  # Called when a gallery page opens. A gallery stub (from search/browse) has no
+  # images yet; this fetches its page from the origin plugin to land them.
+  # Returns the gallery; a failed fetch still returns what is stored.
+  ensureGalleryImages(galleryId: ID!): Gallery
+}
+
+type Gallery {
+  id: ID!
+  externalId: String!
+  sourceUrl: String!
+  title: String!
+  details: String
+  date: String
+  coverPath: String
+  imageCount: Int!
+  rating: Float
+  organized: Boolean!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  images: [Image!]!
+  # "direct" | "inherited" — set when filtering by tagId.
+  tagMatch: String
+  createdAt: String!
+  updatedAt: String!
+}

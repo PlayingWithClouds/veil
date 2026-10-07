@@ -1,0 +1,44 @@
+# Named filter presets for the browse/discovery pages.
+
+extend type Query {
+  savedFilters: [SavedFilter!]!
+}
+
+extend type Mutation {
+  createSavedFilter(name: String!, filter: SceneFilterInput!): SavedFilter!
+  deleteSavedFilter(filterId: ID!): Boolean!
+}
+
+# Advanced scene filter, reused as saved-preset payload and browse args.
+input SceneFilterInput {
+  search: String
+  studioId: ID
+  performerId: ID
+  tagId: ID
+  minRating: Float
+  minDuration: Int
+  maxDuration: Int
+  dateFrom: String
+  dateTo: String
+  sort: String
+}
+
+type SceneFilter {
+  search: String
+  studioId: ID
+  performerId: ID
+  tagId: ID
+  minRating: Float
+  minDuration: Int
+  maxDuration: Int
+  dateFrom: String
+  dateTo: String
+  sort: String
+}
+
+type SavedFilter {
+  id: ID!
+  name: String!
+  filter: SceneFilter!
+  createdAt: String!
+}

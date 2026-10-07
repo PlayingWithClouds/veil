@@ -1,0 +1,86 @@
+# Subscriptions re-run on a schedule: a saved search, or a followed studio
+# (channel), performer or tag. Every scene a run finds lands in the
+# subscription's feed; scenes first seen since the last visit count as new.
+
+extend type Query {
+  searchSubscriptions: [SearchSubscription!]!
+  searchSubscription(id: ID!): SearchSubscription
+  # The subscription following a studio, performer or tag, if any.
+  subscriptionForTarget(targetId: ID!): SearchSubscription
+  # Scenes found by the subscriptions, newest find first; a scene found by
+  # several appears once, under the subscription that found it first.
+  subscriptionFeed(filter: SubscriptionFeedFilter, limit: Int, offset: Int): [SubscriptionFeedItem!]!
+}
+
+input SubscriptionFeedFilter {
+  # only this subscription's scenes
+  subscriptionId: ID
+  # only subscriptions of these kinds; empty = all
+  kinds: [SubscriptionKind!]
+  # only scenes found since their subscription was last marked seen
+  newOnly: Boolean
+  # only scenes never opened in the player
+  unwatchedOnly: Boolean
+}
+
+type SubscriptionFeedItem {
+  scene: Scene!
+  # when a subscription run first found the scene
+  foundAt: String!
+  subscriptionId: ID!
+  # found since the subscription was last marked seen
+  isNew: Boolean!
+}
+
+extend type Mutation {
+  # Subscribes and runs the first search in the background. Returns the
+  # existing subscription when the query is already subscribed.
+  subscribeSearch(query: String!, sources: [String!], intervalHours: Int): SearchSubscription!
+  # Follows a studio, performer or tag (kind must match the target's type) and
+  # runs the first update in the background. Returns the existing subscription
+  # when the target is already followed.
+  subscribe(kind: SubscriptionKind!, targetId: ID!, intervalHours: Int): SearchSubscription!
+  updateSearchSubscription(id: ID!, intervalHours: Int, enabled: Boolean): SearchSubscription!
+  unsubscribeSearch(id: ID!): Boolean!
+  # Runs the subscription now instead of waiting for the schedule.
+  runSearchSubscription(id: ID!): SearchSubscription!
+  # Clears the new-scene count.
+  markSearchSubscriptionSeen(id: ID!): SearchSubscription!
+}
+
+enum SubscriptionKind {
+  SEARCH
+  # a channel
+  STUDIO
+  PERFORMER
+  TAG
+}
+
+# The studio, performer or tag a subscription follows.
+type SubscriptionTarget {
+  id: ID!
+  name: String!
+  # studio logo / performer photo; null for tags
+  imageUrl: String
+}
+
+type SearchSubscription {
+  id: ID!
+  kind: SubscriptionKind!
+  # search query, or the followed target's name
+  query: String!
+  # the followed studio/performer/tag; null for searches
+  target: SubscriptionTarget
+  # plugin names searched; empty = every search plugin (searches only)
+  sources: [String!]!
+  intervalHours: Int!
+  enabled: Boolean!
+  lastRunAt: String
+  nextRunAt: String
+  lastError: String
+  newCount: Int!
+  totalCount: Int!
+  createdAt: String!
+  # newest first
+  scenes(limit: Int, offset: Int): [Scene!]!
+}

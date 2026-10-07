@@ -1,0 +1,45 @@
+# Content images: gallery pages and standalone images. Browsable and taggable,
+# unlike asset images (posters, logos, profile shots) which never surface here.
+
+extend type Query {
+  images(
+    limit: Int
+    offset: Int
+    search: String
+    studioId: ID
+    performerId: ID
+    tagId: ID
+    galleryId: ID
+    sort: String
+  ): [Image!]!
+  image(id: ID!): Image
+}
+
+extend type Mutation {
+  setImageTags(imageId: ID!, tagIds: [ID!]!): Image!
+}
+
+type Image {
+  id: ID!
+  filePath: String!
+  title: String
+  details: String
+  date: String
+  sourceUrl: String
+  externalId: String
+  width: Int
+  height: Int
+  position: Int
+  rating: Float
+  organized: Boolean!
+  # Set when the image belongs to a gallery.
+  galleryId: ID
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  # "direct" | "inherited" — set when filtering by tagId; inherited means the
+  # tag came from the image's studio, performers, or owning gallery.
+  tagMatch: String
+  createdAt: String!
+  updatedAt: String!
+}

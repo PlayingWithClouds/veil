@@ -1,0 +1,17 @@
+# A free-form category/attribute applied to scenes and performers.
+
+extend type Query {
+  tags(limit: Int, offset: Int, search: String, category: String): [Tag!]!
+  tag(id: ID!): Tag
+}
+
+type Tag {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String
+  category: String
+  sceneCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}

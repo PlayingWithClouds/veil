@@ -1,0 +1,56 @@
+extend type Query {
+  # Stored playback/download sources for a movie or episode.
+  mediaStreams(mediaId: ID!): [Stream!]!
+}
+
+extend type Mutation {
+  createStream(input: CreateStreamInput!): Stream!
+  deleteStream(id: ID!): Boolean!
+  # Ensures a scene has playback sources: if it was only discovered (a stub with
+  # no streams), scrapes its origin URL to populate them. Returns ranked streams.
+  ensureSceneStreams(sceneId: ID!): [Stream!]!
+}
+
+type Stream {
+  id: ID!
+  mediaId: ID!
+  url: String!
+  # stream|download|torrent
+  kind: String!
+  label: String
+  # Hosting provider name, e.g. "VOE".
+  provider: String
+  # Human-readable resolution label, e.g. "1080p".
+  resolution: String
+  width: Int
+  height: Int
+  language: String
+  # Container/codec, e.g. "mp4", "mkv".
+  format: String
+  mimeType: String
+  # Expected/measured link speed in bytes per second.
+  expectedSpeedBps: Float
+  fileSizeBytes: Float
+  verified: Boolean!
+  pluginName: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+input CreateStreamInput {
+  mediaId: ID!
+  url: String!
+  kind: String
+  label: String
+  provider: String
+  resolution: String
+  width: Int
+  height: Int
+  language: String
+  format: String
+  mimeType: String
+  expectedSpeedBps: Float
+  fileSizeBytes: Float
+  verified: Boolean
+  pluginName: String
+}

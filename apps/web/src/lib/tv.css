@@ -1,0 +1,52 @@
+/*
+ * TV / keyboard-navigation tokens, aligned to the design system in layout.css
+ * (high-contrast dark surfaces, white primary, subtle radii). These feed the
+ * FocusList / Sidebar / Hero / MediaRail components.
+ */
+:root {
+	--tv-focus-ring: 2px solid #fafafa;
+	--tv-radius: 0.75rem;
+	--tv-gap: 1rem;
+
+	/* Surface + text tokens (dark theme). */
+	--veil-bg: #000000;
+	--veil-surface: #141416;
+	--veil-surface-raised: #1c1c1f;
+	--veil-border: #262626;
+	--veil-text: #fafafa;
+	--veil-text-muted: #a1a1aa;
+	--veil-primary: #fafafa;
+	--veil-dur-base: 180ms;
+}
+
+/* The page itself never scrolls sideways — horizontal scrolling belongs to
+   the rails alone. */
+html,
+body {
+	overflow-x: hidden;
+}
+
+/* Scroll containers that scroll without showing a scrollbar (TV UI). */
+.no-scrollbar {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/* Give focused cards a clear, TV-legible highlight beyond the outline. */
+.tv-card {
+	position: relative;
+	display: block;
+	overflow: hidden;
+	border-radius: var(--tv-radius);
+	background: var(--veil-surface);
+	transition:
+		transform var(--veil-dur-base) ease,
+		box-shadow var(--veil-dur-base) ease;
+}
+.focus-item.focused .tv-card {
+	transform: scale(1.05);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
