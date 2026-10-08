@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -94,6 +95,26 @@ func reconcileBlobs(ctx context.Context, streamCache *stream.CacheService, queue
 	}
 }
 
+// enableBlobEncryption encrypts stream-cache blobs (streams and downloads) at
+// rest with encodedKey, a base64 AES-256 key the host app provides (the phone
+// app derives it from the Android Keystore). An empty key leaves them plain.
+// BLOB_ENCRYPTION_WRITES=off stops encrypting new blobs while still reading
+// encrypted ones.
+func enableBlobEncryption(store *storage.Client, encodedKey, writes string) error {
+	if encodedKey == "" {
+		return nil
+	}
+	key, err := base64.StdEncoding.DecodeString(encodedKey)
+	if err != nil {
+		return fmt.Errorf("BLOB_ENCRYPTION_KEY is not base64: %w", err)
+	}
+	if writes == "off" {
+		// Keep reading blobs encrypted earlier, but write new ones plain.
+		return store.WithEncryption(key)
+	}
+	return store.WithEncryption(key, "stream-cache/")
+}
+
 // cacheMaxBytes returns the cache size limit: CACHE_MAX_BYTES when it is a
 // positive number of bytes, else blobcache.DefaultMaxBytes.
 func cacheMaxBytes() int64 {
@@ -148,6 +169,9 @@ func main() {
 	storeClient, err := storage.New(filepath.Join(dataDir, "blobs"), publicURL)
 	if err != nil {
 		log.Fatalf("storage: %v", err)
+	}
+	if err := enableBlobEncryption(storeClient, os.Getenv("BLOB_ENCRYPTION_KEY"), os.Getenv("BLOB_ENCRYPTION_WRITES")); err != nil {
+		log.Fatalf("blob encryption: %v", err)
 	}
 
 	// Settings (must init before anything that reads them).
