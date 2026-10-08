@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -21,9 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.playingwithclouds.veil.api.VeilApi
+import com.playingwithclouds.veil.privacy.AppLock
 import com.playingwithclouds.veil.ui.components.ServerForm
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.privacy.IncognitoBadge
+import com.playingwithclouds.veil.ui.privacy.LockScreen
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.theme.VeilTheme
@@ -42,6 +46,11 @@ fun VeilApp() {
         // Sets the default content color; bare Text would otherwise be black.
         Surface(color = VeilColors.canvas, modifier = Modifier.fillMaxSize()) {
             BootGate { VeilShell() }
+            IncognitoBadge()
+            val locked by AppLock.locked.collectAsState()
+            if (locked) {
+                LockScreen()
+            }
         }
     }
 }
