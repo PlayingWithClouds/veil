@@ -1,5 +1,6 @@
 package com.playingwithclouds.veil.ui.scene
 
+import com.playingwithclouds.veil.data.SceneMarker
 import com.playingwithclouds.veil.util.formatClock
 import java.util.Locale
 
@@ -7,7 +8,10 @@ import java.util.Locale
 const val DOUBLE_TAP_SEEK_SECONDS = 10
 
 /** Playback speeds offered in the player settings. */
-val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+val PLAYBACK_SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+/** Frame rate assumed for stepping when the stream does not report one. */
+const val FALLBACK_FRAME_RATE = 30f
 
 private const val MILLISECONDS_PER_SECOND = 1000L
 
@@ -132,4 +136,140 @@ fun distinctQualities(qualities: List<VideoQuality>): List<VideoQuality> {
 /** A quality's menu label, like "1080p". */
 fun videoQualityLabel(height: Int): String {
     return "${height}p"
+}
+
+/** The A and B points of a loop, in milliseconds; either may still be unset. */
+data class AbLoop(val startMilliseconds: Long? = null, val endMilliseconds: Long? = null) {
+
+    /** Both points are set, so playback is looping. */
+    val isActive: Boolean
+        get() = startMilliseconds != null && endMilliseconds != null
+}
+
+/**
+ * The loop after the user marks the current position: the first mark sets A, the second sets B (a
+ * position at or before A moves A instead), the third clears the loop.
+ */
+fun advanceLoop(loop: AbLoop, positionMilliseconds: Long): AbLoop {
+    val start = loop.startMilliseconds
+    if (start == null) {
+        return AbLoop(startMilliseconds = positionMilliseconds)
+    }
+    if (loop.endMilliseconds != null) {
+        return AbLoop()
+    }
+    if (positionMilliseconds <= start) {
+        return AbLoop(startMilliseconds = positionMilliseconds)
+    }
+    return AbLoop(start, positionMilliseconds)
+}
+
+/** Where playback jumps back to: A once [positionMilliseconds] has reached B of an active loop, else null. */
+fun loopRestartTarget(loop: AbLoop, positionMilliseconds: Long): Long? {
+    val start = loop.startMilliseconds
+    val end = loop.endMilliseconds
+    if (start == null || end == null || positionMilliseconds < end) {
+        return null
+    }
+    return start
+}
+
+/** The loop's state for the settings menu, like "Off", "A at 1:23" or "1:23 – 2:05". */
+fun loopLabel(loop: AbLoop): String {
+    val start = loop.startMilliseconds ?: return "Off"
+    val end = loop.endMilliseconds ?: return "A at ${formatPlaybackClock(start)}"
+    return "${formatPlaybackClock(start)} – ${formatPlaybackClock(end)}"
+}
+
+/** What the loop menu entry does next: set A, set B or clear. */
+fun loopActionLabel(loop: AbLoop): String {
+    if (loop.startMilliseconds == null) {
+        return "Set loop start (A)"
+    }
+    if (loop.endMilliseconds == null) {
+        return "Set loop end (B)"
+    }
+    return "Clear loop"
+}
+
+/** Length of one video frame in milliseconds at [frameRate], falling back to 30 fps when it is unknown. */
+fun frameDurationMilliseconds(frameRate: Float): Long {
+    var rate = frameRate
+    if (rate <= 0f) {
+        rate = FALLBACK_FRAME_RATE
+    }
+    return maxOf(1L, Math.round(MILLISECONDS_PER_SECOND / rate.toDouble()))
+}
+
+/** Whether a video of this size is taller than wide, so fullscreen should stay in portrait. */
+fun isVerticalVideo(width: Int, height: Int): Boolean {
+    return width > 0 && height > width
+}
+
+/** The widest or tallest shape Android accepts for a picture-in-picture window. */
+private const val MAX_PICTURE_IN_PICTURE_RATIO = 2.39f
+
+/**
+ * The window shape (width to height) for a video of this size: its own shape, kept within what
+ * Android allows, and 16:9 while the size is unknown.
+ */
+fun pictureInPictureAspect(width: Int, height: Int): Pair<Int, Int> {
+    if (width <= 0 || height <= 0) {
+        return Pair(16, 9)
+    }
+    val ratio = width.toFloat() / height
+    if (ratio > MAX_PICTURE_IN_PICTURE_RATIO) {
+        return Pair(239, 100)
+    }
+    if (ratio < 1f / MAX_PICTURE_IN_PICTURE_RATIO) {
+        return Pair(100, 239)
+    }
+    return Pair(width, height)
+}
+
+/** The loop's menu entry: what it does next, followed by the marked positions once there are any. */
+fun loopMenuLabel(loop: AbLoop): String {
+    if (loop.startMilliseconds == null) {
+        return loopActionLabel(loop)
+    }
+    return "${loopActionLabel(loop)} · ${loopLabel(loop)}"
+}
+
+/** The markers in playback order, which the chips and [activeMarkerIndex] rely on. */
+fun markersInPlayOrder(markers: List<SceneMarker>): List<SceneMarker> {
+    return markers.sortedBy { marker -> marker.seconds }
+}
+
+/**
+ * Index of the marker playback is in: the last one that started at or before [positionSeconds] in
+ * [markers] (in play order), or -1 before the first.
+ */
+fun activeMarkerIndex(markers: List<SceneMarker>, positionSeconds: Double): Int {
+    var active = -1
+    for ((index, marker) in markers.withIndex()) {
+        if (marker.seconds > positionSeconds) {
+            break
+        }
+        active = index
+    }
+    return active
+}
+
+/** A marker chip's text: what the marker says and when, like "Doggy · 12:30"; just the time for a marker without text. */
+fun markerChipLabel(marker: SceneMarker): String {
+    val time = formatClock(marker.seconds)
+    if (marker.title.isBlank()) {
+        return time
+    }
+    return "${marker.title} · $time"
+}
+
+/** Where each marker sits on the seek bar, as fractions of a video [durationSeconds] long; markers beyond it are left out. */
+fun markerFractions(markers: List<SceneMarker>, durationSeconds: Double): List<Float> {
+    if (durationSeconds <= 0) {
+        return emptyList()
+    }
+    return markers
+        .filter { marker -> marker.seconds in 0.0..durationSeconds }
+        .map { marker -> (marker.seconds / durationSeconds).toFloat() }
 }

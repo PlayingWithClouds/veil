@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberProgressStateWithTickInterval
+import com.playingwithclouds.veil.data.SceneMarker
 import com.playingwithclouds.veil.ui.design.GlassIconButton
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.Spinner
@@ -99,6 +101,17 @@ private fun rememberPlaybackStatus(player: Player): PlaybackStatus {
 }
 
 /**
+ * What the controls show beyond playback itself: the scene's markers (chips and ticks on the seek
+ * bar), the most-replayed graph, a next-in-queue action and the picture-in-picture action.
+ */
+data class PlayerExtras(
+    val markers: List<SceneMarker> = emptyList(),
+    val heatmap: List<Float> = emptyList(),
+    val onNext: (() -> Unit)? = null,
+    val onEnterPictureInPicture: (() -> Unit)? = null,
+)
+
+/**
  * The controls drawn over the video. A tap shows or hides them (they hide by themselves after a few
  * seconds of playback), a double tap on the left or right half jumps 10 s, and in fullscreen a swipe
  * up from the lower half asks for the related panel through [onOpenRelated].
@@ -106,6 +119,8 @@ private fun rememberPlaybackStatus(player: Player): PlaybackStatus {
 @Composable
 fun PlayerControls(
     player: Player,
+    options: PlayerOptions,
+    extras: PlayerExtras,
     title: String,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
@@ -161,6 +176,8 @@ fun PlayerControls(
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
             ControlsLayer(
                 player = player,
+                options = options,
+                extras = extras,
                 title = title,
                 isFullscreen = isFullscreen,
                 isBuffering = status.isBuffering,
@@ -219,6 +236,8 @@ private fun Modifier.playerGestures(onTap: () -> Unit, onDoubleTap: (direction: 
 @Composable
 private fun ControlsLayer(
     player: Player,
+    options: PlayerOptions,
+    extras: PlayerExtras,
     title: String,
     isFullscreen: Boolean,
     isBuffering: Boolean,
@@ -231,12 +250,14 @@ private fun ControlsLayer(
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.TopCenter).background(TopScrim))
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.BottomCenter).background(BottomScrim))
-        TopRow(player, title, isFullscreen, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
+        TopRow(player, options, title, isFullscreen, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
         if (!isBuffering) {
-            PlayPauseButton(player, onTouch, Modifier.align(Alignment.Center))
+            CentreButtons(player, onTouch, Modifier.align(Alignment.Center))
         }
         BottomBar(
             player = player,
+            options = options,
+            extras = extras,
             isFullscreen = isFullscreen,
             onToggleFullscreen = onToggleFullscreen,
             onOpenRelated = onOpenRelated,
@@ -265,6 +286,7 @@ private const val SCRIM_HEIGHT_FRACTION = 0.4f
 @Composable
 private fun TopRow(
     player: Player,
+    options: PlayerOptions,
     title: String,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
@@ -290,7 +312,48 @@ private fun TopRow(
         if (!isFullscreen) {
             Box(Modifier.weight(1f))
         }
-        PlayerSettingsButton(player, ControlButtonSize, onOpenChange = onMenuChange)
+        PlayerSettingsButton(player, options, ControlButtonSize, onOpenChange = onMenuChange)
+    }
+}
+
+/** The play/pause button in the middle, with frame-step buttons on either side while paused. */
+@Composable
+private fun CentreButtons(player: Player, onTouch: () -> Unit, modifier: Modifier = Modifier) {
+    val paused = rememberPlayPauseButtonState(player).showPlay
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraLarge), verticalAlignment = Alignment.CenterVertically) {
+        FrameStepSlot(paused) {
+            RoundIconButton(
+                VeilIcons.StepBack,
+                contentDescription = "Previous frame",
+                onClick = {
+                    player.stepFrame(-1)
+                    onTouch()
+                },
+                size = ControlButtonSize,
+            )
+        }
+        PlayPauseButton(player, onTouch)
+        FrameStepSlot(paused) {
+            RoundIconButton(
+                VeilIcons.StepForward,
+                contentDescription = "Next frame",
+                onClick = {
+                    player.stepFrame(1)
+                    onTouch()
+                },
+                size = ControlButtonSize,
+            )
+        }
+    }
+}
+
+/** Room for a frame-step button that only shows while paused, so the play button does not shift. */
+@Composable
+private fun FrameStepSlot(paused: Boolean, content: @Composable () -> Unit) {
+    Box(Modifier.size(ControlButtonSize)) {
+        if (paused) {
+            content()
+        }
     }
 }
 
@@ -320,6 +383,8 @@ private fun PlayPauseButton(player: Player, onTouch: () -> Unit, modifier: Modif
 @Composable
 private fun BottomBar(
     player: Player,
+    options: PlayerOptions,
+    extras: PlayerExtras,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
     onOpenRelated: (() -> Unit)?,
@@ -329,6 +394,9 @@ private fun BottomBar(
 ) {
     val progress = rememberProgressStateWithTickInterval(player, PROGRESS_TICK_MILLISECONDS)
     Column(modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen).padding(horizontal = VeilSpacing.medium)) {
+        if (isFullscreen) {
+            MarkerChips(extras.markers, player)
+        }
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
@@ -340,6 +408,15 @@ private fun BottomBar(
                 style = MaterialTheme.typography.labelMedium,
                 color = VeilColors.content,
             )
+            if (options.loop.startMilliseconds != null) {
+                RoundIconButton(VeilIcons.Repeat, contentDescription = "Loop: ${loopLabel(options.loop)}", onClick = options::clearLoop, size = ControlButtonSize)
+            }
+            if (extras.onNext != null) {
+                RoundIconButton(VeilIcons.SkipNext, contentDescription = "Next in queue", onClick = extras.onNext, size = ControlButtonSize)
+            }
+            if (extras.onEnterPictureInPicture != null) {
+                RoundIconButton(VeilIcons.PictureInPicture, contentDescription = "Picture-in-picture", onClick = extras.onEnterPictureInPicture, size = ControlButtonSize)
+            }
             if (onOpenRelated != null) {
                 RoundIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
             }
@@ -359,9 +436,14 @@ private fun BottomBar(
                 onTouch()
             },
             onScrubbingChange = onScrubbingChange,
+            loop = options.loop,
+            markerFractions = markerFractions(extras.markers, progress.durationMs / MILLISECONDS_PER_SECOND_DOUBLE),
+            heatmap = extras.heatmap,
         )
     }
 }
+
+private const val MILLISECONDS_PER_SECOND_DOUBLE = 1000.0
 
 /** Enter or leave fullscreen, by the current mode. */
 private fun fullscreenIcon(isFullscreen: Boolean): ImageVector {
