@@ -21,7 +21,9 @@ class MarkerJumpTest {
         val ordered = listOf(marker("a", 10.0), marker("b", 30.0), marker("c", 90.0))
         assertEquals(-1, activeMarkerIndex(ordered, 5.0))
         assertEquals(0, activeMarkerIndex(ordered, 10.0))
-        assertEquals(1, activeMarkerIndex(ordered, 89.9))
+        assertEquals(0, activeMarkerIndex(ordered, 28.9))
+        assertEquals(1, activeMarkerIndex(ordered, 29.5))
+        assertEquals(1, activeMarkerIndex(ordered, 87.0))
         assertEquals(2, activeMarkerIndex(ordered, 500.0))
         assertEquals(-1, activeMarkerIndex(emptyList(), 5.0))
     }

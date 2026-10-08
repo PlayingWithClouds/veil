@@ -91,7 +91,7 @@ private fun MainSettings(player: Player, options: PlayerOptions, tracks: Tracks,
         selected = options.zoomToFill,
     )
     VeilMenuItem(
-        "Picture-in-picture · ${options.pictureInPicturePrivacy.label}",
+        "Picture-in-picture · ${options.pictureInPicturePrivacy.summary}",
         onClick = { onPage(SettingsPage.PICTURE_IN_PICTURE) },
         icon = VeilIcons.PictureInPicture,
     )

@@ -240,6 +240,9 @@ fun markersInPlayOrder(markers: List<SceneMarker>): List<SceneMarker> {
     return markers.sortedBy { marker -> marker.seconds }
 }
 
+/** A marker counts as reached this close before its time, as the position display only ticks about once a second. */
+private const val ACTIVE_MARKER_TOLERANCE_SECONDS = 1.0
+
 /**
  * Index of the marker playback is in: the last one that started at or before [positionSeconds] in
  * [markers] (in play order), or -1 before the first.
@@ -247,7 +250,7 @@ fun markersInPlayOrder(markers: List<SceneMarker>): List<SceneMarker> {
 fun activeMarkerIndex(markers: List<SceneMarker>, positionSeconds: Double): Int {
     var active = -1
     for ((index, marker) in markers.withIndex()) {
-        if (marker.seconds > positionSeconds) {
+        if (marker.seconds > positionSeconds + ACTIVE_MARKER_TOLERANCE_SECONDS) {
             break
         }
         active = index

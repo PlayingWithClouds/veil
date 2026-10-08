@@ -72,6 +72,8 @@ fun SceneContent(
     player: ExoPlayer,
     navigator: AppNavigator,
     onFindAlternates: () -> Unit,
+    queuedCount: Int,
+    onOpenQueue: () -> Unit,
 ) {
     val detail = (state.detail as? LoadState.Loaded)?.value ?: return
     var dialog by remember { mutableStateOf<SceneDialog?>(null) }
@@ -80,7 +82,16 @@ fun SceneContent(
     LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.large)) {
         item { SceneTitleBlock(detail, state) }
         item { MarkerChips(state.markers, player, Modifier.padding(bottom = VeilSpacing.small)) }
-        item { ReactionRow(state, viewModel, onOpen = { chosen -> dialog = chosen }, onFindAlternates = onFindAlternates) }
+        item {
+            ReactionRow(
+                state,
+                viewModel,
+                onOpen = { chosen -> dialog = chosen },
+                onFindAlternates = onFindAlternates,
+                queuedCount = queuedCount,
+                onOpenQueue = onOpenQueue,
+            )
+        }
         if (state.streams.isNotEmpty()) {
             item { SourcePicker(groupStreams(state.streams), state, viewModel) }
         }
@@ -127,6 +138,8 @@ private fun ReactionRow(
     viewModel: SceneViewModel,
     onOpen: (SceneDialog) -> Unit,
     onFindAlternates: () -> Unit,
+    queuedCount: Int,
+    onOpenQueue: () -> Unit,
 ) {
     val best = state.active?.option ?: state.streams.firstOrNull()
     LazyRow(contentPadding = PaddingValues(horizontal = ReactionRowInset), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
@@ -151,9 +164,18 @@ private fun ReactionRow(
         if (best != null) {
             item { ActionButton(VeilIcons.Download, "Download") { viewModel.download(best) } }
         }
+        item { ActionButton(VeilIcons.Queue, queueLabel(queuedCount), active = queuedCount > 0) { onOpenQueue() } }
         item { ActionButton(VeilIcons.Alternates, "Alternates") { onFindAlternates() } }
         item { ActionButton(VeilIcons.Block, "Block") { onOpen(SceneDialog.Block) } }
     }
+}
+
+/** The queue button's caption: "Queue" and, once something waits in it, the count. */
+private fun queueLabel(queuedCount: Int): String {
+    if (queuedCount == 0) {
+        return "Queue"
+    }
+    return "Queue $queuedCount"
 }
 
 /** The like icon, filled when chosen. */
