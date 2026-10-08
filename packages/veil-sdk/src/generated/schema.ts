@@ -47,6 +47,7 @@ export interface Query {
     scene: (Scene | null)
     randomScenes: Scene[]
     recommendedFeed: Scene[]
+    sceneHeat: SceneHeat
     sceneMarkers: SceneMarker[]
     pluginSearch: PluginSearchResult[]
     pluginBrowse: PluginSearchResult[]
@@ -106,6 +107,8 @@ export interface Mutation {
     recordImpressions: Scalars['Int']
     createSavedFilter: SavedFilter
     deleteSavedFilter: Scalars['Boolean']
+    recordSceneHeat: Scalars['Boolean']
+    setSceneThumbnail: Scalars['Boolean']
     createSceneMarker: SceneMarker
     deleteSceneMarker: Scalars['Boolean']
     resolvePluginResult: Scalars['ID']
@@ -497,6 +500,13 @@ export interface Scene {
     __typename: 'Scene'
 }
 
+export interface SceneHeat {
+    buckets: Scalars['Float'][]
+    bestMomentSeconds: (Scalars['Float'] | null)
+    thumbnailSeconds: (Scalars['Float'] | null)
+    __typename: 'SceneHeat'
+}
+
 export interface SceneMarker {
     id: Scalars['ID']
     tag: (Tag | null)
@@ -732,6 +742,7 @@ export interface QueryGenqlSelection{
     scene?: (SceneGenqlSelection & { __args: {id: Scalars['ID']} })
     randomScenes?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     recommendedFeed?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    sceneHeat?: (SceneHeatGenqlSelection & { __args: {sceneId: Scalars['ID']} })
     sceneMarkers?: (SceneMarkerGenqlSelection & { __args: {mediaId: Scalars['ID']} })
     pluginSearch?: (PluginSearchResultGenqlSelection & { __args: {query: Scalars['String'], limit?: (Scalars['Int'] | null), pluginNames?: (Scalars['String'][] | null)} })
     pluginBrowse?: (PluginSearchResultGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
@@ -792,6 +803,8 @@ export interface MutationGenqlSelection{
     recordImpressions?: { __args: {impressions: ImpressionInput[]} }
     createSavedFilter?: (SavedFilterGenqlSelection & { __args: {name: Scalars['String'], filter: SceneFilterInput} })
     deleteSavedFilter?: { __args: {filterId: Scalars['ID']} }
+    recordSceneHeat?: { __args: {input: RecordSceneHeatInput} }
+    setSceneThumbnail?: { __args: {sceneId: Scalars['ID'], atSeconds: Scalars['Float'], jpegBase64: Scalars['String']} }
     createSceneMarker?: (SceneMarkerGenqlSelection & { __args: {mediaId: Scalars['ID'], seconds: Scalars['Float'], endSeconds?: (Scalars['Float'] | null), tagName?: (Scalars['String'] | null), label?: (Scalars['String'] | null)} })
     deleteSceneMarker?: { __args: {markerId: Scalars['ID']} }
     resolvePluginResult?: { __args: {pluginName: Scalars['String'], url: Scalars['String'], posterUrl?: (Scalars['String'] | null)} }
@@ -1216,6 +1229,18 @@ export interface SceneGenqlSelection{
     __typename?: boolean | number
     __scalar?: boolean | number
 }
+
+export interface SceneHeatGenqlSelection{
+    buckets?: boolean | number
+    bestMomentSeconds?: boolean | number
+    thumbnailSeconds?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface RecordSceneHeatInput {sceneId: Scalars['ID'],durationSeconds: Scalars['Float'],spans: HeatSpanInput[],scrubs: Scalars['Float'][]}
+
+export interface HeatSpanInput {fromSeconds: Scalars['Float'],toSeconds: Scalars['Float']}
 
 export interface SceneMarkerGenqlSelection{
     id?: boolean | number
@@ -1687,6 +1712,14 @@ export interface WatchlistItemGenqlSelection{
     export const isScene = (obj?: { __typename?: any } | null): obj is Scene => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isScene"')
       return Scene_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SceneHeat_possibleTypes: string[] = ['SceneHeat']
+    export const isSceneHeat = (obj?: { __typename?: any } | null): obj is SceneHeat => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSceneHeat"')
+      return SceneHeat_possibleTypes.includes(obj.__typename)
     }
     
 

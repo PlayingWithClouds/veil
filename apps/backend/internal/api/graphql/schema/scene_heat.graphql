@@ -1,0 +1,36 @@
+# Where a scene gets watched and scrubbed to, reported by the player and shown as a
+# most-replayed graph; also picks the moment for the scene's thumbnail.
+
+extend type Query {
+  sceneHeat(sceneId: ID!): SceneHeat!
+}
+
+extend type Mutation {
+  # Adds one viewing session's playback spans and scrub targets to the scene's heat.
+  recordSceneHeat(input: RecordSceneHeatInput!): Boolean!
+  # Replaces the scene's listing thumbnail with a JPEG frame taken at atSeconds.
+  setSceneThumbnail(sceneId: ID!, atSeconds: Float!, jpegBase64: String!): Boolean!
+}
+
+type SceneHeat {
+  # Replay intensity per equal slice of the runtime, 0 to 1. Empty until playback varies enough to show.
+  buckets: [Float!]!
+  # The moment people scrub to most, else the first marker; null when neither exists.
+  bestMomentSeconds: Float
+  # The moment the scene's custom thumbnail was taken at; null while it has none.
+  thumbnailSeconds: Float
+}
+
+input RecordSceneHeatInput {
+  sceneId: ID!
+  durationSeconds: Float!
+  # Stretches of continuous playback.
+  spans: [HeatSpanInput!]!
+  # Positions the viewer jumped to.
+  scrubs: [Float!]!
+}
+
+input HeatSpanInput {
+  fromSeconds: Float!
+  toSeconds: Float!
+}

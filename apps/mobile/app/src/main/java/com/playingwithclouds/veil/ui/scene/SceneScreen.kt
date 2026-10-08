@@ -74,6 +74,7 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
         snackbarHostState.showSnackbar(note)
         viewModel.messageShown()
     }
+    PlaybackHeatReporting(player, loopStartMilliseconds = { options.loop.startMilliseconds }, onReport = viewModel::recordHeat)
     PlaybackReporting(player, onError = viewModel::onPlayerError, onSaveProgress = viewModel::saveProgress)
     DisposableEffect(Unit) { onDispose { viewModel.refreshProgressStore() } }
 

@@ -221,6 +221,7 @@ type ComplexityRoot struct {
 		QueueDownload              func(childComplexity int, url string, title string, pluginName *string) int
 		RecordImpressions          func(childComplexity int, impressions []*model.ImpressionInput) int
 		RecordRecommendationChoice func(childComplexity int, chosenMediaID string, rejectedMediaID string) int
+		RecordSceneHeat            func(childComplexity int, input model.RecordSceneHeatInput) int
 		RecordSearch               func(childComplexity int, query string) int
 		RemoveBlock                func(childComplexity int, targetID string) int
 		RemoveFromCollection       func(childComplexity int, collectionID string, mediaID string) int
@@ -235,6 +236,7 @@ type ComplexityRoot struct {
 		SetCollectionTags          func(childComplexity int, collectionID string, tagIds []string) int
 		SetImageTags               func(childComplexity int, imageID string, tagIds []string) int
 		SetPerformerFavorite       func(childComplexity int, id string, favorite bool) int
+		SetSceneThumbnail          func(childComplexity int, sceneID string, atSeconds float64, jpegBase64 string) int
 		SetStudioTags              func(childComplexity int, studioID string, tagIds []string) int
 		Subscribe                  func(childComplexity int, kind model.SubscriptionKind, targetID string, intervalHours *int) int
 		SubscribeSearch            func(childComplexity int, query string, sources []string, intervalHours *int) int
@@ -401,6 +403,7 @@ type ComplexityRoot struct {
 		RecommendedRows       func(childComplexity int, rowLimit *int, perRow *int) int
 		SavedFilters          func(childComplexity int) int
 		Scene                 func(childComplexity int, id string) int
+		SceneHeat             func(childComplexity int, sceneID string) int
 		SceneMarkers          func(childComplexity int, mediaID string) int
 		Scenes                func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string) int
 		SearchSubscription    func(childComplexity int, id string) int
@@ -491,6 +494,12 @@ type ComplexityRoot struct {
 		Sources     func(childComplexity int) int
 		StudioID    func(childComplexity int) int
 		TagID       func(childComplexity int) int
+	}
+
+	SceneHeat struct {
+		BestMomentSeconds func(childComplexity int) int
+		Buckets           func(childComplexity int) int
+		ThumbnailSeconds  func(childComplexity int) int
 	}
 
 	SceneMarker struct {
@@ -703,6 +712,8 @@ type MutationResolver interface {
 	RecordImpressions(ctx context.Context, impressions []*model.ImpressionInput) (int, error)
 	CreateSavedFilter(ctx context.Context, name string, filter model.SceneFilterInput) (*model.SavedFilter, error)
 	DeleteSavedFilter(ctx context.Context, filterID string) (bool, error)
+	RecordSceneHeat(ctx context.Context, input model.RecordSceneHeatInput) (bool, error)
+	SetSceneThumbnail(ctx context.Context, sceneID string, atSeconds float64, jpegBase64 string) (bool, error)
 	CreateSceneMarker(ctx context.Context, mediaID string, seconds float64, endSeconds *float64, tagName *string, label *string) (*model.SceneMarker, error)
 	DeleteSceneMarker(ctx context.Context, markerID string) (bool, error)
 	ResolvePluginResult(ctx context.Context, pluginName string, url string, posterURL *string) (string, error)
@@ -766,6 +777,7 @@ type QueryResolver interface {
 	Scene(ctx context.Context, id string) (*model.Scene, error)
 	RandomScenes(ctx context.Context, limit *int) ([]*model.Scene, error)
 	RecommendedFeed(ctx context.Context, limit *int, offset *int) ([]*model.Scene, error)
+	SceneHeat(ctx context.Context, sceneID string) (*model.SceneHeat, error)
 	SceneMarkers(ctx context.Context, mediaID string) ([]*model.SceneMarker, error)
 	PluginSearch(ctx context.Context, query string, limit *int, pluginNames []string) ([]*model.PluginSearchResult, error)
 	PluginBrowse(ctx context.Context, limit *int, offset *int) ([]*model.PluginSearchResult, error)
@@ -1854,6 +1866,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordRecommendationChoice(childComplexity, args["chosenMediaId"].(string), args["rejectedMediaId"].(string)), true
+	case "Mutation.recordSceneHeat":
+		if e.ComplexityRoot.Mutation.RecordSceneHeat == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordSceneHeat_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordSceneHeat(childComplexity, args["input"].(model.RecordSceneHeatInput)), true
 	case "Mutation.recordSearch":
 		if e.ComplexityRoot.Mutation.RecordSearch == nil {
 			break
@@ -2008,6 +2031,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetPerformerFavorite(childComplexity, args["id"].(string), args["favorite"].(bool)), true
+	case "Mutation.setSceneThumbnail":
+		if e.ComplexityRoot.Mutation.SetSceneThumbnail == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setSceneThumbnail_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetSceneThumbnail(childComplexity, args["sceneId"].(string), args["atSeconds"].(float64), args["jpegBase64"].(string)), true
 	case "Mutation.setStudioTags":
 		if e.ComplexityRoot.Mutation.SetStudioTags == nil {
 			break
@@ -3055,6 +3089,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Scene(childComplexity, args["id"].(string)), true
+	case "Query.sceneHeat":
+		if e.ComplexityRoot.Query.SceneHeat == nil {
+			break
+		}
+
+		args, err := ec.field_Query_sceneHeat_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SceneHeat(childComplexity, args["sceneId"].(string)), true
 	case "Query.sceneMarkers":
 		if e.ComplexityRoot.Query.SceneMarkers == nil {
 			break
@@ -3561,6 +3606,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SceneFilter.TagID(childComplexity), true
+
+	case "SceneHeat.bestMomentSeconds":
+		if e.ComplexityRoot.SceneHeat.BestMomentSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneHeat.BestMomentSeconds(childComplexity), true
+	case "SceneHeat.buckets":
+		if e.ComplexityRoot.SceneHeat.Buckets == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneHeat.Buckets(childComplexity), true
+	case "SceneHeat.thumbnailSeconds":
+		if e.ComplexityRoot.SceneHeat.ThumbnailSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneHeat.ThumbnailSeconds(childComplexity), true
 
 	case "SceneMarker.createdAt":
 		if e.ComplexityRoot.SceneMarker.CreatedAt == nil {
@@ -4318,9 +4382,11 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateStreamInput,
+		ec.unmarshalInputHeatSpanInput,
 		ec.unmarshalInputImpressionInput,
 		ec.unmarshalInputKindRateLimitInput,
 		ec.unmarshalInputPluginSettingValueInput,
+		ec.unmarshalInputRecordSceneHeatInput,
 		ec.unmarshalInputSceneFilterInput,
 		ec.unmarshalInputSubscriptionFeedFilter,
 		ec.unmarshalInputUpdateSettingsInput,
@@ -5126,6 +5192,43 @@ type Scene {
   related(limit: Int): [Scene!]!
   createdAt: String!
   updatedAt: String!
+}
+`, BuiltIn: false},
+	{Name: "../schema/scene_heat.graphql", Input: `# Where a scene gets watched and scrubbed to, reported by the player and shown as a
+# most-replayed graph; also picks the moment for the scene's thumbnail.
+
+extend type Query {
+  sceneHeat(sceneId: ID!): SceneHeat!
+}
+
+extend type Mutation {
+  # Adds one viewing session's playback spans and scrub targets to the scene's heat.
+  recordSceneHeat(input: RecordSceneHeatInput!): Boolean!
+  # Replaces the scene's listing thumbnail with a JPEG frame taken at atSeconds.
+  setSceneThumbnail(sceneId: ID!, atSeconds: Float!, jpegBase64: String!): Boolean!
+}
+
+type SceneHeat {
+  # Replay intensity per equal slice of the runtime, 0 to 1. Empty until playback varies enough to show.
+  buckets: [Float!]!
+  # The moment people scrub to most, else the first marker; null when neither exists.
+  bestMomentSeconds: Float
+  # The moment the scene's custom thumbnail was taken at; null while it has none.
+  thumbnailSeconds: Float
+}
+
+input RecordSceneHeatInput {
+  sceneId: ID!
+  durationSeconds: Float!
+  # Stretches of continuous playback.
+  spans: [HeatSpanInput!]!
+  # Positions the viewer jumped to.
+  scrubs: [Float!]!
+}
+
+input HeatSpanInput {
+  fromSeconds: Float!
+  toSeconds: Float!
 }
 `, BuiltIn: false},
 	{Name: "../schema/scene_marker.graphql", Input: `# Markers describe what happens at a point (or span) in a scene. Personal
@@ -6280,6 +6383,18 @@ func (ec *executionContext) childFields_SceneFilter(ctx context.Context, field g
 	return nil, fmt.Errorf("no field named %q was found under type SceneFilter", field.Name)
 }
 
+func (ec *executionContext) childFields_SceneHeat(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "buckets":
+		return ec.fieldContext_SceneHeat_buckets(ctx, field)
+	case "bestMomentSeconds":
+		return ec.fieldContext_SceneHeat_bestMomentSeconds(ctx, field)
+	case "thumbnailSeconds":
+		return ec.fieldContext_SceneHeat_thumbnailSeconds(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SceneHeat", field.Name)
+}
+
 func (ec *executionContext) childFields_SceneMarker(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -7238,6 +7353,20 @@ func (ec *executionContext) field_Mutation_recordRecommendationChoice_args(ctx c
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_recordSceneHeat_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.RecordSceneHeatInput, error) {
+			return ec.unmarshalNRecordSceneHeatInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐRecordSceneHeatInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_recordSearch_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7503,6 +7632,36 @@ func (ec *executionContext) field_Mutation_setPerformerFavorite_args(ctx context
 		return nil, err
 	}
 	args["favorite"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setSceneThumbnail_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sceneId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sceneId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "atSeconds",
+		func(ctx context.Context, v any) (float64, error) {
+			return ec.unmarshalNFloat2float64(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["atSeconds"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "jpegBase64",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["jpegBase64"] = arg2
 	return args, nil
 }
 
@@ -8519,6 +8678,20 @@ func (ec *executionContext) field_Query_recommendedRows_args(ctx context.Context
 		return nil, err
 	}
 	args["perRow"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_sceneHeat_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sceneId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sceneId"] = arg0
 	return args, nil
 }
 
@@ -13203,6 +13376,94 @@ func (ec *executionContext) fieldContext_Mutation_deleteSavedFilter(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_recordSceneHeat(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordSceneHeat(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordSceneHeat(ctx, fc.Args["input"].(model.RecordSceneHeatInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordSceneHeat(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordSceneHeat_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setSceneThumbnail(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setSceneThumbnail(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetSceneThumbnail(ctx, fc.Args["sceneId"].(string), fc.Args["atSeconds"].(float64), fc.Args["jpegBase64"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setSceneThumbnail(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setSceneThumbnail_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createSceneMarker(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17785,6 +18046,50 @@ func (ec *executionContext) fieldContext_Query_recommendedFeed(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sceneHeat(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_sceneHeat(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SceneHeat(ctx, fc.Args["sceneId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.SceneHeat) graphql.Marshaler {
+			return ec.marshalNSceneHeat2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneHeat(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_sceneHeat(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SceneHeat(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_sceneHeat_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_sceneMarkers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20029,6 +20334,75 @@ func (ec *executionContext) _SceneFilter_sources(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_SceneFilter_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("SceneFilter", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneHeat_buckets(ctx context.Context, field graphql.CollectedField, obj *model.SceneHeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneHeat_buckets(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Buckets, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []float64) graphql.Marshaler {
+			return ec.marshalNFloat2ᚕfloat64ᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneHeat_buckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneHeat", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _SceneHeat_bestMomentSeconds(ctx context.Context, field graphql.CollectedField, obj *model.SceneHeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneHeat_bestMomentSeconds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BestMomentSeconds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *float64) graphql.Marshaler {
+			return ec.marshalOFloat2ᚖfloat64(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneHeat_bestMomentSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneHeat", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _SceneHeat_thumbnailSeconds(ctx context.Context, field graphql.CollectedField, obj *model.SceneHeat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneHeat_thumbnailSeconds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailSeconds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *float64) graphql.Marshaler {
+			return ec.marshalOFloat2ᚖfloat64(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneHeat_thumbnailSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneHeat", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
 func (ec *executionContext) _SceneMarker_id(ctx context.Context, field graphql.CollectedField, obj *model.SceneMarker) (ret graphql.Marshaler) {
@@ -24108,6 +24482,43 @@ func (ec *executionContext) unmarshalInputCreateStreamInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputHeatSpanInput(ctx context.Context, obj any) (model.HeatSpanInput, error) {
+	var it model.HeatSpanInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"fromSeconds", "toSeconds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "fromSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fromSeconds"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FromSeconds = data
+		case "toSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("toSeconds"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ToSeconds = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputImpressionInput(ctx context.Context, obj any) (model.ImpressionInput, error) {
 	var it model.ImpressionInput
 	if obj == nil {
@@ -24256,6 +24667,57 @@ func (ec *executionContext) unmarshalInputPluginSettingValueInput(ctx context.Co
 				return it, err
 			}
 			it.Value = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRecordSceneHeatInput(ctx context.Context, obj any) (model.RecordSceneHeatInput, error) {
+	var it model.RecordSceneHeatInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"sceneId", "durationSeconds", "spans", "scrubs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "sceneId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sceneId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SceneID = data
+		case "durationSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("durationSeconds"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DurationSeconds = data
+		case "spans":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spans"))
+			data, err := ec.unmarshalNHeatSpanInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐHeatSpanInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Spans = data
+		case "scrubs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scrubs"))
+			data, err := ec.unmarshalNFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scrubs = data
 		}
 	}
 	return it, nil
@@ -25715,6 +26177,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteSavedFilter":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteSavedFilter(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordSceneHeat":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordSceneHeat(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setSceneThumbnail":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setSceneThumbnail(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -27303,6 +27779,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sceneHeat":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sceneHeat(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "sceneMarkers":
 			field := field
 
@@ -28228,6 +28726,49 @@ func (ec *executionContext) _SceneFilter(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._SceneFilter_sort(ctx, field, obj)
 		case "sources":
 			out.Values[i] = ec._SceneFilter_sources(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sceneHeatImplementors = []string{"SceneHeat"}
+
+func (ec *executionContext) _SceneHeat(ctx context.Context, sel ast.SelectionSet, obj *model.SceneHeat) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sceneHeatImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SceneHeat")
+		case "buckets":
+			out.Values[i] = ec._SceneHeat_buckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bestMomentSeconds":
+			out.Values[i] = ec._SceneHeat_bestMomentSeconds(ctx, field, obj)
+		case "thumbnailSeconds":
+			out.Values[i] = ec._SceneHeat_thumbnailSeconds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29944,6 +30485,36 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) unmarshalNFloat2ᚕfloat64ᚄ(ctx context.Context, v any) ([]float64, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]float64, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNFloat2float64(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNFloat2ᚕfloat64ᚄ(ctx context.Context, sel ast.SelectionSet, v []float64) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNFloat2float64(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNGallery2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐGalleryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Gallery) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -29968,6 +30539,26 @@ func (ec *executionContext) marshalNGallery2ᚖgithubᚗcomᚋplayingwithclouds�
 		return graphql.Null
 	}
 	return ec._Gallery(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNHeatSpanInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐHeatSpanInputᚄ(ctx context.Context, v any) ([]*model.HeatSpanInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.HeatSpanInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHeatSpanInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐHeatSpanInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNHeatSpanInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐHeatSpanInput(ctx context.Context, v any) (*model.HeatSpanInput, error) {
+	res, err := ec.unmarshalInputHeatSpanInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
@@ -30543,6 +31134,11 @@ func (ec *executionContext) marshalNRecommendedScene2ᚖgithubᚗcomᚋplayingwi
 	return ec._RecommendedScene(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRecordSceneHeatInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐRecordSceneHeatInput(ctx context.Context, v any) (model.RecordSceneHeatInput, error) {
+	res, err := ec.unmarshalInputRecordSceneHeatInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNSavedFilter2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSavedFilter(ctx context.Context, sel ast.SelectionSet, v model.SavedFilter) graphql.Marshaler {
 	return ec._SavedFilter(ctx, sel, &v)
 }
@@ -30612,6 +31208,20 @@ func (ec *executionContext) marshalNSceneFilter2ᚖgithubᚗcomᚋplayingwithclo
 func (ec *executionContext) unmarshalNSceneFilterInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneFilterInput(ctx context.Context, v any) (model.SceneFilterInput, error) {
 	res, err := ec.unmarshalInputSceneFilterInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSceneHeat2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneHeat(ctx context.Context, sel ast.SelectionSet, v model.SceneHeat) graphql.Marshaler {
+	return ec._SceneHeat(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSceneHeat2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneHeat(ctx context.Context, sel ast.SelectionSet, v *model.SceneHeat) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SceneHeat(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSceneMarker2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneMarker(ctx context.Context, sel ast.SelectionSet, v model.SceneMarker) graphql.Marshaler {

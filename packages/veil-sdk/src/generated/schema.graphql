@@ -34,6 +34,7 @@ type Query {
   scene(id: ID!): Scene
   randomScenes(limit: Int): [Scene!]!
   recommendedFeed(limit: Int, offset: Int): [Scene!]!
+  sceneHeat(sceneId: ID!): SceneHeat!
   sceneMarkers(mediaId: ID!): [SceneMarker!]!
   pluginSearch(query: String!, limit: Int, pluginNames: [String!]): [PluginSearchResult!]!
   pluginBrowse(limit: Int, offset: Int): [PluginSearchResult!]!
@@ -95,6 +96,8 @@ type Mutation {
   recordImpressions(impressions: [ImpressionInput!]!): Int!
   createSavedFilter(name: String!, filter: SceneFilterInput!): SavedFilter!
   deleteSavedFilter(filterId: ID!): Boolean!
+  recordSceneHeat(input: RecordSceneHeatInput!): Boolean!
+  setSceneThumbnail(sceneId: ID!, atSeconds: Float!, jpegBase64: String!): Boolean!
   createSceneMarker(mediaId: ID!, seconds: Float!, endSeconds: Float, tagName: String, label: String): SceneMarker!
   deleteSceneMarker(markerId: ID!): Boolean!
   resolvePluginResult(pluginName: String!, url: String!, posterUrl: String): ID!
@@ -488,6 +491,24 @@ type Scene {
   related(limit: Int): [Scene!]!
   createdAt: String!
   updatedAt: String!
+}
+
+type SceneHeat {
+  buckets: [Float!]!
+  bestMomentSeconds: Float
+  thumbnailSeconds: Float
+}
+
+input RecordSceneHeatInput {
+  sceneId: ID!
+  durationSeconds: Float!
+  spans: [HeatSpanInput!]!
+  scrubs: [Float!]!
+}
+
+input HeatSpanInput {
+  fromSeconds: Float!
+  toSeconds: Float!
 }
 
 type SceneMarker {

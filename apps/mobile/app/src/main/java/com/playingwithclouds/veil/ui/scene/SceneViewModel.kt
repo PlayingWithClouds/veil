@@ -7,8 +7,11 @@ import com.playingwithclouds.veil.data.AlikeCandidate
 import com.playingwithclouds.veil.data.CollectionRepository
 import com.playingwithclouds.veil.data.CollectionSummary
 import com.playingwithclouds.veil.data.PlayableStream
+import com.playingwithclouds.veil.data.HeatReport
 import com.playingwithclouds.veil.data.ResumePoint
 import com.playingwithclouds.veil.data.SceneDetail
+import com.playingwithclouds.veil.data.SceneHeat
+import com.playingwithclouds.veil.data.SceneHeatRepository
 import com.playingwithclouds.veil.data.SceneMarker
 import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.SceneSite
@@ -16,8 +19,10 @@ import com.playingwithclouds.veil.data.SceneSites
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.data.SearchRepository
 import com.playingwithclouds.veil.data.StreamOption
+import com.playingwithclouds.veil.data.ThumbnailCapture
 import com.playingwithclouds.veil.data.Verdict
 import com.playingwithclouds.veil.data.WatchProgressStore
+import com.playingwithclouds.veil.data.needsNewThumbnail
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -69,6 +74,8 @@ class SceneViewModel(private val sceneId: String) : ViewModel() {
     private val mutableUserCollections = MutableStateFlow<List<CollectionSummary>>(emptyList())
     private val mutableCollectionIds = MutableStateFlow<Set<String>>(emptySet())
     private var autoplayed = false
+    private var heat: SceneHeat? = null
+    private var thumbnailAttempted = false
 
     /** The page state. */
     val state: StateFlow<SceneState> = mutableState
@@ -111,6 +118,7 @@ class SceneViewModel(private val sceneId: String) : ViewModel() {
     private fun onDetailLoaded(detail: SceneDetail, streams: List<StreamOption>) {
         loadSite(detail.sourceUrl)
         loadReactions()
+        loadHeat()
         followStreams()
         followRelated()
         if (streams.isEmpty()) {
@@ -178,6 +186,39 @@ class SceneViewModel(private val sceneId: String) : ViewModel() {
         }
     }
 
+    /** Loads the most-replayed graph and, when the scene needs a better thumbnail, makes one. */
+    private fun loadHeat() {
+        viewModelScope.launch {
+            val loaded = runCatching { SceneHeatRepository.heat(sceneId) }.getOrNull() ?: return@launch
+            heat = loaded
+            mutableState.update { current -> current.copy(heatmap = loaded.buckets) }
+            captureThumbnailIfNeeded()
+        }
+    }
+
+    /**
+     * Once per visit, when a source is ready and the best moment is far from the thumbnail's, takes
+     * a frame of the best moment and stores it as the scene's thumbnail.
+     */
+    private fun captureThumbnailIfNeeded() {
+        val known = heat ?: return
+        val playable = mutableState.value.active?.playable ?: return
+        val moment = known.bestMomentSeconds ?: return
+        if (thumbnailAttempted || !needsNewThumbnail(moment, known.thumbnailSeconds)) {
+            return
+        }
+        thumbnailAttempted = true
+        viewModelScope.launch {
+            val frame = ThumbnailCapture.jpegBase64(playable, moment) ?: return@launch
+            runCatching { SceneHeatRepository.setThumbnail(sceneId, moment, frame) }
+        }
+    }
+
+    /** Sends a viewing session's playback and jumps to the backend's replay data. */
+    fun recordHeat(report: HeatReport) {
+        AppScope.launch { runCatching { SceneHeatRepository.record(sceneId, report) } }
+    }
+
     /** Takes live source updates as plugins resolve them. */
     private fun followStreams() {
         viewModelScope.launch {
@@ -215,6 +256,7 @@ class SceneViewModel(private val sceneId: String) : ViewModel() {
             try {
                 val playable = SceneRepository.resolve(stream)
                 mutableState.update { current -> current.copy(active = ActiveStream(stream, playable), resolvingStreamId = null) }
+                captureThumbnailIfNeeded()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
