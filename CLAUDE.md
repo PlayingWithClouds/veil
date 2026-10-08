@@ -4,7 +4,7 @@ Self-hosted adult media library, single user. Go backend + SvelteKit frontend in
 
 ## Git
 
-Work happens on `main`. No issues, no branches, no PRs.
+Work happens on `main`. No branches, no PRs. Deferred work goes into GitHub issues on `PlayingWithClouds/veil`, created with `gh` as the `PlayingWithClouds` account (check `gh auth status`; switch with `gh auth switch` if another account is active).
 
 Commit the worktree first if it's dirty, then write your changes. Commit after every big change and push if a remote is configured. Short, to-the-point commit title; a body explaining the change when the title doesn't carry it; ask if you're unsure what to write. Always say the commit was made by you, not a human.
 
