@@ -1,6 +1,6 @@
 package com.playingwithclouds.veil.ui.tags
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -25,6 +27,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.paging.SearchablePagedList
 import com.playingwithclouds.veil.util.formatCount
 import com.playingwithclouds.veil.util.tagLabel
@@ -65,14 +69,23 @@ fun TagsScreen(navigator: AppNavigator) {
 /** A tag name with how many videos carry it. */
 @Composable
 private fun TagTile(tag: TagSummary, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .pressClickable(onClick)
+            .clip(RoundedCornerShape(16.dp))
+            .background(VeilColors.surface)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(tagLabel(tag.name), modifier = Modifier.weight(1f), maxLines = 1)
-            Text(formatCount(tag.sceneCount), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text(
+            tagLabel(tag.name),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(formatCount(tag.sceneCount), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint)
     }
 }

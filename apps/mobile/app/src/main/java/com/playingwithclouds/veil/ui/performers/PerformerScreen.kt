@@ -1,16 +1,11 @@
 package com.playingwithclouds.veil.ui.performers
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -29,6 +24,9 @@ import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.entity.EntityHeader
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.ProfileInfo
@@ -139,20 +137,22 @@ private fun PerformerHeader(performer: PerformerDetail, viewModel: PerformerView
         subtitle = "${performer.sceneCount} videos",
         actions = {
             FollowButton(FollowKind.PERFORMER, performer.id, navigator)
-            IconButton(onClick = viewModel::toggleFavorite) {
-                if (performer.favorite) {
-                    Icon(Icons.Filled.Favorite, contentDescription = "Remove favorite")
-                } else {
-                    Icon(Icons.Filled.FavoriteBorder, contentDescription = "Favorite")
-                }
-            }
-            IconButton(onClick = viewModel::enrich) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Fetch details")
-            }
+            FavoriteButton(performer.favorite, viewModel::toggleFavorite)
+            RoundIconButton(VeilIcons.Refresh, contentDescription = "Fetch details", onClick = viewModel::enrich, size = 44.dp)
         },
     )
     ProfileInfo(performerFacts(performer), performer.details)
     TagChips(performer.tags, onClick = { tag -> navigator.openTag(tag.id) })
+}
+
+/** The round heart that toggles the favorite flag, filled red while set. */
+@Composable
+private fun FavoriteButton(favorite: Boolean, onToggle: () -> Unit) {
+    if (favorite) {
+        RoundIconButton(VeilIcons.HeartFilled, contentDescription = "Remove favorite", onClick = onToggle, size = 44.dp, tint = VeilColors.error)
+        return
+    }
+    RoundIconButton(VeilIcons.Heart, contentDescription = "Favorite", onClick = onToggle, size = 44.dp)
 }
 
 /** The facts worth listing, in reading order. */

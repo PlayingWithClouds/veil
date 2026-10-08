@@ -1,9 +1,9 @@
 package com.playingwithclouds.veil.ui.scene
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,26 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.automirrored.filled.ManageSearch
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbDownOffAlt
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.ThumbUpOffAlt
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,16 +25,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import com.playingwithclouds.veil.data.EntityRef
 import com.playingwithclouds.veil.data.SceneDetail
 import com.playingwithclouds.veil.data.SceneMarker
 import com.playingwithclouds.veil.data.StreamGroup
+import com.playingwithclouds.veil.data.StreamOption
 import com.playingwithclouds.veil.data.Verdict
 import com.playingwithclouds.veil.data.groupStreams
 import com.playingwithclouds.veil.data.qualityLabel
@@ -61,6 +45,12 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.TagChips
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.IconTap
+import com.playingwithclouds.veil.ui.design.PillRow
+import com.playingwithclouds.veil.ui.design.TextAction
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.formatClock
 import com.playingwithclouds.veil.util.formatCount
 import com.playingwithclouds.veil.util.formatVideoCount
@@ -106,7 +96,7 @@ fun SceneContent(
 @Composable
 private fun SceneTitleBlock(detail: SceneDetail, state: SceneState) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(detail.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(detail.title, style = MaterialTheme.typography.headlineSmall)
         val facts = listOfNotNull(
             formatReleaseDate(detail.date),
             formatDuration(detail.durationSeconds),
@@ -129,92 +119,112 @@ private fun ReactionRow(
     onFindAlternates: () -> Unit,
 ) {
     val best = state.active?.option ?: state.streams.firstOrNull()
-    LazyRow(contentPadding = PaddingValues(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         item {
-            ActionButton(likeIcon(state.verdict == Verdict.UP), "Like") { viewModel.react(Verdict.UP) }
+            ActionButton(likeIcon(state.verdict == Verdict.UP), "Like", active = state.verdict == Verdict.UP) { viewModel.react(Verdict.UP) }
         }
         item {
-            ActionButton(dislikeIcon(state.verdict == Verdict.DOWN), "Dislike") { viewModel.react(Verdict.DOWN) }
+            ActionButton(dislikeIcon(state.verdict == Verdict.DOWN), "Dislike", active = state.verdict == Verdict.DOWN) { viewModel.react(Verdict.DOWN) }
         }
         item {
-            ActionButton(Icons.Filled.Favorite, "O ${state.oCount}", onLongClick = viewModel::decrementOCount) { viewModel.incrementOCount() }
+            ActionButton(VeilIcons.HeartFilled, "O ${state.oCount}", onLongClick = viewModel::decrementOCount) { viewModel.incrementOCount() }
         }
         item {
-            ActionButton(watchlistIcon(state.onWatchlist), "Watchlist") { viewModel.toggleWatchlist() }
+            ActionButton(watchlistIcon(state.onWatchlist), "Watchlist", active = state.onWatchlist) { viewModel.toggleWatchlist() }
         }
         item {
-            ActionButton(Icons.Filled.CreateNewFolder, "Collect") {
+            ActionButton(VeilIcons.CollectionAdd, "Collect") {
                 viewModel.loadUserCollections()
                 onOpen(SceneDialog.Collections)
             }
         }
         if (best != null) {
-            item { ActionButton(Icons.Filled.Download, "Download") { viewModel.download(best) } }
+            item { ActionButton(VeilIcons.Download, "Download") { viewModel.download(best) } }
         }
-        item { ActionButton(Icons.AutoMirrored.Filled.ManageSearch, "Alternates") { onFindAlternates() } }
-        item { ActionButton(Icons.Filled.Block, "Block") { onOpen(SceneDialog.Block) } }
+        item { ActionButton(VeilIcons.Alternates, "Alternates") { onFindAlternates() } }
+        item { ActionButton(VeilIcons.Block, "Block") { onOpen(SceneDialog.Block) } }
     }
 }
 
 /** The like icon, filled when chosen. */
 private fun likeIcon(chosen: Boolean): ImageVector {
     if (chosen) {
-        return Icons.Filled.ThumbUp
+        return VeilIcons.LikeFilled
     }
-    return Icons.Filled.ThumbUpOffAlt
+    return VeilIcons.Like
 }
 
 /** The dislike icon, filled when chosen. */
 private fun dislikeIcon(chosen: Boolean): ImageVector {
     if (chosen) {
-        return Icons.Filled.ThumbDown
+        return VeilIcons.DislikeFilled
     }
-    return Icons.Filled.ThumbDownOffAlt
+    return VeilIcons.Dislike
 }
 
 /** The watchlist icon, filled when the scene is saved. */
 private fun watchlistIcon(saved: Boolean): ImageVector {
     if (saved) {
-        return Icons.Filled.Bookmark
+        return VeilIcons.BookmarkFilled
     }
-    return Icons.Filled.BookmarkBorder
+    return VeilIcons.Bookmark
 }
 
-/** An icon over a caption; a long press can trigger a second action. */
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * A round icon button over a caption, white with a dark icon while [active]; a long press can
+ * trigger a second action.
+ */
 @Composable
-private fun ActionButton(icon: ImageVector, label: String, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+private fun ActionButton(
+    icon: ImageVector,
+    label: String,
+    active: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    var background = VeilColors.surfaceHigh
+    var tint = VeilColors.content
+    if (active) {
+        background = VeilColors.content
+        tint = VeilColors.canvas
+    }
     Column(
-        Modifier.width(72.dp).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(vertical = 8.dp),
+        Modifier.width(68.dp).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick).padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(icon, contentDescription = label)
-        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.size(48.dp).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** Sources grouped by site, with a chip per quality; the playing one is selected. */
+/** Sources grouped by site, with a pill per quality; the playing one is selected. */
 @Composable
 private fun SourcePicker(groups: List<StreamGroup>, state: SceneState, viewModel: SceneViewModel) {
-    Column(Modifier.padding(vertical = 8.dp)) {
+    Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SectionTitle("Sources")
         for (group in groups) {
-            Text(group.provider, Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.labelMedium)
-            LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(group.streams, key = { stream -> stream.id }) { stream ->
-                    var label = stream.qualityLabel()
-                    if (stream.verified) {
-                        label += " ✓"
-                    }
-                    FilterChip(
-                        selected = state.active?.option?.id == stream.id,
-                        onClick = { viewModel.play(stream) },
-                        label = { Text(label) },
-                    )
-                }
-            }
+            Text(group.provider, Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.labelMedium, color = VeilColors.contentMuted)
+            PillRow(
+                group.streams,
+                labelOf = { stream -> sourceLabel(stream) },
+                onClick = { stream -> viewModel.play(stream) },
+                isSelected = { stream -> state.active?.option?.id == stream.id },
+                contentPadding = PaddingValues(horizontal = 16.dp),
+            )
         }
     }
+}
+
+/** A source's quality, ticked when the backend verified it plays. */
+private fun sourceLabel(stream: StreamOption): String {
+    var label = stream.qualityLabel()
+    if (stream.verified) {
+        label += " ✓"
+    }
+    return label
 }
 
 /** The studio or channel of the scene, else the site it came from. */
@@ -225,13 +235,13 @@ private fun StudioLine(detail: SceneDetail, state: SceneState, navigator: AppNav
         return
     }
     Row(
-        Modifier.fillMaxWidth().clickable { navigator.openStudio(studio.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().pressClickable { navigator.openStudio(studio.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(studio.imagePath, Modifier.size(40.dp))
+        Avatar(studio.imagePath, Modifier.size(44.dp))
         Column {
-            Text(studio.name, style = MaterialTheme.typography.bodyLarge)
+            Text(studio.name, style = MaterialTheme.typography.titleSmall)
             Text(formatVideoCount(studio.sceneCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val site = state.site
@@ -250,11 +260,12 @@ private fun PerformerRow(performers: List<EntityRef>, navigator: AppNavigator) {
     LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(performers, key = { performer -> performer.id }) { performer ->
             Column(
-                Modifier.width(72.dp).clickable { navigator.openPerformer(performer.id) },
+                Modifier.width(76.dp).pressClickable { navigator.openPerformer(performer.id) },
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Avatar(performer.imagePath, Modifier.size(56.dp))
-                Text(performer.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Avatar(performer.imagePath, Modifier.size(64.dp))
+                Text(performer.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -289,10 +300,7 @@ private fun MarkerSection(markers: List<SceneMarker>, player: ExoPlayer, viewMod
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             SectionTitle("Markers")
-            TextButton(onClick = onAdd) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("Add at current time")
-            }
+            TextAction("Add at current time", onClick = onAdd, icon = VeilIcons.Plus, modifier = Modifier.padding(end = 8.dp))
         }
         for (marker in markers) {
             Row(
@@ -303,9 +311,7 @@ private fun MarkerSection(markers: List<SceneMarker>, player: ExoPlayer, viewMod
                 Text(formatClock(marker.seconds), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(marker.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (marker.personal) {
-                    IconButton(onClick = { viewModel.deleteMarker(marker) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete marker")
-                    }
+                    IconTap(VeilIcons.Delete, contentDescription = "Delete marker", onClick = { viewModel.deleteMarker(marker) })
                 }
             }
         }

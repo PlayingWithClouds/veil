@@ -4,10 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +18,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.api.ServerSettings
 import com.playingwithclouds.veil.api.VeilApi
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.VeilTextField
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.restartApp
 import kotlinx.coroutines.launch
 
@@ -37,21 +38,21 @@ fun ServerForm() {
         Text(
             currentServerDescription(),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = VeilColors.contentMuted,
         )
-        OutlinedTextField(
+        VeilTextField(
             value = address,
             onValueChange = { newAddress -> address = newAddress },
-            label = { Text("Server address") },
-            placeholder = { Text("http://192.168.1.10:8080") },
-            singleLine = true,
+            label = "Server address",
+            placeholder = "http://192.168.1.10:8080",
             modifier = Modifier.fillMaxWidth(),
         )
         if (problem != null) {
-            Text(problem.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(problem.orEmpty(), color = VeilColors.error, style = MaterialTheme.typography.bodySmall)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
+            PrimaryButton(
+                "Connect",
                 enabled = address.isNotBlank() && !checking,
                 onClick = {
                     scope.launch {
@@ -66,14 +67,15 @@ fun ServerForm() {
                         checking = false
                     }
                 },
-            ) { Text("Connect") }
+            )
             if (!ServerSettings.usesEmbeddedBackend) {
-                OutlinedButton(
+                SecondaryButton(
+                    "Use this phone",
                     onClick = {
                         ServerSettings.clear()
                         context.restartApp()
                     },
-                ) { Text("Use this phone") }
+                )
             }
         }
     }

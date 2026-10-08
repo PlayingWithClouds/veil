@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -80,9 +81,15 @@ fun RoundIconButton(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     tint: Color = VeilColors.content,
+    enabled: Boolean = true,
 ) {
     Box(
-        modifier.size(size).pressClickable(onClick).clip(CircleShape).background(VeilColors.surfaceHigh),
+        modifier
+            .size(size)
+            .alpha(enabledAlpha(enabled))
+            .pressClickable(enabled = enabled, onClick = onClick)
+            .clip(CircleShape)
+            .background(VeilColors.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size * 0.5f))

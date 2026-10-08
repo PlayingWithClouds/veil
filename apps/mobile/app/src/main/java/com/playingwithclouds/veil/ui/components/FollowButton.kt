@@ -1,26 +1,20 @@
 package com.playingwithclouds.veil.ui.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import com.playingwithclouds.veil.data.EntityRepository
 import com.playingwithclouds.veil.data.FollowKind
 import com.playingwithclouds.veil.data.SubscriptionSummary
 import com.playingwithclouds.veil.ui.AppNavigator
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -43,14 +37,18 @@ fun FollowButton(kind: FollowKind, targetId: String, navigator: AppNavigator, mo
 
     val followed = subscription
     if (followed != null) {
-        OutlinedButton(onClick = { navigator.openSubscription(followed.id) }, modifier = modifier) {
-            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text("Following")
-        }
+        SecondaryButton(
+            "Following",
+            onClick = { navigator.openSubscription(followed.id) },
+            modifier = modifier,
+            icon = VeilIcons.Check,
+        )
         return
     }
-    Button(
+    PrimaryButton(
+        "Follow",
         enabled = !busy,
+        icon = VeilIcons.Follow,
         onClick = {
             scope.launch {
                 busy = true
@@ -65,8 +63,5 @@ fun FollowButton(kind: FollowKind, targetId: String, navigator: AppNavigator, mo
             }
         },
         modifier = modifier,
-    ) {
-        Icon(Icons.Filled.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
-        Text("Follow")
-    }
+    )
 }

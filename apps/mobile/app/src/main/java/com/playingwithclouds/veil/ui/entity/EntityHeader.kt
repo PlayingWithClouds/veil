@@ -11,9 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.Avatar
+import com.playingwithclouds.veil.ui.theme.VeilColors
 
 /** The top of a performer, studio or tag page: photo, name, a muted line, then actions. */
 @Composable
@@ -30,9 +30,9 @@ fun EntityHeader(
                 Avatar(imagePath, Modifier.size(88.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text(name, style = MaterialTheme.typography.headlineMedium)
                 if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = VeilColors.contentMuted)
                 }
             }
         }

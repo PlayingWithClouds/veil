@@ -2,15 +2,12 @@ package com.playingwithclouds.veil.ui.history
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +18,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.launch
 
@@ -65,9 +64,13 @@ fun HistoryScreen(navigator: AppNavigator) {
             val scene = entry.scene ?: return@PagedGrid
             Box {
                 SceneCard(scene, onClick = { navigator.openScene(scene.id) })
-                IconButton(onClick = { viewModel.remove(entry) }, modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove from history")
-                }
+                RoundIconButton(
+                    VeilIcons.Close,
+                    contentDescription = "Remove from history",
+                    onClick = { viewModel.remove(entry) },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                    size = 32.dp,
+                )
             }
         }
     }

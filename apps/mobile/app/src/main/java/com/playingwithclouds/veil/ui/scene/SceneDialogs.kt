@@ -1,24 +1,16 @@
 package com.playingwithclouds.veil.ui.scene
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,6 +29,15 @@ import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.TextInputDialog
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.design.VeilBottomSheet
+import com.playingwithclouds.veil.ui.design.VeilCheck
+import com.playingwithclouds.veil.ui.design.VeilDialog
+import com.playingwithclouds.veil.ui.design.VeilTextField
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.formatClock
 import com.playingwithclouds.veil.util.formatDuration
 
@@ -86,65 +88,66 @@ private fun CollectionPickerDialog(viewModel: SceneViewModel, onDismiss: () -> U
         )
         return
     }
-    AlertDialog(
+    VeilDialog(
+        title = "Add to collection",
         onDismissRequest = onDismiss,
-        title = { Text("Add to collection") },
-        text = {
-            if (collections.isEmpty()) {
-                Text("You have no collections yet.")
-                return@AlertDialog
-            }
-            LazyColumn {
-                items(collections, key = { collection -> collection.id }) { collection ->
-                    val included = collection.id in memberOf
-                    Row(
-                        Modifier.fillMaxWidth().clickable { viewModel.setInCollection(collection, !included) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = included, onCheckedChange = { checked -> viewModel.setInCollection(collection, checked) })
-                        Text(collection.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+        buttons = {
+            SecondaryButton("New collection", onClick = { creating = true })
+            PrimaryButton("Done", onClick = onDismiss)
+        },
+    ) {
+        if (collections.isEmpty()) {
+            Text("You have no collections yet.", color = VeilColors.contentMuted)
+            return@VeilDialog
+        }
+        LazyColumn {
+            items(collections, key = { collection -> collection.id }) { collection ->
+                val included = collection.id in memberOf
+                Row(
+                    Modifier.fillMaxWidth().pressClickable { viewModel.setInCollection(collection, !included) }.padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    VeilCheck(checked = included)
+                    Text(collection.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-        dismissButton = { TextButton(onClick = { creating = true }) { Text("New collection") } },
-    )
+        }
+    }
 }
 
 /** Lists the scene's studio, performers and tags; each can be blocked from recommendations. */
 @Composable
 private fun BlockDialog(detail: SceneDetail, viewModel: SceneViewModel, onDismiss: () -> Unit) {
-    AlertDialog(
+    VeilDialog(
+        title = "Block from recommendations",
         onDismissRequest = onDismiss,
-        title = { Text("Block from recommendations") },
-        text = {
-            LazyColumn {
-                val studio = detail.studio
-                if (studio != null) {
-                    item { BlockRow("Studio", studio.name) { viewModel.block("studio", studio.id, studio.name) } }
-                }
-                items(detail.performers, key = { performer -> "performer-${performer.id}" }) { performer ->
-                    BlockRow("Performer", performer.name) { viewModel.block("performer", performer.id, performer.name) }
-                }
-                items(detail.tags, key = { tag -> "tag-${tag.id}" }) { tag ->
-                    BlockRow("Tag", tag.name) { viewModel.block("tag", tag.id, tag.name) }
-                }
+        buttons = { PrimaryButton("Done", onClick = onDismiss) },
+    ) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val studio = detail.studio
+            if (studio != null) {
+                item { BlockRow("Studio", studio.name) { viewModel.block("studio", studio.id, studio.name) } }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-    )
+            items(detail.performers, key = { performer -> "performer-${performer.id}" }) { performer ->
+                BlockRow("Performer", performer.name) { viewModel.block("performer", performer.id, performer.name) }
+            }
+            items(detail.tags, key = { tag -> "tag-${tag.id}" }) { tag ->
+                BlockRow("Tag", tag.name) { viewModel.block("tag", tag.id, tag.name) }
+            }
+        }
+    }
 }
 
 /** One blockable entity with its kind and a block button. */
 @Composable
 private fun BlockRow(kind: String, name: String, onBlock: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(kind, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(kind, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
         }
-        TextButton(onClick = onBlock) { Text("Block") }
+        SecondaryButton("Block", onClick = onBlock)
     }
 }
 
@@ -153,39 +156,36 @@ private fun BlockRow(kind: String, name: String, onBlock: () -> Unit) {
 private fun MarkerDialog(seconds: Double, onSave: (Double, String?, String?) -> Unit, onDismiss: () -> Unit) {
     var tagName by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
-    AlertDialog(
+    VeilDialog(
+        title = "Marker at ${formatClock(seconds)}",
         onDismissRequest = onDismiss,
-        title = { Text("Marker at ${formatClock(seconds)}") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(tagName, { text -> tagName = text }, label = { Text("Tag (e.g. a position)") }, singleLine = true)
-                OutlinedTextField(label, { text -> label = text }, label = { Text("Note") }, singleLine = true)
-            }
-        },
-        confirmButton = {
-            TextButton(
+        buttons = {
+            SecondaryButton("Cancel", onClick = onDismiss)
+            PrimaryButton(
+                "Save",
                 enabled = tagName.isNotBlank() || label.isNotBlank(),
                 onClick = { onSave(seconds, tagName.trim().ifEmpty { null }, label.trim().ifEmpty { null }) },
-            ) { Text("Save") }
+            )
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    ) {
+        VeilTextField(tagName, { text -> tagName = text }, label = "Tag", placeholder = "e.g. a position", modifier = Modifier.fillMaxWidth())
+        VeilTextField(label, { text -> label = text }, label = "Note", modifier = Modifier.fillMaxWidth())
+    }
 }
 
 /** Copies of the scene on other sites, best match first; choosing one attaches its source. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlternatesSheet(viewModel: SceneViewModel, onDismiss: () -> Unit) {
     val alike by viewModel.alike.collectAsStateWithLifecycle()
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    VeilBottomSheet(onDismissRequest = onDismiss) {
         SectionTitle("Other sources for this video")
         if (alike.isLoading) {
-            CircularProgressIndicator(Modifier.padding(24.dp).size(32.dp))
-            return@ModalBottomSheet
+            Spinner(Modifier.padding(24.dp).align(Alignment.CenterHorizontally))
+            return@VeilBottomSheet
         }
         if (alike.candidates.isEmpty()) {
             EmptyMessage("No matching videos found on other sites.")
-            return@ModalBottomSheet
+            return@VeilBottomSheet
         }
         LazyColumn {
             items(alike.candidates, key = { candidate -> candidate.sourceUrl }) { candidate ->
@@ -202,18 +202,18 @@ fun AlternatesSheet(viewModel: SceneViewModel, onDismiss: () -> Unit) {
 @Composable
 private fun AlternateRow(candidate: AlikeCandidate, attaching: Boolean, onChoose: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = !attaching, onClick = onChoose).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().pressClickable(enabled = !attaching, onClick = onChoose).padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(candidate.posterUrl, Modifier.width(120.dp).size(width = 120.dp, height = 68.dp))
+        RemoteImage(candidate.posterUrl, Modifier.size(width = 120.dp, height = 68.dp).clip(RoundedCornerShape(12.dp)))
         Column(Modifier.weight(1f)) {
-            Text(candidate.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(candidate.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val facts = listOfNotNull(candidate.plugin, formatDuration(candidate.durationSeconds), "${(candidate.matchScore * PERCENT).toInt()}% match")
-            Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
         }
         if (attaching) {
-            CircularProgressIndicator(Modifier.size(24.dp))
+            Spinner(size = 22.dp)
         }
     }
 }

@@ -1,25 +1,15 @@
 package com.playingwithclouds.veil.ui.subscriptions
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,7 +38,17 @@ import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.VeilCard
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.VeilMenu
+import com.playingwithclouds.veil.ui.design.VeilMenuItem
+import com.playingwithclouds.veil.ui.design.VeilSwitch
 import com.playingwithclouds.veil.ui.loadInto
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.paging.PagedList
 import com.playingwithclouds.veil.util.intervalLabel
 import com.playingwithclouds.veil.util.scheduleLabel
@@ -167,7 +167,7 @@ fun SubscriptionScreen(id: String, navigator: AppNavigator) {
                 title = (subscription as? LoadState.Loaded)?.value?.displayName.orEmpty(),
                 onBack = navigator::back,
                 actions = {
-                    IconButton(onClick = { confirmingUnfollow = true }) { Icon(Icons.Filled.Delete, contentDescription = "Unfollow") }
+                    RoundIconButton(VeilIcons.Delete, contentDescription = "Unfollow", onClick = { confirmingUnfollow = true })
                 },
             )
         },
@@ -195,37 +195,43 @@ private fun SubscriptionSettings(
     viewModel: SubscriptionViewModel,
     navigator: AppNavigator,
 ) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(subscription.targetImageUrl, Modifier.size(56.dp))
-            Column {
-                Text(subscription.kind.lowercase().replaceFirstChar { letter -> letter.uppercase() }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${subscription.totalCount} videos, ${subscription.newCount} new", style = MaterialTheme.typography.bodyMedium)
+    Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(subscription.targetImageUrl, Modifier.size(72.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    subscription.kind.lowercase().replaceFirstChar { letter -> letter.uppercase() },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = VeilColors.contentMuted,
+                )
+                Text("${subscription.totalCount} videos, ${subscription.newCount} new", style = MaterialTheme.typography.titleMedium)
             }
-        }
-        Text(
-            scheduleLabel(subscription.lastRunAt, subscription.nextRunAt, subscription.enabled),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
-        )
-        val problem = subscription.lastError
-        if (!problem.isNullOrEmpty()) {
-            Text(problem, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = viewModel::runNow, enabled = !running) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(runLabel(running))
-            }
-            IntervalPicker(subscription.intervalHours, viewModel::setInterval)
+            PrimaryButton(runLabel(running), onClick = viewModel::runNow, enabled = !running, icon = VeilIcons.Play)
             val targetId = subscription.targetId
             if (targetId != null) {
-                OutlinedButton(onClick = { openTarget(subscription, targetId, navigator) }) { Text("Open page") }
+                SecondaryButton("Open page", onClick = { openTarget(subscription, targetId, navigator) })
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Switch(checked = subscription.enabled, onCheckedChange = viewModel::setEnabled)
-            Text("Run on schedule")
+        VeilCard(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Run on schedule", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                VeilSwitch(checked = subscription.enabled, onCheckedChange = viewModel::setEnabled)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Interval", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                IntervalPicker(subscription.intervalHours, viewModel::setInterval)
+            }
+            Text(
+                scheduleLabel(subscription.lastRunAt, subscription.nextRunAt, subscription.enabled),
+                color = VeilColors.contentMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            val problem = subscription.lastError
+            if (!problem.isNullOrEmpty()) {
+                Text(problem, color = VeilColors.error, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -247,18 +253,18 @@ private fun openTarget(subscription: SubscriptionSummary, targetId: String, navi
     }
 }
 
-/** A chip that opens a menu of re-run intervals. */
-@OptIn(ExperimentalLayoutApi::class)
+/** A pill that opens a menu of re-run intervals. */
 @Composable
 private fun IntervalPicker(currentHours: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val options = (intervalHourOptions + currentHours).distinct().sorted()
-    androidx.compose.foundation.layout.Box {
-        AssistChip(onClick = { expanded = true }, label = { Text(intervalLabel(currentHours)) })
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    Box {
+        Pill(intervalLabel(currentHours), onClick = { expanded = true })
+        VeilMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for (hours in options) {
-                DropdownMenuItem(
-                    text = { Text(intervalLabel(hours)) },
+                VeilMenuItem(
+                    intervalLabel(hours),
+                    selected = hours == currentHours,
                     onClick = {
                         expanded = false
                         onSelect(hours)

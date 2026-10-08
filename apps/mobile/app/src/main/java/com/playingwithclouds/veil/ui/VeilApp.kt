@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.ui.components.ServerForm
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilTheme
-import androidx.compose.material3.Button
 
 /** Whether the backend answers yet. */
 private enum class BootState {
@@ -72,22 +74,22 @@ private fun BootWaiting() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator()
-        Text("Starting Veil...", Modifier.padding(top = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spinner()
+        Text("Starting Veil...", Modifier.padding(top = 16.dp), color = VeilColors.contentMuted)
     }
 }
 
 /** Shown when the backend does not come up: retry, or pick another server. */
 @Composable
 private fun BootUnreachable(onRetry: () -> Unit) {
-    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("The backend is not reachable", style = MaterialTheme.typography.titleLarge)
+            Text("The backend is not reachable", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "Check the server address below, or retry if the on-device backend is still starting.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = VeilColors.contentMuted,
             )
-            Button(onClick = onRetry) { Text("Retry") }
+            PrimaryButton("Retry", onClick = onRetry)
             ServerForm()
         }
     }

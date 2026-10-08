@@ -1,13 +1,15 @@
 package com.playingwithclouds.veil.ui.search
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -15,22 +17,8 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,8 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +48,14 @@ import com.playingwithclouds.veil.ui.components.SceneCellWidth
 import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.StudioCard
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.IconTap
+import com.playingwithclouds.veil.ui.design.LoadingBar
+import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.design.PillRow
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.PerformerRow
 import com.playingwithclouds.veil.ui.entity.StudioRow
@@ -76,8 +74,11 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
 
     Scaffold(
         topBar = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = navigator::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+            Row(
+                Modifier.statusBarsPadding().padding(start = 12.dp, top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = navigator::back)
                 SearchField(
                     value = state.query,
                     onValueChange = viewModel::onQueryChange,
@@ -90,7 +91,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
     ) { padding ->
         Column(Modifier.padding(padding)) {
             if (state.isLoading || state.isSearchingSites) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
+                LoadingBar(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
             if (state.submitted == null) {
                 SuggestionList(state.suggestions, viewModel, navigator)
@@ -105,21 +106,35 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
 /** Recent searches, taste-based picks and completions for the typed text. */
 @Composable
 private fun SuggestionList(suggestions: List<SearchSuggestion>, viewModel: SearchViewModel, navigator: AppNavigator) {
-    LazyColumn {
+    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
         items(suggestions, key = { suggestion -> "${suggestion.kind}:${suggestion.text}:${suggestion.entityId}" }) { suggestion ->
-            ListItem(
-                headlineContent = { Text(suggestion.text) },
-                supportingContent = { suggestion.detail?.let { detail -> Text(detail) } },
-                leadingContent = { SuggestionIcon(suggestion) },
-                trailingContent = {
-                    if (suggestion.kind == "RECENT") {
-                        IconButton(onClick = { viewModel.forget(suggestion) }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Forget")
-                        }
-                    }
-                },
-                modifier = Modifier.clickable { chooseSuggestion(suggestion, viewModel, navigator) },
+            SuggestionRow(
+                suggestion,
+                onChoose = { chooseSuggestion(suggestion, viewModel, navigator) },
+                onForget = { viewModel.forget(suggestion) },
             )
+        }
+    }
+}
+
+/** One suggestion: icon or photo, text with its detail, and a forget button on recent searches. */
+@Composable
+private fun SuggestionRow(suggestion: SearchSuggestion, onChoose: () -> Unit, onForget: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().pressClickable(onChoose).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SuggestionIcon(suggestion)
+        Column(Modifier.weight(1f)) {
+            Text(suggestion.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val detail = suggestion.detail
+            if (detail != null) {
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted, maxLines = 1)
+            }
+        }
+        if (suggestion.kind == "RECENT") {
+            IconTap(VeilIcons.Close, contentDescription = "Forget", onClick = onForget)
         }
     }
 }
@@ -150,51 +165,50 @@ private fun SuggestionIcon(suggestion: SearchSuggestion) {
         return
     }
     val icon: ImageVector = when (suggestion.kind) {
-        "RECENT" -> Icons.Filled.History
-        "TAG" -> Icons.Filled.Sell
-        "PERFORMER" -> Icons.Filled.Person
-        "STUDIO" -> Icons.Filled.Business
-        else -> Icons.Filled.Search
+        "RECENT" -> VeilIcons.History
+        "TAG" -> VeilIcons.Tags
+        "PERFORMER" -> VeilIcons.Performer
+        "STUDIO" -> VeilIcons.Studios
+        else -> VeilIcons.Search
     }
-    Icon(icon, contentDescription = null)
+    Box(Modifier.size(40.dp).clip(CircleShape).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = VeilColors.contentMuted, modifier = Modifier.size(20.dp))
+    }
 }
 
-/** Scope chips, the follow button and the site filter. */
+/** Scope pills, the follow pill and the site filter. */
 @Composable
 private fun ResultFilters(state: SearchState, viewModel: SearchViewModel) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         item {
-            FollowSearchChip(state.isFollowed, viewModel::followSearch)
+            FollowSearchPill(state.isFollowed, viewModel::followSearch)
         }
         items(SearchScope.entries) { scope ->
-            FilterChip(selected = scope == state.scope, onClick = { viewModel.setScope(scope) }, label = { Text(scope.label) })
+            Pill(scope.label, selected = scope == state.scope, onClick = { viewModel.setScope(scope) })
         }
     }
     if (state.sites.isNotEmpty()) {
-        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.sites, key = { site -> site.name }) { site ->
-                FilterChip(
-                    selected = site.name in state.selectedSites,
-                    onClick = { viewModel.toggleSite(site.name) },
-                    label = { Text(site.label) },
-                )
-            }
-        }
+        PillRow(
+            state.sites,
+            labelOf = { site -> site.label },
+            onClick = { site -> viewModel.toggleSite(site.name) },
+            isSelected = { site -> site.name in state.selectedSites },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+        )
     }
 }
 
-/** The chip that follows the search, or confirms it is followed. */
+/** The pill that follows the search, or confirms it is followed. */
 @Composable
-private fun FollowSearchChip(isFollowed: Boolean, onFollow: () -> Unit) {
+private fun FollowSearchPill(isFollowed: Boolean, onFollow: () -> Unit) {
     if (isFollowed) {
-        AssistChip(onClick = {}, label = { Text("Following") }, leadingIcon = { Icon(Icons.Filled.Check, contentDescription = null) })
+        Pill("Following", onClick = {}, icon = VeilIcons.Check)
         return
     }
-    AssistChip(
-        onClick = onFollow,
-        label = { Text("Follow search") },
-        leadingIcon = { Icon(Icons.Filled.NotificationsActive, contentDescription = null) },
-    )
+    Pill("Follow search", onClick = onFollow, icon = VeilIcons.Follow)
 }
 
 /** The results of the chosen scope. */

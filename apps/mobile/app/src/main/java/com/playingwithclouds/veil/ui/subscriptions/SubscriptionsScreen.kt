@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.subscriptions
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,8 +35,12 @@ import com.playingwithclouds.veil.ui.components.Badge
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.LargeHeader
+import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,13 +102,16 @@ fun SubscriptionsScreen(navigator: AppNavigator) {
     val options by viewModel.options.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.loadSubscriptions() }
 
-    Scaffold(topBar = { VeilTopBar("Following") }) { padding ->
+    Scaffold { padding ->
         PagedGrid(
             paged = viewModel.feed,
             keyOf = { entry -> entry.scene.id },
             emptyText = "Nothing found yet. Follow a studio, performer, tag or search to fill this feed.",
             modifier = Modifier.padding(padding),
             header = {
+                fullWidthItem("header") {
+                    LargeHeader("Following") { SettingsMenuButton(navigator) }
+                }
                 fullWidthItem("strip") { SubscriptionStrip(subscriptions, navigator) }
                 fullWidthItem("filters") { FeedFilters(options, viewModel::setOptions) }
             },
@@ -126,18 +131,24 @@ private fun SubscriptionStrip(subscriptions: List<SubscriptionSummary>, navigato
     LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(subscriptions, key = { subscription -> subscription.id }) { subscription ->
             Column(
-                Modifier.width(72.dp).clickable { navigator.openSubscription(subscription.id) },
+                Modifier.width(76.dp).pressClickable { navigator.openSubscription(subscription.id) },
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Box {
-                    Avatar(subscription.targetImageUrl, Modifier.size(56.dp))
+                    Avatar(subscription.targetImageUrl, Modifier.size(64.dp))
                     if (subscription.newCount > 0) {
-                        Badge(subscription.newCount.toString(), Modifier.align(Alignment.TopEnd))
+                        Badge(
+                            subscription.newCount.toString(),
+                            Modifier.align(Alignment.TopEnd),
+                            background = VeilColors.accent,
+                            foreground = VeilColors.canvas,
+                        )
                     }
                 }
                 Text(
                     subscription.displayName,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -147,19 +158,19 @@ private fun SubscriptionStrip(subscriptions: List<SubscriptionSummary>, navigato
     }
 }
 
-/** Chips narrowing the feed to new or unwatched scenes. */
+/** Pills narrowing the feed to new or unwatched scenes. */
 @Composable
 private fun FeedFilters(options: FeedOptions, onChange: (FeedOptions) -> Unit) {
-    Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
+    Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Pill(
+            "New only",
             selected = options.newOnly,
             onClick = { onChange(options.copy(newOnly = !options.newOnly)) },
-            label = { Text("New only") },
         )
-        FilterChip(
+        Pill(
+            "Unwatched",
             selected = options.unwatchedOnly,
             onClick = { onChange(options.copy(unwatchedOnly = !options.unwatchedOnly)) },
-            label = { Text("Unwatched") },
         )
     }
 }
