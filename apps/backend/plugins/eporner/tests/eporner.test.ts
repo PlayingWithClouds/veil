@@ -49,6 +49,7 @@ const fixture: EpVideo = {
   url: "https://www.eporner.com/video-tuvMM4RP0eA/sample/",
   added: "2026-07-03 10:16:57",
   length_sec: 2157,
+  views: 4200,
   embed: "https://www.eporner.com/embed/tuvMM4RP0eA/",
   default_thumb: { src: "https://cdn/x_360.jpg" },
   thumbs: [{ src: "https://cdn/1.jpg" }, { src: "https://cdn/2.jpg" }],
@@ -63,6 +64,8 @@ describe("mappers", () => {
     expect(item.poster_path).toBe("https://cdn/x_360.jpg");
     expect(item.preview_images).toEqual(["https://cdn/1.jpg", "https://cdn/2.jpg"]);
     expect(item.duration_seconds).toBe(2157);
+    expect(item.rating).toBe(8);
+    expect(item.view_count).toBe(4200);
   });
 
   test("toScene includes tags, duration, rating and an embed download", () => {

@@ -83,6 +83,8 @@ export function toDiscoveredItem(video: EpVideo): DiscoveredItem {
     poster_path: video.default_thumb?.src,
     preview_images: previewFrames(video).slice(0, 12),
     duration_seconds: video.length_sec,
+    rating: toRating(video.rate),
+    view_count: video.views,
     // The embed page is a deterministic source, so the browse stub is playable
     // without a scrape (resolved to a CDN mp4 on demand). Mirrors toScene.
     downloads: [{ label: "eporner", url: video.embed || embedUrl(video.id) }],
@@ -100,6 +102,7 @@ export function toScene(video: EpVideo): Scene {
     date: toIsoDate(video.added),
     duration_seconds: video.length_sec,
     rating: toRating(video.rate),
+    view_count: video.views,
     tags: parseKeywords(video.keywords, video.title),
     poster_path: poster,
     preview_images: previewFrames(video),

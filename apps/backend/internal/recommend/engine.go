@@ -45,6 +45,9 @@ type rankedFeed struct {
 	// observingPlugins lists, per ranked scene, every plugin that observed it,
 	// for the feed's source filter.
 	observingPlugins map[string][]string
+	// durations holds each ranked scene's runtime in seconds (absent when
+	// unknown), for the duration filter.
+	durations map[string]int
 }
 
 // New returns an engine over the database; repo supplies the blocklist and
@@ -61,6 +64,38 @@ func New(database *db.DB, repo *media.Repository) *Engine {
 // same rule as the scene listings' source filter); offset and limit then
 // page through that filtered view of the one shared ranking.
 func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, sources []string, limit, offset int, refresh bool) ([]Item, error) {
+	return e.FeedWithDuration(ctx, disabledPlugins, sources, DurationRange{}, limit, offset, refresh)
+}
+
+// DurationRange narrows a feed to a runtime window in seconds; a zero bound
+// is open. Scenes with an unknown runtime never match a set bound.
+type DurationRange struct {
+	MinSeconds int
+	MaxSeconds int
+}
+
+// isOpen reports whether the range keeps every scene.
+func (window DurationRange) isOpen() bool {
+	return window.MinSeconds <= 0 && window.MaxSeconds <= 0
+}
+
+// contains reports whether a runtime falls inside the range.
+func (window DurationRange) contains(durationSeconds int) bool {
+	if window.isOpen() {
+		return true
+	}
+	if durationSeconds <= 0 {
+		return false
+	}
+	if window.MinSeconds > 0 && durationSeconds < window.MinSeconds {
+		return false
+	}
+	return window.MaxSeconds <= 0 || durationSeconds <= window.MaxSeconds
+}
+
+// FeedWithDuration is Feed additionally narrowed to scenes whose runtime
+// falls inside the range; paging walks the narrowed view of the same ranking.
+func (e *Engine) FeedWithDuration(ctx context.Context, disabledPlugins []string, sources []string, window DurationRange, limit, offset int, refresh bool) ([]Item, error) {
 	maxAge := feedCacheTTL
 	if offset == 0 {
 		maxAge = feedFirstPageTTL
@@ -72,7 +107,21 @@ func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, sources []s
 	if err != nil {
 		return nil, err
 	}
-	return page(feed.observedBy(sources), limit, offset), nil
+	return page(feed.within(window, feed.observedBy(sources)), limit, offset), nil
+}
+
+// within keeps the items whose runtime falls inside the range, in order.
+func (feed *rankedFeed) within(window DurationRange, items []Item) []Item {
+	if window.isOpen() {
+		return items
+	}
+	out := []Item{}
+	for _, item := range items {
+		if window.contains(feed.durations[item.SceneID]) {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // observedBy returns the ranked feed narrowed to scenes some of the sources
@@ -200,7 +249,30 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 	if err != nil {
 		return nil, err
 	}
-	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored), observingPlugins: observingPlugins}, nil
+	durations, err := e.loadDurations(ctx, scoredSceneIDs(scored))
+	if err != nil {
+		return nil, err
+	}
+	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored), observingPlugins: observingPlugins, durations: durations}, nil
+}
+
+// loadDurations reads the runtime in seconds of each scene that has one.
+func (e *Engine) loadDurations(ctx context.Context, sceneIDs []string) (map[string]int, error) {
+	out := map[string]int{}
+	if len(sceneIDs) == 0 {
+		return out, nil
+	}
+	rows, err := e.database.Query(ctx,
+		`SELECT id, duration_seconds FROM scene
+		 WHERE duration_seconds IS NOT NULL AND id IN (SELECT value FROM json_each($ids))`,
+		db.Vars{"ids": sceneIDs})
+	if err != nil {
+		return nil, fmt.Errorf("load durations: %w", err)
+	}
+	for _, row := range rows {
+		out[rowString(row, "id")] = rowInt(row, "duration_seconds")
+	}
+	return out, nil
 }
 
 // scoredSceneIDs lists the scene ids of the scored items.

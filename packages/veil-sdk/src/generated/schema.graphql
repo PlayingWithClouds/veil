@@ -25,7 +25,7 @@ type Query {
   plugin(id: ID!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
   pluginCategories(plugin: String!, limit: Int): [PluginCategory!]!
-  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!]): [RecommendedScene!]!
+  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!], minDuration: Int, maxDuration: Int): [RecommendedScene!]!
   recommendedRows(rowLimit: Int, perRow: Int): [RecommendationRow!]!
   recommendedCategories(categoryLimit: Int, perCategory: Int): [RecommendedCategory!]!
   recommendationPair: [Scene!]!

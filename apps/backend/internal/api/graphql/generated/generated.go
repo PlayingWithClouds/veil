@@ -394,7 +394,7 @@ type ComplexityRoot struct {
 		Plugins               func(childComplexity int) int
 		RandomScenes          func(childComplexity int, limit *int) int
 		RecommendationPair    func(childComplexity int) int
-		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool, sources []string) int
+		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) int
 		RecommendedBrowse     func(childComplexity int, limit *int) int
 		RecommendedCategories func(childComplexity int, categoryLimit *int, perCategory *int) int
 		RecommendedFeed       func(childComplexity int, limit *int, offset *int) int
@@ -756,7 +756,7 @@ type QueryResolver interface {
 	Plugin(ctx context.Context, id string) (*model.Plugin, error)
 	PluginPackages(ctx context.Context, query *string) ([]*model.PluginPackage, error)
 	PluginCategories(ctx context.Context, plugin string, limit *int) ([]*model.PluginCategory, error)
-	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string) ([]*model.RecommendedScene, error)
+	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) ([]*model.RecommendedScene, error)
 	RecommendedRows(ctx context.Context, rowLimit *int, perRow *int) ([]*model.RecommendationRow, error)
 	RecommendedCategories(ctx context.Context, categoryLimit *int, perCategory *int) ([]*model.RecommendedCategory, error)
 	RecommendationPair(ctx context.Context) ([]*model.Scene, error)
@@ -2992,7 +2992,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool), args["sources"].([]string)), true
+		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool), args["sources"].([]string), args["minDuration"].(*int), args["maxDuration"].(*int)), true
 	case "Query.recommendedBrowse":
 		if e.ComplexityRoot.Query.RecommendedBrowse == nil {
 			break
@@ -4928,7 +4928,16 @@ extend type Query {
   # recommendedFeed is the same list without reasons. Non-empty sources (plugin
   # names) keep only scenes one of those plugins observed, like the scenes
   # source filter; offset and limit page through that filtered ranking.
-  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!]): [RecommendedScene!]!
+  # minDuration/maxDuration (seconds) keep only scenes with a known runtime
+  # inside that window.
+  recommendations(
+    limit: Int
+    offset: Int
+    refresh: Boolean
+    sources: [String!]
+    minDuration: Int
+    maxDuration: Int
+  ): [RecommendedScene!]!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row
@@ -8401,6 +8410,22 @@ func (ec *executionContext) field_Query_recommendations_args(ctx context.Context
 		return nil, err
 	}
 	args["sources"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "minDuration",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["minDuration"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "maxDuration",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["maxDuration"] = arg5
 	return args, nil
 }
 
@@ -17385,7 +17410,7 @@ func (ec *executionContext) _Query_recommendations(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool), fc.Args["sources"].([]string))
+			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool), fc.Args["sources"].([]string), fc.Args["minDuration"].(*int), fc.Args["maxDuration"].(*int))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*model.RecommendedScene) graphql.Marshaler {

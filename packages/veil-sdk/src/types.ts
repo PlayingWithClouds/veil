@@ -144,6 +144,8 @@ export interface Scene {
   duration_seconds?: number;
   /** 0..10 */
   rating?: number;
+  /** the site's own view counter */
+  view_count?: number;
   studio?: StudioRef;
   performers?: ScenePerformer[];
   tags?: string[];
@@ -297,6 +299,9 @@ export interface DiscoveredItem {
   preview_video?: string;
   /** runtime when the listing shows one (scenes) */
   duration_seconds?: number;
+  /** the site's rating (0..10) and view counter when the listing shows them (scenes) */
+  rating?: number;
+  view_count?: number;
   /** number of items behind this entry (tag/performer listings) */
   count?: number;
   /**

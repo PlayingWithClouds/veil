@@ -313,6 +313,12 @@ export default {
                     "sources": [
                         1,
                         "[String!]"
+                    ],
+                    "minDuration": [
+                        3
+                    ],
+                    "maxDuration": [
+                        3
                     ]
                 }
             ],

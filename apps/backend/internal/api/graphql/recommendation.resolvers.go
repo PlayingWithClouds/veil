@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
+	"github.com/playingwithclouds/veil/internal/recommend"
 )
 
 // RecordRecommendationChoice is the resolver for the recordRecommendationChoice field.
@@ -25,8 +26,9 @@ func (r *mutationResolver) RecordImpressions(ctx context.Context, impressions []
 }
 
 // Recommendations is the resolver for the recommendations field.
-func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string) ([]*model.RecommendedScene, error) {
-	items, err := r.recommender.Feed(ctx, r.registry.InactiveNames(), sources, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
+func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) ([]*model.RecommendedScene, error) {
+	window := recommend.DurationRange{MinSeconds: derefInt(minDuration, 0), MaxSeconds: derefInt(maxDuration, 0)}
+	items, err := r.recommender.FeedWithDuration(ctx, r.registry.InactiveNames(), sources, window, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
 	if err != nil {
 		return nil, err
 	}
