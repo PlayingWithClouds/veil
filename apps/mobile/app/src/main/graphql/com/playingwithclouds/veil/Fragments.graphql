@@ -1,0 +1,87 @@
+# Selections shared by several screens.
+
+# Everything a scene card needs.
+fragment SceneCardFields on Scene {
+  id
+  externalId
+  sourceUrl
+  title
+  date
+  durationSeconds
+  posterPath
+  previewVideo
+  previewImages
+  studio {
+    id
+    name
+    imagePath
+  }
+  performers {
+    id
+    name
+    imagePath
+  }
+  tags {
+    id
+    name
+  }
+}
+
+fragment StreamFields on Stream {
+  id
+  url
+  kind
+  label
+  provider
+  resolution
+  width
+  height
+  language
+  format
+  mimeType
+  expectedSpeedBps
+  fileSizeBytes
+  verified
+  pluginName
+}
+
+fragment SubscriptionFields on SearchSubscription {
+  id
+  kind
+  query
+  target {
+    id
+    name
+    imageUrl
+  }
+  sources
+  intervalHours
+  enabled
+  lastRunAt
+  nextRunAt
+  lastError
+  newCount
+  totalCount
+  createdAt
+}
+
+fragment CollectionFields on Collection {
+  id
+  name
+  details
+  itemCount
+  coverPath
+  origin
+  tags {
+    id
+    name
+  }
+}
+
+fragment GalleryCardFields on Gallery {
+  id
+  title
+  sourceUrl
+  coverPath
+  imageCount
+}

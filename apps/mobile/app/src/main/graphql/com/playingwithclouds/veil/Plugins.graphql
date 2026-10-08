@@ -1,0 +1,58 @@
+query Plugins {
+  plugins {
+    id
+    name
+    packageName
+    localBuild
+    displayName
+    iconUrl
+    description
+    version
+    capabilities
+    domains
+    enabled
+    requiresSolver
+    available
+    settings {
+      key
+      label
+      description
+      type
+      required
+      default
+    }
+    settingValues {
+      key
+      value
+    }
+  }
+}
+
+mutation TogglePlugin($name: String!, $enabled: Boolean!) {
+  togglePlugin(name: $name, enabled: $enabled)
+}
+
+mutation UpdatePluginSettings($pluginName: String!, $values: [PluginSettingValueInput!]!) {
+  updatePluginSettings(pluginName: $pluginName, values: $values)
+}
+
+query PluginPackages($query: String) {
+  pluginPackages(query: $query) {
+    name
+    version
+    description
+    installedVersion
+  }
+}
+
+mutation InstallPlugin($packageName: String!) {
+  installPlugin(packageName: $packageName)
+}
+
+mutation UninstallPlugin($name: String!) {
+  uninstallPlugin(name: $name)
+}
+
+mutation UpdatePlugins {
+  updatePlugins
+}

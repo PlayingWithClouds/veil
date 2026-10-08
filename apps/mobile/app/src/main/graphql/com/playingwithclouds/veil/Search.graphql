@@ -1,0 +1,59 @@
+query SearchSuggestions($query: String!, $limit: Int) {
+  searchSuggestions(query: $query, limit: $limit) {
+    kind
+    text
+    entityId
+    imageUrl
+    detail
+  }
+}
+
+mutation RecordSearch($query: String!) {
+  recordSearch(query: $query)
+}
+
+mutation ForgetSearch($query: String!) {
+  forgetSearch(query: $query)
+}
+
+query SearchScenes($search: String, $sources: [String!], $limit: Int, $offset: Int) {
+  scenes(search: $search, sources: $sources, limit: $limit, offset: $offset) {
+    ...SceneCardFields
+  }
+}
+
+query SearchGalleries($search: String, $sources: [String!], $limit: Int, $offset: Int) {
+  galleries(search: $search, sources: $sources, limit: $limit, offset: $offset) {
+    ...GalleryCardFields
+  }
+}
+
+query SearchPerformers($search: String, $limit: Int) {
+  performers(search: $search, limit: $limit) {
+    id
+    name
+    imagePath
+    sceneCount
+  }
+}
+
+query SearchStudios($search: String, $limit: Int) {
+  studios(search: $search, limit: $limit) {
+    id
+    name
+    imagePath
+    sceneCount
+  }
+}
+
+query SearchPlugins {
+  plugins {
+    name
+    displayName
+    iconUrl
+    capabilities
+    enabled
+    available
+    domains
+  }
+}

@@ -1,0 +1,93 @@
+package com.playingwithclouds.veil.data
+
+import com.apollographql.apollo.api.Optional
+import com.playingwithclouds.veil.api.VeilApi
+import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.DeleteWatchHistoryMutation
+import com.playingwithclouds.veil.graphql.DownloadedScenesQuery
+import com.playingwithclouds.veil.graphql.HomeFeedQuery
+import com.playingwithclouds.veil.graphql.MediaCardsQuery
+import com.playingwithclouds.veil.graphql.RandomScenesQuery
+import com.playingwithclouds.veil.graphql.RemoveFromWatchlistMutation
+import com.playingwithclouds.veil.graphql.WatchHistoryQuery
+import com.playingwithclouds.veil.graphql.WatchlistQuery
+
+/** One row of the watch history. */
+data class WatchHistoryEntry(
+    val mediaId: String,
+    val progressSeconds: Int,
+    val durationSeconds: Int?,
+    val completed: Boolean,
+    val scene: SceneSummary?,
+)
+
+/** A saved record resolved to the card data of its media id. */
+data class MediaCard(val mediaId: String, val mediaType: String, val title: String, val posterPath: String?)
+
+/** Home feed, history, watchlist and downloaded scenes. */
+object FeedRepository {
+
+    /**
+     * One page of the ranked recommendation feed. Offset 0 keeps the ranking for 10 minutes unless
+     * refresh is set; later offsets continue that ranking so pages don't overlap.
+     */
+    suspend fun recommendations(limit: Int, offset: Int, refresh: Boolean): List<RecommendedScene> {
+        val query = HomeFeedQuery(Optional.present(limit), Optional.present(offset), Optional.present(refresh))
+        return VeilApi.client.query(query).execute().dataOrThrow().toRecommendedScenes()
+    }
+
+
+    /** A random pick of stored scenes (blocklist applied). */
+    suspend fun randomScenes(limit: Int): List<SceneSummary> {
+        val data = VeilApi.client.query(RandomScenesQuery(Optional.present(limit))).execute().dataOrThrow()
+        return data.randomScenes.map { scene -> scene.sceneCardFields.toSummary() }
+    }
+
+    /** The watch history, most recently watched first. */
+    suspend fun watchHistory(limit: Int, offset: Int): List<WatchHistoryEntry> {
+        val query = WatchHistoryQuery(Optional.present(limit), Optional.present(offset))
+        val data = VeilApi.client.query(query).execute().dataOrThrow()
+        return data.watchHistory.map { row ->
+            WatchHistoryEntry(
+                mediaId = row.media,
+                progressSeconds = row.progressSeconds,
+                durationSeconds = row.durationSeconds,
+                completed = row.completed,
+                scene = row.scene?.sceneCardFields?.toSummary(),
+            )
+        }
+    }
+
+    /** Removes a scene from the watch history. */
+    suspend fun deleteWatchHistory(mediaId: String) {
+        VeilApi.client.mutation(DeleteWatchHistoryMutation(mediaId)).execute().dataOrThrow()
+    }
+
+    /** The saved-for-later list as cards. */
+    suspend fun watchlist(): List<MediaCard> {
+        val ids = VeilApi.client.query(WatchlistQuery()).execute().dataOrThrow().watchlist.map { item -> item.media }
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        val cards = VeilApi.client.query(MediaCardsQuery(ids)).execute().dataOrThrow().mediaCards
+        return cards.map { card -> MediaCard(card.mediaId, card.mediaType, card.title, card.posterPath) }
+    }
+
+    /** Takes a scene off the watchlist. */
+    suspend fun removeFromWatchlist(mediaId: String) {
+        VeilApi.client.mutation(RemoveFromWatchlistMutation(mediaId)).execute().dataOrThrow()
+    }
+
+    /** Scenes with a completed download, newest first. */
+    suspend fun downloadedScenes(): List<SceneSummary> {
+        val data = VeilApi.client.query(DownloadedScenesQuery()).execute().dataOrThrow()
+        return data.downloadedScenes.map { scene -> scene.sceneCardFields.toSummary() }
+    }
+}
+
+/** Maps the feed response to scenes with the source and reason they were served with. */
+fun HomeFeedQuery.Data.toRecommendedScenes(): List<RecommendedScene> {
+    return recommendations.map { row ->
+        RecommendedScene(row.scene.sceneCardFields.toSummary(), row.source, row.reason.text)
+    }
+}

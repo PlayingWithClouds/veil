@@ -1,0 +1,42 @@
+query Collections($origin: String, $search: String, $limit: Int, $offset: Int) {
+  collections(origin: $origin, search: $search, limit: $limit, offset: $offset) {
+    ...CollectionFields
+  }
+}
+
+query CollectionDetail($id: ID!) {
+  collection(id: $id) {
+    ...CollectionFields
+  }
+  collectionMembers(collectionId: $id) {
+    mediaId
+    mediaType
+    position
+    title
+    posterPath
+  }
+}
+
+mutation CreateCollection($name: String!) {
+  createCollection(name: $name) {
+    ...CollectionFields
+  }
+}
+
+mutation RenameCollection($collectionId: ID!, $name: String!) {
+  renameCollection(collectionId: $collectionId, name: $name) {
+    id
+  }
+}
+
+mutation DeleteCollection($collectionId: ID!) {
+  deleteCollection(collectionId: $collectionId)
+}
+
+mutation AddToCollection($collectionId: ID!, $mediaId: ID!) {
+  addToCollection(collectionId: $collectionId, mediaId: $mediaId)
+}
+
+mutation RemoveFromCollection($collectionId: ID!, $mediaId: ID!) {
+  removeFromCollection(collectionId: $collectionId, mediaId: $mediaId)
+}

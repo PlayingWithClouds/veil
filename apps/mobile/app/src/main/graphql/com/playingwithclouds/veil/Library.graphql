@@ -1,0 +1,83 @@
+query WatchHistory($limit: Int, $offset: Int) {
+  watchHistory(limit: $limit, offset: $offset) {
+    media
+    progressSeconds
+    durationSeconds
+    completed
+    scene {
+      ...SceneCardFields
+    }
+  }
+}
+
+mutation DeleteWatchHistory($mediaId: ID!) {
+  deleteWatchHistory(mediaId: $mediaId)
+}
+
+query Watchlist {
+  watchlist {
+    media
+  }
+}
+
+query MediaCards($ids: [ID!]!) {
+  mediaCards(ids: $ids) {
+    mediaId
+    mediaType
+    title
+    posterPath
+  }
+}
+
+mutation AddToWatchlist($mediaId: ID!) {
+  addToWatchlist(mediaId: $mediaId) {
+    id
+  }
+}
+
+mutation RemoveFromWatchlist($mediaId: ID!) {
+  removeFromWatchlist(mediaId: $mediaId)
+}
+
+query DownloadedScenes {
+  downloadedScenes {
+    ...SceneCardFields
+  }
+}
+
+query Jobs {
+  jobs {
+    id
+    kind
+    status
+    pluginName
+    error
+    updatedAt
+    downloadTitle
+    downloadProgress
+    downloadBytesReceived
+    downloadBytesTotal
+    scene {
+      ...SceneCardFields
+    }
+  }
+}
+
+mutation RetryJob($id: ID!) {
+  retryJob(id: $id)
+}
+
+mutation DeleteJob($id: ID!) {
+  deleteJob(id: $id)
+}
+
+mutation DeleteJobsByKind($kind: String!) {
+  deleteJobsByKind(kind: $kind)
+}
+
+query VpnStatus {
+  vpnStatus {
+    connected
+    interface
+  }
+}

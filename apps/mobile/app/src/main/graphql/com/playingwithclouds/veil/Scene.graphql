@@ -1,0 +1,169 @@
+query SceneDetail($id: ID!) {
+  scene(id: $id) {
+    id
+    title
+    sourceUrl
+    details
+    date
+    durationSeconds
+    rating
+    viewCount
+    posterPath
+    previewVideo
+    previewImages
+    studio {
+      id
+      name
+      imagePath
+      sceneCount
+    }
+    performers {
+      id
+      name
+      imagePath
+    }
+    tags {
+      id
+      name
+    }
+  }
+  mediaStreams(mediaId: $id) {
+    ...StreamFields
+  }
+}
+
+mutation EnsureSceneStreams($sceneId: ID!) {
+  ensureSceneStreams(sceneId: $sceneId) {
+    ...StreamFields
+  }
+}
+
+subscription StreamsChanged($mediaId: ID!) {
+  streamsChanged(mediaId: $mediaId) {
+    ...StreamFields
+  }
+}
+
+subscription RelatedChanged($sceneId: ID!) {
+  relatedChanged(sceneId: $sceneId) {
+    ...SceneCardFields
+  }
+}
+
+query SceneRelated($id: ID!, $limit: Int) {
+  scene(id: $id) {
+    related(limit: $limit) {
+      ...SceneCardFields
+    }
+  }
+}
+
+query ResolveStream($url: String!, $pluginName: String) {
+  stream(url: $url, pluginName: $pluginName) {
+    url
+    mimeType
+    quality
+    headers {
+      name
+      value
+    }
+  }
+}
+
+query SceneMarkers($mediaId: ID!) {
+  sceneMarkers(mediaId: $mediaId) {
+    id
+    tag {
+      id
+      name
+    }
+    label
+    seconds
+    endSeconds
+    personal
+  }
+}
+
+mutation CreateSceneMarker($mediaId: ID!, $seconds: Float!, $tagName: String, $label: String) {
+  createSceneMarker(mediaId: $mediaId, seconds: $seconds, tagName: $tagName, label: $label) {
+    id
+  }
+}
+
+mutation DeleteSceneMarker($markerId: ID!) {
+  deleteSceneMarker(markerId: $markerId)
+}
+
+query UserRating($mediaId: ID!) {
+  userRating(mediaId: $mediaId) {
+    rating
+  }
+}
+
+mutation UpsertUserRating($input: UpsertUserRatingInput!) {
+  upsertUserRating(input: $input) {
+    rating
+  }
+}
+
+mutation DeleteUserRating($mediaId: ID!) {
+  deleteUserRating(mediaId: $mediaId)
+}
+
+query OCount($mediaId: ID!) {
+  oCount(mediaId: $mediaId)
+}
+
+mutation IncrementOCount($mediaId: ID!) {
+  incrementOCount(mediaId: $mediaId)
+}
+
+mutation DecrementOCount($mediaId: ID!) {
+  decrementOCount(mediaId: $mediaId)
+}
+
+mutation QueueDownload($url: String!, $title: String!, $pluginName: String) {
+  queueDownload(url: $url, title: $title, pluginName: $pluginName)
+}
+
+query FindAlikeSources($sceneId: ID!, $limit: Int) {
+  findAlikeSources(sceneId: $sceneId, limit: $limit) {
+    externalId
+    title
+    plugin
+    sourceUrl
+    posterUrl
+    durationSeconds
+    matchScore
+  }
+}
+
+mutation AttachAlikeSource($sceneId: ID!, $pluginName: String!, $url: String!) {
+  attachAlikeSource(sceneId: $sceneId, pluginName: $pluginName, url: $url) {
+    ...StreamFields
+  }
+}
+
+query WatchHistoryEntry($mediaId: ID!) {
+  watchHistoryEntry(mediaId: $mediaId) {
+    progressSeconds
+    durationSeconds
+    completed
+  }
+}
+
+mutation UpsertWatchHistory($input: UpsertWatchHistoryInput!) {
+  upsertWatchHistory(input: $input) {
+    id
+  }
+}
+
+query SceneCollectionIds($mediaId: ID!) {
+  collectionIdsForMedia(mediaId: $mediaId)
+}
+
+query SceneOnWatchlist {
+  watchlist {
+    media
+  }
+}

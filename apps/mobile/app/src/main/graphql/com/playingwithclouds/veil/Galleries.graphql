@@ -1,0 +1,40 @@
+fragment GalleryDetailFields on Gallery {
+  id
+  title
+  details
+  date
+  coverPath
+  imageCount
+  tags {
+    id
+    name
+  }
+  images {
+    id
+    filePath
+    title
+    width
+    height
+    position
+  }
+}
+
+query GalleryDetail($id: ID!) {
+  gallery(id: $id) {
+    ...GalleryDetailFields
+  }
+}
+
+mutation EnsureGalleryImages($galleryId: ID!) {
+  ensureGalleryImages(galleryId: $galleryId) {
+    ...GalleryDetailFields
+  }
+}
+
+query PluginCategories($plugin: String!, $limit: Int) {
+  pluginCategories(plugin: $plugin, limit: $limit) {
+    id
+    name
+    poster
+  }
+}

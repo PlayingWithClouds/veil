@@ -1,0 +1,44 @@
+query SearchSubscriptions {
+  searchSubscriptions {
+    ...SubscriptionFields
+  }
+}
+
+query SubscriptionFeed($filter: SubscriptionFeedFilter, $limit: Int, $offset: Int) {
+  subscriptionFeed(filter: $filter, limit: $limit, offset: $offset) {
+    foundAt
+    subscriptionId
+    isNew
+    scene {
+      ...SceneCardFields
+    }
+  }
+}
+
+mutation SubscribeSearch($query: String!, $sources: [String!]) {
+  subscribeSearch(query: $query, sources: $sources) {
+    ...SubscriptionFields
+  }
+}
+
+mutation UpdateSearchSubscription($id: ID!, $intervalHours: Int, $enabled: Boolean) {
+  updateSearchSubscription(id: $id, intervalHours: $intervalHours, enabled: $enabled) {
+    ...SubscriptionFields
+  }
+}
+
+mutation UnsubscribeSearch($id: ID!) {
+  unsubscribeSearch(id: $id)
+}
+
+mutation RunSearchSubscription($id: ID!) {
+  runSearchSubscription(id: $id) {
+    ...SubscriptionFields
+  }
+}
+
+mutation MarkSearchSubscriptionSeen($id: ID!) {
+  markSearchSubscriptionSeen(id: $id) {
+    ...SubscriptionFields
+  }
+}

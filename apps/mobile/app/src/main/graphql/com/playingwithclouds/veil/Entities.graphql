@@ -1,0 +1,157 @@
+query Performers($search: String, $tagId: ID, $sort: String, $limit: Int, $offset: Int) {
+  performers(search: $search, tagId: $tagId, sort: $sort, limit: $limit, offset: $offset) {
+    id
+    name
+    imagePath
+    birthdate
+    sceneCount
+    favorite
+  }
+}
+
+query PerformerDetail($id: ID!) {
+  performer(id: $id) {
+    id
+    name
+    aliases
+    details
+    gender
+    birthdate
+    country
+    ethnicity
+    eyeColor
+    hairColor
+    heightCm
+    weightKg
+    measurements
+    careerLength
+    url
+    imagePath
+    favorite
+    sceneCount
+    tags {
+      id
+      name
+    }
+  }
+}
+
+mutation SetPerformerFavorite($id: ID!, $favorite: Boolean!) {
+  setPerformerFavorite(id: $id, favorite: $favorite) {
+    id
+    favorite
+  }
+}
+
+mutation EnrichPerformer($id: ID!) {
+  enrichPerformer(id: $id)
+}
+
+query Studios($search: String, $tagId: ID, $sort: String, $limit: Int, $offset: Int) {
+  studios(search: $search, tagId: $tagId, sort: $sort, limit: $limit, offset: $offset) {
+    id
+    name
+    imagePath
+    sceneCount
+  }
+}
+
+query StudioDetail($id: ID!) {
+  studio(id: $id) {
+    id
+    name
+    aliases
+    url
+    details
+    imagePath
+    sceneCount
+    parent {
+      id
+      name
+    }
+    tags {
+      id
+      name
+    }
+  }
+}
+
+query Tags($search: String, $limit: Int, $offset: Int) {
+  tags(search: $search, limit: $limit, offset: $offset) {
+    id
+    name
+    category
+    sceneCount
+  }
+}
+
+query TagDetail($id: ID!) {
+  tag(id: $id) {
+    id
+    name
+    aliases
+    description
+    category
+    sceneCount
+  }
+}
+
+# Scenes filtered by any combination of entity, with the tag-match split for tag pages.
+query ScenesList(
+  $performerId: ID
+  $studioId: ID
+  $tagId: ID
+  $sort: String
+  $limit: Int
+  $offset: Int
+) {
+  scenes(
+    performerId: $performerId
+    studioId: $studioId
+    tagId: $tagId
+    sort: $sort
+    limit: $limit
+    offset: $offset
+  ) {
+    tagMatch
+    ...SceneCardFields
+  }
+}
+
+query GalleriesList(
+  $performerId: ID
+  $studioId: ID
+  $tagId: ID
+  $search: String
+  $limit: Int
+  $offset: Int
+) {
+  galleries(
+    performerId: $performerId
+    studioId: $studioId
+    tagId: $tagId
+    search: $search
+    limit: $limit
+    offset: $offset
+  ) {
+    ...GalleryCardFields
+  }
+}
+
+query TagCollections($tagId: ID, $limit: Int) {
+  collections(tagId: $tagId, limit: $limit) {
+    ...CollectionFields
+  }
+}
+
+query SubscriptionForTarget($targetId: ID!) {
+  subscriptionForTarget(targetId: $targetId) {
+    ...SubscriptionFields
+  }
+}
+
+mutation FollowTarget($kind: SubscriptionKind!, $targetId: ID!) {
+  subscribe(kind: $kind, targetId: $targetId) {
+    ...SubscriptionFields
+  }
+}

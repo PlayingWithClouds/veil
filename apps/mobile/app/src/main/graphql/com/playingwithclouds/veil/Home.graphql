@@ -1,0 +1,22 @@
+query HomeFeed($limit: Int, $offset: Int, $refresh: Boolean) {
+  recommendations(limit: $limit, offset: $offset, refresh: $refresh) {
+    source
+    reason {
+      kind
+      text
+    }
+    scene {
+      ...SceneCardFields
+    }
+  }
+}
+
+mutation RecordImpressions($impressions: [ImpressionInput!]!) {
+  recordImpressions(impressions: $impressions)
+}
+
+query RandomScenes($limit: Int) {
+  randomScenes(limit: $limit) {
+    ...SceneCardFields
+  }
+}

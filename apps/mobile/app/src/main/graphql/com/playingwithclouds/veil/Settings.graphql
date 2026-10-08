@@ -1,0 +1,35 @@
+query BackendSettings {
+  settings {
+    maxConcurrentJobs
+    maxJobRetries
+    downloadSpeedLimitKBps
+    allowDownloadsWhileStreaming
+    autoEnrichAfterScrape
+    requireVpn
+  }
+}
+
+mutation UpdateBackendSettings($input: UpdateSettingsInput!) {
+  updateSettings(input: $input) {
+    maxConcurrentJobs
+  }
+}
+
+query Blocklist {
+  blocklist {
+    id
+    kind
+    targetId
+    label
+  }
+}
+
+mutation AddBlock($kind: String!, $targetId: ID!, $label: String) {
+  addBlock(kind: $kind, targetId: $targetId, label: $label) {
+    id
+  }
+}
+
+mutation RemoveBlock($targetId: ID!) {
+  removeBlock(targetId: $targetId)
+}

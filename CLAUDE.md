@@ -22,7 +22,7 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 | `apps/backend/plugins/` | Scraper plugins (TypeScript source; bundled by `apps/backend/scripts/bundle-plugins.ts`) |
 | `apps/backend/internal/db/migrations/` | Versioned SQLite schema (`NNN_*.sql`), embedded, applied on startup, append-only |
 | `apps/web/` | SvelteKit 2 + Svelte 5 (runes) + Tailwind v4 frontend |
-| `apps/mobile/` | Capacitor/Android shell around the web client's static build (see Mobile app) |
+| `apps/mobile/` | Native Kotlin + Jetpack Compose Android app with the embedded Go backend (see Mobile app) |
 | `packages/veil-sdk/` | Shared TS types + genql GraphQL client + plugin SDK |
 | `packages/config/` | Shared eslint/tsconfig |
 
@@ -126,13 +126,13 @@ Cache blobs (`stream-cache/`, `img-cache/`) are capped at `CACHE_MAX_BYTES` (def
 
 ### Mobile app
 
-`apps/mobile` is the Capacitor/Android shell plus the Go backend running on the phone; all UI is `apps/web`, built as a static SPA (`VEIL_TARGET=mobile` switches to adapter-static, output `apps/mobile/www`). In `apps/mobile`: `bun run build` (web build + backend for android/arm64 + release plugin bundles + `cap sync`), `bun run apk` (debug APK at `android/app/build/outputs/apk/debug/`), `bun run android` (install + launch on a device). Live reload: `CAP_SERVER_URL=http://<lan-ip>:<web-port> bunx cap run android`.
+`apps/mobile` is a native Kotlin + Jetpack Compose (Material 3) Android app plus the Go backend running on the phone; no WebView, no Capacitor. Gradle root is `apps/mobile` (Kotlin DSL, version catalog in `gradle/libs.versions.toml`, one `:app` module, package `com.playingwithclouds.veil`). In `apps/mobile`: `bun run build` (backend for android/arm64 into `jniLibs` + release plugin bundles into `assets/plugins`), `bun run apk` (build + `./gradlew assembleDebug`, APK at `app/build/outputs/apk/debug/app-debug.apk`), `bun run android` (apk + adb install + launch), `bun run test` (JVM unit tests). `local.properties` (gitignored) must point `sdk.dir` at an Android SDK with platform 37.
 
-- The backend ships as `jniLibs/arm64-v8a/libveil.so` (the only place Android lets an app execute files from; pure Go, `CGO_ENABLED=0`). `EmbeddedBackend.java` starts it from `VeilApplication` on `127.0.0.1:47831` with `DATA_DIR` in app storage, extracts the APK's plugin bundles (`assets/plugins`) as `PLUGIN_SEED_DIR` once per app install/update, keeps `DNS_SERVERS_FILE` current on network changes, and logs to logcat tag `VeilBackend`.
-- The app uses that on-device backend unless another server is saved in Settings; `apiBase()` in `src/lib/server.ts` is the one place that resolves it (the port is mirrored there). The root layout waits for the backend's `/health` on launch.
-- Backend-built blob/stream URLs carry `PUBLIC_URL` (default localhost). Pass them through `backendUrl()` (or `cacheUrl` for images) so loopback URLs are rebased onto the address the client actually uses.
-- Phone layout = viewport below `md` (`isCompact` store): drawer sidebar, slim top bar, `BottomNav`. Safe-area padding via the `pt-safe` / `pb-safe` utilities.
-- `FullscreenChromeClient.java` makes the Fullscreen API work in the WebView (Capacitor's default client refuses it); `src/lib/native.ts` handles the back button and landscape lock for fullscreen video.
+- The backend ships as `jniLibs/arm64-v8a/libveil.so` (the only place Android lets an app execute files from; pure Go, `CGO_ENABLED=0`). `backend/EmbeddedBackend.kt` starts it from `VeilApplication` on `127.0.0.1:47831` with `DATA_DIR` in app storage, extracts the APK's plugin bundles (`assets/plugins`) as `PLUGIN_SEED_DIR` once per app install/update (`PluginSeeder`), keeps `DNS_SERVERS_FILE` current on network changes, restarts it when it crashes, and logs to logcat tag `VeilBackend`. Environment and DNS-file rules live in `BackendEnvironment` (unit tested).
+- The app uses that on-device backend unless another server is saved in Settings (`ServerSettings`, `ServerForm`; saving restarts the app so no screen keeps data of the old server). `VeilApi` is the one place that builds the Apollo client (HTTP + graphql-ws) for the address in use and waits for `/health` at launch (`BootGate` in `ui/VeilApp.kt`, with the server form as fallback when the backend never answers).
+- GraphQL: Apollo Kotlin generates typed models from `apps/backend/internal/api/graphql/schema/*.graphql`; the app's operations are `app/src/main/graphql/com/playingwithclouds/veil/*.graphql`. After changing SDL, re-check those operations (`./gradlew generateVeilApolloSources`). `data/*Repository.kt` wrap operations and map them to UI models; `/api/search` server-sent events are read by `api/LiveSearch.kt`.
+- Backend-built blob/stream URLs carry `PUBLIC_URL` (default localhost). Pass them through `ServerSettings.backendUrl()` (or `ServerSettings.imageUrl()` / `RemoteImage` for images, which proxies remote images through `/api/img`) so loopback URLs are rebased onto the address the app actually uses (`BackendUrls`, unit tested).
+- UI: `ui/VeilShell.kt` (bottom bar: Home, Following, Library, Collections, History; drawer: Random, Performers, Studios, Tags, Galleries, Plugins, Settings; system back via navigation-compose), one package per screen under `ui/`, `ViewModel` + `StateFlow` + `LoadState`, endless lists through `ui/paging/PagedList`. Playback is Media3 ExoPlayer (`ui/scene/ScenePlayer.kt`): HLS and progressive through the backend's `/api/stream/` proxy, resume and progress saving, fullscreen with landscape lock and system back. Home logs recommendation impressions through `data/ImpressionLogger`.
 
 ## Code style
 
