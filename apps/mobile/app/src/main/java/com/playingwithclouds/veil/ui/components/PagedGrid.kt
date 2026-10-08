@@ -57,7 +57,8 @@ val PosterCellWidth = 150.dp
 
 /**
  * An endless grid fed by a [PagedList]: loads the next page near the end, shows the empty and
- * failed states, and supports pull-to-refresh.
+ * failed states, and supports pull-to-refresh. A [listContent] replaces the plain run of items,
+ * e.g. to interleave full-width rows between them; it must key its item cells by [keyOf].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +76,7 @@ fun <T> PagedGrid(
         bottom = VeilSpacing.large + LocalFloatingBarInset.current,
     ),
     header: (LazyGridScope.() -> Unit)? = null,
+    listContent: (LazyGridScope.(items: List<T>) -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T) -> Unit,
 ) {
     val state by paged.state.collectAsStateWithLifecycle()
@@ -96,8 +98,12 @@ fun <T> PagedGrid(
             modifier = Modifier.fillMaxSize(),
         ) {
             header?.invoke(this)
-            itemsIndexed(state.items, key = { _, item -> keyOf(item) }) { index, item ->
-                Box(Modifier.animateItem()) { itemContent(index, item) }
+            if (listContent != null) {
+                listContent.invoke(this, state.items)
+            } else {
+                itemsIndexed(state.items, key = { _, item -> keyOf(item) }) { index, item ->
+                    Box(Modifier.animateItem()) { itemContent(index, item) }
+                }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 PagedFooter(

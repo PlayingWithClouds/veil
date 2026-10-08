@@ -36,6 +36,7 @@ import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
+import com.playingwithclouds.veil.ui.components.SearchButton
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.LargeHeader
@@ -90,7 +91,10 @@ fun GalleriesScreen(navigator: AppNavigator) {
                     verticalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
                 ) {
                     item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
-                        LargeHeader("Galleries") { SettingsMenuButton(navigator) }
+                        LargeHeader("Galleries") {
+                            SearchButton(navigator)
+                            SettingsMenuButton(navigator)
+                        }
                     }
                     items(list, key = { category -> category.id }) { category ->
                         CategoryTile(category, onClick = { navigator.openGalleryCategory(category.name) })

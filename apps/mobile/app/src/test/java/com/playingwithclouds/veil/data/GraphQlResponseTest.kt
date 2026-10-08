@@ -58,7 +58,7 @@ class GraphQlResponseTest {
 
     private val sceneJson = """
         {"id":"scene:1","externalId":"e1","sourceUrl":"https://x/1","title":"A title","date":"2024-05-06",
-         "durationSeconds":754,"posterPath":"https://cdn/p.jpg","previewVideo":null,"previewImages":["a","b"],
+         "durationSeconds":754,"rating":9.2,"viewCount":4200,"posterPath":"https://cdn/p.jpg","previewVideo":null,"previewImages":["a","b"],
          "studio":{"id":"studio:1","name":"Studio","imagePath":null},
          "performers":[{"id":"performer:1","name":"Jane","imagePath":"/api/blob/j.jpg"}],
          "tags":[{"id":"tag:1","name":"Tag"}]}
@@ -74,6 +74,8 @@ class GraphQlResponseTest {
         assertEquals("scene:1", scene.id)
         assertEquals("A title", scene.title)
         assertEquals(754, scene.durationSeconds)
+        assertEquals(9.2, scene.rating!!, 0.001)
+        assertEquals(4200, scene.viewCount)
         assertEquals("Studio", scene.studio?.name)
         assertEquals(listOf("Jane"), scene.performers.map { performer -> performer.name })
         assertEquals(listOf("a", "b"), scene.previewImages)

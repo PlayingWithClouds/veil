@@ -134,6 +134,19 @@ private val veilTypography = Typography(
     labelSmall = interStyle(11, FontWeight.Medium, 14, 0.01),
 )
 
+/** Text styles beyond the Material scale, for dense feeds. */
+object VeilType {
+
+    /** A scene card's title. */
+    val cardTitle = interStyle(14, FontWeight.Medium, 19)
+
+    /** The muted meta line under a scene card's title. */
+    val cardMeta = interStyle(12, FontWeight.Normal, 16)
+
+    /** The wordmark in the top bar. */
+    val wordmark = interStyle(22, FontWeight.ExtraBold, 26, -0.03)
+}
+
 private val veilShapes = Shapes(
     extraSmall = VeilShapes.extraSmall,
     small = VeilShapes.small,

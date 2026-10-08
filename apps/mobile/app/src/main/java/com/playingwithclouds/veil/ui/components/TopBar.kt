@@ -11,10 +11,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.design.DetailBar
+import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilMenu
 import com.playingwithclouds.veil.ui.design.VeilMenuItem
+import com.playingwithclouds.veil.ui.theme.VeilColors
 
 /** The bar of every detail screen: a round back button, the title and round actions. */
 @Composable
@@ -26,12 +28,29 @@ fun VeilTopBar(
     DetailBar(title, onBack, Modifier.statusBarsPadding(), actions)
 }
 
-/** The gear of the tab screens: a menu with Random, Plugins and Settings. */
+/** The magnifier in the headers of the tab screens; opens the search screen. */
 @Composable
-fun SettingsMenuButton(navigator: AppNavigator) {
+fun SearchButton(navigator: AppNavigator, bare: Boolean = false) {
+    if (bare) {
+        IconTap(VeilIcons.Search, contentDescription = "Search", onClick = { navigator.openSearch() }, tint = VeilColors.content)
+        return
+    }
+    RoundIconButton(VeilIcons.Search, contentDescription = "Search", onClick = { navigator.openSearch() })
+}
+
+/**
+ * The gear of the tab screens: a menu with Random, Plugins and Settings. [bare] draws just the
+ * icon, for the compact Home bar.
+ */
+@Composable
+fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
     var open by remember { mutableStateOf(false) }
     Box {
-        RoundIconButton(VeilIcons.Settings, contentDescription = "More", onClick = { open = true })
+        if (bare) {
+            IconTap(VeilIcons.Settings, contentDescription = "More", onClick = { open = true }, tint = VeilColors.content)
+        } else {
+            RoundIconButton(VeilIcons.Settings, contentDescription = "More", onClick = { open = true })
+        }
         VeilMenu(expanded = open, onDismissRequest = { open = false }) {
             VeilMenuItem("Random", icon = VeilIcons.Random, onClick = {
                 open = false

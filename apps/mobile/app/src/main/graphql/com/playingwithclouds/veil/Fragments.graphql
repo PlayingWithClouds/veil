@@ -8,6 +8,8 @@ fragment SceneCardFields on Scene {
   title
   date
   durationSeconds
+  rating
+  viewCount
   posterPath
   previewVideo
   previewImages

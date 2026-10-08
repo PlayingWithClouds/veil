@@ -35,6 +35,7 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.LoadingBar
+import com.playingwithclouds.veil.ui.design.FeedChip
 import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.PillRow
 import com.playingwithclouds.veil.ui.design.PrimaryButton
@@ -241,6 +242,8 @@ private fun PillSamples() {
             Pill("With icon", onClick = {}, icon = VeilIcons.Follow)
             TagPill("tag pill", onClick = {})
             TagPill("POV", onClick = {})
+            FeedChip("Feed chip", onClick = {}, icon = VeilIcons.Tune)
+            FeedChip("Selected", onClick = {}, selected = true)
         }
         SegmentedControl(listOf("Scenes", "Galleries", "Images"), segment, onSelect = { index -> segment = index }, modifier = Modifier.gutterPadding())
     }

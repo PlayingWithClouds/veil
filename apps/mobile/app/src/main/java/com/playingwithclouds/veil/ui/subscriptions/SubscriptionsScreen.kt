@@ -36,6 +36,7 @@ import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
+import com.playingwithclouds.veil.ui.components.SearchButton
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.components.pressClickable
@@ -119,7 +120,10 @@ fun SubscriptionsScreen(navigator: AppNavigator) {
                 gridState = gridState,
                 header = {
                     fullWidthItem("header") {
-                        LargeHeader("Following") { SettingsMenuButton(navigator) }
+                        LargeHeader("Following") {
+                            SearchButton(navigator)
+                            SettingsMenuButton(navigator)
+                        }
                     }
                     fullWidthItem("strip") { SubscriptionStrip(subscriptions, navigator) }
                     fullWidthItem("filters") { FeedFilters(options, viewModel::setOptions) }

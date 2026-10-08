@@ -1,5 +1,19 @@
-query HomeFeed($limit: Int, $offset: Int, $refresh: Boolean, $sources: [String!]) {
-  recommendations(limit: $limit, offset: $offset, refresh: $refresh, sources: $sources) {
+query HomeFeed(
+  $limit: Int
+  $offset: Int
+  $refresh: Boolean
+  $sources: [String!]
+  $minDuration: Int
+  $maxDuration: Int
+) {
+  recommendations(
+    limit: $limit
+    offset: $offset
+    refresh: $refresh
+    sources: $sources
+    minDuration: $minDuration
+    maxDuration: $maxDuration
+  ) {
     source
     reason {
       kind
@@ -7,6 +21,40 @@ query HomeFeed($limit: Int, $offset: Int, $refresh: Boolean, $sources: [String!]
     }
     scene {
       ...SceneCardFields
+    }
+  }
+}
+
+# Home with a tag chip or preset picked: a plain listing instead of the ranked feed.
+query HomeScenes(
+  $limit: Int
+  $offset: Int
+  $tagId: ID
+  $sources: [String!]
+  $minDuration: Int
+  $maxDuration: Int
+) {
+  scenes(
+    limit: $limit
+    offset: $offset
+    tagId: $tagId
+    sources: $sources
+    minDuration: $minDuration
+    maxDuration: $maxDuration
+  ) {
+    ...SceneCardFields
+  }
+}
+
+# The titled shelves interleaved into the feed.
+query HomeRows($rowLimit: Int, $perRow: Int) {
+  recommendedRows(rowLimit: $rowLimit, perRow: $perRow) {
+    key
+    title
+    items {
+      scene {
+        ...SceneCardFields
+      }
     }
   }
 }
