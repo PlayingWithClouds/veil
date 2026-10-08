@@ -61,6 +61,9 @@ import com.playingwithclouds.veil.util.formatReleaseDate
 
 private const val MILLISECONDS_PER_SECOND = 1000.0
 
+/** Tags shown before the "… more" pill. */
+private const val SCENE_TAG_LIMIT = 8
+
 /** Everything below the player: title, reactions, sources, people, tags, markers and related scenes. */
 @Composable
 fun SceneContent(
@@ -82,7 +85,7 @@ fun SceneContent(
         }
         item { StudioLine(detail, state, navigator) }
         item { PerformerRow(detail.performers, navigator) }
-        item { TagChips(detail.tags, onClick = { tag -> navigator.openTag(tag.id) }) }
+        item { TagChips(detail.tags, onClick = { tag -> navigator.openTag(tag.id) }, limit = SCENE_TAG_LIMIT) }
         item { DetailsText(detail.details) }
         item { MarkerSection(state.markers, player, viewModel, onAdd = { dialog = SceneDialog.Marker }) }
         if (state.related.isNotEmpty()) {
