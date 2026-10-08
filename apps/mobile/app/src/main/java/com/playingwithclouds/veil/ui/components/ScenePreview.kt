@@ -23,7 +23,7 @@ import com.playingwithclouds.veil.api.ServerSettings
  * is drawn. The player lives only while this is composed, so at most the previewing card holds one.
  */
 @Composable
-fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier) {
+fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) {
     val context = LocalContext.current
     var firstFrameShown by remember(previewVideo) { mutableStateOf(false) }
     val alpha by animateFloatAsState(if (firstFrameShown) 1f else 0f, label = "preview")
@@ -55,6 +55,6 @@ fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier) {
         player = player,
         modifier = modifier.alpha(alpha),
         surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-        contentScale = ContentScale.Crop,
+        contentScale = contentScale,
     )
 }

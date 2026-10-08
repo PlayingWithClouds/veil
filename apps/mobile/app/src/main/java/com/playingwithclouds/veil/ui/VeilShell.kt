@@ -44,6 +44,8 @@ import com.playingwithclouds.veil.ui.library.LibraryScreen
 import com.playingwithclouds.veil.ui.performers.PerformerScreen
 import com.playingwithclouds.veil.ui.performers.PerformersScreen
 import com.playingwithclouds.veil.ui.plugins.PluginsScreen
+import com.playingwithclouds.veil.ui.previews.PreviewFeedScreen
+import com.playingwithclouds.veil.ui.taste.TasteScreen
 import com.playingwithclouds.veil.ui.random.RandomScreen
 import com.playingwithclouds.veil.ui.scene.SceneScreen
 import com.playingwithclouds.veil.ui.search.SearchScreen
@@ -159,6 +161,8 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.RANDOM) { RandomScreen(navigator) }
     composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
     composable(Routes.SUBSCRIPTION) { entry -> SubscriptionScreen(entry.argument("id"), navigator) }
+    composable(Routes.PREVIEW_FEED) { PreviewFeedScreen(navigator) }
+    composable(Routes.TASTE) { TasteScreen(navigator) }
 }
 
 /** A string argument of the destination; empty when missing. */

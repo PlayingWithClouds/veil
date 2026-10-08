@@ -1,0 +1,36 @@
+# Preview feed, tag filters and the taste dashboard.
+
+# The ranked feed for the vertical preview feed, minus scenes carrying excluded tags.
+query PreviewFeed($limit: Int, $offset: Int, $refresh: Boolean, $excludeTagIds: [ID!]) {
+  recommendations(limit: $limit, offset: $offset, refresh: $refresh, excludeTagIds: $excludeTagIds) {
+    source
+    scene {
+      ...SceneCardFields
+    }
+  }
+}
+
+fragment TasteEntryFields on TasteEntry {
+  id
+  name
+  imagePath
+  affinity
+}
+
+query TasteProfile($limit: Int) {
+  tasteProfile(limit: $limit) {
+    signalCount
+    tags {
+      ...TasteEntryFields
+    }
+    performers {
+      ...TasteEntryFields
+    }
+    studios {
+      ...TasteEntryFields
+    }
+    sites {
+      ...TasteEntryFields
+    }
+  }
+}
