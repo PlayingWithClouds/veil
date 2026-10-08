@@ -63,7 +63,13 @@ data class TagDetail(val id: String, val name: String, val aliases: List<String>
 data class TaggedScene(val scene: SceneSummary, val inherited: Boolean)
 
 /** Which entity a scene or gallery listing is for. */
-data class EntityFilter(val performerId: String? = null, val studioId: String? = null, val tagId: String? = null)
+data class EntityFilter(
+    val performerId: String? = null,
+    val studioId: String? = null,
+    val tagId: String? = null,
+    /** Backend sort name ("date", "rating", ...); newest release first when unset on entity pages. */
+    val sort: String? = null,
+)
 
 /** What a followable entity is, matching the subscription kinds. */
 enum class FollowKind(val graphqlKind: SubscriptionKind) {
@@ -183,8 +189,8 @@ object EntityRepository {
 
     /** Scenes of an entity, newest release first; for tags, direct matches rank first. */
     suspend fun scenes(filter: EntityFilter, limit: Int, offset: Int): List<TaggedScene> {
-        var sort: String? = null
-        if (filter.tagId == null) {
+        var sort = filter.sort
+        if (sort == null && filter.tagId == null) {
             sort = "date"
         }
         val query = ScenesListQuery(

@@ -26,11 +26,12 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.design.bleed
-import com.playingwithclouds.veil.ui.entity.EntityHeader
+import com.playingwithclouds.veil.ui.entity.ChannelHeader
+import com.playingwithclouds.veil.ui.entity.ChannelSort
+import com.playingwithclouds.veil.ui.entity.ChannelSortBar
 import com.playingwithclouds.veil.ui.entity.EntitySceneFetch
 import com.playingwithclouds.veil.ui.entity.EntitySceneFetchBar
 import com.playingwithclouds.veil.ui.entity.GalleryRow
-import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.loadInto
 import com.playingwithclouds.veil.ui.paging.PagedList
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -52,7 +53,18 @@ class StudioViewModel(private val studioId: String) : ViewModel() {
 
     /** The studio's scenes, newest release first. */
     val scenes = PagedList(viewModelScope, PAGE_SIZE, { tagged -> tagged.scene.id }) { offset ->
-        EntityRepository.scenes(EntityFilter(studioId = studioId), PAGE_SIZE, offset)
+        EntityRepository.scenes(EntityFilter(studioId = studioId, sort = mutableSort.value.backendName), PAGE_SIZE, offset)
+    }
+
+    private val mutableSort = MutableStateFlow(ChannelSort.NEWEST)
+
+    /** How the filmography is ordered. */
+    val sort: StateFlow<ChannelSort> = mutableSort
+
+    /** Re-orders the filmography and reloads it from the top. */
+    fun setSort(sort: ChannelSort) {
+        mutableSort.value = sort
+        scenes.refresh()
     }
 
     /** The search for the studio's videos on every site, started when the page opens. */
@@ -105,6 +117,7 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "studio-$id") { StudioViewModel(id) }
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val galleries by viewModel.galleries.collectAsStateWithLifecycle()
+    val sort by viewModel.sort.collectAsStateWithLifecycle()
     Scaffold(topBar = { VeilTopBar("Studio", onBack = navigator::back) }) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { studio ->
             PagedGrid(
@@ -113,7 +126,8 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
                 emptyText = "No videos for this studio yet.",
                 modifier = Modifier.padding(padding),
                 header = {
-                    fullWidthItem("header") { StudioHeader(studio, navigator) }
+                    fullWidthItem("header") { StudioHeader(studio, viewModel, navigator) }
+                    fullWidthItem("sort") { ChannelSortBar(sort, viewModel::setSort) }
                     fullWidthItem("galleries") { GalleryRow("Galleries", galleries, navigator::openGallery) }
                     fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
@@ -126,11 +140,16 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
 
 /** Name, logo, actions, facts and tags of a studio. */
 @Composable
-private fun StudioHeader(studio: StudioDetail, navigator: AppNavigator) {
-    EntityHeader(
+private fun StudioHeader(studio: StudioDetail, viewModel: StudioViewModel, navigator: AppNavigator) {
+    val scenes by viewModel.scenes.state.collectAsStateWithLifecycle()
+    ChannelHeader(
+        entityId = studio.id,
         name = studio.name,
         imagePath = studio.imagePath,
-        subtitle = "${studio.sceneCount} videos",
+        bannerPath = scenes.items.firstOrNull()?.scene?.posterPath,
+        videoCount = studio.sceneCount,
+        facts = listOf("Aliases" to studio.aliases.joinToString(", ").ifEmpty { null }, "Website" to studio.url),
+        details = studio.details,
         actions = { FollowButton(FollowKind.STUDIO, studio.id, navigator) },
     )
     val parent = studio.parent
@@ -138,6 +157,5 @@ private fun StudioHeader(studio: StudioDetail, navigator: AppNavigator) {
         // Pulled back by the action's own inset so its text lines up with the gutter.
         TextAction("Part of ${parent.name}", onClick = { navigator.openStudio(parent.id) }, modifier = Modifier.offset(x = -VeilSpacing.small))
     }
-    ProfileInfo(listOf("Aliases" to studio.aliases.joinToString(", ").ifEmpty { null }, "Website" to studio.url), studio.details)
     TagChips(studio.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
 }
