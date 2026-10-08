@@ -52,14 +52,16 @@ fun Pill(
     icon: ImageVector? = null,
     leading: (@Composable () -> Unit)? = null,
 ) {
-    val background by animateColorAsState(if (selected) VeilColors.accent else VeilColors.surfaceHigh, label = "pill")
     val foreground by animateColorAsState(if (selected) VeilColors.onAccent else VeilColors.content, label = "pillText")
+    var surface = Modifier.glassControl(VeilShapes.capsule)
+    if (selected) {
+        surface = Modifier.clip(VeilShapes.capsule).background(VeilColors.accent)
+    }
     Row(
         modifier
             .height(36.dp)
             .pressClickable(onClick)
-            .clip(VeilShapes.capsule)
-            .background(background)
+            .then(surface)
             .padding(horizontal = VeilSpacing.large),
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
@@ -82,9 +84,7 @@ fun TagPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .height(32.dp)
             .pressClickable(onClick)
-            .clip(VeilShapes.capsule)
-            .background(VeilColors.surface)
-            .border(1.dp, VeilColors.surfaceHigh, VeilShapes.capsule)
+            .glassControl(VeilShapes.capsule)
             .padding(horizontal = VeilSpacing.medium, vertical = 7.dp),
         color = VeilColors.contentMuted,
         style = MaterialTheme.typography.labelMedium,
@@ -116,7 +116,8 @@ fun <T> PillRow(
 }
 
 /**
- * Equal-width segments in a dark capsule with a white thumb that springs to the selected one:
+ * Equal-width segments in a glass capsule with a lighter thumb that springs to the selected one,
+ * like the tab bar:
  * the app's replacement for tab rows.
  */
 @Composable
@@ -137,16 +138,15 @@ fun SegmentedControl(
         modifier
             .fillMaxWidth()
             .height(40.dp)
-            .clip(VeilShapes.capsule)
-            .background(VeilColors.surfaceHigh)
+            .glassControl(VeilShapes.capsule)
             .padding(3.dp)
             .onSizeChanged { size -> width = size.width },
     ) {
-        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(VeilShapes.capsule).background(VeilColors.content))
+        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(VeilShapes.capsule).background(VeilColors.glassSelection))
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             labels.forEachIndexed { index, label ->
                 val color by animateColorAsState(
-                    if (index == selectedIndex) VeilColors.canvas else VeilColors.contentMuted,
+                    if (index == selectedIndex) VeilColors.content else VeilColors.contentMuted,
                     label = "segment",
                 )
                 Box(

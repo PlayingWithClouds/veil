@@ -38,7 +38,7 @@ import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import kotlin.math.floor
 
-/** A capsule toggle: accent track with a dark knob when on, a dark track with a grey knob when off. */
+/** A capsule toggle: accent track with a dark knob when on, a glass track with a grey knob when off. */
 @Composable
 fun VeilSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val knobOffset by animateDpAsState(
@@ -46,13 +46,13 @@ fun VeilSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: M
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "knob",
     )
-    val track by animateColorAsState(if (checked) VeilColors.accent else VeilColors.surfaceHigh, label = "track")
+    val track by animateColorAsState(if (checked) VeilColors.accent else Color.Transparent, label = "track")
     val knob by animateColorAsState(if (checked) VeilColors.onAccent else VeilColors.contentMuted, label = "knobColor")
     Box(
         modifier
             .size(width = 50.dp, height = 30.dp)
             .pressClickable { onCheckedChange(!checked) }
-            .clip(CircleShape)
+            .glassControl(CircleShape)
             .background(track)
             .padding(3.dp),
     ) {
@@ -60,15 +60,11 @@ fun VeilSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: M
     }
 }
 
-/** A round check mark: accent with a dark tick when checked, an empty ring otherwise. */
+/** A round check mark: accent with a dark tick when checked, an empty glass disc otherwise. */
 @Composable
 fun VeilCheck(checked: Boolean, modifier: Modifier = Modifier) {
     val fill by animateColorAsState(if (checked) VeilColors.accent else Color.Transparent, label = "check")
-    var ring = Modifier.border(1.5.dp, VeilColors.contentFaint, CircleShape)
-    if (checked) {
-        ring = Modifier
-    }
-    Box(modifier.size(24.dp).clip(CircleShape).background(fill).then(ring), contentAlignment = Alignment.Center) {
+    Box(modifier.size(24.dp).glassControl(CircleShape).background(fill), contentAlignment = Alignment.Center) {
         if (checked) {
             Icon(VeilIcons.Check, contentDescription = null, tint = VeilColors.onAccent, modifier = Modifier.size(15.dp))
         }

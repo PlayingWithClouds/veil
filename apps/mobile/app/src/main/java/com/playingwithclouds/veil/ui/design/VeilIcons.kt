@@ -9,7 +9,7 @@ import com.adamglin.phosphoricons.fill.Books as BooksFill
 import com.adamglin.phosphoricons.fill.Heart as HeartFill
 import com.adamglin.phosphoricons.fill.House as HouseFill
 import com.adamglin.phosphoricons.fill.Play as PlayFill
-import com.adamglin.phosphoricons.fill.Playlist as PlaylistFill
+import com.adamglin.phosphoricons.fill.Images as ImagesFill
 import com.adamglin.phosphoricons.fill.Rss as RssFill
 import com.adamglin.phosphoricons.fill.ThumbsDown as ThumbsDownFill
 import com.adamglin.phosphoricons.fill.ThumbsUp as ThumbsUpFill
@@ -60,7 +60,6 @@ object VeilIcons {
     val Close: ImageVector get() = PhosphorIcons.Regular.X
     val CollectionAdd: ImageVector get() = PhosphorIcons.Regular.FolderSimplePlus
     val Collections: ImageVector get() = PhosphorIcons.Regular.Playlist
-    val CollectionsFilled: ImageVector get() = PhosphorIcons.Fill.PlaylistFill
     val Delete: ImageVector get() = PhosphorIcons.Regular.Trash
     val Dislike: ImageVector get() = PhosphorIcons.Regular.ThumbsDown
     val DislikeFilled: ImageVector get() = PhosphorIcons.Fill.ThumbsDownFill
@@ -70,6 +69,7 @@ object VeilIcons {
     val Following: ImageVector get() = PhosphorIcons.Regular.Rss
     val FollowingFilled: ImageVector get() = PhosphorIcons.Fill.RssFill
     val Galleries: ImageVector get() = PhosphorIcons.Regular.Images
+    val GalleriesFilled: ImageVector get() = PhosphorIcons.Fill.ImagesFill
     val Heart: ImageVector get() = PhosphorIcons.Regular.Heart
     val HeartFilled: ImageVector get() = PhosphorIcons.Fill.HeartFill
     val History: ImageVector get() = PhosphorIcons.Regular.ClockCounterClockwise

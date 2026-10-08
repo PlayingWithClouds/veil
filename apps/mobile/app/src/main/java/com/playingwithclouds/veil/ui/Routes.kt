@@ -5,8 +5,9 @@ import androidx.navigation.NavHostController
 
 /** Route patterns of every destination, plus builders that fill in the arguments. */
 object Routes {
-    /** The swipeable tab pager: Home, Following, Collections, Library. */
+    /** The swipeable tab pager: Home, Following, Galleries, Library. */
     const val TABS = "tabs"
+    const val COLLECTIONS = "collections"
     const val HISTORY = "history"
     const val LIBRARY_SECTION = "library/{section}"
     const val SEARCH = "search?query={query}"
@@ -72,7 +73,7 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openScene(id: String) = controller.navigate(Routes.scene(id))
 
-    fun openCollections() = openTab(Tab.COLLECTIONS)
+    fun openCollections() = controller.navigate(Routes.COLLECTIONS)
 
     fun openHistory() = controller.navigate(Routes.HISTORY)
 

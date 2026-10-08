@@ -41,7 +41,9 @@ import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.SceneShelf
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
+import com.playingwithclouds.veil.ui.Tab
 import com.playingwithclouds.veil.ui.design.LargeHeader
+import com.playingwithclouds.veil.ui.design.glassControl
 import com.playingwithclouds.veil.ui.design.PinnedTitleBar
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.VeilIcons
@@ -67,7 +69,7 @@ private val hubEntries = listOf(
     HubEntry("Performers", VeilIcons.Performers) { navigator -> navigator.openPerformers() },
     HubEntry("Studios", VeilIcons.Studios) { navigator -> navigator.openStudios() },
     HubEntry("Tags", VeilIcons.Tags) { navigator -> navigator.openTags() },
-    HubEntry("Galleries", VeilIcons.Galleries) { navigator -> navigator.openGalleries() },
+    HubEntry("Galleries", VeilIcons.Galleries) { navigator -> navigator.openTab(Tab.GALLERIES) },
 )
 
 /** The recently watched scenes shown at the top of the hub. */
@@ -144,9 +146,8 @@ private fun HubTile(label: String, icon: ImageVector, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .clip(VeilShapes.panel)
-            .background(VeilColors.surface)
             .pressClickable(onClick)
+            .glassControl(VeilShapes.panel)
             .padding(horizontal = VeilSpacing.medium),
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,

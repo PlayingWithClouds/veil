@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,8 +41,8 @@ private val glassStyle = HazeBlurStyle {
  * Turns the element into glass of [shape]: the page behind it, blurred and tinted, with a hairline
  * edge. Without a backdrop it falls back to a translucent fill.
  *
- * Glass is for things floating over scrolling content (the tab bar, a pinned title bar). Controls
- * that sit in the layout use flat fills ([RoundIconButton], [SecondaryButton]).
+ * Blurring glass is for things floating over scrolling content (the tab bar). Controls that sit in
+ * the page use [glassControl], the same look without the blur.
  */
 @Composable
 fun Modifier.glass(shape: Shape): Modifier {
@@ -54,6 +55,17 @@ fun Modifier.glass(shape: Shape): Modifier {
     }
     return surface.border(1.dp, VeilColors.glassEdge, shape)
 }
+
+/** Glass for controls in the page (buttons, pills, switches): a translucent sheen with the hairline glass edge. */
+fun Modifier.glassControl(shape: Shape): Modifier {
+    return this
+        .clip(shape)
+        .background(glassControlFill)
+        .border(1.dp, VeilColors.glassEdge, shape)
+}
+
+/** Lighter at the top, like light catching the upper edge of glass. */
+private val glassControlFill = Brush.verticalGradient(listOf(VeilColors.glassControlTop, VeilColors.glassControlBottom))
 
 /** A round glass button holding one icon, for controls floating over content. */
 @Composable
@@ -72,7 +84,7 @@ fun GlassIconButton(
     }
 }
 
-/** A round button on a plain dark fill, for places with nothing behind to blur. */
+/** A round glass button in the page. */
 @Composable
 fun RoundIconButton(
     icon: ImageVector,
@@ -88,8 +100,7 @@ fun RoundIconButton(
             .size(size)
             .alpha(enabledAlpha(enabled))
             .pressClickable(enabled = enabled, onClick = onClick)
-            .clip(CircleShape)
-            .background(VeilColors.surfaceHigh),
+            .glassControl(CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size * 0.5f))
