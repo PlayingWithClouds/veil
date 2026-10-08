@@ -35,7 +35,6 @@ import com.playingwithclouds.veil.ui.collections.CollectionScreen
 import com.playingwithclouds.veil.ui.collections.CollectionsScreen
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
 import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
-import com.playingwithclouds.veil.ui.galleries.GalleriesTabScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryCategoryScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryScreen
 import com.playingwithclouds.veil.ui.history.HistoryScreen
@@ -132,7 +131,7 @@ private fun TabScreen(tab: Tab, navigator: AppNavigator) {
     when (tab) {
         Tab.HOME -> HomeScreen(navigator)
         Tab.FOLLOWING -> SubscriptionsScreen(navigator)
-        Tab.GALLERIES -> GalleriesTabScreen(navigator)
+        Tab.GALLERIES -> GalleriesScreen(navigator)
         Tab.LIBRARY -> LibraryHubScreen(navigator)
     }
 }
@@ -154,7 +153,6 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.TAGS) { TagsScreen(navigator) }
     composable(Routes.TAG) { entry -> TagScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
-    composable(Routes.GALLERIES) { GalleriesScreen(navigator) }
     composable(Routes.GALLERY_CATEGORY) { entry -> GalleryCategoryScreen(entry.argument("name"), navigator) }
     composable(Routes.GALLERY) { entry -> GalleryScreen(entry.argument("id"), navigator) }
     composable(Routes.PLUGINS) { PluginsScreen(navigator) }

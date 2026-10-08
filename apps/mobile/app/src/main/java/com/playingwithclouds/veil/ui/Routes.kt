@@ -19,7 +19,6 @@ object Routes {
     const val TAGS = "tags"
     const val TAG = "tag/{id}"
     const val COLLECTION = "collection/{id}"
-    const val GALLERIES = "galleries"
     const val GALLERY_CATEGORY = "galleries/category/{name}"
     const val GALLERY = "gallery/{id}"
     const val PLUGINS = "plugins"
@@ -94,7 +93,6 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openCollection(id: String) = controller.navigate(Routes.collection(id))
 
-    fun openGalleries() = controller.navigate(Routes.GALLERIES)
 
     fun openGalleryCategory(name: String) = controller.navigate(Routes.galleryCategory(name))
 
