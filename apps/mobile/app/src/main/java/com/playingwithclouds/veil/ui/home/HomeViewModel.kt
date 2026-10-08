@@ -4,64 +4,42 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.FeedRepository
-import com.playingwithclouds.veil.data.GallerySummary
 import com.playingwithclouds.veil.data.RecommendedScene
 import com.playingwithclouds.veil.data.SceneSummary
-import com.playingwithclouds.veil.data.SearchRepository
-import com.playingwithclouds.veil.data.SearchSite
 import com.playingwithclouds.veil.data.WatchProgressStore
+import com.playingwithclouds.veil.ui.SiteFilter
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/** What the Home tab lists. */
-enum class HomeMode(val label: String) {
-    VIDEOS("Videos"),
-    GALLERIES("Galleries"),
-}
-
-/** The recommendation feed of the Home tab, or the newest galleries, narrowed to chosen sites. */
+/** The recommendation feed of the Home tab, narrowed to the sites picked in its badges. */
 class HomeViewModel : ViewModel() {
 
     private var firstPageLoaded = false
 
     private var sourcesChanged = false
 
-    private val mutableMode = MutableStateFlow(HomeMode.VIDEOS)
-
-    /** Whether Home shows videos or galleries. */
-    val mode: StateFlow<HomeMode> = mutableMode
-
-    private val mutableSites = MutableStateFlow<List<SearchSite>>(emptyList())
-
-    /** The sites that list content, offered as filter badges. */
-    val sites: StateFlow<List<SearchSite>> = mutableSites
-
-    private val mutableSelectedSources = MutableStateFlow<Set<String>>(emptySet())
-
-    /** The plugin names the lists are narrowed to; empty means every site. */
-    val selectedSources: StateFlow<Set<String>> = mutableSelectedSources
+    /** The site badges; a new pick reloads the feed from the stored ranking. */
+    val siteFilter = SiteFilter(viewModelScope, offers = { site -> site.listsScenes }) {
+        sourcesChanged = true
+        feed.refresh()
+    }
 
     /**
      * The ranked feed. The first load re-uses a recent ranking; every later load of the first page
      * is a user refresh and asks the engine to re-rank, except when it only follows a site change.
      */
-    val feed = PagedList<RecommendedScene>(viewModelScope, PAGE_SIZE, { item -> item.scene.id }) { offset ->
+    val feed: PagedList<RecommendedScene> = PagedList(viewModelScope, PAGE_SIZE, { item -> item.scene.id }) { offset ->
         val forceRanking = offset == 0 && firstPageLoaded && !sourcesChanged
-        val page = FeedRepository.recommendations(PAGE_SIZE, offset, forceRanking, mutableSelectedSources.value.toList())
+        val page = FeedRepository.recommendations(PAGE_SIZE, offset, forceRanking, siteFilter.selectedSources())
         if (offset == 0) {
             firstPageLoaded = true
             sourcesChanged = false
             AppServices.impressions.resetShown()
         }
         page
-    }
-
-    /** The newest galleries of the chosen sites. */
-    val galleries = PagedList<GallerySummary>(viewModelScope, PAGE_SIZE, { gallery -> gallery.id }) { offset ->
-        SearchRepository.searchGalleries("", mutableSelectedSources.value.toList(), PAGE_SIZE, offset)
     }
 
     private val mutableContinueWatching = MutableStateFlow<List<SceneSummary>>(emptyList())
@@ -72,67 +50,6 @@ class HomeViewModel : ViewModel() {
     init {
         feed.loadMore()
         refreshProgress()
-        viewModelScope.launch { loadSites() }
-    }
-
-    /** Switches between videos and galleries; site choices that the new mode has no use for are dropped. */
-    fun selectMode(mode: HomeMode) {
-        if (mode == mutableMode.value) {
-            return
-        }
-        mutableMode.value = mode
-        val offered = sitesFor(mode).map { site -> site.name }.toSet()
-        mutableSelectedSources.value = mutableSelectedSources.value.intersect(offered)
-        reloadCurrent()
-    }
-
-    /** Adds or removes a site from the filter and reloads. */
-    fun toggleSource(name: String) {
-        val current = mutableSelectedSources.value
-        if (current.contains(name)) {
-            mutableSelectedSources.value = current - name
-        } else {
-            mutableSelectedSources.value = current + name
-        }
-        reloadCurrent()
-    }
-
-    /** Clears the site filter. */
-    fun clearSources() {
-        if (mutableSelectedSources.value.isEmpty()) {
-            return
-        }
-        mutableSelectedSources.value = emptySet()
-        reloadCurrent()
-    }
-
-    /** The sites that list what [mode] shows. */
-    fun sitesFor(mode: HomeMode): List<SearchSite> {
-        if (mode == HomeMode.GALLERIES) {
-            return mutableSites.value.filter { site -> site.listsGalleries }
-        }
-        return mutableSites.value.filter { site -> site.listsScenes }
-    }
-
-    /** Reloads the list of the current mode from the top. */
-    private fun reloadCurrent() {
-        if (mutableMode.value == HomeMode.GALLERIES) {
-            galleries.refresh()
-            return
-        }
-        sourcesChanged = true
-        feed.refresh()
-    }
-
-    /** Loads the filterable sites; without them Home simply shows no badges. */
-    private suspend fun loadSites() {
-        try {
-            mutableSites.value = SearchRepository.searchSites()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            // Badges are optional.
-        }
     }
 
     /** Reloads the resume positions and the continue-watching shelf, e.g. after coming back from a scene. */

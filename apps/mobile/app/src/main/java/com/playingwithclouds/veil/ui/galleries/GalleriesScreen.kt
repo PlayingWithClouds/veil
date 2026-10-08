@@ -63,7 +63,7 @@ class GalleriesViewModel : ViewModel() {
 fun GalleriesScreen(navigator: AppNavigator) {
     val viewModel = viewModel { GalleriesViewModel() }
     val categories by viewModel.categories.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Galleries", onBack = navigator::back) }) { padding ->
+    Scaffold(topBar = { VeilTopBar("Categories", onBack = navigator::back) }) { padding ->
         LoadStateContent(categories, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { list ->
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(150.dp),

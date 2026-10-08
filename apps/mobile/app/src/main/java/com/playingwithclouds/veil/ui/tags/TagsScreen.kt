@@ -28,6 +28,7 @@ import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.design.glassControl
 import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.paging.SearchablePagedList
@@ -74,8 +75,7 @@ private fun TagTile(tag: TagSummary, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .pressClickable(onClick)
-            .clip(VeilShapes.card)
-            .background(VeilColors.surface)
+            .glassControl(VeilShapes.card)
             .padding(horizontal = VeilSpacing.large, vertical = VeilSpacing.medium),
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {

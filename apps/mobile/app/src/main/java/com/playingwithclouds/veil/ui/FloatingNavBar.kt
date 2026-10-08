@@ -78,7 +78,7 @@ val FloatingBarInset: Dp = FloatingBarHeight + FloatingBarGap * 2
 enum class Tab(val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
     HOME("Home", VeilIcons.HomeFilled, VeilIcons.Home),
     FOLLOWING("Following", VeilIcons.FollowingFilled, VeilIcons.Following),
-    COLLECTIONS("Collections", VeilIcons.CollectionsFilled, VeilIcons.Collections),
+    GALLERIES("Galleries", VeilIcons.GalleriesFilled, VeilIcons.Galleries),
     LIBRARY("Library", VeilIcons.LibraryFilled, VeilIcons.Library),
 }
 

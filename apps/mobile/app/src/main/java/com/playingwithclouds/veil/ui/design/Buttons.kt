@@ -47,7 +47,7 @@ fun PrimaryButton(
     CapsuleButton(text, onClick, VeilColors.content, VeilColors.canvas, modifier, enabled, icon)
 }
 
-/** A secondary action: a dark capsule with light text. */
+/** A secondary action: a glass capsule with light text. */
 @Composable
 fun SecondaryButton(
     text: String,
@@ -56,27 +56,30 @@ fun SecondaryButton(
     enabled: Boolean = true,
     icon: ImageVector? = null,
 ) {
-    CapsuleButton(text, onClick, VeilColors.surfaceHigh, VeilColors.content, modifier, enabled, icon)
+    CapsuleButton(text, onClick, null, VeilColors.content, modifier, enabled, icon)
 }
 
-/** A capsule button in the given colors, with an optional leading icon. */
+/** A capsule button in the given colors (glass when [background] is null), with an optional leading icon. */
 @Composable
 private fun CapsuleButton(
     text: String,
     onClick: () -> Unit,
-    background: Color,
+    background: Color?,
     foreground: Color,
     modifier: Modifier,
     enabled: Boolean,
     icon: ImageVector?,
 ) {
+    var surface = Modifier.glassControl(VeilShapes.capsule)
+    if (background != null) {
+        surface = Modifier.clip(VeilShapes.capsule).background(background)
+    }
     Row(
         modifier
             .height(44.dp)
             .alpha(enabledAlpha(enabled))
             .pressClickable(enabled = enabled, onClick = onClick)
-            .clip(VeilShapes.capsule)
-            .background(background)
+            .then(surface)
             .padding(horizontal = VeilSpacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
