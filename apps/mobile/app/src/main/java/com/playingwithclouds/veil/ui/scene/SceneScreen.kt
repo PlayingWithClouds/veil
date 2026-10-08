@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +36,11 @@ import com.playingwithclouds.veil.ui.components.FailedMessage
 import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
+import com.playingwithclouds.veil.ui.theme.VeilColors
 
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
 private const val MILLISECONDS_PER_SECOND = 1000L
@@ -85,7 +87,7 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
                 VeilTopBar(title = (detail as? LoadState.Loaded)?.value?.title.orEmpty(), onBack = navigator::back)
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { VeilSnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
             PlayerArea(state, player, fullscreen, onFindAlternates = findAlternates)
@@ -131,7 +133,8 @@ private fun PlayerArea(state: SceneState, player: ExoPlayer, fullscreen: Fullscr
             Text(
                 problem,
                 modifier = Modifier.align(Alignment.BottomCenter).background(Color.Black.copy(alpha = 0.7f)).padding(8.dp),
-                color = MaterialTheme.colorScheme.error,
+                color = VeilColors.error,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
         }
@@ -150,13 +153,13 @@ private fun PlayerPlaceholder(state: SceneState, onFindAlternates: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
         val searching = state.fetchingDetail || state.resolvingStreamId != null
         if (searching) {
-            CircularProgressIndicator()
+            Spinner()
             return@Box
         }
         if (state.streams.isEmpty()) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("No playable source found", color = Color.White)
-                Button(onClick = onFindAlternates) { Text("Find other sources") }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("No playable source found", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                PrimaryButton("Find other sources", onClick = onFindAlternates, icon = VeilIcons.Alternates)
             }
         }
     }

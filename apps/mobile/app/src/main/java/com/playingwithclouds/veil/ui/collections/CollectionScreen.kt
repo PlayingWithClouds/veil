@@ -1,7 +1,5 @@
 package com.playingwithclouds.veil.ui.collections
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -12,11 +10,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -48,6 +42,9 @@ import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.TextInputDialog
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.loadInto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -141,8 +138,8 @@ fun CollectionScreen(id: String, navigator: AppNavigator) {
                 onBack = navigator::back,
                 actions = {
                     if (loaded != null && loaded.collection.isUserCreated) {
-                        IconButton(onClick = { renaming = true }) { Icon(Icons.Filled.Edit, contentDescription = "Rename") }
-                        IconButton(onClick = { deleting = true }) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+                        RoundIconButton(VeilIcons.Edit, contentDescription = "Rename", onClick = { renaming = true })
+                        RoundIconButton(VeilIcons.Delete, contentDescription = "Delete", onClick = { deleting = true })
                     }
                 },
             )
@@ -155,7 +152,6 @@ fun CollectionScreen(id: String, navigator: AppNavigator) {
 }
 
 /** The members as cards; long-pressing one of the user's own collections asks to remove it. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MemberGrid(
     collection: CollectionContents,
@@ -228,20 +224,20 @@ private fun openMember(member: CollectionMember, navigator: AppNavigator) {
 }
 
 /** A member's poster and title, labeled with its type. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MemberCard(member: CollectionMember, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick),
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(12.dp))) {
+        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(16.dp))) {
             RemoteImage(member.posterPath, Modifier.matchParentSize())
             Badge(member.type.name.lowercase(), Modifier.align(Alignment.TopStart).padding(6.dp))
         }
         Text(
             member.title,
-            modifier = Modifier.padding(4.dp),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )

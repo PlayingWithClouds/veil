@@ -1,6 +1,8 @@
 package com.playingwithclouds.veil.ui.plugins
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,24 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +40,18 @@ import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.LoadingBar
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.VeilBottomSheet
+import com.playingwithclouds.veil.ui.design.VeilCard
+import com.playingwithclouds.veil.ui.design.VeilDialog
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
+import com.playingwithclouds.veil.ui.design.VeilSwitch
+import com.playingwithclouds.veil.ui.design.VeilTextField
+import com.playingwithclouds.veil.ui.theme.VeilColors
 
 /** Installed plugins: enable, configure, update, remove and install more. */
 @Composable
@@ -74,21 +78,24 @@ fun PluginsScreen(navigator: AppNavigator) {
                 title = "Plugins",
                 onBack = navigator::back,
                 actions = {
-                    IconButton(onClick = viewModel::checkForUpdates, enabled = !busy) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Check for updates")
-                    }
-                    IconButton(onClick = {
+                    RoundIconButton(
+                        VeilIcons.Refresh,
+                        contentDescription = "Check for updates",
+                        onClick = viewModel::checkForUpdates,
+                        enabled = !busy,
+                    )
+                    RoundIconButton(VeilIcons.Plus, contentDescription = "Install plugins", onClick = {
                         viewModel.searchCatalog("")
                         showingCatalog = true
-                    }) { Icon(Icons.Filled.Add, contentDescription = "Install plugins") }
+                    })
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { VeilSnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
             if (busy) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
+                LoadingBar(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
             LoadStateContent(plugins, onRetry = viewModel::load) { list ->
                 if (list.isEmpty()) {
@@ -128,49 +135,52 @@ private fun PluginCard(plugin: PluginInfo, viewModel: PluginsViewModel) {
         )
     }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PluginIcon(plugin)
-                Column(Modifier.weight(1f)) {
-                    Text(plugin.label, style = MaterialTheme.typography.titleMedium)
-                    Text("v${plugin.version}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = plugin.enabled, onCheckedChange = { viewModel.toggle(plugin) })
+    VeilCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PluginIcon(plugin)
+            Column(Modifier.weight(1f)) {
+                Text(plugin.label, style = MaterialTheme.typography.titleMedium)
+                Text("v${plugin.version}", style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
             }
-            val description = plugin.description
-            if (!description.isNullOrBlank()) {
-                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            VeilSwitch(checked = plugin.enabled, onCheckedChange = { viewModel.toggle(plugin) })
+        }
+        val description = plugin.description
+        if (!description.isNullOrBlank()) {
+            Text(description, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
+        }
+        Text(
+            plugin.capabilities.joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            color = VeilColors.contentFaint,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!plugin.available) {
+            Text("Unavailable: needs FlareSolverr, which this device cannot reach.", color = VeilColors.error, style = MaterialTheme.typography.bodySmall)
+        }
+        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (plugin.settings.isNotEmpty()) {
+                SecondaryButton("Settings", onClick = { editingSettings = true }, icon = VeilIcons.Settings)
             }
-            Text(
-                plugin.capabilities.joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!plugin.available) {
-                Text("Unavailable: needs FlareSolverr, which this device cannot reach.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Row {
-                if (plugin.settings.isNotEmpty()) {
-                    TextButton(onClick = { editingSettings = true }) { Text("Settings") }
-                }
-                TextButton(onClick = { confirmingUninstall = true }) { Text("Remove") }
-            }
+            SecondaryButton("Remove", onClick = { confirmingUninstall = true }, icon = VeilIcons.Delete)
         }
     }
 }
 
-/** The plugin's icon: an image when it is a URL, else the emoji or a placeholder letter. */
+/** The plugin's icon in a rounded square: an image when it is a URL, else the emoji or a placeholder letter. */
 @Composable
 private fun PluginIcon(plugin: PluginInfo) {
-    val icon = plugin.iconUrl
-    if (icon != null && (icon.startsWith("http") || icon.startsWith("/"))) {
-        RemoteImage(icon, Modifier.size(40.dp))
-        return
+    Box(
+        Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(VeilColors.surfaceHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        val icon = plugin.iconUrl
+        if (icon != null && (icon.startsWith("http") || icon.startsWith("/"))) {
+            RemoteImage(icon, Modifier.matchParentSize())
+            return@Box
+        }
+        Text(icon ?: plugin.label.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
     }
-    Text(icon ?: plugin.label.take(1).uppercase(), style = MaterialTheme.typography.headlineSmall)
 }
 
 /** Edit form for the settings a plugin declares. */
@@ -181,35 +191,34 @@ private fun PluginSettingsDialog(plugin: PluginInfo, onSave: (Map<String, String
             plugin.settings.associate { field -> field.key to (plugin.settingValues[field.key] ?: field.defaultValue.orEmpty()) },
         )
     }
-    AlertDialog(
+    VeilDialog(
+        title = "${plugin.label} settings",
         onDismissRequest = onDismiss,
-        title = { Text("${plugin.label} settings") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (field in plugin.settings) {
-                    OutlinedTextField(
-                        value = values.value[field.key].orEmpty(),
-                        onValueChange = { text -> values.value = values.value + (field.key to text) },
-                        label = { Text(field.label) },
-                        supportingText = { field.description?.let { description -> Text(description) } },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+        buttons = {
+            SecondaryButton("Cancel", onClick = onDismiss)
+            PrimaryButton("Save", onClick = { onSave(values.value) })
         },
-        confirmButton = { TextButton(onClick = { onSave(values.value) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    ) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (field in plugin.settings) {
+                VeilTextField(
+                    value = values.value[field.key].orEmpty(),
+                    onValueChange = { text -> values.value = values.value + (field.key to text) },
+                    label = field.label,
+                    supportingText = field.description,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
 }
 
 /** The published plugin catalog as a bottom sheet with search and install buttons. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CatalogSheet(viewModel: PluginsViewModel, onDismiss: () -> Unit) {
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    VeilBottomSheet(onDismissRequest = onDismiss) {
         SearchField(query, { text -> query = text }, "Search plugins", onSearch = { viewModel.searchCatalog(query) })
         LoadStateContent(catalog, onRetry = { viewModel.searchCatalog(query) }) { packages ->
             if (packages.isEmpty()) {
@@ -228,23 +237,23 @@ private fun CatalogSheet(viewModel: PluginsViewModel, onDismiss: () -> Unit) {
 private fun CatalogRow(entry: PluginPackage, onInstall: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(entry.name, style = MaterialTheme.typography.bodyMedium)
+            Text(entry.name, style = MaterialTheme.typography.titleSmall)
             Text(
                 entry.description ?: "v${entry.version}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = VeilColors.contentMuted,
                 maxLines = 2,
             )
         }
         val installed = entry.installedVersion
         if (installed == null) {
-            TextButton(onClick = onInstall) { Text("Install") }
+            PrimaryButton("Install", onClick = onInstall)
             return@Row
         }
         if (installed != entry.version) {
-            TextButton(onClick = onInstall) { Text("Update") }
+            PrimaryButton("Update", onClick = onInstall)
             return@Row
         }
-        Text("Installed", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Installed", style = MaterialTheme.typography.labelLarge, color = VeilColors.contentMuted)
     }
 }

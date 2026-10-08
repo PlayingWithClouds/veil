@@ -7,11 +7,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,13 +48,23 @@ fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Un
             HorizontalPager(pagerState, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
                 ZoomableImage(imagePaths[page], isCurrent = pagerState.currentPage == page)
             }
-            IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
-            }
+            RoundIconButton(
+                VeilIcons.Close,
+                contentDescription = "Close",
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp),
+            )
             Text(
                 "${pagerState.currentPage + 1} / ${imagePaths.size}",
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .clip(CircleShape)
+                    .background(VeilColors.surfaceHigh)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                color = VeilColors.content,
+                style = MaterialTheme.typography.labelMedium,
             )
         }
     }

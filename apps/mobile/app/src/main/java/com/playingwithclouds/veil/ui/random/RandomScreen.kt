@@ -1,10 +1,6 @@
 package com.playingwithclouds.veil.ui.random
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,6 +13,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.paging.PagedList
 
 /** An endless stream of random stored scenes. */
@@ -46,9 +44,7 @@ fun RandomScreen(navigator: AppNavigator) {
                 title = "Random",
                 onBack = navigator::back,
                 actions = {
-                    IconButton(onClick = { viewModel.scenes.refresh() }) {
-                        Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle")
-                    }
+                    RoundIconButton(VeilIcons.Random, contentDescription = "Shuffle", onClick = { viewModel.scenes.refresh() })
                 },
             )
         },

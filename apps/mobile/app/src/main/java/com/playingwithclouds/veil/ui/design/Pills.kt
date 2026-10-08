@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -34,20 +37,30 @@ import androidx.compose.runtime.setValue
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
 
-/** A filled capsule label: white with dark text when selected, a dark fill otherwise. */
+/** A filled capsule label, optionally with a leading icon: white with dark text when selected, a dark fill otherwise. */
 @Composable
-fun Pill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+fun Pill(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    icon: ImageVector? = null,
+) {
     val background by animateColorAsState(if (selected) VeilColors.content else VeilColors.surfaceHigh, label = "pill")
     val foreground by animateColorAsState(if (selected) VeilColors.canvas else VeilColors.content, label = "pillText")
-    Box(
+    Row(
         modifier
             .height(36.dp)
             .pressClickable(onClick)
             .clip(CircleShape)
             .background(background)
             .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(16.dp))
+        }
         Text(text, color = foreground, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }

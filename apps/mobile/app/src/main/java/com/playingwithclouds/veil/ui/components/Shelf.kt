@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,7 +47,7 @@ fun SceneShelf(
 fun ShelfHeading(title: String, onClick: (() -> Unit)? = null) {
     var rowModifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
     if (onClick != null) {
-        rowModifier = Modifier.clickable(onClick = onClick).then(rowModifier)
+        rowModifier = Modifier.pressClickable(onClick).then(rowModifier)
     }
     Row(rowModifier, verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleLarge)

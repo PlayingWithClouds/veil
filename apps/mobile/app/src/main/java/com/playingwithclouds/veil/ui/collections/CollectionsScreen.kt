@@ -1,16 +1,9 @@
 package com.playingwithclouds.veil.ui.collections
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +21,9 @@ import com.playingwithclouds.veil.ui.components.CollectionCard
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.TextInputDialog
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.PillRow
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,21 +103,19 @@ fun CollectionsScreen(navigator: AppNavigator) {
                 title = "Collections",
                 onBack = navigator::back,
                 actions = {
-                    IconButton(onClick = { creating = true }) { Icon(Icons.Filled.Add, contentDescription = "New collection") }
+                    RoundIconButton(VeilIcons.Plus, contentDescription = "New collection", onClick = { creating = true })
                 },
             )
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (option in CollectionOrigin.entries) {
-                    FilterChip(
-                        selected = option == origin,
-                        onClick = { viewModel.selectOrigin(option) },
-                        label = { Text(option.label) },
-                    )
-                }
-            }
+            PillRow(
+                CollectionOrigin.entries,
+                labelOf = { option -> option.label },
+                onClick = { option -> viewModel.selectOrigin(option) },
+                isSelected = { option -> option == origin },
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            )
             PagedGrid(
                 paged = viewModel.collections,
                 keyOf = { collection -> collection.id },

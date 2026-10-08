@@ -1,6 +1,6 @@
 package com.playingwithclouds.veil.ui.galleries
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,8 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +33,7 @@ import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.loadInto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,14 +82,15 @@ fun GalleriesScreen(navigator: AppNavigator) {
 @Composable
 private fun CategoryTile(category: GalleryCategory, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick),
+        Modifier.fillMaxWidth().aspectRatio(4f / 3f).pressClickable(onClick).clip(RoundedCornerShape(20.dp)),
     ) {
         RemoteImage(category.poster, Modifier.matchParentSize())
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f))))
         Text(
             category.name,
-            modifier = Modifier.align(Alignment.BottomStart).padding(10.dp),
+            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
             color = Color.White,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleSmall,
         )
     }
 }

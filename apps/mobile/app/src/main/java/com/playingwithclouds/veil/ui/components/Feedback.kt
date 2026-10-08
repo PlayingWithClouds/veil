@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,12 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.LoadState
+import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.theme.VeilColors
 
 /** A centered spinner. */
 @Composable
 fun LoadingIndicator(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        Spinner()
     }
 }
 
@@ -30,11 +31,11 @@ fun LoadingIndicator(modifier: Modifier = Modifier) {
 fun FailedMessage(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(message, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-        Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) { Text("Retry") }
+        Text(message, color = VeilColors.error, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        PrimaryButton("Retry", onClick = onRetry)
     }
 }
 
@@ -42,7 +43,7 @@ fun FailedMessage(message: String, onRetry: () -> Unit, modifier: Modifier = Mod
 @Composable
 fun EmptyMessage(text: String, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(text, color = VeilColors.contentMuted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }
 

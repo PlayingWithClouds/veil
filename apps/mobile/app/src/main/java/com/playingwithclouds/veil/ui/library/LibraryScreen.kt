@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,19 +13,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,6 +41,14 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.IconTap
+import com.playingwithclouds.veil.ui.design.ProgressBar
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.SegmentedControl
+import com.playingwithclouds.veil.ui.design.VeilCard
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.formatBytes
 import kotlinx.coroutines.delay
 
@@ -79,11 +79,12 @@ fun LibraryScreen(initialSection: String, navigator: AppNavigator) {
 
     Scaffold(topBar = { VeilTopBar("Downloads & watchlist", onBack = navigator::back) }) { padding ->
         Column(Modifier.padding(padding)) {
-            PrimaryTabRow(selectedTabIndex = selected) {
-                for (entry in LibrarySection.entries) {
-                    Tab(selected = entry == section, onClick = { selected = entry.ordinal }, text = { Text(entry.label) })
-                }
-            }
+            SegmentedControl(
+                labels = LibrarySection.entries.map { entry -> entry.label },
+                selectedIndex = selected,
+                onSelect = { index -> selected = index },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             when (section) {
                 LibrarySection.DOWNLOADED -> DownloadedSection(viewModel, navigator)
                 LibrarySection.QUEUE -> QueueSection(viewModel, navigator)
@@ -148,13 +149,13 @@ private fun WatchlistSection(viewModel: LibraryViewModel, navigator: AppNavigato
 @Composable
 private fun WatchlistRow(card: MediaCard, navigator: AppNavigator, onRemove: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { navigator.openScene(card.mediaId) },
+        Modifier.fillMaxWidth().pressClickable { navigator.openScene(card.mediaId) },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(card.posterPath, Modifier.width(120.dp).aspectRatio(16f / 9f))
-        Text(card.title, Modifier.weight(1f), maxLines = 3)
-        IconButton(onClick = onRemove) { Icon(Icons.Filled.Delete, contentDescription = "Remove from watchlist") }
+        RemoteImage(card.posterPath, Modifier.width(128.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)))
+        Text(card.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 3)
+        IconTap(VeilIcons.Delete, contentDescription = "Remove from watchlist", onClick = onRemove)
     }
 }
 
@@ -186,9 +187,13 @@ private fun QueueList(jobs: JobQueue, viewModel: LibraryViewModel, navigator: Ap
                     Text(
                         "${jobs.background.size} jobs, $failed failed",
                         Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = VeilColors.contentMuted,
                     )
-                    TextButton(onClick = viewModel::clearBackgroundJobs) { Text("Clear background jobs") }
+                    SecondaryButton(
+                        "Clear background jobs",
+                        onClick = viewModel::clearBackgroundJobs,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                    )
                 }
             }
         }
@@ -198,23 +203,23 @@ private fun QueueList(jobs: JobQueue, viewModel: LibraryViewModel, navigator: Ap
 /** One download: title, progress bar, size and the retry/remove actions. */
 @Composable
 private fun DownloadRow(job: DownloadJob, navigator: AppNavigator, onRetry: () -> Unit, onDelete: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    VeilCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.weight(1f).clickable(enabled = job.scene != null) { job.scene?.let { scene -> navigator.openScene(scene.id) } },
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                Modifier.weight(1f).pressClickable(enabled = job.scene != null) { job.scene?.let { scene -> navigator.openScene(scene.id) } },
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(job.title, maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                Text(statusLine(job), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(job.title, maxLines = 2, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(statusLine(job), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
                 val progress = job.progress
                 if (job.isActive && progress != null) {
-                    LinearProgressIndicator(progress = { progress.toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                    ProgressBar(progress.toFloat())
                 }
             }
             if (job.isFailed) {
-                IconButton(onClick = onRetry) { Icon(Icons.Filled.Refresh, contentDescription = "Retry") }
+                IconTap(VeilIcons.Refresh, contentDescription = "Retry", onClick = onRetry)
             }
-            IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Remove") }
+            IconTap(VeilIcons.Delete, contentDescription = "Remove", onClick = onDelete)
         }
     }
 }

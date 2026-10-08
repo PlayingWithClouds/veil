@@ -13,11 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +34,8 @@ import com.playingwithclouds.veil.data.PerformerSummary
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.WatchProgressStore
+import com.playingwithclouds.veil.ui.design.ProgressBar
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.formatClock
 import com.playingwithclouds.veil.util.formatCount
@@ -67,11 +65,11 @@ fun SceneCard(
                 Badge("NEW", Modifier.align(Alignment.TopStart).padding(6.dp), VeilColors.accent, Color.Black)
             }
             if (resumeFraction != null) {
-                LinearProgressIndicator(
-                    progress = { resumeFraction },
-                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp),
-                    color = VeilColors.accent,
+                ProgressBar(
+                    progress = resumeFraction,
+                    modifier = Modifier.align(Alignment.BottomStart),
                     trackColor = Color.Black.copy(alpha = 0.5f),
+                    height = 3.dp,
                 )
             }
         }
@@ -114,7 +112,7 @@ fun Badge(
 ) {
     Text(
         text,
-        modifier = modifier.clip(RoundedCornerShape(4.dp)).background(background).padding(horizontal = 6.dp, vertical = 2.dp),
+        modifier = modifier.clip(RoundedCornerShape(6.dp)).background(background).padding(horizontal = 6.dp, vertical = 2.dp),
         color = foreground,
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
@@ -160,7 +158,7 @@ fun AvatarCard(
             Avatar(imagePath, Modifier.fillMaxWidth(0.8f).aspectRatio(1f))
             if (isFavorite) {
                 Icon(
-                    Icons.Filled.Favorite,
+                    VeilIcons.HeartFilled,
                     contentDescription = "Favorite",
                     tint = VeilColors.error,
                     modifier = Modifier.align(Alignment.TopEnd).size(18.dp),
@@ -236,7 +234,7 @@ fun CollectionCard(collection: CollectionSummary, onClick: () -> Unit, modifier:
 fun Avatar(imagePath: String?, modifier: Modifier = Modifier) {
     Box(modifier.clip(CircleShape).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
         if (imagePath == null) {
-            Icon(Icons.Filled.Person, contentDescription = null, tint = VeilColors.contentFaint)
+            Icon(VeilIcons.Performer, contentDescription = null, tint = VeilColors.contentFaint)
             return@Box
         }
         RemoteImage(imagePath, Modifier.matchParentSize())
@@ -248,9 +246,9 @@ fun Avatar(imagePath: String?, modifier: Modifier = Modifier) {
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+        style = MaterialTheme.typography.titleLarge,
+        color = VeilColors.content,
     )
 }
 

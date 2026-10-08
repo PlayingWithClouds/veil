@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.galleries
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -36,6 +35,8 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,7 +106,7 @@ private fun ImageGrid(detail: GalleryDetail, navigator: AppNavigator, modifier: 
     ) {
         fullWidthItem("about") {
             if (!detail.details.isNullOrBlank()) {
-                Text(detail.details, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(detail.details, Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium, color = VeilColors.contentMuted)
             }
             TagChips(detail.tags, onClick = { tag -> navigator.openTag(tag.id) })
         }
@@ -115,7 +116,7 @@ private fun ImageGrid(detail: GalleryDetail, navigator: AppNavigator, modifier: 
         itemsIndexed(detail.images, key = { _, image -> image.id }) { index, image ->
             RemoteImage(
                 image.filePath,
-                Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).clickable { onOpenImage(index) },
+                Modifier.fillMaxWidth().aspectRatio(1f).pressClickable { onOpenImage(index) }.clip(RoundedCornerShape(12.dp)),
             )
         }
     }
