@@ -20,6 +20,12 @@ interface CachedStream {
   expiresAt: number;
 }
 
+/** Veil proxies HLS through /api/stream/manifest, whose URL does not end in .m3u8. */
+function isHlsPlaylist(url: string): boolean {
+  const pathname = new URL(url).pathname.toLowerCase();
+  return pathname.endsWith("/api/stream/manifest") || pathname.endsWith(".m3u8");
+}
+
 function shuffle<T>(values: T[]): T[] {
   const copy = [...values];
   for (let index = copy.length - 1; index > 0; index--) {
@@ -134,6 +140,9 @@ export function createVeilProvider(api: VeilApi, now: () => number = Date.now): 
     }
     const scene = await api.resolveScene(sceneId);
     const location: CachedStream["location"] = { kind: "url", url: scene.url, headers: scene.headers };
+    if (isHlsPlaylist(scene.url)) {
+      location.format = "hls";
+    }
     streamCache.set(ref, { location, expiresAt: now() + STREAM_CACHE_MILLISECONDS });
     return location;
   }

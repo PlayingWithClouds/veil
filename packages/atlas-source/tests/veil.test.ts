@@ -9,6 +9,8 @@ interface MockState {
   ensureGalleryCalls: string[];
   ensureSceneCalls: string[];
   streamCalls: string[];
+  /** Overrides the playable URL the `stream` query returns. */
+  streamUrl?: string;
 }
 
 const GALLERY_IMAGES: Record<string, { filePath: string; position: number }[]> = {
@@ -46,7 +48,7 @@ function answer(query: string, variables: Record<string, any>): Record<string, u
   if (query.includes("stream(")) {
     state.streamCalls.push(JSON.stringify(variables));
     return {
-      stream: { url: `https://cdn.example/video-${state.streamCalls.length}.mp4`, headers: [{ name: "Referer", value: "https://embed.example/" }] },
+      stream: { url: state.streamUrl ?? `https://cdn.example/video-${state.streamCalls.length}.mp4`, headers: [{ name: "Referer", value: "https://embed.example/" }] },
     };
   }
   if (query.includes("scene(")) {
@@ -129,6 +131,13 @@ test("scene resolve picks the best stream and returns a stable ref plus duration
     url: "https://cdn.example/video-1.mp4",
     headers: { Referer: "https://embed.example/" },
   });
+});
+
+test("a scene streamed through veil's HLS proxy is flagged as HLS", async () => {
+  state.streamUrl = "http://veil.test/api/stream/manifest?s=1&u=abc";
+  const provider = makeProvider();
+  const location = await provider.locate("veil:scene:7");
+  expect(location).toMatchObject({ kind: "url", format: "hls" });
 });
 
 test("locate caches the scene stream for ten minutes, then re-resolves", async () => {
