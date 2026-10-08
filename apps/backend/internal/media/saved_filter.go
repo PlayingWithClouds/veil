@@ -24,6 +24,7 @@ type savedFilterRecord struct {
 	DateFrom    *string      `json:"date_from,omitempty"`
 	DateTo      *string      `json:"date_to,omitempty"`
 	Sort        *string      `json:"sort,omitempty"`
+	Sources     []string     `json:"sources,omitempty"`
 	CreatedAt   time.Time    `json:"created_at"`
 }
 
@@ -42,6 +43,7 @@ func (f savedFilterRecord) toModel() *model.SavedFilter {
 			DateFrom:    f.DateFrom,
 			DateTo:      f.DateTo,
 			Sort:        f.Sort,
+			Sources:     f.Sources,
 		},
 		CreatedAt: f.CreatedAt.UTC().Format(time.RFC3339),
 	}
@@ -60,6 +62,7 @@ type SavedFilterInput struct {
 	DateFrom    *string
 	DateTo      *string
 	Sort        *string
+	Sources     []string
 }
 
 // ListSavedFilters returns the saved filter presets, newest first.
@@ -87,6 +90,9 @@ func (r *Repository) CreateSavedFilter(ctx context.Context, name string, filter 
 	setIfString(content, "date_from", filter.DateFrom)
 	setIfString(content, "date_to", filter.DateTo)
 	setIfString(content, "sort", filter.Sort)
+	if len(filter.Sources) > 0 {
+		content["sources"] = filter.Sources
+	}
 	if filter.MinRating != nil {
 		content["min_rating"] = *filter.MinRating
 	}

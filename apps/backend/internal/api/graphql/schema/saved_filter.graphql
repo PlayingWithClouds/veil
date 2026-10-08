@@ -21,6 +21,8 @@ input SceneFilterInput {
   dateFrom: String
   dateTo: String
   sort: String
+  # Plugin names to keep; empty = any site.
+  sources: [String!]
 }
 
 type SceneFilter {
@@ -34,6 +36,8 @@ type SceneFilter {
   dateFrom: String
   dateTo: String
   sort: String
+  # Plugin names to keep; empty = any site.
+  sources: [String!]
 }
 
 type SavedFilter {

@@ -25,6 +25,7 @@ func (r *mutationResolver) CreateSavedFilter(ctx context.Context, name string, f
 		DateFrom:    filter.DateFrom,
 		DateTo:      filter.DateTo,
 		Sort:        filter.Sort,
+		Sources:     filter.Sources,
 	})
 }
 

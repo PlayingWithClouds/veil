@@ -443,6 +443,7 @@ input SceneFilterInput {
   dateFrom: String
   dateTo: String
   sort: String
+  sources: [String!]
 }
 
 type SceneFilter {
@@ -456,6 +457,7 @@ type SceneFilter {
   dateFrom: String
   dateTo: String
   sort: String
+  sources: [String!]
 }
 
 type SavedFilter {

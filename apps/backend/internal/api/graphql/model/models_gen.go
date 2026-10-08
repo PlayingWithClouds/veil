@@ -382,6 +382,7 @@ type SceneFilter struct {
 	DateFrom    *string  `json:"dateFrom,omitempty"`
 	DateTo      *string  `json:"dateTo,omitempty"`
 	Sort        *string  `json:"sort,omitempty"`
+	Sources     []string `json:"sources,omitempty"`
 }
 
 type SceneFilterInput struct {
@@ -395,6 +396,7 @@ type SceneFilterInput struct {
 	DateFrom    *string  `json:"dateFrom,omitempty"`
 	DateTo      *string  `json:"dateTo,omitempty"`
 	Sort        *string  `json:"sort,omitempty"`
+	Sources     []string `json:"sources,omitempty"`
 }
 
 type SceneMarker struct {
