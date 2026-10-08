@@ -3,6 +3,8 @@ package com.playingwithclouds.veil.ui.scene
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,21 +18,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.ContentFrame
 import com.playingwithclouds.veil.data.PlayableStream
+import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.util.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -69,23 +70,60 @@ private fun createMediaSource(stream: PlayableStream, httpFactory: DefaultHttpDa
     return ProgressiveMediaSource.Factory(httpFactory).createMediaSource(mediaItem)
 }
 
-/** The video surface with the standard transport controls and a fullscreen button. */
+/**
+ * The video with the app's own controls over it, keeping the screen on while shown. In fullscreen,
+ * when there are [related] scenes, a swipe up (or the related button) raises them over the video.
+ */
 @Composable
-fun ScenePlayerView(player: ExoPlayer, onToggleFullscreen: () -> Unit, modifier: Modifier = Modifier) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            PlayerView(context).apply {
-                this.player = player
-                keepScreenOn = true
-            }
-        },
-        update = { view ->
-            view.player = player
-            view.setFullscreenButtonClickListener { onToggleFullscreen() }
-        },
-        onRelease = { view -> view.player = null },
-    )
+fun ScenePlayerView(
+    player: ExoPlayer,
+    title: String,
+    fullscreen: FullscreenState,
+    related: List<SceneSummary>,
+    onOpenScene: (SceneSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showingRelated by remember { mutableStateOf(false) }
+    val relatedAvailable = fullscreen.isFullscreen && related.isNotEmpty()
+    LaunchedEffect(relatedAvailable) {
+        if (!relatedAvailable) {
+            showingRelated = false
+        }
+    }
+    KeepScreenOn()
+    Box(modifier) {
+        ContentFrame(player, Modifier.fillMaxSize())
+        var openRelated: (() -> Unit)? = null
+        if (relatedAvailable) {
+            openRelated = { showingRelated = true }
+        }
+        PlayerControls(
+            player = player,
+            title = title,
+            isFullscreen = fullscreen.isFullscreen,
+            onToggleFullscreen = fullscreen::toggle,
+            onOpenRelated = openRelated,
+        )
+        RelatedPanel(
+            visible = showingRelated,
+            related = related,
+            onDismiss = { showingRelated = false },
+            onOpenScene = { scene ->
+                player.pause()
+                onOpenScene(scene)
+            },
+        )
+    }
+}
+
+/** Keeps the display awake while composed, as the player is on screen. */
+@Composable
+private fun KeepScreenOn() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
 }
 
 /**

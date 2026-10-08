@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
 import com.playingwithclouds.veil.data.ResumePoint
 import com.playingwithclouds.veil.data.SceneRepository
+import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FailedMessage
@@ -89,7 +90,13 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
         snackbarHost = { VeilSnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            PlayerArea(state, player, fullscreen, onFindAlternates = findAlternates)
+            PlayerArea(
+                state,
+                player,
+                fullscreen,
+                onFindAlternates = findAlternates,
+                onOpenScene = { scene -> navigator.openScene(scene.id) },
+            )
             if (!fullscreen.isFullscreen) {
                 SceneContent(state, viewModel, player, navigator, onFindAlternates = findAlternates)
             }
@@ -114,7 +121,13 @@ private fun startPosition(player: ExoPlayer, resume: ResumePoint?): Long {
 
 /** The black player box: the video when a source plays, else the poster with a spinner or the problem. */
 @Composable
-private fun PlayerArea(state: SceneState, player: ExoPlayer, fullscreen: FullscreenState, onFindAlternates: () -> Unit) {
+private fun PlayerArea(
+    state: SceneState,
+    player: ExoPlayer,
+    fullscreen: FullscreenState,
+    onFindAlternates: () -> Unit,
+    onOpenScene: (SceneSummary) -> Unit,
+) {
     var boxModifier = Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO)
     if (fullscreen.isFullscreen) {
         boxModifier = Modifier.fillMaxSize()
@@ -122,7 +135,14 @@ private fun PlayerArea(state: SceneState, player: ExoPlayer, fullscreen: Fullscr
     Box(boxModifier.background(VeilColors.canvas), contentAlignment = Alignment.Center) {
         val active = state.active
         if (active != null) {
-            ScenePlayerView(player, onToggleFullscreen = fullscreen::toggle, modifier = Modifier.fillMaxSize())
+            ScenePlayerView(
+                player,
+                title = (state.detail as? LoadState.Loaded)?.value?.title.orEmpty(),
+                fullscreen = fullscreen,
+                related = state.related,
+                onOpenScene = onOpenScene,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         if (active == null) {
             PlayerPlaceholder(state, onFindAlternates)
