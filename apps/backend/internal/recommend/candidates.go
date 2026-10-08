@@ -146,7 +146,7 @@ func relatedCandidate(row db.Row, seed Seed, strongestSeed float64) candidate {
 		sceneID: rowString(row, "related"),
 		source:  source,
 		prior:   rankedPrior(sourcePriors[source], rowInt(row, "rank")) * seedFactor,
-		reason:  Reason{Kind: ReasonRelated, EntityID: seed.SceneID, EntityName: seed.Title},
+		reason:  Reason{Kind: ReasonRelated, EntityID: seed.SceneID, EntityName: seed.Credit},
 	}
 }
 

@@ -29,8 +29,9 @@ type Profile struct {
 // Seed is a scene whose related scenes are worth recommending.
 type Seed struct {
 	SceneID string
-	Title   string
-	Weight  float64
+	// Credit is the seed's first performer or studio name, see sceneFeatures.credit.
+	Credit string
+	Weight float64
 }
 
 // Empty reports whether there is no signal yet (cold start).
@@ -167,7 +168,7 @@ func seedsFrom(sceneWeights map[string]float64, features map[string]*sceneFeatur
 		if !found || weight < seedMinimumWeight {
 			continue
 		}
-		seeds = append(seeds, Seed{SceneID: sceneID, Title: scene.title, Weight: weight})
+		seeds = append(seeds, Seed{SceneID: sceneID, Credit: scene.credit, Weight: weight})
 	}
 	sort.Slice(seeds, func(left, right int) bool {
 		if seeds[left].Weight != seeds[right].Weight {

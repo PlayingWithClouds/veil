@@ -12,9 +12,11 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -40,7 +42,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.pressClickable
-import com.playingwithclouds.veil.ui.design.GlassIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilColors
@@ -114,9 +115,6 @@ fun rememberHideOnScrollState(): HideOnScrollState {
     return remember { HideOnScrollState() }
 }
 
-/** Width of one tab slot; the selection pill slides between slots. */
-private val TabWidth = 84.dp
-
 /** Inner padding of the glass pill around the tab slots. */
 private val PillPadding = 6.dp
 
@@ -136,12 +134,19 @@ fun FloatingNavBar(
         exit = slideOutVertically { height -> height } + fadeOut(),
     ) {
         Row(
-            Modifier.navigationBarsPadding().padding(horizontal = VeilSpacing.gutter, vertical = FloatingBarGap),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VeilSpacing.gutter, vertical = FloatingBarGap),
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TabPill(currentRoute, onTab)
-            GlassIconButton(VeilIcons.Search, contentDescription = "Search", onClick = onSearch, size = FloatingBarHeight)
+            Box(Modifier.weight(1f)) {
+                TabPill(currentRoute, onTab)
+            }
+            Box(
+                Modifier.size(FloatingBarHeight).pressClickable(onSearch).glass(VeilShapes.capsule),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(VeilIcons.Search, contentDescription = "Search", tint = VeilColors.contentMuted, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -150,23 +155,26 @@ fun FloatingNavBar(
 @Composable
 private fun TabPill(currentRoute: String?, onTab: (Tab) -> Unit) {
     val selectedIndex = Tab.entries.indexOfFirst { tab -> tab.route == currentRoute }.coerceAtLeast(0)
-    val indicatorOffset by animateDpAsState(
-        TabWidth * selectedIndex,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "indicator",
-    )
-    Box(Modifier.height(FloatingBarHeight).glass(VeilShapes.capsule).padding(PillPadding)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(FloatingBarHeight).glass(VeilShapes.capsule).padding(PillPadding)) {
+        val tabWidth = maxWidth / Tab.entries.size
+        val indicatorOffset by animateDpAsState(
+            tabWidth * selectedIndex,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
+            label = "indicator",
+        )
         Box(
             Modifier
                 .offset(x = indicatorOffset)
-                .width(TabWidth)
+                .width(tabWidth)
                 .fillMaxHeight()
                 .clip(VeilShapes.capsule)
                 .background(VeilColors.glassSelection),
         )
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             for (tab in Tab.entries) {
-                TabItem(tab, selected = tab.route == currentRoute, onClick = { onTab(tab) })
+                Box(Modifier.width(tabWidth)) {
+                    TabItem(tab, selected = tab.route == currentRoute, onClick = { onTab(tab) })
+                }
             }
         }
     }
@@ -177,7 +185,7 @@ private fun TabPill(currentRoute: String?, onTab: (Tab) -> Unit) {
 private fun TabItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
     val tint by animateColorAsState(if (selected) VeilColors.accent else VeilColors.contentMuted, label = "tint")
     Column(
-        Modifier.width(TabWidth).fillMaxHeight().clip(VeilShapes.capsule).pressClickable(onClick),
+        Modifier.fillMaxWidth().fillMaxHeight().clip(VeilShapes.capsule).pressClickable(onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
