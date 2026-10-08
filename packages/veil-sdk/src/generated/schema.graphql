@@ -99,6 +99,7 @@ type Mutation {
   deleteSceneMarker(markerId: ID!): Boolean!
   resolvePluginResult(pluginName: String!, url: String!, posterUrl: String): ID!
   attachAlikeSource(sceneId: ID!, pluginName: String!, url: String!): [Stream!]!
+  ensureEntityScenes(entityId: ID!): Int!
 
   """Remembers a search the user ran (called when a search is submitted)."""
   recordSearch(query: String!): Boolean!

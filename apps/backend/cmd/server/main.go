@@ -269,6 +269,7 @@ func main() {
 	imgHandler := imgapi.New(storeClient)
 	resolver.SetImageCache(imgHandler)
 	resolver.SetSearchScheduler(searchScheduler)
+	resolver.SetEntityScenes(updater.NewEntityScenes(searchScheduler, cacheClient))
 	recommender := recommend.New(database, repo)
 	resolver.SetRecommender(recommender)
 	resolver.SetPluginStore(pluginStore)

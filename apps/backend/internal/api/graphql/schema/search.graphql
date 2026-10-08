@@ -33,6 +33,14 @@ extend type Mutation {
   # existing scene, deduped by URL — no duplicate scene is created. Returns the
   # scene's ranked streams, including the newly attached ones.
   attachAlikeSource(sceneId: ID!, pluginName: String!, url: String!): [Stream!]!
+
+  # Called when a studio or performer page opens. Lists its own site page when
+  # a plugin can, searches its name on every available scene plugin, ingests
+  # the hits as stubs and credits the matching ones to it (page listings, and
+  # uncredited stubs whose title names it or an alias). Skipped when it ran
+  # within the last 24 h. Returns once done with the number of fetched scenes
+  # credited to it (0 when skipped), so the page can reload its scenes.
+  ensureEntityScenes(entityId: ID!): Int!
 }
 
 # One result from a source plugin's search/browse capability. Rendered as a

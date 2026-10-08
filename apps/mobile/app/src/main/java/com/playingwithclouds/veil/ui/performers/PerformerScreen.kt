@@ -29,6 +29,8 @@ import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.entity.EntityHeader
+import com.playingwithclouds.veil.ui.entity.EntitySceneFetch
+import com.playingwithclouds.veil.ui.entity.EntitySceneFetchBar
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.loadInto
@@ -55,9 +57,16 @@ class PerformerViewModel(private val performerId: String) : ViewModel() {
         EntityRepository.scenes(EntityFilter(performerId = performerId), PAGE_SIZE, offset)
     }
 
+    /** The search for the performer's videos on every site, started when the page opens. */
+    val siteFetch = EntitySceneFetch(viewModelScope, performerId) {
+        scenes.refresh()
+        refreshProfile()
+    }
+
     init {
         load()
         scenes.loadMore()
+        siteFetch.start()
     }
 
     /** Loads the profile and galleries. */
@@ -70,6 +79,18 @@ class PerformerViewModel(private val performerId: String) : ViewModel() {
                 mutableGalleries.value = EntityRepository.galleries(EntityFilter(performerId = performerId), GALLERY_ROW_SIZE, 0)
             } catch (error: Exception) {
                 mutableGalleries.value = emptyList()
+            }
+        }
+    }
+
+    /** Reloads the profile in place (its video count), keeping the current one on failure. */
+    private fun refreshProfile() {
+        viewModelScope.launch {
+            try {
+                val performer = EntityRepository.performer(performerId) ?: return@launch
+                mutableDetail.value = LoadState.Loaded(performer)
+            } catch (error: Exception) {
+                // The page keeps the profile it shows.
             }
         }
     }
@@ -121,6 +142,7 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
                 header = {
                     fullWidthItem("header") { PerformerHeader(performer, viewModel, navigator) }
                     fullWidthItem("galleries") { GalleryRow("Galleries", galleries, navigator::openGallery) }
+                    fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
             ) { _, tagged ->
                 SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })

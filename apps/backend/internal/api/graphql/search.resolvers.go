@@ -57,6 +57,15 @@ func (r *mutationResolver) AttachAlikeSource(ctx context.Context, sceneID string
 	return r.attachAlikeSource(ctx, sceneID, pluginName, url)
 }
 
+// EnsureEntityScenes fetches a studio's or performer's scenes from every
+// scene plugin when its page opens, at most once per day.
+func (r *mutationResolver) EnsureEntityScenes(ctx context.Context, entityID string) (int, error) {
+	if r.entityScenes == nil {
+		return 0, fmt.Errorf("entity scene fetching is not available")
+	}
+	return r.entityScenes.Ensure(ctx, entityID)
+}
+
 // PluginSearch backs live search: it fans out to every enabled
 // search-capable plugin and returns their raw results (banner + preview frames)
 // without touching the database. Selecting a result ingests it via the scrape mutation.

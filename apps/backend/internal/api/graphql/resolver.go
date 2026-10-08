@@ -32,6 +32,7 @@ type Resolver struct {
 	streamProxy  *stream.Proxy
 	imgCache     *imgcache.Handler
 	searchRuns   *updater.Scheduler
+	entityScenes *updater.EntityScenes
 	recommender  *recommend.Engine
 	pluginStore  *pluginstore.Store
 	suggestions  *suggest.Service
@@ -71,6 +72,9 @@ func (r *Resolver) SetImageCache(h *imgcache.Handler) { r.imgCache = h }
 
 // SetSearchScheduler wires in the search subscription scheduler.
 func (r *Resolver) SetSearchScheduler(scheduler *updater.Scheduler) { r.searchRuns = scheduler }
+
+// SetEntityScenes wires in the studio/performer scene fetcher.
+func (r *Resolver) SetEntityScenes(fetcher *updater.EntityScenes) { r.entityScenes = fetcher }
 
 // SetRecommender wires in the recommendation engine.
 func (r *Resolver) SetRecommender(engine *recommend.Engine) { r.recommender = engine }

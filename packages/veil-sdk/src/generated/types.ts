@@ -1054,6 +1054,15 @@ export default {
                     ]
                 }
             ],
+            "ensureEntityScenes": [
+                3,
+                {
+                    "entityId": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
             "recordSearch": [
                 4,
                 {

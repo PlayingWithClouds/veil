@@ -110,6 +110,7 @@ export interface Mutation {
     deleteSceneMarker: Scalars['Boolean']
     resolvePluginResult: Scalars['ID']
     attachAlikeSource: Stream[]
+    ensureEntityScenes: Scalars['Int']
     /** Remembers a search the user ran (called when a search is submitted). */
     recordSearch: Scalars['Boolean']
     /** Removes a query from the recent searches. */
@@ -794,6 +795,7 @@ export interface MutationGenqlSelection{
     deleteSceneMarker?: { __args: {markerId: Scalars['ID']} }
     resolvePluginResult?: { __args: {pluginName: Scalars['String'], url: Scalars['String'], posterUrl?: (Scalars['String'] | null)} }
     attachAlikeSource?: (StreamGenqlSelection & { __args: {sceneId: Scalars['ID'], pluginName: Scalars['String'], url: Scalars['String']} })
+    ensureEntityScenes?: { __args: {entityId: Scalars['ID']} }
     /** Remembers a search the user ran (called when a search is submitted). */
     recordSearch?: { __args: {query: Scalars['String']} }
     /** Removes a query from the recent searches. */
