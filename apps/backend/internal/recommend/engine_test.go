@@ -152,9 +152,9 @@ func TestFeedPagesReuseTheRanking(t *testing.T) {
 	for _, id := range []string{"scene:a", "scene:b", "scene:c", "scene:d"} {
 		insertScene(t, database, id, map[string]any{})
 	}
-	first, _ := engine.Feed(ctx, nil, 2, 0, false)
+	first, _ := engine.Feed(ctx, nil, nil, 2, 0, false)
 	insertScene(t, database, "scene:late", map[string]any{"created_at": ago(0)})
-	second, _ := engine.Feed(ctx, nil, 2, 2, false)
+	second, _ := engine.Feed(ctx, nil, nil, 2, 2, false)
 	if len(first) != 2 || len(second) != 2 {
 		t.Fatalf("pages: %d + %d", len(first), len(second))
 	}
@@ -163,13 +163,59 @@ func TestFeedPagesReuseTheRanking(t *testing.T) {
 			t.Errorf("page two must continue page one's ranking, got %s", item.SceneID)
 		}
 	}
-	reloaded, _ := engine.Feed(ctx, nil, 2, 0, false)
+	reloaded, _ := engine.Feed(ctx, nil, nil, 2, 0, false)
 	if reloaded[0].SceneID != first[0].SceneID || reloaded[1].SceneID != first[1].SceneID {
 		t.Errorf("reloading page one within feedFirstPageTTL must keep the ranking, got %s, %s", reloaded[0].SceneID, reloaded[1].SceneID)
 	}
-	refreshed, _ := engine.Feed(ctx, nil, 1, 0, true)
+	refreshed, _ := engine.Feed(ctx, nil, nil, 1, 0, true)
 	if refreshed[0].SceneID != "scene:late" {
 		t.Errorf("a refresh must re-rank, got %s", refreshed[0].SceneID)
+	}
+}
+
+func TestFeedFiltersBySourceAndPagesTheFilteredRanking(t *testing.T) {
+	ctx := context.Background()
+	engine, database, _ := newTestEngine(t)
+	observers := map[string][]string{
+		"scene:a": {"eporner"},
+		"scene:b": {"xhamster"},
+		"scene:c": {"xhamster", "eporner"},
+		"scene:d": {"eporner"},
+		"scene:e": {"hqporner"},
+	}
+	for sceneID, plugins := range observers {
+		insertScene(t, database, sceneID, map[string]any{})
+		for _, plugin := range plugins {
+			insertRow(t, database, "observation", "observation:"+plugin+"-"+sceneID, map[string]any{"target": sceneID, "plugin": plugin})
+		}
+	}
+	insertScene(t, database, "scene:unobserved", map[string]any{})
+
+	full, _ := engine.Feed(ctx, nil, nil, 100, 0, true)
+	if len(full) != len(observers)+1 {
+		t.Fatalf("unfiltered feed must hold every scene, got %d", len(full))
+	}
+	wantOrder := []string{}
+	for _, item := range full {
+		if item.SceneID == "scene:a" || item.SceneID == "scene:c" || item.SceneID == "scene:d" {
+			wantOrder = append(wantOrder, item.SceneID)
+		}
+	}
+
+	sources := []string{"eporner"}
+	first, _ := engine.Feed(ctx, nil, sources, 2, 0, false)
+	second, _ := engine.Feed(ctx, nil, sources, 2, 2, false)
+	got := []string{}
+	for _, item := range append(first, second...) {
+		got = append(got, item.SceneID)
+	}
+	if strings.Join(got, ",") != strings.Join(wantOrder, ",") {
+		t.Errorf("eporner pages = %v, want the ranked eporner scenes %v", got, wantOrder)
+	}
+
+	both, _ := engine.Feed(ctx, nil, []string{"xhamster", "hqporner"}, 100, 0, false)
+	if len(both) != 3 || itemBySceneID(both, "scene:a") != nil {
+		t.Errorf("xhamster+hqporner filter = %+v", both)
 	}
 }
 
@@ -177,10 +223,10 @@ func TestFirstPageReRanksOnceStale(t *testing.T) {
 	ctx := context.Background()
 	engine, database, _ := newTestEngine(t)
 	insertScene(t, database, "scene:a", map[string]any{})
-	engine.Feed(ctx, nil, 1, 0, false)
+	engine.Feed(ctx, nil, nil, 1, 0, false)
 	insertScene(t, database, "scene:late", map[string]any{"created_at": ago(0)})
 	engine.now = func() time.Time { return testNow.Add(feedFirstPageTTL + time.Minute) }
-	stale, _ := engine.Feed(ctx, nil, 1, 0, false)
+	stale, _ := engine.Feed(ctx, nil, nil, 1, 0, false)
 	if len(stale) == 0 || stale[0].SceneID != "scene:late" {
 		t.Errorf("page one must re-rank after feedFirstPageTTL, got %+v", stale)
 	}

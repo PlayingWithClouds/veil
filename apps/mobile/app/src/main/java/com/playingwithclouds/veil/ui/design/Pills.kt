@@ -39,8 +39,9 @@ import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /**
- * A choice capsule, optionally with a leading icon: accent with dark text when selected, a dark
- * fill otherwise. For filters and options; tags use [TagPill].
+ * A choice capsule, optionally with a leading icon (or any [leading] content, e.g. a site's
+ * favicon): accent with dark text when selected, a dark fill otherwise. For filters and options;
+ * tags use [TagPill].
  */
 @Composable
 fun Pill(
@@ -49,6 +50,7 @@ fun Pill(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     icon: ImageVector? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val background by animateColorAsState(if (selected) VeilColors.accent else VeilColors.surfaceHigh, label = "pill")
     val foreground by animateColorAsState(if (selected) VeilColors.onAccent else VeilColors.content, label = "pillText")
@@ -64,6 +66,9 @@ fun Pill(
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(16.dp))
+        }
+        if (leading != null) {
+            leading()
         }
         Text(text, color = foreground, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }

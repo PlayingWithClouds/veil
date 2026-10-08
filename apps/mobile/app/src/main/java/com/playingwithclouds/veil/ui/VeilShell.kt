@@ -1,15 +1,22 @@
 package com.playingwithclouds.veil.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -52,21 +59,28 @@ import com.playingwithclouds.veil.ui.tags.TagsScreen
 @Composable
 fun VeilShell() {
     val navController = rememberNavController()
-    val navigator = remember(navController) { AppNavigator(navController) }
+    val pagerState = rememberPagerState { Tab.entries.size }
+    val scope = rememberCoroutineScope()
+    val navigator = remember(navController) {
+        AppNavigator(navController) { tab -> scope.launch { pagerState.animateScrollToPage(tab.ordinal) } }
+    }
     val hideOnScroll = rememberHideOnScrollState()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val onTab = Tab.entries.any { tab -> tab.route == currentRoute }
+    val onTabs = currentRoute == Routes.TABS
 
     val glassBackdrop = rememberHazeState()
 
-    LaunchedEffect(currentRoute) { hideOnScroll.show() }
+    LaunchedEffect(currentRoute, pagerState.currentPage) { hideOnScroll.show() }
+    BackHandler(enabled = onTabs && pagerState.currentPage != Tab.HOME.ordinal) {
+        navigator.openTab(Tab.HOME)
+    }
 
     Scaffold { innerPadding ->
         Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
-                startDestination = Routes.HOME,
+                startDestination = Routes.TABS,
                 modifier = Modifier
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
@@ -77,14 +91,15 @@ fun VeilShell() {
                 popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
                 popExitTransition = { PageTransitions.popExit(initialState, targetState) },
             ) {
-                tabScreens(navigator)
+                composable(Routes.TABS) { TabPager(pagerState, navigator) }
                 detailScreens(navigator)
             }
             CompositionLocalProvider(LocalGlassBackdrop provides glassBackdrop) {
                 FloatingNavBar(
-                    currentRoute = currentRoute,
-                    visible = onTab && hideOnScroll.visible,
-                    onTab = { tab -> navigator.openTab(tab.route) },
+                    pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                    selected = Tab.entries[pagerState.currentPage],
+                    visible = onTabs && hideOnScroll.visible,
+                    onTab = navigator::openTab,
                     onSearch = { navigator.openSearch() },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
@@ -93,18 +108,32 @@ fun VeilShell() {
     }
 }
 
-/** A tab screen, given room at the bottom for the floating bar. */
-private fun NavGraphBuilder.tab(route: String, content: @Composable () -> Unit) {
-    composable(route) {
-        CompositionLocalProvider(LocalFloatingBarInset provides FloatingBarInset) { content() }
+/**
+ * The tab screens side by side: swipe sideways to move between them. Each page keeps its saved
+ * state (scroll position) while swiped away, and has room at the bottom for the floating bar.
+ */
+@Composable
+private fun TabPager(pagerState: PagerState, navigator: AppNavigator) {
+    val savedStates = rememberSaveableStateHolder()
+    HorizontalPager(pagerState, Modifier.fillMaxSize(), key = { page -> Tab.entries[page].name }) { page ->
+        val tab = Tab.entries[page]
+        savedStates.SaveableStateProvider(tab.name) {
+            CompositionLocalProvider(LocalFloatingBarInset provides FloatingBarInset) {
+                TabScreen(tab, navigator)
+            }
+        }
     }
 }
 
-/** The three tab destinations. */
-private fun NavGraphBuilder.tabScreens(navigator: AppNavigator) {
-    tab(Routes.HOME) { HomeScreen(navigator) }
-    tab(Routes.SUBSCRIPTIONS) { SubscriptionsScreen(navigator) }
-    tab(Routes.LIBRARY) { LibraryHubScreen(navigator) }
+/** The screen of one tab. */
+@Composable
+private fun TabScreen(tab: Tab, navigator: AppNavigator) {
+    when (tab) {
+        Tab.HOME -> HomeScreen(navigator)
+        Tab.FOLLOWING -> SubscriptionsScreen(navigator)
+        Tab.COLLECTIONS -> CollectionsScreen(navigator)
+        Tab.LIBRARY -> LibraryHubScreen(navigator)
+    }
 }
 
 /** Every destination opened from a tab, the Library hub or a card. */
@@ -113,7 +142,6 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
         Routes.SEARCH,
         arguments = listOf(navArgument("query") { type = NavType.StringType; defaultValue = "" }),
     ) { entry -> SearchScreen(entry.argument("query"), navigator) }
-    composable(Routes.COLLECTIONS) { CollectionsScreen(navigator) }
     composable(Routes.HISTORY) { HistoryScreen(navigator) }
     composable(Routes.LIBRARY_SECTION) { entry -> LibraryScreen(entry.argument("section"), navigator) }
     composable(Routes.SCENE) { entry -> SceneScreen(entry.argument("id"), navigator) }

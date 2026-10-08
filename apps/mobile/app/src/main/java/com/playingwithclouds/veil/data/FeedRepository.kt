@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.data
 import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.api.orAbsentIfEmpty
 import com.playingwithclouds.veil.graphql.DeleteWatchHistoryMutation
 import com.playingwithclouds.veil.graphql.DownloadedScenesQuery
 import com.playingwithclouds.veil.graphql.HomeFeedQuery
@@ -29,10 +30,11 @@ object FeedRepository {
 
     /**
      * One page of the ranked recommendation feed. Offset 0 keeps the ranking for 10 minutes unless
-     * refresh is set; later offsets continue that ranking so pages don't overlap.
+     * refresh is set; later offsets continue that ranking so pages don't overlap. Non-empty
+     * [sources] keep only scenes from those plugins.
      */
-    suspend fun recommendations(limit: Int, offset: Int, refresh: Boolean): List<RecommendedScene> {
-        val query = HomeFeedQuery(Optional.present(limit), Optional.present(offset), Optional.present(refresh))
+    suspend fun recommendations(limit: Int, offset: Int, refresh: Boolean, sources: List<String>): List<RecommendedScene> {
+        val query = HomeFeedQuery(Optional.present(limit), Optional.present(offset), Optional.present(refresh), sources.orAbsentIfEmpty())
         return VeilApi.client.query(query).execute().dataOrThrow().toRecommendedScenes()
     }
 

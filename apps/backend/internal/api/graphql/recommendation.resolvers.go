@@ -25,8 +25,8 @@ func (r *mutationResolver) RecordImpressions(ctx context.Context, impressions []
 }
 
 // Recommendations is the resolver for the recommendations field.
-func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool) ([]*model.RecommendedScene, error) {
-	items, err := r.recommender.Feed(ctx, r.registry.InactiveNames(), derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
+func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string) ([]*model.RecommendedScene, error) {
+	items, err := r.recommender.Feed(ctx, r.registry.InactiveNames(), sources, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
 	if err != nil {
 		return nil, err
 	}

@@ -309,6 +309,10 @@ export default {
                     ],
                     "refresh": [
                         4
+                    ],
+                    "sources": [
+                        1,
+                        "[String!]"
                     ]
                 }
             ],

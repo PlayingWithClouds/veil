@@ -42,6 +42,9 @@ type rankedFeed struct {
 	scored []scoredItem
 	// ranked is the re-ranked feed order.
 	ranked []Item
+	// observingPlugins lists, per ranked scene, every plugin that observed it,
+	// for the feed's source filter.
+	observingPlugins map[string][]string
 }
 
 // New returns an engine over the database; repo supplies the blocklist and
@@ -54,7 +57,10 @@ func New(database *db.DB, repo *media.Repository) *Engine {
 // ranking is older than feedFirstPageTTL (a reload shows the same feed), or
 // always when refresh is set; later pages read the same ranking while it is
 // fresh, so pages neither overlap nor skip as impressions shift the scores.
-func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, limit, offset int, refresh bool) ([]Item, error) {
+// Non-empty sources keep only scenes some of those plugins observed (the
+// same rule as the scene listings' source filter); offset and limit then
+// page through that filtered view of the one shared ranking.
+func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, sources []string, limit, offset int, refresh bool) ([]Item, error) {
 	maxAge := feedCacheTTL
 	if offset == 0 {
 		maxAge = feedFirstPageTTL
@@ -66,7 +72,24 @@ func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, limit, offs
 	if err != nil {
 		return nil, err
 	}
-	return page(feed.ranked, limit, offset), nil
+	return page(feed.observedBy(sources), limit, offset), nil
+}
+
+// observedBy returns the ranked feed narrowed to scenes some of the sources
+// plugins observed, keeping the ranked order; the whole feed when sources is
+// empty.
+func (feed *rankedFeed) observedBy(sources []string) []Item {
+	if len(sources) == 0 {
+		return feed.ranked
+	}
+	wanted := toSet(sources)
+	out := []Item{}
+	for _, item := range feed.ranked {
+		if containsAny(feed.observingPlugins[item.SceneID], wanted) {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // Rows groups the ranked candidates by reason into titled rows ("Because you
@@ -173,7 +196,41 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 	if err := e.describeReasons(ctx, scored); err != nil {
 		return nil, err
 	}
-	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored)}, nil
+	observingPlugins, err := e.loadObservingPlugins(ctx, scoredSceneIDs(scored))
+	if err != nil {
+		return nil, err
+	}
+	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored), observingPlugins: observingPlugins}, nil
+}
+
+// scoredSceneIDs lists the scene ids of the scored items.
+func scoredSceneIDs(scored []scoredItem) []string {
+	ids := make([]string, 0, len(scored))
+	for _, item := range scored {
+		ids = append(ids, item.SceneID)
+	}
+	return ids
+}
+
+// loadObservingPlugins reads every plugin that observed each of the scenes,
+// keyed by scene id. Scenes no plugin observed are absent.
+func (e *Engine) loadObservingPlugins(ctx context.Context, sceneIDs []string) (map[string][]string, error) {
+	out := map[string][]string{}
+	if len(sceneIDs) == 0 {
+		return out, nil
+	}
+	rows, err := e.database.Query(ctx,
+		`SELECT DISTINCT target, plugin FROM observation
+		 WHERE target IN (SELECT value FROM json_each($ids))`,
+		db.Vars{"ids": sceneIDs})
+	if err != nil {
+		return nil, fmt.Errorf("load observing plugins: %w", err)
+	}
+	for _, row := range rows {
+		sceneID := rowString(row, "target")
+		out[sceneID] = append(out[sceneID], rowString(row, "plugin"))
+	}
+	return out, nil
 }
 
 // score filters the candidates to the eligible ones and scores them, best first.

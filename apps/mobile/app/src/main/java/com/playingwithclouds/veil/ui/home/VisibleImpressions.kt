@@ -21,6 +21,22 @@ object VisibleImpressions {
             .map { item -> item.index }
     }
 
+    /**
+     * The item to play a preview of: of the items mostly on screen, the one whose middle is
+     * nearest the focus line a third of the way down the viewport, where the eye rests while
+     * scrolling. Null when none is mostly on screen.
+     */
+    fun previewIndex(items: List<ItemExtent>, viewportStart: Int, viewportEnd: Int): Int? {
+        val focusLine = viewportStart + (viewportEnd - viewportStart) / 3
+        return items
+            .filter { item -> visibleFraction(item, viewportStart, viewportEnd) >= PREVIEW_VISIBLE_FRACTION }
+            .minByOrNull { item -> kotlin.math.abs(item.offset + item.size / 2 - focusLine) }
+            ?.index
+    }
+
+    /** How much of an item must be on screen before its preview plays. */
+    private const val PREVIEW_VISIBLE_FRACTION = 0.8f
+
     /** The share of the item inside the viewport, 0 when it is outside or empty. */
     private fun visibleFraction(item: ItemExtent, viewportStart: Int, viewportEnd: Int): Float {
         if (item.size <= 0) {

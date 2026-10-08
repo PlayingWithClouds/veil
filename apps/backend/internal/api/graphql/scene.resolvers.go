@@ -46,7 +46,7 @@ func (r *queryResolver) RandomScenes(ctx context.Context, limit *int) ([]*model.
 // RecommendedFeed is the resolver for the recommendedFeed field: the ranked
 // feed without reasons.
 func (r *queryResolver) RecommendedFeed(ctx context.Context, limit *int, offset *int) ([]*model.Scene, error) {
-	items, err := r.recommender.Feed(ctx, r.registry.InactiveNames(), derefInt(limit, defaultFeedLimit), derefInt(offset, 0), false)
+	items, err := r.recommender.Feed(ctx, r.registry.InactiveNames(), nil, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), false)
 	if err != nil {
 		return nil, err
 	}

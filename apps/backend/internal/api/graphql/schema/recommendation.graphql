@@ -5,8 +5,10 @@ extend type Query {
   # The ranked personalized feed, each scene with why it was picked. offset 0
   # re-ranks once the ranking is 10 minutes old, or always with refresh; later
   # pages read the same ranking (for 30 minutes) so pages don't overlap.
-  # recommendedFeed is the same list without reasons.
-  recommendations(limit: Int, offset: Int, refresh: Boolean): [RecommendedScene!]!
+  # recommendedFeed is the same list without reasons. Non-empty sources (plugin
+  # names) keep only scenes one of those plugins observed, like the scenes
+  # source filter; offset and limit page through that filtered ranking.
+  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!]): [RecommendedScene!]!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row

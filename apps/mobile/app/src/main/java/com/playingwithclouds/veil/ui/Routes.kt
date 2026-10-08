@@ -5,10 +5,8 @@ import androidx.navigation.NavHostController
 
 /** Route patterns of every destination, plus builders that fill in the arguments. */
 object Routes {
-    const val HOME = "home"
-    const val SUBSCRIPTIONS = "subscriptions"
-    const val LIBRARY = "library"
-    const val COLLECTIONS = "collections"
+    /** The swipeable tab pager: Home, Following, Collections, Library. */
+    const val TABS = "tabs"
     const val HISTORY = "history"
     const val LIBRARY_SECTION = "library/{section}"
     const val SEARCH = "search?query={query}"
@@ -53,28 +51,28 @@ object Routes {
     fun subscription(id: String): String = "subscription/${Uri.encode(id)}"
 }
 
-/** Navigation actions that screens call, so they never touch route strings. */
-class AppNavigator(private val controller: NavHostController) {
+/**
+ * Navigation actions that screens call, so they never touch route strings. [selectTab] turns the
+ * tab pager to a page.
+ */
+class AppNavigator(private val controller: NavHostController, private val selectTab: (Tab) -> Unit) {
 
     /** Goes one screen back. */
     fun back() {
         controller.popBackStack()
     }
 
-    /** Switches to a tab, keeping each tab's own state. */
-    fun openTab(route: String) {
-        controller.navigate(route) {
-            popUpTo(Routes.HOME) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+    /** Closes every screen above the tabs and turns to [tab]. */
+    fun openTab(tab: Tab) {
+        controller.popBackStack(Routes.TABS, inclusive = false)
+        selectTab(tab)
     }
 
     fun openSearch(query: String = "") = controller.navigate(Routes.search(query))
 
     fun openScene(id: String) = controller.navigate(Routes.scene(id))
 
-    fun openCollections() = controller.navigate(Routes.COLLECTIONS)
+    fun openCollections() = openTab(Tab.COLLECTIONS)
 
     fun openHistory() = controller.navigate(Routes.HISTORY)
 
