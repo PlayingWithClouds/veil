@@ -25,12 +25,13 @@ type Query {
   plugin(id: ID!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
   pluginCategories(plugin: String!, limit: Int): [PluginCategory!]!
-  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!], minDuration: Int, maxDuration: Int): [RecommendedScene!]!
+  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!], minDuration: Int, maxDuration: Int, excludeTagIds: [ID!]): [RecommendedScene!]!
+  tasteProfile(limit: Int): TasteProfile!
   recommendedRows(rowLimit: Int, perRow: Int): [RecommendationRow!]!
   recommendedCategories(categoryLimit: Int, perCategory: Int): [RecommendedCategory!]!
   recommendationPair: [Scene!]!
   savedFilters: [SavedFilter!]!
-  scenes(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sort: String, minRating: Float, minDuration: Int, maxDuration: Int, dateFrom: String, dateTo: String, sources: [String!]): [Scene!]!
+  scenes(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sort: String, minRating: Float, minDuration: Int, maxDuration: Int, dateFrom: String, dateTo: String, sources: [String!], includeTagIds: [ID!], excludeTagIds: [ID!]): [Scene!]!
   scene(id: ID!): Scene
   randomScenes(limit: Int): [Scene!]!
   recommendedFeed(limit: Int, offset: Int): [Scene!]!
@@ -407,6 +408,21 @@ input ImpressionInput {
   surface: String
   position: Int
   clicked: Boolean
+}
+
+type TasteProfile {
+  signalCount: Int!
+  tags: [TasteEntry!]!
+  performers: [TasteEntry!]!
+  studios: [TasteEntry!]!
+  sites: [TasteEntry!]!
+}
+
+type TasteEntry {
+  id: ID!
+  name: String!
+  imagePath: String
+  affinity: Float!
 }
 
 type RecommendedScene {

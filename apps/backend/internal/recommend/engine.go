@@ -64,7 +64,16 @@ func New(database *db.DB, repo *media.Repository) *Engine {
 // same rule as the scene listings' source filter); offset and limit then
 // page through that filtered view of the one shared ranking.
 func (e *Engine) Feed(ctx context.Context, disabledPlugins []string, sources []string, limit, offset int, refresh bool) ([]Item, error) {
-	return e.FeedWithDuration(ctx, disabledPlugins, sources, DurationRange{}, limit, offset, refresh)
+	return e.FeedFiltered(ctx, disabledPlugins, sources, FeedFilter{}, limit, offset, refresh)
+}
+
+// FeedFilter narrows a feed beyond its sources; the zero value keeps everything.
+type FeedFilter struct {
+	// Duration keeps only scenes whose runtime falls inside the window.
+	Duration DurationRange
+	// ExcludeTagIDs drops scenes carrying any of these tags (own, studio's or
+	// a credited performer's).
+	ExcludeTagIDs []string
 }
 
 // DurationRange narrows a feed to a runtime window in seconds; a zero bound
@@ -93,9 +102,9 @@ func (window DurationRange) contains(durationSeconds int) bool {
 	return window.MaxSeconds <= 0 || durationSeconds <= window.MaxSeconds
 }
 
-// FeedWithDuration is Feed additionally narrowed to scenes whose runtime
-// falls inside the range; paging walks the narrowed view of the same ranking.
-func (e *Engine) FeedWithDuration(ctx context.Context, disabledPlugins []string, sources []string, window DurationRange, limit, offset int, refresh bool) ([]Item, error) {
+// FeedFiltered is Feed additionally narrowed by filter; paging walks the
+// narrowed view of the same shared ranking, so pages stay stable under it.
+func (e *Engine) FeedFiltered(ctx context.Context, disabledPlugins []string, sources []string, filter FeedFilter, limit, offset int, refresh bool) ([]Item, error) {
 	maxAge := feedCacheTTL
 	if offset == 0 {
 		maxAge = feedFirstPageTTL
@@ -107,7 +116,11 @@ func (e *Engine) FeedWithDuration(ctx context.Context, disabledPlugins []string,
 	if err != nil {
 		return nil, err
 	}
-	return page(feed.within(window, feed.observedBy(sources)), limit, offset), nil
+	items, err := e.withoutTags(ctx, feed.within(filter.Duration, feed.observedBy(sources)), filter.ExcludeTagIDs)
+	if err != nil {
+		return nil, err
+	}
+	return page(items, limit, offset), nil
 }
 
 // within keeps the items whose runtime falls inside the range, in order.
@@ -122,6 +135,29 @@ func (feed *rankedFeed) within(window DurationRange, items []Item) []Item {
 		}
 	}
 	return out
+}
+
+// withoutTags drops the items whose scene carries any of tagIDs; items itself
+// when there are none to exclude.
+func (e *Engine) withoutTags(ctx context.Context, items []Item, tagIDs []string) ([]Item, error) {
+	if len(tagIDs) == 0 {
+		return items, nil
+	}
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.SceneID)
+	}
+	carrying, err := e.repo.ScenesCarryingTags(ctx, ids, tagIDs)
+	if err != nil {
+		return nil, err
+	}
+	kept := make([]Item, 0, len(items))
+	for _, item := range items {
+		if !carrying[item.SceneID] {
+			kept = append(kept, item)
+		}
+	}
+	return kept, nil
 }
 
 // observedBy returns the ranked feed narrowed to scenes some of the sources
@@ -239,6 +275,10 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 		return nil, err
 	}
 	scored, err := e.score(ctx, state, pool.list())
+	if err != nil {
+		return nil, err
+	}
+	scored, err = e.dropDuplicates(ctx, scored)
 	if err != nil {
 		return nil, err
 	}

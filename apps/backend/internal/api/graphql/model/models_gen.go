@@ -565,6 +565,21 @@ type Tag struct {
 	UpdatedAt   string   `json:"updatedAt"`
 }
 
+type TasteEntry struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	ImagePath *string `json:"imagePath,omitempty"`
+	Affinity  float64 `json:"affinity"`
+}
+
+type TasteProfile struct {
+	SignalCount int           `json:"signalCount"`
+	Tags        []*TasteEntry `json:"tags"`
+	Performers  []*TasteEntry `json:"performers"`
+	Studios     []*TasteEntry `json:"studios"`
+	Sites       []*TasteEntry `json:"sites"`
+}
+
 type UpdateSettingsInput struct {
 	MaxConcurrentJobs            *int                  `json:"maxConcurrentJobs,omitempty"`
 	MaxJobRetries                *int                  `json:"maxJobRetries,omitempty"`

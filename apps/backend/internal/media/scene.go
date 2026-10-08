@@ -27,6 +27,10 @@ type EntityFilters struct {
 	DisabledPlugins []string
 	// Sources keeps only records some of these plugins observed. Empty = any.
 	Sources []string
+	// IncludeTagIDs keeps only scenes carrying every one of these tags (own,
+	// studio's or a credited performer's); ExcludeTagIDs drops scenes carrying any.
+	IncludeTagIDs []string
+	ExcludeTagIDs []string
 }
 
 // sourceCondition matches records observed by one of the $sources plugins.
@@ -550,12 +554,43 @@ func tagMatchFromMap(m map[string]any) *string {
 // credited performers' tags contain $tag. Columns are table-qualified because
 // json_each exposes its own id/key/value columns inside the subqueries.
 func inheritedTagCondition(table string) string {
-	return "(" + jsonContains(table+".tags", "$tag") +
+	return inheritedTagConditionFor(table, "$tag")
+}
+
+// inheritedTagConditionFor is inheritedTagCondition against any bound tag parameter.
+func inheritedTagConditionFor(table, parameter string) string {
+	return "(" + jsonContains(table+".tags", parameter) +
 		" OR EXISTS (SELECT 1 FROM studio, json_each(studio.tags) AS studio_tag" +
-		" WHERE studio.id = " + table + ".studio AND studio_tag.value = $tag)" +
+		" WHERE studio.id = " + table + ".studio AND studio_tag.value = " + parameter + ")" +
 		" OR EXISTS (SELECT 1 FROM json_each(" + table + ".performers) AS credit" +
 		" JOIN performer ON performer.id = credit.value, json_each(performer.tags) AS performer_tag" +
-		" WHERE performer_tag.value = $tag))"
+		" WHERE performer_tag.value = " + parameter + "))"
+}
+
+// tagListConditions requires every included tag and forbids every excluded tag
+// (both inherited from studio and performers), binding each as $includeTagN /
+// $excludeTagN.
+func tagListConditions(includeTagIDs, excludeTagIDs []string, vars db.Vars) []string {
+	var conditions []string
+	for index, tagID := range includeTagIDs {
+		rid := parseFilterID(&tagID)
+		if rid == nil {
+			continue
+		}
+		name := fmt.Sprintf("includeTag%d", index)
+		vars[name] = *rid
+		conditions = append(conditions, inheritedTagConditionFor("scene", "$"+name))
+	}
+	for index, tagID := range excludeTagIDs {
+		rid := parseFilterID(&tagID)
+		if rid == nil {
+			continue
+		}
+		name := fmt.Sprintf("excludeTag%d", index)
+		vars[name] = *rid
+		conditions = append(conditions, "NOT "+inheritedTagConditionFor("scene", "$"+name))
+	}
+	return conditions
 }
 
 // inheritedTagProjection selects every column of table plus the direct_match
@@ -599,6 +634,7 @@ func (r *Repository) ListScenes(ctx context.Context, filters EntityFilters, limi
 		tagFiltered = true
 		conditions = append(conditions, inheritedTagCondition("scene"))
 	}
+	conditions = append(conditions, tagListConditions(filters.IncludeTagIDs, filters.ExcludeTagIDs, vars)...)
 	if filters.MinRating != nil {
 		vars["minRating"] = *filters.MinRating
 		conditions = append(conditions, "rating >= $minRating")

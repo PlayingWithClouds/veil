@@ -9,7 +9,8 @@ extend type Query {
   # names) keep only scenes one of those plugins observed, like the scenes
   # source filter; offset and limit page through that filtered ranking.
   # minDuration/maxDuration (seconds) keep only scenes with a known runtime
-  # inside that window.
+  # inside that window. excludeTagIds drops scenes carrying any of those tags
+  # (own, studio's or a credited performer's) from the shared ranking.
   recommendations(
     limit: Int
     offset: Int
@@ -17,7 +18,12 @@ extend type Query {
     sources: [String!]
     minDuration: Int
     maxDuration: Int
+    excludeTagIds: [ID!]
   ): [RecommendedScene!]!
+
+  # The user's taste profile: the strongest tags, performers, studios and
+  # sites (affinity in [-1, 1]) the recommender ranks with.
+  tasteProfile(limit: Int): TasteProfile!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row
@@ -55,6 +61,27 @@ input ImpressionInput {
   position: Int
   # true when the user opened it; absent/false when it was only shown.
   clicked: Boolean
+}
+
+type TasteProfile {
+  # How many signals (watches, likes, saves, ...) the profile was built from;
+  # 0 means cold start.
+  signalCount: Int!
+  # Each list holds the strongest positive entries first, then the strongest
+  # negative ones, at most `limit` of each sign.
+  tags: [TasteEntry!]!
+  performers: [TasteEntry!]!
+  studios: [TasteEntry!]!
+  # id and name are the plugin name.
+  sites: [TasteEntry!]!
+}
+
+type TasteEntry {
+  id: ID!
+  name: String!
+  imagePath: String
+  # Normalized to [-1, 1] within its list.
+  affinity: Float!
 }
 
 type RecommendedScene {

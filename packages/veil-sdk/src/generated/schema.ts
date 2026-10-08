@@ -39,6 +39,7 @@ export interface Query {
     pluginPackages: PluginPackage[]
     pluginCategories: PluginCategory[]
     recommendations: RecommendedScene[]
+    tasteProfile: TasteProfile
     recommendedRows: RecommendationRow[]
     recommendedCategories: RecommendedCategory[]
     recommendationPair: Scene[]
@@ -423,6 +424,23 @@ export interface PluginCategory {
     __typename: 'PluginCategory'
 }
 
+export interface TasteProfile {
+    signalCount: Scalars['Int']
+    tags: TasteEntry[]
+    performers: TasteEntry[]
+    studios: TasteEntry[]
+    sites: TasteEntry[]
+    __typename: 'TasteProfile'
+}
+
+export interface TasteEntry {
+    id: Scalars['ID']
+    name: Scalars['String']
+    imagePath: (Scalars['String'] | null)
+    affinity: Scalars['Float']
+    __typename: 'TasteEntry'
+}
+
 export interface RecommendedScene {
     scene: Scene
     source: Scalars['String']
@@ -733,12 +751,13 @@ export interface QueryGenqlSelection{
     plugin?: (PluginGenqlSelection & { __args: {id: Scalars['ID']} })
     pluginPackages?: (PluginPackageGenqlSelection & { __args?: {query?: (Scalars['String'] | null)} })
     pluginCategories?: (PluginCategoryGenqlSelection & { __args: {plugin: Scalars['String'], limit?: (Scalars['Int'] | null)} })
-    recommendations?: (RecommendedSceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), refresh?: (Scalars['Boolean'] | null), sources?: (Scalars['String'][] | null), minDuration?: (Scalars['Int'] | null), maxDuration?: (Scalars['Int'] | null)} })
+    recommendations?: (RecommendedSceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), refresh?: (Scalars['Boolean'] | null), sources?: (Scalars['String'][] | null), minDuration?: (Scalars['Int'] | null), maxDuration?: (Scalars['Int'] | null), excludeTagIds?: (Scalars['ID'][] | null)} })
+    tasteProfile?: (TasteProfileGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     recommendedRows?: (RecommendationRowGenqlSelection & { __args?: {rowLimit?: (Scalars['Int'] | null), perRow?: (Scalars['Int'] | null)} })
     recommendedCategories?: (RecommendedCategoryGenqlSelection & { __args?: {categoryLimit?: (Scalars['Int'] | null), perCategory?: (Scalars['Int'] | null)} })
     recommendationPair?: SceneGenqlSelection
     savedFilters?: SavedFilterGenqlSelection
-    scenes?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), sort?: (Scalars['String'] | null), minRating?: (Scalars['Float'] | null), minDuration?: (Scalars['Int'] | null), maxDuration?: (Scalars['Int'] | null), dateFrom?: (Scalars['String'] | null), dateTo?: (Scalars['String'] | null), sources?: (Scalars['String'][] | null)} })
+    scenes?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), sort?: (Scalars['String'] | null), minRating?: (Scalars['Float'] | null), minDuration?: (Scalars['Int'] | null), maxDuration?: (Scalars['Int'] | null), dateFrom?: (Scalars['String'] | null), dateTo?: (Scalars['String'] | null), sources?: (Scalars['String'][] | null), includeTagIds?: (Scalars['ID'][] | null), excludeTagIds?: (Scalars['ID'][] | null)} })
     scene?: (SceneGenqlSelection & { __args: {id: Scalars['ID']} })
     randomScenes?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     recommendedFeed?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
@@ -1143,6 +1162,25 @@ export interface PluginCategoryGenqlSelection{
 }
 
 export interface ImpressionInput {mediaId: Scalars['ID'],source?: (Scalars['String'] | null),surface?: (Scalars['String'] | null),position?: (Scalars['Int'] | null),clicked?: (Scalars['Boolean'] | null)}
+
+export interface TasteProfileGenqlSelection{
+    signalCount?: boolean | number
+    tags?: TasteEntryGenqlSelection
+    performers?: TasteEntryGenqlSelection
+    studios?: TasteEntryGenqlSelection
+    sites?: TasteEntryGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface TasteEntryGenqlSelection{
+    id?: boolean | number
+    name?: boolean | number
+    imagePath?: boolean | number
+    affinity?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
 
 export interface RecommendedSceneGenqlSelection{
     scene?: SceneGenqlSelection
@@ -1656,6 +1694,22 @@ export interface WatchlistItemGenqlSelection{
     export const isPluginCategory = (obj?: { __typename?: any } | null): obj is PluginCategory => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPluginCategory"')
       return PluginCategory_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const TasteProfile_possibleTypes: string[] = ['TasteProfile']
+    export const isTasteProfile = (obj?: { __typename?: any } | null): obj is TasteProfile => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isTasteProfile"')
+      return TasteProfile_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const TasteEntry_possibleTypes: string[] = ['TasteEntry']
+    export const isTasteEntry = (obj?: { __typename?: any } | null): obj is TasteEntry => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isTasteEntry"')
+      return TasteEntry_possibleTypes.includes(obj.__typename)
     }
     
 
