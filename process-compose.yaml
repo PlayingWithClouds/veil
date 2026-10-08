@@ -2,18 +2,15 @@
 # Bun) for fast reloads. Startup order: backend -> frontends; infra (FlareSolverr)
 # runs alongside and is optional.
 #
-#   process-compose up   # fixed default ports (see below)
-#   pcx up               # random-port launcher + TUI (~/Documents/process-compose-random-port)
+#   bun dev   # process-compose up -U
 #
-# Every port is read from ${VAR:-default}. pcx injects a fresh free port per var;
-# plain process-compose falls back to the defaults, which must match
-# infra/docker-compose.yml. The browser talks to the backend directly on
-# http://localhost:${BACKEND_PORT}.
+# Every port is read from ${VAR:-default}; override by exporting the var. The
+# defaults must match infra/docker-compose.yml. The browser talks to the backend
+# directly on http://localhost:${BACKEND_PORT}. process-compose's own API runs on
+# a unix socket (-U) because its default TCP port 8080 clashes with the backend.
 #
 # Infra services are defined in infra/docker-compose.yml; the `infra` process
-# below brings them up and tears them down with process-compose. pcx runs its
-# own API server on a random port too, so the old PC_PORT_NUM=8088 workaround is
-# gone.
+# below brings them up and tears them down with process-compose.
 
 version: "0.5"
 

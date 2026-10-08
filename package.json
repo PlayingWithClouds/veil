@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pcx up",
-    "down": "pcx down"
+    "dev": "process-compose up -U",
+    "down": "process-compose down -U"
   },
   "devDependencies": {
     "@types/bun": "latest"

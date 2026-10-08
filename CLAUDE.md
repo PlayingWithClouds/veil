@@ -117,7 +117,7 @@ Plugins are TypeScript packages under `apps/backend/plugins/`, all importing `@p
 ## Running
 
 ```sh
-bun dev   # pcx / process-compose: plugin bundler (watch) + backend + web native, FlareSolverr via docker compose
+bun dev   # process-compose: plugin bundler (watch) + backend + web native, FlareSolverr via docker compose
 ```
 
 Backend state lives in `DATA_DIR` (default `apps/backend/data`): `veil.db` + `blobs/` + `plugins/` (bundles). Wipe = stop the backend and delete that directory. `DNS_SERVERS` (comma-separated) or `DNS_SERVERS_FILE` (re-read per lookup) override the resolver where Go can't find the system one (Android). `HOST` sets the bind address (default all interfaces), `PLUGIN_REGISTRY` the npm registry.
