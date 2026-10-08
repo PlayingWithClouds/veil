@@ -40,6 +40,7 @@ var DefaultPackages = []string{
 	"@playingwithclouds/veil-plugin-aylo",
 	"@playingwithclouds/veil-plugin-eporner",
 	"@playingwithclouds/veil-plugin-hqporner",
+	"@playingwithclouds/veil-plugin-kvs",
 	"@playingwithclouds/veil-plugin-missav",
 	"@playingwithclouds/veil-plugin-pornpics",
 	"@playingwithclouds/veil-plugin-spankbang",
