@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-txxx-network",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Veil plugin for the txxx network sites",
   "private": true,
   "type": "module",

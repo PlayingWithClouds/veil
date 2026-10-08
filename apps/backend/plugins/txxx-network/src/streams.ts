@@ -23,12 +23,16 @@ const QUALITY_LABELS: Record<string, string> = {
   _hq: "HD",
   _hd: "HD",
   _uq: "UHD",
+  _sd: "SD",
   _lq: "SD",
   _vl: "Low",
 };
 
 // Rank used to order sources best-first.
-const QUALITY_RANK = ["_uq", "_hd", "_hq", "_lq", "_vl"];
+const QUALITY_RANK = ["_uq", "_hd", "_hq", "_sd", "_lq", "_vl"];
+
+// Some network sites serve a single untagged "<id>.mp4" format.
+const UNTAGGED_LABEL = "Source";
 
 // videofile.php returns one entry per available format, each with a base164-
 // obfuscated URL. Decode every non-trailer format into a playable /get_file/
@@ -71,13 +75,14 @@ async function fetchVideoFiles(host: string, id: string, referer: string): Promi
   return data;
 }
 
-// The bare format tag, e.g. "_hq" from "_hq.mp4".
+// The bare format tag, e.g. "_hq" from "_hq.mp4"; "" for an untagged ".mp4".
 function formatTag(format: string): string {
   const match = format.match(/(_[a-z]+)/i);
-  return match ? match[1] : format;
+  return match ? match[1] : "";
 }
 
 function qualityLabel(format: string): string {
+  if (formatTag(format) === "") return UNTAGGED_LABEL;
   for (const [tag, label] of Object.entries(QUALITY_LABELS)) {
     if (format.includes(tag)) return label;
   }

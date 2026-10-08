@@ -1,4 +1,4 @@
-import { baseUrl } from "./http.ts";
+import { baseUrl, videoPageUrl } from "./http.ts";
 import type { DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
 
 // One entry in the videos2 API `videos` array. Only the fields the plugin reads
@@ -77,8 +77,7 @@ export function parseDurationSeconds(duration: string | undefined): number {
 }
 
 export function videoUrl(host: string, id: string, dir?: string): string {
-  const slug = dir ? `${dir}/` : "";
-  return `${baseUrl(host)}/videos/${id}/${slug}`;
+  return videoPageUrl(host, id, dir);
 }
 
 // Preview and screenshot URLs arrive scheme-relative (e.g. "vp1.txxx.com/...").

@@ -17,7 +17,36 @@ export const NETWORK_DOMAINS = [
   "shemalez.com",
   "fetishshrine.com",
   "hotmovs.com",
+  "vxxx.com",
+  "inporn.com",
+  "abxxx.com",
+  "01tube.com",
+  "fuxxx.com",
+  "fufap.com",
+  "porntop.com",
+  "fullvideosporn.com",
+  "sextu.com",
 ];
+
+// The SPA route each site serves video pages under, when it isn't the
+// network default /videos/<id>/<slug>/. The API answers identically on all.
+const VIDEO_PAGE_SHAPES: Record<string, "video-id" | "video" | "en-video"> = {
+  "vxxx.com": "video-id",
+  "inporn.com": "video",
+  "abxxx.com": "video",
+  "porntop.com": "video",
+  "fullvideosporn.com": "en-video",
+};
+
+/** The canonical video page URL for a video on the given network site. */
+export function videoPageUrl(host: string, id: string, dir?: string): string {
+  const slug = dir ? `${dir}/` : "";
+  const shape = VIDEO_PAGE_SHAPES[host];
+  if (shape === "video-id") return `${baseUrl(host)}/video-${id}/`;
+  if (shape === "video") return `${baseUrl(host)}/video/${id}/${slug}`;
+  if (shape === "en-video") return `${baseUrl(host)}/en/video/${id}/${slug}`;
+  return `${baseUrl(host)}/videos/${id}/${slug}`;
+}
 
 export function configuredHost(): string {
   const host = process.env.TXXX_HOST;
@@ -25,9 +54,17 @@ export function configuredHost(): string {
   return DEFAULT_HOST;
 }
 
+// sextu.com moved to fullvideosporn.com; its old links still identify a video.
+const HOST_ALIASES: Record<string, string> = {
+  "sextu.com": "fullvideosporn.com",
+};
+
 export function hostFromUrl(url: string): string {
   try {
-    return new URL(url).hostname.replace(/^www\./, "");
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const alias = HOST_ALIASES[host];
+    if (alias) return alias;
+    return host;
   } catch {
     return configuredHost();
   }
@@ -37,12 +74,13 @@ export function baseUrl(host: string): string {
   return `https://${host}`;
 }
 
-// Video pages look like /videos/<id>/<slug>/; resolved stream handles look like
-// /get_file/<n>/<hash>/<bucket>/<id>/<id>_<tag>.mp4/. Both carry the numeric id.
+// Video pages look like /videos/<id>/<slug>/, /video/<id>/<slug>/ or
+// /video-<id>/; resolved stream handles look like
+// /get_file/<n>/<hash>/<bucket>/<id>/<id>[_<tag>].mp4/. All carry the numeric id.
 export function videoIdFromUrl(url: string): string {
-  const page = url.match(/\/videos?\/(\d+)/);
+  const page = url.match(/\/videos?[/-](\d+)/);
   if (page) return page[1];
-  const getFile = url.match(/\/get_file\/[^?]*?\/(\d+)\/\d+_[a-z]+\.mp4/i);
+  const getFile = url.match(/\/get_file\/[^?]*?\/(\d+)\/\d+(?:_[a-z]+)?\.mp4/i);
   return getFile ? getFile[1] : "";
 }
 

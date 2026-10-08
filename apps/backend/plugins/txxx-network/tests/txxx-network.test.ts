@@ -8,6 +8,7 @@ import {
   base164Decode,
   configuredHost,
   DEFAULT_HOST,
+  videoPageUrl,
 } from "../src/http.ts";
 import { parseDurationSeconds } from "../src/listing.ts";
 import { sceneList } from "../src/scenes.ts";
@@ -29,6 +30,25 @@ describe("http helpers", () => {
     const handle =
       "https://txxx.com/get_file/4/abc123def/977000/977501/977501_hq.mp4/?d=480&br=314&ti=1783872263";
     expect(videoIdFromUrl(handle)).toBe("977501");
+  });
+
+  test("videoIdFromUrl reads every network page shape and untagged handles", () => {
+    expect(videoIdFromUrl("https://vxxx.com/video-1721699/")).toBe("1721699");
+    expect(videoIdFromUrl("https://fullvideosporn.com/en/video/1365279/slug/")).toBe("1365279");
+    const untagged =
+      "https://fuxxx.com/get_file/1/41eccfc4d0/2128000/2128925/2128925.mp4/?d=480&br=1";
+    expect(videoIdFromUrl(untagged)).toBe("2128925");
+  });
+
+  test("videoPageUrl uses each site's route", () => {
+    expect(videoPageUrl("txxx.com", "1", "a")).toBe("https://txxx.com/videos/1/a/");
+    expect(videoPageUrl("vxxx.com", "1", "a")).toBe("https://vxxx.com/video-1/");
+    expect(videoPageUrl("porntop.com", "1", "a")).toBe("https://porntop.com/video/1/a/");
+    expect(videoPageUrl("fullvideosporn.com", "1", "a")).toBe("https://fullvideosporn.com/en/video/1/a/");
+  });
+
+  test("hostFromUrl maps sextu.com to its new domain", () => {
+    expect(hostFromUrl("https://www.sextu.com/videos/1/x/")).toBe("fullvideosporn.com");
   });
 
   test("isVideoUrl detects video pages", () => {
@@ -136,4 +156,32 @@ describe("scrape + resolve (live)", () => {
     },
     3 * NET_TIMEOUT
   );
+});
+
+describe("network sites (live)", () => {
+  const HOSTS = ["vxxx.com", "inporn.com", "abxxx.com", "01tube.com", "fuxxx.com", "fufap.com", "porntop.com", "fullvideosporn.com"];
+
+  for (const host of HOSTS) {
+    test(
+      `${host}: lists, scrapes and resolves through the shared API`,
+      async () => {
+        process.env.TXXX_HOST = host;
+        try {
+          const { items } = await sceneList({ limit: 3 });
+          expect(items.length).toBeGreaterThan(0);
+          expect(hostFromUrl(items[0].source_url)).toBe(host);
+
+          const results = await scrape(items[0].source_url);
+          const scene = results.flatMap((r) => (r.type === "scene" ? [r.scene] : []))[0];
+          expect(scene!.downloads?.length).toBeGreaterThan(0);
+
+          const resolved = await resolve(scene!.downloads![0].url);
+          expect(resolved.url).toContain("/get_file/");
+        } finally {
+          delete process.env.TXXX_HOST;
+        }
+      },
+      3 * NET_TIMEOUT
+    );
+  }
 });

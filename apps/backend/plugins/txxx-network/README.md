@@ -1,7 +1,9 @@
 # txxx-network plugin
 
 Scraper for the **TxxxNetwork** family of adult sites, which all share one backend and JSON API:
-`txxx.com`, `upornia.com`, `hclips.com`, `hdzog.com`, `vjav.com`, `voyeurhit.com`, `thegay.com`, `shemalez.com`, `fetishshrine.com`, `hotmovs.com`.
+`txxx.com`, `upornia.com`, `hclips.com`, `hdzog.com`, `vjav.com`, `voyeurhit.com`, `thegay.com`, `shemalez.com`, `fetishshrine.com`, `hotmovs.com`, `vxxx.com`, `inporn.com`, `abxxx.com`, `01tube.com`, `fuxxx.com`, `fufap.com`, `porntop.com`, `fullvideosporn.com` (formerly `sextu.com`, whose links are mapped to it).
+
+The API is identical everywhere; only the SPA's video page route differs: `/videos/<id>/<slug>/` by default, `/video-<id>/` on vxxx, `/video/<id>/<slug>/` on inporn, abxxx and porntop, `/en/video/<id>/<slug>/` on fullvideosporn (`VIDEO_PAGE_SHAPES` in `src/http.ts`).
 
 Capabilities: `scene:find` (fetch one full scene by URL), `scene:list` (latest-updates catalog, or keyword search with a query), `stream:resolve`.
 
@@ -17,7 +19,7 @@ The site is a Vue SPA; all content comes from a JSON API (no HTML scraping). Req
 - **Search**: `GET /api/videos2.php?params=14400/str/relevance/<count>/search..<page>.all..&s=<query>`
 - **Video detail**: `GET /api/json/video/8640000/<1e6-bucket>/<1e3-bucket>/<id>.json` where the buckets are `floor(id/1e6)*1e6` and `floor(id/1e3)*1e3`.
 - **Related videos**: `GET /api/json/videos_related2/<lifetime>/<count>/<1e6-bucket>/<1e3-bucket>/<id>.all.1.json` → videos2-shaped `{ videos: [...] }`; `scene:find` maps it to `scene.related` (one extra request).
-- **Stream**: `GET /api/videofile.php?video_id=<id>&lifetime=8640000` → array of `{ format, video_url, is_default }`. `format` is `_hq.mp4` / `_lq.mp4` / `_tr.mp4` (trailer). `video_url` is obfuscated.
+- **Stream**: `GET /api/videofile.php?video_id=<id>&lifetime=8640000` → array of `{ format, video_url, is_default }`. `format` is `_hq.mp4` / `_sd.mp4` / `_lq.mp4` / `_tr.mp4` (trailer), or an untagged `.mp4` on sites that keep one rendition (labelled "Source"). `video_url` is obfuscated.
 
 ## Stream deobfuscation (`base164`)
 

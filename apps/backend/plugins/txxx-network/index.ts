@@ -10,7 +10,7 @@ runPlugin({
     name: "txxx-network",
     display_name: "TXXX Network",
     description:
-      "TxxxNetwork adult sites (txxx, upornia, hclips, hdzog, vjav, …) — browse, search, scrape and resolve via their shared JSON API",
+      "TxxxNetwork adult sites (txxx, upornia, hclips, hdzog, vjav, vxxx, inporn, porntop, …) — browse, search, scrape and resolve via their shared JSON API",
     // /favicon.ico is a near-transparent 16px placeholder; this is the real logo.
     icon: "https://txxx.com/static/images/favicons/apple-touch-icon.png",
     version: packageJson.version,
