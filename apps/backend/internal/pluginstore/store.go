@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"golang.org/x/mod/semver"
+
+	"github.com/playingwithclouds/veil/internal/outbound"
 )
 
 // DefaultIndex is the plugin index on the repository's "plugins" release.
@@ -97,7 +99,7 @@ func New(dir, indexURL string) *Store {
 	return &Store{
 		dir:      dir,
 		indexURL: indexURL,
-		client:   &http.Client{Timeout: 2 * time.Minute},
+		client:   &http.Client{Transport: outbound.NewTransport(), Timeout: 2 * time.Minute},
 	}
 }
 

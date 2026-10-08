@@ -22,6 +22,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/playingwithclouds/veil/internal/blobcache"
+	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/storage"
 
 	// Register image decoders so downscaleThumbnail can decode common formats.
@@ -126,7 +127,7 @@ func fetchImage(ctx context.Context, remote *url.URL) ([]byte, string, error) {
 	req.Header.Set("Referer", refererFor(remote))
 	req.Header.Set("Accept", "image/avif,image/webp,image/*,video/*,*/*;q=0.8")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := outbound.Client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}

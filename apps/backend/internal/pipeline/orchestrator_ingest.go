@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/playingwithclouds/veil/internal/jobs"
+	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/subscriptions"
 )
@@ -266,7 +267,7 @@ func (o *Orchestrator) uploadAsset(ctx context.Context, assetURL, key, referer s
 	if referer != "" {
 		req.Header.Set("Referer", referer)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := outbound.Client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -296,7 +297,7 @@ func (o *Orchestrator) uploadPoster(ctx context.Context, externalID, posterURL, 
 	if referer != "" {
 		req.Header.Set("Referer", referer)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := outbound.Client.Do(req)
 	if err != nil {
 		return "", err
 	}

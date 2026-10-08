@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/storage"
 )
@@ -173,6 +174,7 @@ var httpClient = &http.Client{
 	Transport: &http.Transport{
 		DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
 		TLSHandshakeTimeout:   15 * time.Second,
+		TLSClientConfig:       outbound.TLSConfig(),
 		ResponseHeaderTimeout: 30 * time.Second,
 		DisableCompression:    true, // don't deflate streams
 	},

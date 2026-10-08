@@ -26,6 +26,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/media"
 	"github.com/playingwithclouds/veil/internal/netdns"
+	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/pluginstore"
@@ -49,7 +50,7 @@ func cachePluginIcon(ctx context.Context, store *storage.Client, name, iconURL s
 	if store.Exists(ctx, key) {
 		return store.DirectURL(key)
 	}
-	resp, err := http.Get(iconURL) //nolint:gosec
+	resp, err := outbound.Client.Get(iconURL) //nolint:gosec
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return iconURL
 	}

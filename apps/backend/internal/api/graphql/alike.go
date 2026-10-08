@@ -14,6 +14,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/alike"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
+	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/subscriptions"
 )
@@ -263,7 +264,7 @@ func (r *Resolver) hashPoster(ctx context.Context, rawURL string) uint64 {
 	if err != nil {
 		return 0
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := outbound.Client.Do(req)
 	if err != nil {
 		return 0
 	}
