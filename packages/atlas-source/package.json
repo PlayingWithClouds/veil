@@ -1,0 +1,32 @@
+{
+  "name": "@playingwithclouds/veil-atlas",
+  "version": "0.1.0",
+  "private": false,
+  "author": {
+    "name": "playingwithclouds"
+  },
+  "type": "module",
+  "atlas": {
+    "server": "./src/server.ts",
+    "web": "./src/web.ts"
+  },
+  "exports": {
+    "./server": "./src/server.ts",
+    "./web": "./src/web.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@atlas/contracts": "link:@atlas/contracts",
+    "@neoworks/extension-system": "link:@neoworks/extension-system",
+    "@playingwithclouds/veil-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "svelte": "^5.19.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.19.0"
+  }
+}

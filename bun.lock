@@ -56,6 +56,21 @@
         "ws": "^8.21.0",
       },
     },
+    "packages/atlas-source": {
+      "name": "@playingwithclouds/veil-atlas",
+      "version": "0.1.0",
+      "dependencies": {
+        "@atlas/contracts": "link:@atlas/contracts",
+        "@neoworks/extension-system": "link:@neoworks/extension-system",
+        "@playingwithclouds/veil-sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "svelte": "^5.19.0",
+      },
+      "peerDependencies": {
+        "svelte": "^5.19.0",
+      },
+    },
     "packages/config": {
       "name": "@playingwithclouds/config",
       "version": "0.1.0",
@@ -80,6 +95,8 @@
     },
   },
   "packages": {
+    "@atlas/contracts": ["@atlas/contracts@link:@atlas/contracts", {}],
+
     "@capacitor/app": ["@capacitor/app@8.1.1", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-xM2ZTX5jK60tFtmjsmJv+Cdj1Qsb6NcavkqmdEnCPQBeya9oKhamZJxYOnQNj1ZvcJM7sWfG6BEtSLx42pisbA=="],
 
     "@capacitor/core": ["@capacitor/core@8.4.0", "", { "dependencies": { "tslib": "^2.1.0" } }, "sha512-LrS1xPIrqLtJABBIPDGXxxKmI9OyesrzWw8DiHbxhSC9JoiLUleUAJlX1a0LWIVLRbuY4Szgf9huFeRqYH2SAQ=="],
@@ -152,6 +169,8 @@
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.5", "", { "dependencies": { "@tybys/wasm-util": "^0.10.2" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-AWPoBRJ9tsnVhor4sjO7rkni+7p+2IAEFj6cx06UgP10jkQHqay/36uRV/bFkgrh18D9vb4cr8Q0Pthskgzy+Q=="],
 
+    "@neoworks/extension-system": ["@neoworks/extension-system@link:@neoworks/extension-system", {}],
+
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
 
     "@nodelib/fs.stat": ["@nodelib/fs.stat@2.0.5", "", {}, "sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A=="],
@@ -161,6 +180,8 @@
     "@oxc-project/types": ["@oxc-project/types@0.133.0", "", {}, "sha512-KzkdCd6Uxqnf6l3HOw1xfatAlUURA0g14cvBYFyJ5SaNOQbOUvBr9PKArcPcrNIeRsBdgcUzOGrhKveVpvOIGA=="],
 
     "@playingwithclouds/config": ["@playingwithclouds/config@workspace:packages/config"],
+
+    "@playingwithclouds/veil-atlas": ["@playingwithclouds/veil-atlas@workspace:packages/atlas-source"],
 
     "@playingwithclouds/veil-sdk": ["@playingwithclouds/veil-sdk@workspace:packages/veil-sdk"],
 
