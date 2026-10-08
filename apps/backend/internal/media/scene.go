@@ -512,7 +512,7 @@ func (r *Repository) sceneFromMap(ctx context.Context, m map[string]any) *model.
 		Rating:          mFloatPtr(m, "rating"),
 		ViewCount:       mInt(m, "view_count"),
 		Organized:       mBool(m, "organized"),
-		PosterPath:      mStringPtr(m, "poster_path"),
+		PosterPath:      scenePoster(m),
 		PreviewVideo:    mStringPtr(m, "preview_video"),
 		PreviewImages:   mStringSlice(m, "preview_images"),
 		Studio:          r.studioLite(ctx, asRecordID(m["studio"])),
@@ -522,6 +522,14 @@ func (r *Repository) sceneFromMap(ctx context.Context, m map[string]any) *model.
 		CreatedAt:       mString(m, "created_at"),
 		UpdatedAt:       mString(m, "updated_at"),
 	}
+}
+
+// scenePoster is the scene's own best-moment thumbnail when it has one, else the site's poster.
+func scenePoster(m map[string]any) *string {
+	if thumbnail := mStringPtr(m, "thumbnail_path"); thumbnail != nil {
+		return thumbnail
+	}
+	return mStringPtr(m, "poster_path")
 }
 
 // tagMatchFromMap converts the query-projected direct_match flag into the

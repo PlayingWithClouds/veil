@@ -107,6 +107,11 @@ type Gallery struct {
 	UpdatedAt  string       `json:"updatedAt"`
 }
 
+type HeatSpanInput struct {
+	FromSeconds float64 `json:"fromSeconds"`
+	ToSeconds   float64 `json:"toSeconds"`
+}
+
 type Image struct {
 	ID         string       `json:"id"`
 	FilePath   string       `json:"filePath"`
@@ -341,6 +346,13 @@ type RecommendedScene struct {
 	Score  float64               `json:"score"`
 }
 
+type RecordSceneHeatInput struct {
+	SceneID         string           `json:"sceneId"`
+	DurationSeconds float64          `json:"durationSeconds"`
+	Spans           []*HeatSpanInput `json:"spans"`
+	Scrubs          []float64        `json:"scrubs"`
+}
+
 type SavedFilter struct {
 	ID        string       `json:"id"`
 	Name      string       `json:"name"`
@@ -397,6 +409,12 @@ type SceneFilterInput struct {
 	DateTo      *string  `json:"dateTo,omitempty"`
 	Sort        *string  `json:"sort,omitempty"`
 	Sources     []string `json:"sources,omitempty"`
+}
+
+type SceneHeat struct {
+	Buckets           []float64 `json:"buckets"`
+	BestMomentSeconds *float64  `json:"bestMomentSeconds,omitempty"`
+	ThumbnailSeconds  *float64  `json:"thumbnailSeconds,omitempty"`
 }
 
 type SceneMarker struct {

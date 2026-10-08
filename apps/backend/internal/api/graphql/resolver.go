@@ -11,6 +11,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
 	"github.com/playingwithclouds/veil/internal/settings"
+	"github.com/playingwithclouds/veil/internal/storage"
 	"github.com/playingwithclouds/veil/internal/stream"
 	"github.com/playingwithclouds/veil/internal/subscriptions"
 	"github.com/playingwithclouds/veil/internal/suggest"
@@ -36,7 +37,11 @@ type Resolver struct {
 	recommender  *recommend.Engine
 	pluginStore  *pluginstore.Store
 	suggestions  *suggest.Service
+	blobStore    *storage.Client
 }
+
+// SetBlobStore wires in the blob store, where generated scene thumbnails are kept.
+func (r *Resolver) SetBlobStore(store *storage.Client) { r.blobStore = store }
 
 func NewResolver(
 	repo *media.Repository,

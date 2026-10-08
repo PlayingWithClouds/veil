@@ -167,3 +167,19 @@ query SceneOnWatchlist {
     media
   }
 }
+
+query SceneHeat($sceneId: ID!) {
+  sceneHeat(sceneId: $sceneId) {
+    buckets
+    bestMomentSeconds
+    thumbnailSeconds
+  }
+}
+
+mutation RecordSceneHeat($input: RecordSceneHeatInput!) {
+  recordSceneHeat(input: $input)
+}
+
+mutation SetSceneThumbnail($sceneId: ID!, $atSeconds: Float!, $jpegBase64: String!) {
+  setSceneThumbnail(sceneId: $sceneId, atSeconds: $atSeconds, jpegBase64: $jpegBase64)
+}

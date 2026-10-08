@@ -19,7 +19,7 @@ type cardSource struct {
 // cardSources covers every entity type a card can represent (collection
 // members, watch history, watchlist).
 var cardSources = []cardSource{
-	{table: "scene", titleField: "title", posterField: "poster_path"},
+	{table: "scene", titleField: "title", posterField: "COALESCE(thumbnail_path, poster_path)"},
 	{table: "gallery", titleField: "title", posterField: "cover_path"},
 	{table: "image", titleField: "title", posterField: "file_path"},
 	{table: "performer", titleField: "name", posterField: "image_path"},
