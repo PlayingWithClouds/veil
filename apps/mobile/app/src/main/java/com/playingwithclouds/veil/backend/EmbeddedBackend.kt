@@ -8,6 +8,8 @@ import android.net.LinkProperties
 import android.net.Network
 import android.util.Log
 import com.playingwithclouds.veil.BuildConfig
+import com.playingwithclouds.veil.privacy.BlobKeys
+import com.playingwithclouds.veil.privacy.PrivacyPreferences
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -61,6 +63,7 @@ class EmbeddedBackend(context: Context) {
                 dnsFile = dnsFile.absolutePath,
                 tempDir = context.cacheDir.absolutePath,
                 port = BuildConfig.BACKEND_PORT,
+                blobEncryption = BlobEncryption(BlobKeys.encodedKey(context), PrivacyPreferences.encryptDownloads.value),
             ),
         )
         return try {

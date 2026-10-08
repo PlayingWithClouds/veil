@@ -4,6 +4,8 @@ package storage
 
 import (
 	"context"
+	"crypto/cipher"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -40,6 +42,9 @@ type Client struct {
 	publicBase string
 	// onPut may be registered while Puts are already running.
 	onPut atomic.Pointer[func(key string, size int64)]
+	// aead and encryptedPrefixes are set once by WithEncryption, before use.
+	aead              cipher.AEAD
+	encryptedPrefixes []string
 }
 
 // File describes a stored blob. Its modification time doubles as the last
@@ -60,6 +65,34 @@ func New(root, publicBase string) (*Client, error) {
 		return nil, fmt.Errorf("remove unfinished blobs: %w", err)
 	}
 	return &Client{root: root, publicBase: strings.TrimRight(publicBase, "/")}, nil
+}
+
+// WithEncryption encrypts every blob Put under one of prefixes (e.g.
+// "stream-cache/", where downloads live) with key, a KeySize-byte AES key. Reads
+// decrypt transparently and stay seekable. Blobs written before, or outside the
+// prefixes, remain plain and readable; encrypted blobs cannot be read without
+// the key. Call it before the client is used.
+func (c *Client) WithEncryption(key []byte, prefixes ...string) error {
+	aead, err := newAEAD(key)
+	if err != nil {
+		return err
+	}
+	c.aead = aead
+	c.encryptedPrefixes = prefixes
+	return nil
+}
+
+// encrypts reports whether Put encrypts key.
+func (c *Client) encrypts(key string) bool {
+	if c.aead == nil {
+		return false
+	}
+	for _, prefix := range c.encryptedPrefixes {
+		if strings.HasPrefix(key, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // DirectURL returns the URL Handler serves key at.
@@ -90,7 +123,16 @@ func (c *Client) Put(ctx context.Context, key string, r io.Reader, size int64, c
 		return err
 	}
 	defer os.Remove(temporary.Name())
-	written, err := io.Copy(temporary, contextReader{ctx: ctx, reader: r})
+	source := io.Reader(contextReader{ctx: ctx, reader: r})
+	if c.encrypts(key) {
+		encrypted, err := newEncryptingReader(source, c.aead)
+		if err != nil {
+			temporary.Close()
+			return err
+		}
+		source = encrypted
+	}
+	written, err := io.Copy(temporary, source)
 	if err != nil {
 		temporary.Close()
 		return err
@@ -203,7 +245,40 @@ func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.Open(target)
+	file, err := os.Open(target)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	reader, err := c.openPlain(file, info)
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	return reader, nil
+}
+
+// readSeekCloser is what Get and Handler read a blob through.
+type readSeekCloser interface {
+	io.ReadSeeker
+	io.Closer
+}
+
+// openPlain wraps an opened blob so reads yield plaintext: decrypting when the
+// file carries the encrypted header, the file itself otherwise.
+func (c *Client) openPlain(file *os.File, info os.FileInfo) (readSeekCloser, error) {
+	decrypting, err := openEncrypted(file, file, info.Size(), c.aead)
+	if errors.Is(err, errNotEncrypted) {
+		return file, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return decrypting, nil
 }
 
 // Exists reports whether key has been stored.
@@ -253,8 +328,13 @@ func (c *Client) Handler() http.Handler {
 		}
 		// Serving counts as use, keeping cache blobs in play out of eviction.
 		_ = touchFile(target, info)
+		reader, err := c.openPlain(file, info)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+		http.ServeContent(w, r, info.Name(), info.ModTime(), reader)
 	})
 }
 

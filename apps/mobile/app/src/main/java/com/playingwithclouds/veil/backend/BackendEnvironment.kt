@@ -1,5 +1,11 @@
 package com.playingwithclouds.veil.backend
 
+/**
+ * How the backend protects downloads and cached streams at rest: the base64 AES-256 key (always
+ * given, so earlier encrypted blobs stay readable) and whether new blobs are encrypted.
+ */
+data class BlobEncryption(val encodedKey: String, val encryptNewBlobs: Boolean)
+
 /** What the Go backend is started with and which files it reads, kept free of Android types so it can be tested. */
 object BackendEnvironment {
 
@@ -18,8 +24,9 @@ object BackendEnvironment {
         dnsFile: String,
         tempDir: String,
         port: Int,
+        blobEncryption: BlobEncryption? = null,
     ): Map<String, String> {
-        return mapOf(
+        val variables = mutableMapOf(
             "DATA_DIR" to dataDir,
             "HOST" to "127.0.0.1",
             "PORT" to port.toString(),
@@ -30,6 +37,13 @@ object BackendEnvironment {
             // Go's os.TempDir defaults to /data/local/tmp, which apps can't write.
             "TMPDIR" to tempDir,
         )
+        if (blobEncryption != null) {
+            variables["BLOB_ENCRYPTION_KEY"] = blobEncryption.encodedKey
+            if (!blobEncryption.encryptNewBlobs) {
+                variables["BLOB_ENCRYPTION_WRITES"] = "off"
+            }
+        }
+        return variables
     }
 
     /** The DNS server file's text: one server per line, as the backend re-reads it on every lookup. */

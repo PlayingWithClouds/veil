@@ -25,6 +25,21 @@ class BackendEnvironmentTest {
     }
 
     @Test
+    fun blobEncryptionPassesTheKeyAndWhetherNewBlobsAreEncrypted() {
+        val on = environmentWith(BlobEncryption("a2V5", encryptNewBlobs = true))
+        assertEquals("a2V5", on["BLOB_ENCRYPTION_KEY"])
+        assertEquals(null, on["BLOB_ENCRYPTION_WRITES"])
+        val off = environmentWith(BlobEncryption("a2V5", encryptNewBlobs = false))
+        assertEquals("a2V5", off["BLOB_ENCRYPTION_KEY"])
+        assertEquals("off", off["BLOB_ENCRYPTION_WRITES"])
+        assertEquals(null, environmentWith(null)["BLOB_ENCRYPTION_KEY"])
+    }
+
+    private fun environmentWith(blobEncryption: BlobEncryption?): Map<String, String> {
+        return BackendEnvironment.variables("/d", "/s", "/n", "/t", 1, blobEncryption)
+    }
+
+    @Test
     fun dnsFileHasOneServerPerLine() {
         assertEquals("192.168.1.1\nfe80::1", BackendEnvironment.dnsServerFileContents(listOf("192.168.1.1", "fe80::1")))
     }
