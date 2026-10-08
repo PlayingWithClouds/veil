@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A plain folder glyph inside the adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,40 L34,40 L48,40 L54,46 L74,46 Q76,46 76,48 L76,68 Q76,70 74,70 L34,70 Q32,70 32,68 L32,42 Q32,40 34,40 Z" />
+</vector>
