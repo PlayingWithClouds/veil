@@ -5,6 +5,33 @@ import (
 	"testing"
 )
 
+func TestIndexListingsHideBlockedEntities(t *testing.T) {
+	ctx := context.Background()
+	repo, database := newTestRepository(t)
+	insertRow(t, database, "performer", "performer:blocked", map[string]any{"name": "Blocked"})
+	insertRow(t, database, "performer", "performer:kept", map[string]any{"name": "Kept"})
+	insertRow(t, database, "studio", "studio:blocked", map[string]any{"name": "Blocked"})
+	insertRow(t, database, "tag", "tag:blocked", map[string]any{"name": "blocked"})
+	for kind, target := range map[string]string{"performer": "performer:blocked", "studio": "studio:blocked", "tag": "tag:blocked"} {
+		if _, err := repo.AddBlock(ctx, kind, target, nil); err != nil {
+			t.Fatalf("block %s: %v", kind, err)
+		}
+	}
+
+	performers, err := repo.ListPerformers(ctx, EntityFilters{}, nil, nil)
+	if err != nil || len(performers) != 1 || performers[0].ID != "performer:kept" {
+		t.Errorf("performers = %v, err %v, want only performer:kept", performers, err)
+	}
+	studios, err := repo.ListStudios(ctx, EntityFilters{}, nil, nil)
+	if err != nil || len(studios) != 0 {
+		t.Errorf("studios = %v, err %v, want none", studios, err)
+	}
+	tags, err := repo.ListTags(ctx, EntityFilters{}, nil, nil)
+	if err != nil || len(tags) != 0 {
+		t.Errorf("tags = %v, err %v, want none", tags, err)
+	}
+}
+
 func TestListScenesIncludesAndExcludesTagLists(t *testing.T) {
 	ctx := context.Background()
 	repo, database := newTestRepository(t)

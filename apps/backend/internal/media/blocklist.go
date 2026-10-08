@@ -90,6 +90,12 @@ func (r *Repository) RemoveBlock(ctx context.Context, targetID string) (bool, er
 	return true, nil
 }
 
+// notBlockedCondition drops rows of an entity table (tag, performer or studio)
+// that are on the blocklist, for the index listings.
+func notBlockedCondition(table string) string {
+	return "id NOT IN (SELECT target FROM blocklist_entry WHERE kind = '" + table + "')"
+}
+
 // blockedTargets returns the blocked target record ids grouped by kind.
 func (r *Repository) blockedTargets(ctx context.Context) (tags, performers, studios []db.RecordID, err error) {
 	rows, err := db.QueryAs[blocklistRecord](ctx, r.database,
