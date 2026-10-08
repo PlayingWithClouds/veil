@@ -32,6 +32,8 @@ import com.playingwithclouds.veil.data.CollectionContents
 import com.playingwithclouds.veil.data.CollectionMember
 import com.playingwithclouds.veil.data.CollectionRepository
 import com.playingwithclouds.veil.data.MemberType
+import com.playingwithclouds.veil.data.PlaybackQueue
+import com.playingwithclouds.veil.data.QueueEntry
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.ConfirmDialog
@@ -139,6 +141,18 @@ fun CollectionScreen(id: String, navigator: AppNavigator) {
                 title = loaded?.collection?.name.orEmpty(),
                 onBack = navigator::back,
                 actions = {
+                    if (loaded != null && loaded.members.any { member -> member.type == MemberType.SCENE }) {
+                        RoundIconButton(
+                            VeilIcons.Play,
+                            contentDescription = "Play all",
+                            onClick = { playCollection(loaded, shuffled = false, navigator) },
+                        )
+                        RoundIconButton(
+                            VeilIcons.Random,
+                            contentDescription = "Shuffle play",
+                            onClick = { playCollection(loaded, shuffled = true, navigator) },
+                        )
+                    }
                     if (loaded != null && loaded.collection.isUserCreated) {
                         RoundIconButton(VeilIcons.Edit, contentDescription = "Rename", onClick = { renaming = true })
                         RoundIconButton(VeilIcons.Delete, contentDescription = "Delete", onClick = { deleting = true })
@@ -212,6 +226,15 @@ private fun MemberGrid(
             )
         }
     }
+}
+
+/** Plays the collection's scenes one after the other through the queue, in order or shuffled. */
+private fun playCollection(collection: CollectionContents, shuffled: Boolean, navigator: AppNavigator) {
+    val scenes = collection.members
+        .filter { member -> member.type == MemberType.SCENE }
+        .map { member -> QueueEntry(member.mediaId, member.title, member.posterPath) }
+    val first = PlaybackQueue.startPlaylist(scenes, shuffled) ?: return
+    navigator.openScene(first.sceneId)
 }
 
 /** Opens the page of a member. */

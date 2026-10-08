@@ -72,6 +72,16 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openScene(id: String) = controller.navigate(Routes.scene(id))
 
+    /** Opens a scene in place of the scene page on top, so playing through a queue does not stack pages. */
+    fun replaceWithScene(id: String) {
+        controller.navigate(Routes.scene(id)) {
+            val current = controller.currentDestination?.id
+            if (current != null) {
+                popUpTo(current) { inclusive = true }
+            }
+        }
+    }
+
     fun openCollections() = controller.navigate(Routes.COLLECTIONS)
 
     fun openHistory() = controller.navigate(Routes.HISTORY)

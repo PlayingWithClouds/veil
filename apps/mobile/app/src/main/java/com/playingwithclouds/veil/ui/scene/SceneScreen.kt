@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -25,7 +26,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.playingwithclouds.veil.data.PlaybackQueue
+import com.playingwithclouds.veil.data.QueueEntry
 import com.playingwithclouds.veil.data.ResumePoint
 import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.SceneSummary
@@ -54,6 +58,19 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
     val fullscreen = rememberFullscreenState(player)
     val pictureInPicture = rememberPictureInPicture(player)
     val options = rememberPlayerOptions(player)
+    val queue by PlaybackQueue.state.collectAsStateWithLifecycle()
+    var showingQueue by remember { mutableStateOf(false) }
+    val playQueued = { entry: QueueEntry ->
+        PlaybackQueue.remove(entry.sceneId)
+        navigator.replaceWithScene(entry.sceneId)
+    }
+    val playNextInQueue = {
+        val next = PlaybackQueue.takeNext()
+        if (next != null) {
+            navigator.replaceWithScene(next.sceneId)
+        }
+    }
+    PlayNextWhenEnded(player, enabled = queue.entries.isNotEmpty(), onEnded = playNextInQueue)
     val snackbarHostState = remember { SnackbarHostState() }
     val detail = state.detail
     var showingAlternates by remember { mutableStateOf(false) }
@@ -64,6 +81,15 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
 
     if (showingAlternates) {
         AlternatesSheet(viewModel, onDismiss = { showingAlternates = false })
+    }
+    if (showingQueue) {
+        QueueSheet(
+            onPlay = { entry ->
+                showingQueue = false
+                playQueued(entry)
+            },
+            onDismiss = { showingQueue = false },
+        )
     }
     LaunchedEffect(state.active) {
         val active = state.active ?: return@LaunchedEffect
@@ -85,9 +111,14 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
         return
     }
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
+    var onNext: (() -> Unit)? = null
+    if (queue.entries.isNotEmpty()) {
+        onNext = playNextInQueue
+    }
     val extras = PlayerExtras(
         markers = state.markers,
         heatmap = state.heatmap,
+        onNext = onNext,
         onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
     )
     Scaffold(
@@ -111,9 +142,34 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
                 onOpenScene = { scene -> navigator.openScene(scene.id) },
             )
             if (!immersive) {
-                SceneContent(state, viewModel, player, navigator, onFindAlternates = findAlternates)
+                SceneContent(
+                    state,
+                    viewModel,
+                    player,
+                    navigator,
+                    onFindAlternates = findAlternates,
+                    queuedCount = queue.entries.size,
+                    onOpenQueue = { showingQueue = true },
+                )
             }
         }
+    }
+}
+
+/** Calls [onEnded] when the video plays to its end, while [enabled] (something is queued). */
+@Composable
+private fun PlayNextWhenEnded(player: ExoPlayer, enabled: Boolean, onEnded: () -> Unit) {
+    val currentOnEnded by rememberUpdatedState(onEnded)
+    DisposableEffect(player, enabled) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (enabled && playbackState == Player.STATE_ENDED) {
+                    currentOnEnded()
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 }
 

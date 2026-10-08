@@ -31,10 +31,10 @@ import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.util.findActivity
 
 /** How much of the video the picture-in-picture window shows. */
-enum class PictureInPicturePrivacy(val label: String) {
-    SHOW("Show video"),
-    BLUR("Blur video"),
-    HIDE("Hide video"),
+enum class PictureInPicturePrivacy(val label: String, val summary: String) {
+    SHOW("Show video", "Shown"),
+    BLUR("Blur video", "Blurred"),
+    HIDE("Hide video", "Hidden"),
 }
 
 /** Whether the page is in the picture-in-picture window, and how to move it there. */

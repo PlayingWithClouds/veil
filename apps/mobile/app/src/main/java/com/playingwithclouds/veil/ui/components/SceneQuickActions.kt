@@ -12,9 +12,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.AppScope
+import com.playingwithclouds.veil.data.PlaybackQueue
 import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.data.Verdict
+import com.playingwithclouds.veil.data.toQueueEntry
 import com.playingwithclouds.veil.ui.design.SheetAction
 import com.playingwithclouds.veil.ui.design.VeilBottomSheet
 import com.playingwithclouds.veil.ui.design.VeilIcons
@@ -91,6 +93,22 @@ fun SceneQuickActionsSheet(scene: SceneSummary, onDismiss: () -> Unit, onNotInte
             watchlistLabel = "On watchlist"
         }
         SheetAction(watchlistLabel, watchlistIcon, onClick = viewModel::toggleWatchlist, active = state.onWatchlist)
+        SheetAction(
+            "Play next",
+            VeilIcons.PlayNext,
+            onClick = {
+                PlaybackQueue.playNext(scene.toQueueEntry())
+                onDismiss()
+            },
+        )
+        SheetAction(
+            "Add to queue",
+            VeilIcons.Queue,
+            onClick = {
+                PlaybackQueue.add(scene.toQueueEntry())
+                onDismiss()
+            },
+        )
         val liked = state.verdict == Verdict.UP
         var likeIcon = VeilIcons.Like
         if (liked) {
