@@ -56,6 +56,14 @@ fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
                 open = false
                 navigator.openRandom()
             })
+            VeilMenuItem("Previews", icon = VeilIcons.Play, onClick = {
+                open = false
+                navigator.openPreviewFeed()
+            })
+            VeilMenuItem("Taste", icon = VeilIcons.Like, onClick = {
+                open = false
+                navigator.openTaste()
+            })
             VeilMenuItem("Plugins", icon = VeilIcons.Plugins, onClick = {
                 open = false
                 navigator.openPlugins()

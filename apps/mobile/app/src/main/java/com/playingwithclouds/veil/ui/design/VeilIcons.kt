@@ -29,6 +29,7 @@ import com.adamglin.phosphoricons.regular.ClockCounterClockwise
 import com.adamglin.phosphoricons.regular.CornersIn
 import com.adamglin.phosphoricons.regular.CornersOut
 import com.adamglin.phosphoricons.regular.DownloadSimple
+import com.adamglin.phosphoricons.regular.DotsThreeVertical
 import com.adamglin.phosphoricons.regular.FolderSimplePlus
 import com.adamglin.phosphoricons.regular.GearSix
 import com.adamglin.phosphoricons.regular.Heart
@@ -104,6 +105,7 @@ object VeilIcons {
     val LibraryFilled: ImageVector get() = PhosphorIcons.Fill.BooksFill
     val Like: ImageVector get() = PhosphorIcons.Regular.ThumbsUp
     val LikeFilled: ImageVector get() = PhosphorIcons.Fill.ThumbsUpFill
+    val More: ImageVector get() = PhosphorIcons.Regular.DotsThreeVertical
     val Pause: ImageVector get() = PhosphorIcons.Fill.PauseFill
     val Performer: ImageVector get() = PhosphorIcons.Regular.User
     val Performers: ImageVector get() = PhosphorIcons.Regular.UsersThree

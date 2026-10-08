@@ -16,8 +16,22 @@ mutation ForgetSearch($query: String!) {
   forgetSearch(query: $query)
 }
 
-query SearchScenes($search: String, $sources: [String!], $limit: Int, $offset: Int) {
-  scenes(search: $search, sources: $sources, limit: $limit, offset: $offset) {
+query SearchScenes(
+  $search: String
+  $sources: [String!]
+  $includeTagIds: [ID!]
+  $excludeTagIds: [ID!]
+  $limit: Int
+  $offset: Int
+) {
+  scenes(
+    search: $search
+    sources: $sources
+    includeTagIds: $includeTagIds
+    excludeTagIds: $excludeTagIds
+    limit: $limit
+    offset: $offset
+  ) {
     ...SceneCardFields
   }
 }

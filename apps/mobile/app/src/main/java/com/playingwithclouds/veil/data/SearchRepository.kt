@@ -92,10 +92,18 @@ object SearchRepository {
     }
 
     /** Stored scenes matching the query, restricted to the given sites (empty = all). */
-    suspend fun searchScenes(query: String, sources: List<String>, limit: Int, offset: Int): List<SceneSummary> {
+    suspend fun searchScenes(
+        query: String,
+        sources: List<String>,
+        limit: Int,
+        offset: Int,
+        tagFilter: TagFilter = TagFilter(),
+    ): List<SceneSummary> {
         val searchQuery = SearchScenesQuery(
             search = Optional.present(query),
             sources = sources.orAbsentIfEmpty(),
+            includeTagIds = tagFilter.includeIds().orAbsentIfEmpty(),
+            excludeTagIds = tagFilter.excludeIds().orAbsentIfEmpty(),
             limit = Optional.present(limit),
             offset = Optional.present(offset),
         )

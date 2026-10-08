@@ -26,6 +26,8 @@ object Routes {
     const val RANDOM = "random"
     const val DESIGN_KIT = "design-kit"
     const val SUBSCRIPTION = "subscription/{id}"
+    const val PREVIEW_FEED = "previews"
+    const val TASTE = "taste"
 
     /** Search, optionally with a query to run right away. */
     fun search(query: String = ""): String {
@@ -117,4 +119,10 @@ class AppNavigator(private val controller: NavHostController, private val select
     fun openDesignKit() = controller.navigate(Routes.DESIGN_KIT)
 
     fun openSubscription(id: String) = controller.navigate(Routes.subscription(id))
+
+    /** The vertical swipe feed of preview clips. */
+    fun openPreviewFeed() = controller.navigate(Routes.PREVIEW_FEED)
+
+    /** The taste dashboard: what the recommender has learned. */
+    fun openTaste() = controller.navigate(Routes.TASTE)
 }
