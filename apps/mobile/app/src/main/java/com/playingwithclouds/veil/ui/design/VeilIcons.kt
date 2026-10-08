@@ -8,6 +8,7 @@ import com.adamglin.phosphoricons.fill.BookmarkSimple as BookmarkSimpleFill
 import com.adamglin.phosphoricons.fill.Books as BooksFill
 import com.adamglin.phosphoricons.fill.Heart as HeartFill
 import com.adamglin.phosphoricons.fill.House as HouseFill
+import com.adamglin.phosphoricons.fill.Pause as PauseFill
 import com.adamglin.phosphoricons.fill.Play as PlayFill
 import com.adamglin.phosphoricons.fill.Images as ImagesFill
 import com.adamglin.phosphoricons.fill.Rss as RssFill
@@ -22,6 +23,8 @@ import com.adamglin.phosphoricons.regular.Buildings
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.ClockCounterClockwise
+import com.adamglin.phosphoricons.regular.CornersIn
+import com.adamglin.phosphoricons.regular.CornersOut
 import com.adamglin.phosphoricons.regular.DownloadSimple
 import com.adamglin.phosphoricons.regular.FolderSimplePlus
 import com.adamglin.phosphoricons.regular.GearSix
@@ -66,6 +69,8 @@ object VeilIcons {
     val Download: ImageVector get() = PhosphorIcons.Regular.DownloadSimple
     val Edit: ImageVector get() = PhosphorIcons.Regular.PencilSimple
     val Follow: ImageVector get() = PhosphorIcons.Regular.BellRinging
+    val ExitFullscreen: ImageVector get() = PhosphorIcons.Regular.CornersIn
+    val Fullscreen: ImageVector get() = PhosphorIcons.Regular.CornersOut
     val Following: ImageVector get() = PhosphorIcons.Regular.Rss
     val FollowingFilled: ImageVector get() = PhosphorIcons.Fill.RssFill
     val Galleries: ImageVector get() = PhosphorIcons.Regular.Images
@@ -79,6 +84,7 @@ object VeilIcons {
     val LibraryFilled: ImageVector get() = PhosphorIcons.Fill.BooksFill
     val Like: ImageVector get() = PhosphorIcons.Regular.ThumbsUp
     val LikeFilled: ImageVector get() = PhosphorIcons.Fill.ThumbsUpFill
+    val Pause: ImageVector get() = PhosphorIcons.Fill.PauseFill
     val Performer: ImageVector get() = PhosphorIcons.Regular.User
     val Performers: ImageVector get() = PhosphorIcons.Regular.UsersThree
     val Play: ImageVector get() = PhosphorIcons.Fill.PlayFill
