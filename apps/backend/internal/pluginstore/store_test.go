@@ -18,7 +18,7 @@ import (
 
 const testPackage = "@playingwithclouds/veil-plugin-example"
 
-// fakeRegistry serves one package's latest version like registry.npmjs.org.
+// fakeRegistry serves a plugin index.json listing one package, like the GitHub "plugins" release.
 type fakeRegistry struct {
 	server    *httptest.Server
 	version   string
@@ -46,19 +46,25 @@ func (registry *fakeRegistry) publish(t *testing.T, version string) {
 	registry.integrity = "sha512-" + base64.StdEncoding.EncodeToString(sum[:])
 }
 
-// serve answers the version manifest and tarball requests.
+// indexURL is where the fake serves its index.json.
+func (registry *fakeRegistry) indexURL() string {
+	return registry.server.URL + "/index.json"
+}
+
+// serve answers the index and tarball requests.
 func (registry *fakeRegistry) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case r.URL.RawPath == "/@playingwithclouds%2fveil-plugin-example/latest":
+	case r.URL.Path == "/index.json":
 		manifest := map[string]any{
 			"name": testPackage, "version": registry.version, "main": "plugin.js",
-			"keywords": []string{Keyword},
+			"description": "Example plugin",
+			"keywords":    []string{Keyword},
 			"dist": map[string]string{
 				"tarball":   registry.server.URL + "/example.tgz",
 				"integrity": registry.integrity,
 			},
 		}
-		_ = json.NewEncoder(w).Encode(manifest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"packages": []any{manifest}})
 	case r.URL.Path == "/example.tgz":
 		_, _ = w.Write(registry.tarball)
 	default:
@@ -137,7 +143,7 @@ func TestFolderName(t *testing.T) {
 func TestInstallAndUpdate(t *testing.T) {
 	registry := newFakeRegistry(t, "1.0.0")
 	dir := t.TempDir()
-	store := New(dir, registry.server.URL)
+	store := New(dir, registry.indexURL())
 	ctx := context.Background()
 
 	if _, err := store.Install(ctx, testPackage); err != nil {
@@ -174,7 +180,7 @@ func TestUpdateSkipsUnmanagedFolders(t *testing.T) {
 			dir := t.TempDir()
 			writeFolder(t, dir, "example", manifest)
 
-			updated, err := New(dir, registry.server.URL).Update(context.Background())
+			updated, err := New(dir, registry.indexURL()).Update(context.Background())
 			if err != nil || len(updated) != 0 {
 				t.Fatalf("update: %v, %v", updated, err)
 			}
@@ -190,7 +196,7 @@ func TestInstallRejectsTamperedTarball(t *testing.T) {
 	registry.integrity = "sha512-" + base64.StdEncoding.EncodeToString(make([]byte, sha512.Size))
 	dir := t.TempDir()
 
-	_, err := New(dir, registry.server.URL).Install(context.Background(), testPackage)
+	_, err := New(dir, registry.indexURL()).Install(context.Background(), testPackage)
 	if err == nil || !strings.Contains(err.Error(), "integrity") {
 		t.Fatalf("install of tampered tarball: %v", err)
 	}
@@ -204,7 +210,7 @@ func TestInstallRefusesForeignFolder(t *testing.T) {
 	dir := t.TempDir()
 	writeFolder(t, dir, "example", Manifest{Name: "@other/veil-plugin-example", Version: "1.0.0", Main: "plugin.js"})
 
-	if _, err := New(dir, registry.server.URL).Install(context.Background(), testPackage); err == nil {
+	if _, err := New(dir, registry.indexURL()).Install(context.Background(), testPackage); err == nil {
 		t.Fatal("install overwrote another package's folder")
 	}
 }
@@ -253,5 +259,31 @@ func TestSeedKeepsNewerInstall(t *testing.T) {
 	}
 	if version := installedVersion(dir, "example"); version != "1.2.0" {
 		t.Fatalf("seed downgraded to %s", version)
+	}
+}
+
+func TestSearchFiltersIndex(t *testing.T) {
+	registry := newFakeRegistry(t, "1.0.0")
+	store := New(t.TempDir(), registry.indexURL())
+
+	all, err := store.Search(context.Background(), "")
+	if err != nil || len(all) != 1 || all[0].Version != "1.0.0" {
+		t.Fatalf("empty query = %+v, %v", all, err)
+	}
+	matched, err := store.Search(context.Background(), "EXAMPLE plugin")
+	if err != nil || len(matched) != 1 {
+		t.Fatalf("description match = %+v, %v", matched, err)
+	}
+	none, err := store.Search(context.Background(), "missing")
+	if err != nil || len(none) != 0 {
+		t.Fatalf("no match = %+v, %v", none, err)
+	}
+}
+
+func TestInstallUnknownPackage(t *testing.T) {
+	registry := newFakeRegistry(t, "1.0.0")
+	_, err := New(t.TempDir(), registry.indexURL()).Install(context.Background(), "@playingwithclouds/veil-plugin-missing")
+	if err == nil || !strings.Contains(err.Error(), "not in the plugin index") {
+		t.Fatalf("err = %v", err)
 	}
 }

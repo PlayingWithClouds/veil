@@ -1,7 +1,7 @@
 import { gqlClient } from '$lib/veil';
 import { pluginIconUrl } from '$lib/server';
 
-/** Installed plugins, plus the plugin packages published on npm. */
+/** Installed plugins, plus the plugin packages published on GitHub. */
 export async function load() {
 	const [installed, published] = await Promise.all([
 		gqlClient

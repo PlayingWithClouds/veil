@@ -1,11 +1,13 @@
-// Package pluginstore installs plugin bundles published on npm into the
+// Package pluginstore installs plugin bundles published on GitHub into the
 // installed-plugins folder and keeps them up to date, so a plugin fix reaches
 // every server and phone without a new backend or app release.
 //
-// A published plugin is an npm package holding one bundled CommonJS file (see
-// scripts/publish-plugins.ts) and a package.json with the "veil-plugin"
-// keyword. It lands in <plugins>/<folder>/, where the plugins registry picks it
-// up through its file watcher.
+// Plugins are assets of the repository's rolling "plugins" release: an
+// index.json naming every plugin's latest version, and per version an
+// npm-style tarball holding one bundled CommonJS file and a package.json with
+// the "veil-plugin" keyword (see scripts/publish-plugins.ts). A plugin lands
+// in <plugins>/<folder>/, where the plugins registry picks it up through its
+// file watcher.
 package pluginstore
 
 import (
@@ -22,10 +24,11 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// DefaultRegistry is the public npm registry.
-const DefaultRegistry = "https://registry.npmjs.org"
+// DefaultIndex is the plugin index on the repository's "plugins" release.
+// Release downloads aren't subject to the GitHub API rate limit.
+const DefaultIndex = "https://github.com/PlayingWithClouds/veil/releases/download/plugins/index.json"
 
-// Keyword marks an npm package as an Veil plugin.
+// Keyword marks a package as a Veil plugin.
 const Keyword = "veil-plugin"
 
 // packagePrefix is stripped from package names to name their folder.
@@ -78,23 +81,23 @@ type state struct {
 
 // Store installs, updates and removes plugins in one plugin folder.
 type Store struct {
-	dir         string
-	registryURL string
-	client      *http.Client
+	dir      string
+	indexURL string
+	client   *http.Client
 	// mu serializes changes to the plugin folder.
 	mu sync.Mutex
 }
 
-// New returns a store for the plugin folder dir, fetching from the npm
-// registry at registryURL (DefaultRegistry when empty).
-func New(dir, registryURL string) *Store {
-	if registryURL == "" {
-		registryURL = DefaultRegistry
+// New returns a store for the plugin folder dir, installing what the plugin
+// index at indexURL lists (DefaultIndex when empty).
+func New(dir, indexURL string) *Store {
+	if indexURL == "" {
+		indexURL = DefaultIndex
 	}
 	return &Store{
-		dir:         dir,
-		registryURL: strings.TrimRight(registryURL, "/"),
-		client:      &http.Client{Timeout: 2 * time.Minute},
+		dir:      dir,
+		indexURL: indexURL,
+		client:   &http.Client{Timeout: 2 * time.Minute},
 	}
 }
 

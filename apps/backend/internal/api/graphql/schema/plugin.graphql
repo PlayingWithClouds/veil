@@ -3,22 +3,22 @@
 extend type Query {
   plugins: [Plugin!]!
   plugin(id: ID!): Plugin
-  # Plugins published on npm (keyword "veil-plugin") matching query, all when empty.
+  # Plugins published in the GitHub plugin index matching query, all when empty.
   pluginPackages(query: String): [PluginPackage!]!
 }
 
 extend type Mutation {
   togglePlugin(name: String!, enabled: Boolean!): Boolean!
   updatePluginSettings(pluginName: String!, values: [PluginSettingValueInput!]!): Boolean!
-  # Installs (or updates) an npm plugin package; it loads within a second.
+  # Installs (or updates) a published plugin package; it loads within a second.
   installPlugin(packageName: String!): Boolean!
   # Removes an installed plugin's folder.
   uninstallPlugin(name: String!): Boolean!
-  # Installs newer npm versions of installed plugins; returns the updated package names.
+  # Installs newer published versions of installed plugins; returns the updated package names.
   updatePlugins: [String!]!
 }
 
-# A plugin package on npm.
+# A plugin package in the published index.
 type PluginPackage {
   name: String!
   version: String!
@@ -30,7 +30,7 @@ type PluginPackage {
 type Plugin {
   id: ID!
   name: String!
-  # npm package the plugin was installed from
+  # package the plugin was installed from
   packageName: String
   # bundled from the backend's own checkout (dev); never auto-updated
   localBuild: Boolean!

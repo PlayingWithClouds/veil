@@ -13,7 +13,7 @@ import (
 // Seed copies the plugins shipped in seedDir (the phone app's bundled set,
 // laid out like the plugin folder) into the plugin folder. A shipped plugin
 // is copied when it is newer than the version seeded before and than the one
-// installed, so neither an npm update nor an uninstall is undone by a restart.
+// installed, so neither an update nor an uninstall is undone by a restart.
 func (s *Store) Seed(seedDir string) error {
 	entries, err := os.ReadDir(seedDir)
 	if err != nil {

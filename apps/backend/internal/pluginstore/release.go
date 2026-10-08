@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path"
 	"slices"
 	"strings"
@@ -21,14 +20,14 @@ import (
 // maxTarballBytes bounds a downloaded package; a plugin bundle is well below.
 const maxTarballBytes = 32 << 20
 
-// Package is a plugin published on the registry.
+// Package is a plugin published in the index.
 type Package struct {
 	Name        string
 	Version     string
 	Description string
 }
 
-// versionManifest is the registry's document for one published version.
+// versionManifest is the index's entry for a package's latest version.
 type versionManifest struct {
 	Manifest
 	Dist struct {
@@ -37,45 +36,56 @@ type versionManifest struct {
 	} `json:"dist"`
 }
 
-// latest fetches the manifest of a package's latest published version.
-func (s *Store) latest(ctx context.Context, packageName string) (*versionManifest, error) {
-	escaped := strings.Replace(packageName, "/", "%2f", 1)
-	var manifest versionManifest
-	if err := s.getJSON(ctx, s.registryURL+"/"+escaped+"/latest", &manifest); err != nil {
-		return nil, fmt.Errorf("%s: %w", packageName, err)
-	}
-	if !slices.Contains(manifest.Keywords, Keyword) {
-		return nil, fmt.Errorf("%s is not an Veil plugin (no %q keyword)", packageName, Keyword)
-	}
-	if !validEntryName(manifest.Main) {
-		return nil, fmt.Errorf("%s: unsupported main %q", packageName, manifest.Main)
-	}
-	return &manifest, nil
+// index is the published index.json: the latest version of every plugin.
+type index struct {
+	Packages []versionManifest `json:"packages"`
 }
 
-// Search lists plugins on the registry matching text (all when empty).
+// fetchIndex downloads the plugin index.
+func (s *Store) fetchIndex(ctx context.Context) (*index, error) {
+	var published index
+	if err := s.getJSON(ctx, s.indexURL, &published); err != nil {
+		return nil, fmt.Errorf("plugin index: %w", err)
+	}
+	return &published, nil
+}
+
+// latest finds a package's latest published version in the index.
+func (published *index) latest(packageName string) (*versionManifest, error) {
+	for index := range published.Packages {
+		manifest := &published.Packages[index]
+		if manifest.Name != packageName {
+			continue
+		}
+		if !slices.Contains(manifest.Keywords, Keyword) {
+			return nil, fmt.Errorf("%s is not a Veil plugin (no %q keyword)", packageName, Keyword)
+		}
+		if !validEntryName(manifest.Main) {
+			return nil, fmt.Errorf("%s: unsupported main %q", packageName, manifest.Main)
+		}
+		return manifest, nil
+	}
+	return nil, fmt.Errorf("%s is not in the plugin index", packageName)
+}
+
+// Search lists published plugins whose name or description contains text
+// (all when empty).
 func (s *Store) Search(ctx context.Context, text string) ([]Package, error) {
-	query := url.Values{}
-	query.Set("text", strings.TrimSpace("keywords:"+Keyword+" "+text))
-	query.Set("size", "250")
-	var response struct {
-		Objects []struct {
-			Package struct {
-				Name        string `json:"name"`
-				Version     string `json:"version"`
-				Description string `json:"description"`
-			} `json:"package"`
-		} `json:"objects"`
+	published, err := s.fetchIndex(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if err := s.getJSON(ctx, s.registryURL+"/-/v1/search?"+query.Encode(), &response); err != nil {
-		return nil, fmt.Errorf("search plugins: %w", err)
-	}
-	packages := make([]Package, 0, len(response.Objects))
-	for _, object := range response.Objects {
+	needle := strings.ToLower(strings.TrimSpace(text))
+	packages := []Package{}
+	for _, manifest := range published.Packages {
+		haystack := strings.ToLower(manifest.Name + " " + manifest.Description)
+		if !strings.Contains(haystack, needle) {
+			continue
+		}
 		packages = append(packages, Package{
-			Name:        object.Package.Name,
-			Version:     object.Package.Version,
-			Description: object.Package.Description,
+			Name:        manifest.Name,
+			Version:     manifest.Version,
+			Description: manifest.Description,
 		})
 	}
 	return packages, nil
@@ -84,7 +94,11 @@ func (s *Store) Search(ctx context.Context, text string) ([]Package, error) {
 // Install installs the latest version of packageName, replacing an older
 // install of the same package.
 func (s *Store) Install(ctx context.Context, packageName string) (*Manifest, error) {
-	manifest, err := s.latest(ctx, packageName)
+	published, err := s.fetchIndex(ctx)
+	if err != nil {
+		return nil, err
+	}
+	manifest, err := published.latest(packageName)
 	if err != nil {
 		return nil, err
 	}
@@ -129,13 +143,17 @@ func (s *Store) Update(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	published, err := s.fetchIndex(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var updated []string
 	var errs []error
 	for _, plugin := range installed {
 		if plugin.Manifest.LocalBuild || !slices.Contains(plugin.Manifest.Keywords, Keyword) {
 			continue
 		}
-		manifest, err := s.latest(ctx, plugin.Manifest.Name)
+		manifest, err := published.latest(plugin.Manifest.Name)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -165,7 +183,7 @@ func (s *Store) getJSON(ctx context.Context, url string, target any) error {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("registry answered %s", response.Status)
+		return fmt.Errorf("server answered %s", response.Status)
 	}
 	return json.NewDecoder(response.Body).Decode(target)
 }
@@ -182,7 +200,7 @@ func (s *Store) download(ctx context.Context, url string) ([]byte, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("registry answered %s", response.Status)
+		return nil, fmt.Errorf("server answered %s", response.Status)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxTarballBytes+1))
 	if err != nil {
@@ -194,7 +212,7 @@ func (s *Store) download(ctx context.Context, url string) ([]byte, error) {
 	return data, nil
 }
 
-// verifyIntegrity checks data against an npm "sha512-<base64>" integrity string.
+// verifyIntegrity checks data against a "sha512-<base64>" (npm-style) integrity string.
 func verifyIntegrity(data []byte, integrity string) error {
 	encoded, ok := strings.CutPrefix(integrity, "sha512-")
 	if !ok {
@@ -211,7 +229,7 @@ func verifyIntegrity(data []byte, integrity string) error {
 	return nil
 }
 
-// extract reads the named files from the package root of a gzipped npm
+// extract reads the named files from the package root of a gzipped package
 // tarball (entries under "package/"); every one must be present.
 func extract(tarball []byte, names ...string) (map[string][]byte, error) {
 	gzipReader, err := gzip.NewReader(bytes.NewReader(tarball))

@@ -128,7 +128,7 @@
 		await invalidateAll();
 	}
 
-	/** Installs newer npm versions of the installed plugins. */
+	/** Installs newer published versions of the installed plugins. */
 	async function checkUpdates() {
 		checkingUpdates = true;
 		try {
@@ -284,7 +284,7 @@
 		>
 			<span class="text-base-content/20"><PlugsIcon size={48} /></span>
 			<p class="text-base-content/50 text-sm">No plugins loaded</p>
-			<p class="text-base-content/30 text-xs">Install plugins from npm below</p>
+			<p class="text-base-content/30 text-xs">Install plugins from GitHub below</p>
 		</div>
 	{:else}
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">

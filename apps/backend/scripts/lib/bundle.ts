@@ -1,7 +1,8 @@
 /**
  * Builds plugin packages for the backend's embedded (goja) runtime: one
  * self-contained CommonJS file plus a package.json whose "main" points at it,
- * the same layout the backend installs from npm (internal/pluginstore).
+ * the same layout the backend installs from the GitHub plugin index
+ * (internal/pluginstore).
  */
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -11,7 +12,7 @@ export const BACKEND_DIR = resolve(import.meta.dir, '../..');
 export const PLUGINS_DIR = join(BACKEND_DIR, 'plugins');
 export const SDK_DIR = resolve(BACKEND_DIR, '../../packages/veil-sdk/src');
 const BUNDLE_FILE = 'plugin.js';
-/** npm keyword that marks a package as an Veil plugin (pluginstore.Keyword). */
+/** Keyword that marks a package as a Veil plugin (pluginstore.Keyword). */
 const PLUGIN_KEYWORD = 'veil-plugin';
 /** Stripped from package names to name their folder (pluginstore.FolderName). */
 const PACKAGE_PREFIX = 'veil-plugin-';
@@ -26,7 +27,7 @@ interface SourcePackage {
 
 /**
  * Local builds come from this checkout (dev); the backend never replaces them
- * with npm versions. Release builds are what gets published and shipped.
+ * with published versions. Release builds are what gets published and shipped.
  */
 export type BuildKind = 'local' | 'release';
 
@@ -101,7 +102,7 @@ export async function bundlePlugin(name: string, outDir: string, kind: BuildKind
 }
 
 /**
- * Removes local builds whose plugin source is gone. Plugins installed from npm
+ * Removes local builds whose plugin source is gone. Plugins installed from GitHub
  * share the folder and are left alone.
  */
 export async function removeStaleLocalBuilds(folders: string[], outDir: string): Promise<void> {

@@ -180,10 +180,11 @@ func main() {
 		log.Fatalf("plugin dir: %v", err)
 	}
 
-	// Plugins come from npm: installed on demand, updated in the background.
+	// Plugins come from the GitHub "plugins" release: installed on demand,
+	// updated in the background.
 	// The phone app also ships a bundled set to seed from, so it works offline
 	// on first launch.
-	pluginStore := pluginstore.New(pluginDir, os.Getenv("PLUGIN_REGISTRY"))
+	pluginStore := pluginstore.New(pluginDir, os.Getenv("PLUGIN_INDEX"))
 	if seedDir := os.Getenv("PLUGIN_SEED_DIR"); seedDir != "" {
 		if err := pluginStore.Seed(seedDir); err != nil {
 			log.Printf("plugin seed: %v", err)

@@ -1,5 +1,5 @@
 <!--
-	Plugins published on npm: install the ones not installed yet, or any package
+	Plugins published on GitHub: install the ones not installed yet, or any package
 	by name. The backend loads an installed plugin within a second; onchange
 	lets the page reload its list.
 -->
@@ -29,7 +29,7 @@
 
 	let notInstalled = $derived(packages.filter((found) => found.installedVersion === null));
 
-	/** Installs a package from npm. */
+	/** Installs a published plugin package. */
 	async function install(name: string) {
 		installing = name;
 		try {
@@ -53,7 +53,7 @@
 <section class="border-base-300 bg-base-200 flex flex-col gap-4 rounded-xl border p-5">
 	<div>
 		<h2 class="text-sm font-semibold">Get plugins</h2>
-		<p class="text-base-content/40 text-xs">Plugins published on npm with the veil-plugin keyword.</p>
+		<p class="text-base-content/40 text-xs">Plugins published on the Veil GitHub plugin index.</p>
 	</div>
 
 	{#if notInstalled.length > 0}
