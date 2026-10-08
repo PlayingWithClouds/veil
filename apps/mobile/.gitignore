@@ -16,3 +16,6 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Reference screenshots (Mobbin, not ours to publish); only INDEX.md is tracked
+/references/**/*.png
