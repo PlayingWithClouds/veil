@@ -37,6 +37,7 @@ const stateFile = ".store.json"
 
 // DefaultPackages are installed on a fresh backend that has no plugins yet.
 var DefaultPackages = []string{
+	"@playingwithclouds/veil-plugin-aylo",
 	"@playingwithclouds/veil-plugin-eporner",
 	"@playingwithclouds/veil-plugin-hqporner",
 	"@playingwithclouds/veil-plugin-missav",

@@ -1,0 +1,15 @@
+{
+  "name": "@playingwithclouds/veil-plugin-aylo",
+  "version": "0.1.0",
+  "description": "Veil plugin for the Aylo tube sites: pornhub.com, redtube.com, youporn.com and tube8.com",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@playingwithclouds/veil-sdk": "file:../../../../packages/veil-sdk",
+    "node-html-parser": "^6.1.13"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}

@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +28,11 @@ type fetcher struct {
 // newFetcher creates the clients, sharing one connection pool.
 func newFetcher() *fetcher {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// Pornhub answers 403 to handshakes offering the post-quantum
+	// X25519MLKEM768 key share Go sends by default; offer classic curves only.
+	transport.TLSClientConfig = &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256, tls.CurveP384},
+	}
 	return &fetcher{
 		following: &http.Client{Transport: transport},
 		manual: &http.Client{

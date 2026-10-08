@@ -105,7 +105,7 @@ Plugins are TypeScript packages under `apps/backend/plugins/`, all importing `@p
 
 **FlareSolverr:** set `meta.requires_solver: true` when the site answers plain requests with a Cloudflare challenge, and fetch through `fetchHtmlSmart`. Without `FLARESOLVERR_URL` (e.g. embedded on a phone) the registry treats such plugins as unavailable: they drop out of search/browse, their stubs are hidden, visits skip them. Currently: missav, spankbang.
 
-**Current plugins:** eporner (API + enrich), hqporner, missav, xhamster, spankbang, tnaflix, txxx-network (scenes); pornpics (galleries).
+**Current plugins:** aylo (pornhub, redtube, youporn, tube8), eporner (API + enrich), hqporner, missav, xhamster, spankbang, tnaflix, txxx-network (scenes); pornpics (galleries).
 
 ## Frontend
 
