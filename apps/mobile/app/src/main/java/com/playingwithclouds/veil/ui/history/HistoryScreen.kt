@@ -50,12 +50,12 @@ class HistoryViewModel : ViewModel() {
     }
 }
 
-/** The History tab. */
+/** Everything watched, most recent first. */
 @Composable
-fun HistoryScreen(navigator: AppNavigator, onMenu: () -> Unit) {
+fun HistoryScreen(navigator: AppNavigator) {
     val viewModel = viewModel { HistoryViewModel() }
     LaunchedEffect(Unit) { WatchProgressStore.refresh() }
-    Scaffold(topBar = { VeilTopBar("History", onMenu = onMenu) }) { padding ->
+    Scaffold(topBar = { VeilTopBar("History", onBack = navigator::back) }) { padding ->
         PagedGrid(
             paged = viewModel.history,
             keyOf = { entry -> entry.mediaId },

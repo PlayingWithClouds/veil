@@ -56,7 +56,7 @@ fun SceneCard(
 ) {
     val progress by WatchProgressStore.progress.collectAsStateWithLifecycle()
     val resumeFraction = progress[scene.id]?.fraction
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).pressClickable(onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(RoundedCornerShape(12.dp))) {
             RemoteImage(scene.posterPath, Modifier.matchParentSize())
             val duration = scene.durationSeconds
@@ -124,7 +124,7 @@ fun Badge(
 /** A gallery as a poster card with its image count. */
 @Composable
 fun GalleryCard(gallery: GallerySummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).pressClickable(onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp))) {
             RemoteImage(gallery.coverPath, Modifier.matchParentSize())
             if (gallery.imageCount > 0) {
@@ -152,7 +152,7 @@ fun AvatarCard(
     isFavorite: Boolean = false,
 ) {
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(8.dp),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).pressClickable(onClick).padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -209,7 +209,7 @@ fun StudioCard(studio: StudioSummary, onClick: () -> Unit, modifier: Modifier = 
 /** A collection with its cover and size. */
 @Composable
 fun CollectionCard(collection: CollectionSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).pressClickable(onClick)) {
         RemoteImage(
             collection.coverPath,
             Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(RoundedCornerShape(12.dp)),

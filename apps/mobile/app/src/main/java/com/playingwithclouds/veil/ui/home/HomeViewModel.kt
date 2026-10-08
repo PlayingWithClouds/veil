@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.FeedRepository
 import com.playingwithclouds.veil.data.RecommendedScene
+import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.data.WatchProgressStore
 import com.playingwithclouds.veil.ui.paging.PagedList
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /** The recommendation feed of the Home tab. */
@@ -28,14 +32,33 @@ class HomeViewModel : ViewModel() {
         page
     }
 
+    private val mutableContinueWatching = MutableStateFlow<List<SceneSummary>>(emptyList())
+
+    /** Started but unfinished scenes, most recent first. */
+    val continueWatching: StateFlow<List<SceneSummary>> = mutableContinueWatching
+
     init {
         feed.loadMore()
         refreshProgress()
     }
 
-    /** Reloads the resume positions, e.g. after coming back from a scene. */
+    /** Reloads the resume positions and the continue-watching shelf, e.g. after coming back from a scene. */
     fun refreshProgress() {
         viewModelScope.launch { WatchProgressStore.refresh() }
+        viewModelScope.launch { loadContinueWatching() }
+    }
+
+    /** Fills the shelf from the watch history; a failure leaves it as it was. */
+    private suspend fun loadContinueWatching() {
+        try {
+            val history = FeedRepository.watchHistory(HISTORY_SCAN, 0)
+            val unfinished = history.filter { entry -> !entry.completed && entry.progressSeconds > 0 }
+            mutableContinueWatching.value = unfinished.mapNotNull { entry -> entry.scene }.take(SHELF_SIZE)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            // The shelf is optional; the feed below carries on.
+        }
     }
 
     /** Logs that a recommendation was shown. */
@@ -51,5 +74,7 @@ class HomeViewModel : ViewModel() {
     companion object {
         private const val PAGE_SIZE = 24
         private const val SURFACE = "feed"
+        private const val HISTORY_SCAN = 40
+        private const val SHELF_SIZE = 12
     }
 }

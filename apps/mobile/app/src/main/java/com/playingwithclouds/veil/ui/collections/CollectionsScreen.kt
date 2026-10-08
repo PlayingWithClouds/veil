@@ -81,9 +81,9 @@ class CollectionsViewModel : ViewModel() {
     }
 }
 
-/** The Collections tab: playlists of the user and series from the sites. */
+/** Collections: playlists of the user and series from the sites. */
 @Composable
-fun CollectionsScreen(navigator: AppNavigator, onMenu: () -> Unit) {
+fun CollectionsScreen(navigator: AppNavigator) {
     val viewModel = viewModel { CollectionsViewModel() }
     val origin by viewModel.origin.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
@@ -105,7 +105,7 @@ fun CollectionsScreen(navigator: AppNavigator, onMenu: () -> Unit) {
         topBar = {
             VeilTopBar(
                 title = "Collections",
-                onMenu = onMenu,
+                onBack = navigator::back,
                 actions = {
                     IconButton(onClick = { creating = true }) { Icon(Icons.Filled.Add, contentDescription = "New collection") }
                 },

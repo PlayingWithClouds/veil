@@ -62,11 +62,11 @@ enum class LibrarySection(val label: String) {
     WATCHLIST("Watchlist"),
 }
 
-/** The Library tab: downloaded scenes, the download queue and the watchlist. */
+/** Downloaded scenes, the download queue and the watchlist, opened on [initialSection] (a [LibrarySection] name). */
 @Composable
-fun LibraryScreen(navigator: AppNavigator, onMenu: () -> Unit) {
+fun LibraryScreen(initialSection: String, navigator: AppNavigator) {
     val viewModel = viewModel { LibraryViewModel() }
-    var selected by rememberSaveable { mutableIntStateOf(0) }
+    var selected by rememberSaveable { mutableIntStateOf(sectionIndex(initialSection)) }
     val section = LibrarySection.entries[selected]
 
     LaunchedEffect(section) {
@@ -77,7 +77,7 @@ fun LibraryScreen(navigator: AppNavigator, onMenu: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { VeilTopBar("Library", onMenu = onMenu) }) { padding ->
+    Scaffold(topBar = { VeilTopBar("Downloads & watchlist", onBack = navigator::back) }) { padding ->
         Column(Modifier.padding(padding)) {
             PrimaryTabRow(selectedTabIndex = selected) {
                 for (entry in LibrarySection.entries) {
@@ -91,6 +91,12 @@ fun LibraryScreen(navigator: AppNavigator, onMenu: () -> Unit) {
             }
         }
     }
+}
+
+/** The tab index of a section name; the first tab when unknown. */
+private fun sectionIndex(name: String): Int {
+    val section = LibrarySection.entries.firstOrNull { entry -> entry.name == name } ?: return 0
+    return section.ordinal
 }
 
 /** Scenes whose download finished. */

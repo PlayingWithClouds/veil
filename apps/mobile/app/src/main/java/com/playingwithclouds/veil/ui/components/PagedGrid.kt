@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.paging.PagedList
 
 /** How many items before the end the next page starts loading. */
@@ -56,7 +57,7 @@ fun <T> PagedGrid(
     modifier: Modifier = Modifier,
     cellWidth: Dp = SceneCellWidth,
     gridState: LazyGridState = rememberLazyGridState(),
-    contentPadding: PaddingValues = PaddingValues(12.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp + LocalFloatingBarInset.current),
     header: (LazyGridScope.() -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T) -> Unit,
 ) {
@@ -76,7 +77,9 @@ fun <T> PagedGrid(
             modifier = Modifier.fillMaxSize(),
         ) {
             header?.invoke(this)
-            itemsIndexed(state.items, key = { _, item -> keyOf(item) }) { index, item -> itemContent(index, item) }
+            itemsIndexed(state.items, key = { _, item -> keyOf(item) }) { index, item ->
+                Box(Modifier.animateItem()) { itemContent(index, item) }
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 PagedFooter(
                     isLoading = state.isLoading && !state.isRefreshing,

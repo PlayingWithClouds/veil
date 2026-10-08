@@ -1,29 +1,18 @@
 package com.playingwithclouds.veil.ui
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
@@ -39,6 +28,7 @@ import com.playingwithclouds.veil.ui.galleries.GalleryCategoryScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryScreen
 import com.playingwithclouds.veil.ui.history.HistoryScreen
 import com.playingwithclouds.veil.ui.home.HomeScreen
+import com.playingwithclouds.veil.ui.library.LibraryHubScreen
 import com.playingwithclouds.veil.ui.library.LibraryScreen
 import com.playingwithclouds.veil.ui.performers.PerformerScreen
 import com.playingwithclouds.veil.ui.performers.PerformersScreen
@@ -53,90 +43,70 @@ import com.playingwithclouds.veil.ui.subscriptions.SubscriptionScreen
 import com.playingwithclouds.veil.ui.subscriptions.SubscriptionsScreen
 import com.playingwithclouds.veil.ui.tags.TagScreen
 import com.playingwithclouds.veil.ui.tags.TagsScreen
-import kotlinx.coroutines.launch
 
-/** A destination of the bottom bar. */
-private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    HOME(Routes.HOME, "Home", Icons.Filled.Home),
-    SUBSCRIPTIONS(Routes.SUBSCRIPTIONS, "Following", Icons.Filled.Notifications),
-    LIBRARY(Routes.LIBRARY, "Library", Icons.Filled.VideoLibrary),
-    COLLECTIONS(Routes.COLLECTIONS, "Collections", Icons.Filled.Collections),
-    HISTORY(Routes.HISTORY, "History", Icons.Filled.History),
-}
-
-/** The screens with the bottom bar, the menu drawer and system back. */
+/** The screens with the floating tab bar and system back. */
 @Composable
 fun VeilShell() {
     val navController = rememberNavController()
     val navigator = remember(navController) { AppNavigator(navController) }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    val hideOnScroll = rememberHideOnScrollState()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
+    val onTab = Tab.entries.any { tab -> tab.route == currentRoute }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        // The edge swipe would fight the system back gesture; the menu button opens it.
-        gesturesEnabled = drawerState.isOpen,
-        drawerContent = {
-            MenuDrawer(
-                navigator = navigator,
-                closeDrawer = { scope.launch { drawerState.close() } },
-            )
-        },
-    ) {
-        Scaffold(
-            bottomBar = {
-                if (Tab.entries.any { tab -> tab.route == currentRoute }) {
-                    VeilBottomBar(currentRoute, navigator)
-                }
-            },
-        ) { innerPadding ->
+    LaunchedEffect(currentRoute) { hideOnScroll.show() }
+
+    Scaffold { innerPadding ->
+        Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
-                enterTransition = { fadeIn() },
-                exitTransition = { fadeOut() },
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
+                    .nestedScroll(hideOnScroll.connection),
+                enterTransition = { PageTransitions.enter(initialState, targetState) },
+                exitTransition = { PageTransitions.exit(initialState, targetState) },
+                popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
+                popExitTransition = { PageTransitions.popExit(initialState, targetState) },
             ) {
-                tabScreens(navigator, openMenu)
+                tabScreens(navigator)
                 detailScreens(navigator)
             }
-        }
-    }
-}
-
-/** The bottom bar with one item per tab. */
-@Composable
-private fun VeilBottomBar(currentRoute: String?, navigator: AppNavigator) {
-    NavigationBar {
-        for (tab in Tab.entries) {
-            NavigationBarItem(
-                selected = tab.route == currentRoute,
-                onClick = { navigator.openTab(tab.route) },
-                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                label = { Text(tab.label) },
+            FloatingNavBar(
+                currentRoute = currentRoute,
+                visible = onTab && hideOnScroll.visible,
+                onTab = { tab -> navigator.openTab(tab.route) },
+                onSearch = { navigator.openSearch() },
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
 }
 
-/** The five tab destinations. */
-private fun NavGraphBuilder.tabScreens(navigator: AppNavigator, openMenu: () -> Unit) {
-    composable(Routes.HOME) { HomeScreen(navigator, openMenu) }
-    composable(Routes.SUBSCRIPTIONS) { SubscriptionsScreen(navigator, openMenu) }
-    composable(Routes.LIBRARY) { LibraryScreen(navigator, openMenu) }
-    composable(Routes.COLLECTIONS) { CollectionsScreen(navigator, openMenu) }
-    composable(Routes.HISTORY) { HistoryScreen(navigator, openMenu) }
+/** A tab screen, given room at the bottom for the floating bar. */
+private fun NavGraphBuilder.tab(route: String, content: @Composable () -> Unit) {
+    composable(route) {
+        CompositionLocalProvider(LocalFloatingBarInset provides FloatingBarInset) { content() }
+    }
 }
 
-/** Every destination opened from a tab, the menu or a card. */
+/** The three tab destinations. */
+private fun NavGraphBuilder.tabScreens(navigator: AppNavigator) {
+    tab(Routes.HOME) { HomeScreen(navigator) }
+    tab(Routes.SUBSCRIPTIONS) { SubscriptionsScreen(navigator) }
+    tab(Routes.LIBRARY) { LibraryHubScreen(navigator) }
+}
+
+/** Every destination opened from a tab, the Library hub or a card. */
 private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(
         Routes.SEARCH,
         arguments = listOf(navArgument("query") { type = NavType.StringType; defaultValue = "" }),
     ) { entry -> SearchScreen(entry.argument("query"), navigator) }
+    composable(Routes.COLLECTIONS) { CollectionsScreen(navigator) }
+    composable(Routes.HISTORY) { HistoryScreen(navigator) }
+    composable(Routes.LIBRARY_SECTION) { entry -> LibraryScreen(entry.argument("section"), navigator) }
     composable(Routes.SCENE) { entry -> SceneScreen(entry.argument("id"), navigator) }
     composable(Routes.PERFORMERS) { PerformersScreen(navigator) }
     composable(Routes.PERFORMER) { entry -> PerformerScreen(entry.argument("id"), navigator) }

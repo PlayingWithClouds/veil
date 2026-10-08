@@ -94,13 +94,13 @@ class SubscriptionsViewModel : ViewModel() {
 
 /** The Following tab. */
 @Composable
-fun SubscriptionsScreen(navigator: AppNavigator, onMenu: () -> Unit) {
+fun SubscriptionsScreen(navigator: AppNavigator) {
     val viewModel = viewModel { SubscriptionsViewModel() }
     val subscriptions by viewModel.subscriptions.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.loadSubscriptions() }
 
-    Scaffold(topBar = { VeilTopBar("Following", onMenu = onMenu) }) { padding ->
+    Scaffold(topBar = { VeilTopBar("Following") }) { padding ->
         PagedGrid(
             paged = viewModel.feed,
             keyOf = { entry -> entry.scene.id },

@@ -10,6 +10,7 @@ object Routes {
     const val LIBRARY = "library"
     const val COLLECTIONS = "collections"
     const val HISTORY = "history"
+    const val LIBRARY_SECTION = "library/{section}"
     const val SEARCH = "search?query={query}"
     const val SCENE = "scene/{id}"
     const val PERFORMERS = "performers"
@@ -31,6 +32,8 @@ object Routes {
     fun search(query: String = ""): String {
         return "search?query=${Uri.encode(query)}"
     }
+
+    fun librarySection(section: String): String = "library/${Uri.encode(section)}"
 
     fun scene(id: String): String = "scene/${Uri.encode(id)}"
 
@@ -69,6 +72,13 @@ class AppNavigator(private val controller: NavHostController) {
     fun openSearch(query: String = "") = controller.navigate(Routes.search(query))
 
     fun openScene(id: String) = controller.navigate(Routes.scene(id))
+
+    fun openCollections() = controller.navigate(Routes.COLLECTIONS)
+
+    fun openHistory() = controller.navigate(Routes.HISTORY)
+
+    /** Downloads, queue or watchlist, by [com.playingwithclouds.veil.ui.library.LibrarySection] name. */
+    fun openLibrarySection(section: String) = controller.navigate(Routes.librarySection(section))
 
     fun openPerformers() = controller.navigate(Routes.PERFORMERS)
 
