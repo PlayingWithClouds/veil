@@ -24,7 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.SearchSuggestion
+import com.playingwithclouds.veil.data.TagFilter
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.AvatarCellWidth
 import com.playingwithclouds.veil.ui.components.Avatar
@@ -46,6 +49,7 @@ import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.SceneCellWidth
 import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.StudioCard
+import com.playingwithclouds.veil.ui.components.TagFilterSheet
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.IconTap
@@ -192,6 +196,9 @@ private fun ResultFilters(state: SearchState, viewModel: SearchViewModel) {
         item {
             FollowSearchPill(state.isFollowed, viewModel::followSearch)
         }
+        item {
+            TagFilterPill(state.tagFilter, viewModel::setTagFilter)
+        }
         items(SearchScope.entries) { scope ->
             Pill(scope.label, selected = scope == state.scope, onClick = { viewModel.setScope(scope) })
         }
@@ -204,6 +211,21 @@ private fun ResultFilters(state: SearchState, viewModel: SearchViewModel) {
             isSelected = { site -> site.name in state.selectedSites },
             modifier = Modifier.padding(vertical = VeilSpacing.extraSmall),
         )
+    }
+}
+
+/** The pill that opens the tag filter, selected and counting the tags while any are set. */
+@Composable
+private fun TagFilterPill(filter: TagFilter, onChange: (TagFilter) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    var label = "Tags"
+    val count = filter.include.size + filter.exclude.size
+    if (count > 0) {
+        label = "Tags · $count"
+    }
+    Pill(label, onClick = { open = true }, selected = count > 0, icon = VeilIcons.Tags)
+    if (open) {
+        TagFilterSheet(filter, allowInclude = true, onChange = onChange, onDismiss = { open = false })
     }
 }
 
