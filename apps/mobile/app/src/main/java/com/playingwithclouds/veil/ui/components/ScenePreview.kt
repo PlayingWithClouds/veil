@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.ContentFrame
@@ -20,12 +21,14 @@ import com.playingwithclouds.veil.api.ServerSettings
 
 /**
  * A scene's preview clip playing muted on a loop, fading in over the poster once its first frame
- * is drawn. The player lives only while this is composed, so at most the previewing card holds one.
+ * is drawn; when the clip cannot be loaded nothing is drawn and the poster stays. The player lives
+ * only while this is composed, so at most the previewing card holds one.
  */
 @Composable
 fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) {
     val context = LocalContext.current
     var firstFrameShown by remember(previewVideo) { mutableStateOf(false) }
+    var failed by remember(previewVideo) { mutableStateOf(false) }
     val alpha by animateFloatAsState(if (firstFrameShown) 1f else 0f, label = "preview")
     val player = remember(previewVideo) {
         ExoPlayer.Builder(context).build().apply {
@@ -39,6 +42,10 @@ fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier, contentSca
             override fun onRenderedFirstFrame() {
                 firstFrameShown = true
             }
+
+            override fun onPlayerError(error: PlaybackException) {
+                failed = true
+            }
         }
         player.addListener(listener)
         if (url != null) {
@@ -50,6 +57,9 @@ fun ScenePreview(previewVideo: String, modifier: Modifier = Modifier, contentSca
             player.removeListener(listener)
             player.release()
         }
+    }
+    if (failed) {
+        return
     }
     ContentFrame(
         player = player,

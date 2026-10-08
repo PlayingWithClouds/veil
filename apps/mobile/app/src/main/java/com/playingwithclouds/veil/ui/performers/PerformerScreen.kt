@@ -28,11 +28,12 @@ import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.theme.VeilColors
-import com.playingwithclouds.veil.ui.entity.EntityHeader
+import com.playingwithclouds.veil.ui.entity.ChannelHeader
+import com.playingwithclouds.veil.ui.entity.ChannelSort
+import com.playingwithclouds.veil.ui.entity.ChannelSortBar
 import com.playingwithclouds.veil.ui.entity.EntitySceneFetch
 import com.playingwithclouds.veil.ui.entity.EntitySceneFetchBar
 import com.playingwithclouds.veil.ui.entity.GalleryRow
-import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.loadInto
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +55,18 @@ class PerformerViewModel(private val performerId: String) : ViewModel() {
 
     /** The performer's scenes, newest release first. */
     val scenes = PagedList(viewModelScope, PAGE_SIZE, { tagged -> tagged.scene.id }) { offset ->
-        EntityRepository.scenes(EntityFilter(performerId = performerId), PAGE_SIZE, offset)
+        EntityRepository.scenes(EntityFilter(performerId = performerId, sort = mutableSort.value.backendName), PAGE_SIZE, offset)
+    }
+
+    private val mutableSort = MutableStateFlow(ChannelSort.NEWEST)
+
+    /** How the filmography is ordered. */
+    val sort: StateFlow<ChannelSort> = mutableSort
+
+    /** Re-orders the filmography and reloads it from the top. */
+    fun setSort(sort: ChannelSort) {
+        mutableSort.value = sort
+        scenes.refresh()
     }
 
     /** The search for the performer's videos on every site, started when the page opens. */
@@ -132,6 +144,7 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "performer-$id") { PerformerViewModel(id) }
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val galleries by viewModel.galleries.collectAsStateWithLifecycle()
+    val sort by viewModel.sort.collectAsStateWithLifecycle()
     Scaffold(topBar = { VeilTopBar("Performer", onBack = navigator::back) }) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { performer ->
             PagedGrid(
@@ -142,6 +155,7 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
                 header = {
                     fullWidthItem("header") { PerformerHeader(performer, viewModel, navigator) }
                     fullWidthItem("galleries") { GalleryRow("Galleries", galleries, navigator::openGallery) }
+                    fullWidthItem("sort") { ChannelSortBar(sort, viewModel::setSort) }
                     fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
             ) { _, tagged ->
@@ -154,17 +168,21 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
 /** Name, photo, actions, facts and tags of a performer. */
 @Composable
 private fun PerformerHeader(performer: PerformerDetail, viewModel: PerformerViewModel, navigator: AppNavigator) {
-    EntityHeader(
+    val scenes by viewModel.scenes.state.collectAsStateWithLifecycle()
+    ChannelHeader(
+        entityId = performer.id,
         name = performer.name,
         imagePath = performer.imagePath,
-        subtitle = "${performer.sceneCount} videos",
+        bannerPath = scenes.items.firstOrNull()?.scene?.posterPath,
+        videoCount = performer.sceneCount,
+        facts = performerFacts(performer),
+        details = performer.details,
         actions = {
             FollowButton(FollowKind.PERFORMER, performer.id, navigator)
             FavoriteButton(performer.favorite, viewModel::toggleFavorite)
             RoundIconButton(VeilIcons.Refresh, contentDescription = "Fetch details", onClick = viewModel::enrich, size = 44.dp)
         },
     )
-    ProfileInfo(performerFacts(performer), performer.details)
     TagChips(performer.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
 }
 
