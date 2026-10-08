@@ -10,6 +10,7 @@ import com.playingwithclouds.veil.data.SearchRepository
 import com.playingwithclouds.veil.data.SearchSite
 import com.playingwithclouds.veil.data.SearchSuggestion
 import com.playingwithclouds.veil.data.StudioSummary
+import com.playingwithclouds.veil.data.TagFilter
 import com.playingwithclouds.veil.data.SubscriptionRepository
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -53,6 +54,8 @@ data class SearchState(
     val error: String? = null,
     /** The submitted search is already followed. */
     val isFollowed: Boolean = false,
+    /** Tags results must carry or must not carry. */
+    val tagFilter: TagFilter = TagFilter(),
 )
 
 /** Library search plus live search on the source sites, with suggestions while typing. */
@@ -131,6 +134,13 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
         runSearch(query)
     }
 
+    /** Applies a tag filter and searches again. */
+    fun setTagFilter(filter: TagFilter) {
+        mutableState.update { current -> current.copy(tagFilter = filter) }
+        val query = mutableState.value.submitted ?: return
+        runSearch(query)
+    }
+
     /** Follows the submitted search, so the backend re-runs it on a schedule. */
     fun followSearch() {
         val current = mutableState.value
@@ -177,7 +187,7 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
     /** Fetches stored scenes, galleries, performers and studios for the query in parallel. */
     private suspend fun loadLibraryMatches(query: String, sources: List<String>) {
         coroutineScope {
-            val scenes = async { runCatching { SearchRepository.searchScenes(query, sources, SCENE_LIMIT, 0) }.getOrDefault(emptyList()) }
+            val scenes = async { runCatching { SearchRepository.searchScenes(query, sources, SCENE_LIMIT, 0, mutableState.value.tagFilter) }.getOrDefault(emptyList()) }
             val galleries = async { runCatching { SearchRepository.searchGalleries(query, sources, GALLERY_LIMIT, 0) }.getOrDefault(emptyList()) }
             val performers = async { runCatching { SearchRepository.searchPerformers(query, ENTITY_LIMIT) }.getOrDefault(emptyList()) }
             val studios = async { runCatching { SearchRepository.searchStudios(query, ENTITY_LIMIT) }.getOrDefault(emptyList()) }
@@ -218,6 +228,9 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
 fun SearchState.withLiveResult(result: LiveResultItem): SearchState {
     when (result) {
         is LiveResultItem.SceneResult -> {
+            if (!tagFilter.accepts(result.scene)) {
+                return this
+            }
             if (scenes.any { scene -> scene.id == result.scene.id }) {
                 return this
             }
