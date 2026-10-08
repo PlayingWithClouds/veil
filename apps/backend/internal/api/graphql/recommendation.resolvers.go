@@ -26,13 +26,31 @@ func (r *mutationResolver) RecordImpressions(ctx context.Context, impressions []
 }
 
 // Recommendations is the resolver for the recommendations field.
-func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) ([]*model.RecommendedScene, error) {
-	window := recommend.DurationRange{MinSeconds: derefInt(minDuration, 0), MaxSeconds: derefInt(maxDuration, 0)}
-	items, err := r.recommender.FeedWithDuration(ctx, r.registry.InactiveNames(), sources, window, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
+func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int, excludeTagIds []string) ([]*model.RecommendedScene, error) {
+	filter := recommend.FeedFilter{
+		Duration:      recommend.DurationRange{MinSeconds: derefInt(minDuration, 0), MaxSeconds: derefInt(maxDuration, 0)},
+		ExcludeTagIDs: excludeTagIds,
+	}
+	items, err := r.recommender.FeedFiltered(ctx, r.registry.InactiveNames(), sources, filter, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
 	if err != nil {
 		return nil, err
 	}
 	return r.recommendedScenes(ctx, items)
+}
+
+// TasteProfile is the resolver for the tasteProfile field.
+func (r *queryResolver) TasteProfile(ctx context.Context, limit *int) (*model.TasteProfile, error) {
+	taste, err := r.recommender.Taste(ctx, derefInt(limit, defaultTasteLimit))
+	if err != nil {
+		return nil, err
+	}
+	return &model.TasteProfile{
+		SignalCount: taste.SignalCount,
+		Tags:        tasteEntryModels(taste.Tags),
+		Performers:  tasteEntryModels(taste.Performers),
+		Studios:     tasteEntryModels(taste.Studios),
+		Sites:       tasteEntryModels(taste.Sites),
+	}, nil
 }
 
 // RecommendedRows is the resolver for the recommendedRows field.

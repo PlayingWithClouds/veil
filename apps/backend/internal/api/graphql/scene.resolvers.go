@@ -14,7 +14,7 @@ import (
 )
 
 // Scenes is the resolver for the scenes field.
-func (r *queryResolver) Scenes(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string) ([]*model.Scene, error) {
+func (r *queryResolver) Scenes(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string, includeTagIds []string, excludeTagIds []string) ([]*model.Scene, error) {
 	return r.repo.ListScenes(ctx, media.EntityFilters{
 		Search:          search,
 		Sort:            sort,
@@ -28,6 +28,8 @@ func (r *queryResolver) Scenes(ctx context.Context, limit *int, offset *int, sea
 		DateTo:          dateTo,
 		DisabledPlugins: r.registry.InactiveNames(),
 		Sources:         sources,
+		IncludeTagIDs:   includeTagIds,
+		ExcludeTagIDs:   excludeTagIds,
 	}, limit, offset)
 }
 

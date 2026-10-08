@@ -396,7 +396,7 @@ type ComplexityRoot struct {
 		Plugins               func(childComplexity int) int
 		RandomScenes          func(childComplexity int, limit *int) int
 		RecommendationPair    func(childComplexity int) int
-		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) int
+		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int, excludeTagIds []string) int
 		RecommendedBrowse     func(childComplexity int, limit *int) int
 		RecommendedCategories func(childComplexity int, categoryLimit *int, perCategory *int) int
 		RecommendedFeed       func(childComplexity int, limit *int, offset *int) int
@@ -405,7 +405,7 @@ type ComplexityRoot struct {
 		Scene                 func(childComplexity int, id string) int
 		SceneHeat             func(childComplexity int, sceneID string) int
 		SceneMarkers          func(childComplexity int, mediaID string) int
-		Scenes                func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string) int
+		Scenes                func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string, includeTagIds []string, excludeTagIds []string) int
 		SearchSubscription    func(childComplexity int, id string) int
 		SearchSubscriptions   func(childComplexity int) int
 		SearchSuggestions     func(childComplexity int, query string, limit *int) int
@@ -418,6 +418,7 @@ type ComplexityRoot struct {
 		SubscriptionForTarget func(childComplexity int, targetID string) int
 		Tag                   func(childComplexity int, id string) int
 		Tags                  func(childComplexity int, limit *int, offset *int, search *string, category *string) int
+		TasteProfile          func(childComplexity int, limit *int) int
 		UserRating            func(childComplexity int, mediaID string) int
 		UserRatings           func(childComplexity int, limit *int, offset *int) int
 		VpnStatus             func(childComplexity int) int
@@ -643,6 +644,21 @@ type ComplexityRoot struct {
 		UpdatedAt   func(childComplexity int) int
 	}
 
+	TasteEntry struct {
+		Affinity  func(childComplexity int) int
+		ID        func(childComplexity int) int
+		ImagePath func(childComplexity int) int
+		Name      func(childComplexity int) int
+	}
+
+	TasteProfile struct {
+		Performers  func(childComplexity int) int
+		SignalCount func(childComplexity int) int
+		Sites       func(childComplexity int) int
+		Studios     func(childComplexity int) int
+		Tags        func(childComplexity int) int
+	}
+
 	UserRating struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -768,12 +784,13 @@ type QueryResolver interface {
 	Plugin(ctx context.Context, id string) (*model.Plugin, error)
 	PluginPackages(ctx context.Context, query *string) ([]*model.PluginPackage, error)
 	PluginCategories(ctx context.Context, plugin string, limit *int) ([]*model.PluginCategory, error)
-	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int) ([]*model.RecommendedScene, error)
+	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string, minDuration *int, maxDuration *int, excludeTagIds []string) ([]*model.RecommendedScene, error)
+	TasteProfile(ctx context.Context, limit *int) (*model.TasteProfile, error)
 	RecommendedRows(ctx context.Context, rowLimit *int, perRow *int) ([]*model.RecommendationRow, error)
 	RecommendedCategories(ctx context.Context, categoryLimit *int, perCategory *int) ([]*model.RecommendedCategory, error)
 	RecommendationPair(ctx context.Context) ([]*model.Scene, error)
 	SavedFilters(ctx context.Context) ([]*model.SavedFilter, error)
-	Scenes(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string) ([]*model.Scene, error)
+	Scenes(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string, includeTagIds []string, excludeTagIds []string) ([]*model.Scene, error)
 	Scene(ctx context.Context, id string) (*model.Scene, error)
 	RandomScenes(ctx context.Context, limit *int) ([]*model.Scene, error)
 	RecommendedFeed(ctx context.Context, limit *int, offset *int) ([]*model.Scene, error)
@@ -3027,7 +3044,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool), args["sources"].([]string), args["minDuration"].(*int), args["maxDuration"].(*int)), true
+		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool), args["sources"].([]string), args["minDuration"].(*int), args["maxDuration"].(*int), args["excludeTagIds"].([]string)), true
 	case "Query.recommendedBrowse":
 		if e.ComplexityRoot.Query.RecommendedBrowse == nil {
 			break
@@ -3121,7 +3138,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Scenes(childComplexity, args["limit"].(*int), args["offset"].(*int), args["search"].(*string), args["studioId"].(*string), args["performerId"].(*string), args["tagId"].(*string), args["sort"].(*string), args["minRating"].(*float64), args["minDuration"].(*int), args["maxDuration"].(*int), args["dateFrom"].(*string), args["dateTo"].(*string), args["sources"].([]string)), true
+		return e.ComplexityRoot.Query.Scenes(childComplexity, args["limit"].(*int), args["offset"].(*int), args["search"].(*string), args["studioId"].(*string), args["performerId"].(*string), args["tagId"].(*string), args["sort"].(*string), args["minRating"].(*float64), args["minDuration"].(*int), args["maxDuration"].(*int), args["dateFrom"].(*string), args["dateTo"].(*string), args["sources"].([]string), args["includeTagIds"].([]string), args["excludeTagIds"].([]string)), true
 	case "Query.searchSubscription":
 		if e.ComplexityRoot.Query.SearchSubscription == nil {
 			break
@@ -3244,6 +3261,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Tags(childComplexity, args["limit"].(*int), args["offset"].(*int), args["search"].(*string), args["category"].(*string)), true
+	case "Query.tasteProfile":
+		if e.ComplexityRoot.Query.TasteProfile == nil {
+			break
+		}
+
+		args, err := ec.field_Query_tasteProfile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.TasteProfile(childComplexity, args["limit"].(*int)), true
 	case "Query.userRating":
 		if e.ComplexityRoot.Query.UserRating == nil {
 			break
@@ -4249,6 +4277,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Tag.UpdatedAt(childComplexity), true
 
+	case "TasteEntry.affinity":
+		if e.ComplexityRoot.TasteEntry.Affinity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteEntry.Affinity(childComplexity), true
+	case "TasteEntry.id":
+		if e.ComplexityRoot.TasteEntry.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteEntry.ID(childComplexity), true
+	case "TasteEntry.imagePath":
+		if e.ComplexityRoot.TasteEntry.ImagePath == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteEntry.ImagePath(childComplexity), true
+	case "TasteEntry.name":
+		if e.ComplexityRoot.TasteEntry.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteEntry.Name(childComplexity), true
+
+	case "TasteProfile.performers":
+		if e.ComplexityRoot.TasteProfile.Performers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteProfile.Performers(childComplexity), true
+	case "TasteProfile.signalCount":
+		if e.ComplexityRoot.TasteProfile.SignalCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteProfile.SignalCount(childComplexity), true
+	case "TasteProfile.sites":
+		if e.ComplexityRoot.TasteProfile.Sites == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteProfile.Sites(childComplexity), true
+	case "TasteProfile.studios":
+		if e.ComplexityRoot.TasteProfile.Studios == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteProfile.Studios(childComplexity), true
+	case "TasteProfile.tags":
+		if e.ComplexityRoot.TasteProfile.Tags == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteProfile.Tags(childComplexity), true
+
 	case "UserRating.createdAt":
 		if e.ComplexityRoot.UserRating.CreatedAt == nil {
 			break
@@ -5002,7 +5086,8 @@ extend type Query {
   # names) keep only scenes one of those plugins observed, like the scenes
   # source filter; offset and limit page through that filtered ranking.
   # minDuration/maxDuration (seconds) keep only scenes with a known runtime
-  # inside that window.
+  # inside that window. excludeTagIds drops scenes carrying any of those tags
+  # (own, studio's or a credited performer's) from the shared ranking.
   recommendations(
     limit: Int
     offset: Int
@@ -5010,7 +5095,12 @@ extend type Query {
     sources: [String!]
     minDuration: Int
     maxDuration: Int
+    excludeTagIds: [ID!]
   ): [RecommendedScene!]!
+
+  # The user's taste profile: the strongest tags, performers, studios and
+  # sites (affinity in [-1, 1]) the recommender ranks with.
+  tasteProfile(limit: Int): TasteProfile!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row
@@ -5048,6 +5138,27 @@ input ImpressionInput {
   position: Int
   # true when the user opened it; absent/false when it was only shown.
   clicked: Boolean
+}
+
+type TasteProfile {
+  # How many signals (watches, likes, saves, ...) the profile was built from;
+  # 0 means cold start.
+  signalCount: Int!
+  # Each list holds the strongest positive entries first, then the strongest
+  # negative ones, at most ` + "`" + `limit` + "`" + ` of each sign.
+  tags: [TasteEntry!]!
+  performers: [TasteEntry!]!
+  studios: [TasteEntry!]!
+  # id and name are the plugin name.
+  sites: [TasteEntry!]!
+}
+
+type TasteEntry {
+  id: ID!
+  name: String!
+  imagePath: String
+  # Normalized to [-1, 1] within its list.
+  affinity: Float!
 }
 
 type RecommendedScene {
@@ -5155,6 +5266,11 @@ extend type Query {
     dateTo: String
     # Only scenes found through these plugins; empty = any.
     sources: [String!]
+    # Keep only scenes carrying every one of these tags (own, studio's or a
+    # credited performer's).
+    includeTagIds: [ID!]
+    # Drop scenes carrying any of these tags (same inheritance).
+    excludeTagIds: [ID!]
   ): [Scene!]!
   scene(id: ID!): Scene
 
@@ -6661,6 +6777,36 @@ func (ec *executionContext) childFields_Tag(ctx context.Context, field graphql.C
 		return ec.fieldContext_Tag_updatedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Tag", field.Name)
+}
+
+func (ec *executionContext) childFields_TasteEntry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_TasteEntry_id(ctx, field)
+	case "name":
+		return ec.fieldContext_TasteEntry_name(ctx, field)
+	case "imagePath":
+		return ec.fieldContext_TasteEntry_imagePath(ctx, field)
+	case "affinity":
+		return ec.fieldContext_TasteEntry_affinity(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TasteEntry", field.Name)
+}
+
+func (ec *executionContext) childFields_TasteProfile(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "signalCount":
+		return ec.fieldContext_TasteProfile_signalCount(ctx, field)
+	case "tags":
+		return ec.fieldContext_TasteProfile_tags(ctx, field)
+	case "performers":
+		return ec.fieldContext_TasteProfile_performers(ctx, field)
+	case "studios":
+		return ec.fieldContext_TasteProfile_studios(ctx, field)
+	case "sites":
+		return ec.fieldContext_TasteProfile_sites(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TasteProfile", field.Name)
 }
 
 func (ec *executionContext) childFields_UserRating(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -8598,6 +8744,14 @@ func (ec *executionContext) field_Query_recommendations_args(ctx context.Context
 		return nil, err
 	}
 	args["maxDuration"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "excludeTagIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["excludeTagIds"] = arg6
 	return args, nil
 }
 
@@ -8830,6 +8984,22 @@ func (ec *executionContext) field_Query_scenes_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["sources"] = arg12
+	arg13, err := graphql.ProcessArgField(ctx, rawArgs, "includeTagIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["includeTagIds"] = arg13
+	arg14, err := graphql.ProcessArgField(ctx, rawArgs, "excludeTagIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["excludeTagIds"] = arg14
 	return args, nil
 }
 
@@ -9058,6 +9228,20 @@ func (ec *executionContext) field_Query_tags_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["category"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_tasteProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
 	return args, nil
 }
 
@@ -17684,7 +17868,7 @@ func (ec *executionContext) _Query_recommendations(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool), fc.Args["sources"].([]string), fc.Args["minDuration"].(*int), fc.Args["maxDuration"].(*int))
+			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool), fc.Args["sources"].([]string), fc.Args["minDuration"].(*int), fc.Args["maxDuration"].(*int), fc.Args["excludeTagIds"].([]string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*model.RecommendedScene) graphql.Marshaler {
@@ -17712,6 +17896,50 @@ func (ec *executionContext) fieldContext_Query_recommendations(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_recommendations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_tasteProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_tasteProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().TasteProfile(ctx, fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TasteProfile) graphql.Marshaler {
+			return ec.marshalNTasteProfile2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_tasteProfile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TasteProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_tasteProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -17880,7 +18108,7 @@ func (ec *executionContext) _Query_scenes(ctx context.Context, field graphql.Col
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Scenes(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["search"].(*string), fc.Args["studioId"].(*string), fc.Args["performerId"].(*string), fc.Args["tagId"].(*string), fc.Args["sort"].(*string), fc.Args["minRating"].(*float64), fc.Args["minDuration"].(*int), fc.Args["maxDuration"].(*int), fc.Args["dateFrom"].(*string), fc.Args["dateTo"].(*string), fc.Args["sources"].([]string))
+			return ec.Resolvers.Query().Scenes(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["search"].(*string), fc.Args["studioId"].(*string), fc.Args["performerId"].(*string), fc.Args["tagId"].(*string), fc.Args["sort"].(*string), fc.Args["minRating"].(*float64), fc.Args["minDuration"].(*int), fc.Args["maxDuration"].(*int), fc.Args["dateFrom"].(*string), fc.Args["dateTo"].(*string), fc.Args["sources"].([]string), fc.Args["includeTagIds"].([]string), fc.Args["excludeTagIds"].([]string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*model.Scene) graphql.Marshaler {
@@ -22826,6 +23054,249 @@ func (ec *executionContext) fieldContext_Tag_updatedAt(_ context.Context, field 
 	return graphql.NewScalarFieldContext("Tag", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _TasteEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.TasteEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteEntry_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteEntry_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _TasteEntry_name(ctx context.Context, field graphql.CollectedField, obj *model.TasteEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteEntry_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TasteEntry_imagePath(ctx context.Context, field graphql.CollectedField, obj *model.TasteEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteEntry_imagePath(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImagePath, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TasteEntry_imagePath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TasteEntry_affinity(ctx context.Context, field graphql.CollectedField, obj *model.TasteEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteEntry_affinity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Affinity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteEntry_affinity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _TasteProfile_signalCount(ctx context.Context, field graphql.CollectedField, obj *model.TasteProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteProfile_signalCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SignalCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteProfile_signalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteProfile", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TasteProfile_tags(ctx context.Context, field graphql.CollectedField, obj *model.TasteProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteProfile_tags(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TasteEntry) graphql.Marshaler {
+			return ec.marshalNTasteEntry2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteProfile_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TasteProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TasteEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TasteProfile_performers(ctx context.Context, field graphql.CollectedField, obj *model.TasteProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteProfile_performers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Performers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TasteEntry) graphql.Marshaler {
+			return ec.marshalNTasteEntry2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteProfile_performers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TasteProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TasteEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TasteProfile_studios(ctx context.Context, field graphql.CollectedField, obj *model.TasteProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteProfile_studios(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Studios, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TasteEntry) graphql.Marshaler {
+			return ec.marshalNTasteEntry2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteProfile_studios(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TasteProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TasteEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TasteProfile_sites(ctx context.Context, field graphql.CollectedField, obj *model.TasteProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteProfile_sites(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sites, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TasteEntry) graphql.Marshaler {
+			return ec.marshalNTasteEntry2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TasteProfile_sites(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TasteProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TasteEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserRating_id(ctx context.Context, field graphql.CollectedField, obj *model.UserRating) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27606,6 +28077,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "tasteProfile":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_tasteProfile(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "recommendedRows":
 			field := field
 
@@ -29720,6 +30213,116 @@ func (ec *executionContext) _Tag(ctx context.Context, sel ast.SelectionSet, obj 
 	return out
 }
 
+var tasteEntryImplementors = []string{"TasteEntry"}
+
+func (ec *executionContext) _TasteEntry(ctx context.Context, sel ast.SelectionSet, obj *model.TasteEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tasteEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TasteEntry")
+		case "id":
+			out.Values[i] = ec._TasteEntry_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._TasteEntry_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "imagePath":
+			out.Values[i] = ec._TasteEntry_imagePath(ctx, field, obj)
+		case "affinity":
+			out.Values[i] = ec._TasteEntry_affinity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tasteProfileImplementors = []string{"TasteProfile"}
+
+func (ec *executionContext) _TasteProfile(ctx context.Context, sel ast.SelectionSet, obj *model.TasteProfile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tasteProfileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TasteProfile")
+		case "signalCount":
+			out.Values[i] = ec._TasteProfile_signalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tags":
+			out.Values[i] = ec._TasteProfile_tags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "performers":
+			out.Values[i] = ec._TasteProfile_performers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studios":
+			out.Values[i] = ec._TasteProfile_studios(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sites":
+			out.Values[i] = ec._TasteProfile_sites(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userRatingImplementors = []string{"UserRating"}
 
 func (ec *executionContext) _UserRating(ctx context.Context, sel ast.SelectionSet, obj *model.UserRating) graphql.Marshaler {
@@ -31572,6 +32175,46 @@ func (ec *executionContext) marshalNTag2ᚖgithubᚗcomᚋplayingwithcloudsᚋve
 	return ec._Tag(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTasteEntry2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TasteEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTasteEntry2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTasteEntry2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteEntry(ctx context.Context, sel ast.SelectionSet, v *model.TasteEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TasteEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTasteProfile2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteProfile(ctx context.Context, sel ast.SelectionSet, v model.TasteProfile) graphql.Marshaler {
+	return ec._TasteProfile(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTasteProfile2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTasteProfile(ctx context.Context, sel ast.SelectionSet, v *model.TasteProfile) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TasteProfile(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNUpdateSettingsInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐUpdateSettingsInput(ctx context.Context, v any) (model.UpdateSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -31896,6 +32539,42 @@ func (ec *executionContext) marshalOGallery2ᚖgithubᚗcomᚋplayingwithclouds�
 		return graphql.Null
 	}
 	return ec._Gallery(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {

@@ -16,7 +16,22 @@ const (
 	defaultPerRow        = 12
 	defaultCategoryLimit = 8
 	defaultPerCategory   = 12
+	defaultTasteLimit    = 10
 )
+
+// tasteEntryModels converts the engine's taste entries; an empty photo becomes null.
+func tasteEntryModels(entries []recommend.TasteEntry) []*model.TasteEntry {
+	out := make([]*model.TasteEntry, 0, len(entries))
+	for _, entry := range entries {
+		converted := &model.TasteEntry{ID: entry.ID, Name: entry.Name, Affinity: entry.Affinity}
+		if entry.ImagePath != "" {
+			imagePath := entry.ImagePath
+			converted.ImagePath = &imagePath
+		}
+		out = append(out, converted)
+	}
+	return out
+}
 
 // derefInt returns *value, or fallback when it is nil.
 func derefInt(value *int, fallback int) int {

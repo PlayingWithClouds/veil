@@ -19,6 +19,11 @@ extend type Query {
     dateTo: String
     # Only scenes found through these plugins; empty = any.
     sources: [String!]
+    # Keep only scenes carrying every one of these tags (own, studio's or a
+    # credited performer's).
+    includeTagIds: [ID!]
+    # Drop scenes carrying any of these tags (same inheritance).
+    excludeTagIds: [ID!]
   ): [Scene!]!
   scene(id: ID!): Scene
 
