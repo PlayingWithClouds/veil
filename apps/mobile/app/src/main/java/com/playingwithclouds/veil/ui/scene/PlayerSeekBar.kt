@@ -4,8 +4,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -161,14 +163,18 @@ private fun DrawScope.drawTrack(played: Float, buffered: Float, thickness: Dp, t
     }
 }
 
-/** The time under the finger, in a glass capsule above the thumb, kept inside the bar's width. */
+/**
+ * The frame (when the player offers a seek preview) and time under the finger, above the thumb and
+ * kept inside the bar's width.
+ */
 @Composable
 private fun ScrubTimeLabel(positionMilliseconds: Long, fraction: Float, barWidth: Dp, modifier: Modifier = Modifier) {
     var labelWidth by remember { mutableIntStateOf(0) }
     var labelHeight by remember { mutableIntStateOf(0) }
     val barWidthPixels = with(LocalDensity.current) { barWidth.toPx() }
     val gapPixels = with(LocalDensity.current) { VeilSpacing.extraSmall.toPx() }
-    Box(
+    val preview = LocalSeekPreview.current
+    Column(
         modifier
             .onSizeChanged { measured ->
                 labelWidth = measured.width
@@ -178,10 +184,15 @@ private fun ScrubTimeLabel(positionMilliseconds: Long, fraction: Float, barWidth
                 val centered = barWidthPixels * fraction - labelWidth / 2f
                 val x = centered.coerceIn(0f, maxOf(0f, barWidthPixels - labelWidth))
                 IntOffset(x.roundToInt(), -(labelHeight + gapPixels).roundToInt())
-            }
-            .glass(VeilShapes.capsule)
-            .padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.extraSmall),
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall),
     ) {
-        Text(formatPlaybackClock(positionMilliseconds), style = MaterialTheme.typography.labelLarge, color = VeilColors.content)
+        if (preview != null) {
+            SeekPreviewFrame(preview, positionMilliseconds)
+        }
+        Box(Modifier.glass(VeilShapes.capsule).padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.extraSmall)) {
+            Text(formatPlaybackClock(positionMilliseconds), style = MaterialTheme.typography.labelLarge, color = VeilColors.content)
+        }
     }
 }

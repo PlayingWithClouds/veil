@@ -137,6 +137,7 @@ private fun PlayerArea(
         if (active != null) {
             ScenePlayerView(
                 player,
+                stream = active.playable,
                 title = (state.detail as? LoadState.Loaded)?.value?.title.orEmpty(),
                 fullscreen = fullscreen,
                 related = state.related,
