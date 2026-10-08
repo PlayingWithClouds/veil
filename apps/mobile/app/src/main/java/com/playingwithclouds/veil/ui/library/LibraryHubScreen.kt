@@ -15,15 +15,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -50,7 +41,8 @@ import com.playingwithclouds.veil.ui.components.SceneShelf
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.ShelfHeading
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.LargeHeader
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,14 +56,14 @@ private const val RECENT_COUNT = 12
 private data class HubEntry(val label: String, val icon: ImageVector, val open: (AppNavigator) -> Unit)
 
 private val hubEntries = listOf(
-    HubEntry("Downloads", Icons.Filled.Download) { navigator -> navigator.openLibrarySection(LibrarySection.DOWNLOADED.name) },
-    HubEntry("Watchlist", Icons.Filled.Bookmark) { navigator -> navigator.openLibrarySection(LibrarySection.WATCHLIST.name) },
-    HubEntry("Collections", Icons.AutoMirrored.Filled.PlaylistPlay) { navigator -> navigator.openCollections() },
-    HubEntry("History", Icons.Filled.History) { navigator -> navigator.openHistory() },
-    HubEntry("Performers", Icons.Filled.Groups) { navigator -> navigator.openPerformers() },
-    HubEntry("Studios", Icons.Filled.Business) { navigator -> navigator.openStudios() },
-    HubEntry("Tags", Icons.Filled.Sell) { navigator -> navigator.openTags() },
-    HubEntry("Galleries", Icons.Filled.PhotoLibrary) { navigator -> navigator.openGalleries() },
+    HubEntry("Downloads", VeilIcons.Download) { navigator -> navigator.openLibrarySection(LibrarySection.DOWNLOADED.name) },
+    HubEntry("Watchlist", VeilIcons.Bookmark) { navigator -> navigator.openLibrarySection(LibrarySection.WATCHLIST.name) },
+    HubEntry("Collections", VeilIcons.Collections) { navigator -> navigator.openCollections() },
+    HubEntry("History", VeilIcons.History) { navigator -> navigator.openHistory() },
+    HubEntry("Performers", VeilIcons.Performers) { navigator -> navigator.openPerformers() },
+    HubEntry("Studios", VeilIcons.Studios) { navigator -> navigator.openStudios() },
+    HubEntry("Tags", VeilIcons.Tags) { navigator -> navigator.openTags() },
+    HubEntry("Galleries", VeilIcons.Galleries) { navigator -> navigator.openGalleries() },
 )
 
 /** The recently watched scenes shown at the top of the hub. */
@@ -100,7 +92,7 @@ fun LibraryHubScreen(navigator: AppNavigator) {
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.reload() }
 
-    Scaffold(topBar = { VeilTopBar("Library", actions = { SettingsMenuButton(navigator) }) }) { padding ->
+    Scaffold { padding ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(160.dp),
             modifier = Modifier.padding(padding),
@@ -108,6 +100,9 @@ fun LibraryHubScreen(navigator: AppNavigator) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                LargeHeader("Library") { SettingsMenuButton(navigator) }
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SceneShelf(
                     title = "Recently watched",
@@ -132,7 +127,7 @@ private fun HubTile(label: String, icon: ImageVector, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(VeilColors.surface)
             .pressClickable(onClick)
             .padding(horizontal = 12.dp),

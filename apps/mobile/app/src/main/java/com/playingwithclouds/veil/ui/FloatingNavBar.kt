@@ -2,30 +2,26 @@ package com.playingwithclouds.veil.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Subscriptions
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Subscriptions
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,6 +41,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.GlassIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilColors
 
 /** Height of the floating bar plus its gap to the screen edge. */
@@ -66,9 +65,9 @@ val FloatingBarInset: Dp = FloatingBarHeight + FloatingBarGap * 2
 
 /** A destination of the floating bar. */
 enum class Tab(val route: String, val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
-    HOME(Routes.HOME, "Home", Icons.Filled.Home, Icons.Outlined.Home),
-    FOLLOWING(Routes.SUBSCRIPTIONS, "Following", Icons.Filled.Subscriptions, Icons.Outlined.Subscriptions),
-    LIBRARY(Routes.LIBRARY, "Library", Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary),
+    HOME(Routes.HOME, "Home", VeilIcons.HomeFilled, VeilIcons.Home),
+    FOLLOWING(Routes.SUBSCRIPTIONS, "Following", VeilIcons.FollowingFilled, VeilIcons.Following),
+    LIBRARY(Routes.LIBRARY, "Library", VeilIcons.LibraryFilled, VeilIcons.Library),
 }
 
 /** Whether the floating bar is shown: it slides away while scrolling down and back on scrolling up. */
@@ -115,7 +114,13 @@ fun rememberHideOnScrollState(): HideOnScrollState {
     return remember { HideOnScrollState() }
 }
 
-/** The detached pill with the three tabs, and the round search button beside it. */
+/** Width of one tab slot; the selection pill slides between slots. */
+private val TabWidth = 84.dp
+
+/** Inner padding of the glass pill around the tab slots. */
+private val PillPadding = 6.dp
+
+/** The detached glass pill with the three tabs, and the round glass search button beside it. */
 @Composable
 fun FloatingNavBar(
     currentRoute: String?,
@@ -127,54 +132,52 @@ fun FloatingNavBar(
     AnimatedVisibility(
         visible = visible,
         modifier = modifier,
-        enter = slideInVertically { height -> height },
-        exit = slideOutVertically { height -> height },
+        enter = slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) { height -> height } + fadeIn(),
+        exit = slideOutVertically { height -> height } + fadeOut(),
     ) {
         Row(
             Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = FloatingBarGap),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                Modifier.height(FloatingBarHeight).floatingSurface().padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                for (tab in Tab.entries) {
-                    TabItem(tab, selected = tab.route == currentRoute, onClick = { onTab(tab) })
-                }
-            }
-            Box(
-                Modifier.size(FloatingBarHeight).floatingSurface().clickable(onClick = onSearch),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Search, contentDescription = "Search", tint = VeilColors.content)
+            TabPill(currentRoute, onTab)
+            GlassIconButton(VeilIcons.Search, contentDescription = "Search", onClick = onSearch, size = FloatingBarHeight)
+        }
+    }
+}
+
+/** The tab slots over a selection pill that springs to the current tab. */
+@Composable
+private fun TabPill(currentRoute: String?, onTab: (Tab) -> Unit) {
+    val selectedIndex = Tab.entries.indexOfFirst { tab -> tab.route == currentRoute }.coerceAtLeast(0)
+    val indicatorOffset by animateDpAsState(
+        TabWidth * selectedIndex,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "indicator",
+    )
+    Box(Modifier.height(FloatingBarHeight).glass(CircleShape).padding(PillPadding)) {
+        Box(
+            Modifier
+                .offset(x = indicatorOffset)
+                .width(TabWidth)
+                .fillMaxHeight()
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.14f)),
+        )
+        Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+            for (tab in Tab.entries) {
+                TabItem(tab, selected = tab.route == currentRoute, onClick = { onTab(tab) })
             }
         }
     }
 }
 
-/** The pill look shared by the tab group and the search button: dark glass with a hairline edge. */
-private fun Modifier.floatingSurface(): Modifier {
-    return this
-        .shadow(16.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
-        .clip(CircleShape)
-        .background(VeilColors.surfaceHigh.copy(alpha = 0.92f))
-        .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
-}
-
-/** One tab: icon over label, with a tinted capsule behind the selected one. */
+/** One tab slot: icon over label, bright and filled when selected. */
 @Composable
 private fun TabItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
-    val capsule by animateColorAsState(if (selected) VeilColors.accent.copy(alpha = 0.18f) else Color.Transparent, label = "capsule")
-    val tint by animateColorAsState(if (selected) VeilColors.accent else VeilColors.contentMuted, label = "tint")
-    val width by animateDpAsState(if (selected) 92.dp else 76.dp, label = "width")
+    val tint by animateColorAsState(if (selected) VeilColors.content else VeilColors.contentMuted, label = "tint")
     Column(
-        Modifier
-            .width(width)
-            .height(52.dp)
-            .clip(CircleShape)
-            .background(capsule)
-            .clickable(onClick = onClick),
+        Modifier.width(TabWidth).fillMaxHeight().clip(CircleShape).pressClickable(onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

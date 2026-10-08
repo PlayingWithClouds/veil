@@ -79,6 +79,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
+    implementation(libs.haze)
+    implementation(libs.haze.blur)
+    implementation(libs.phosphor)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)

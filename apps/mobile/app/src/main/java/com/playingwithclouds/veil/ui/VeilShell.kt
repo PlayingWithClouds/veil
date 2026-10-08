@@ -14,6 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavBackStackEntry
+import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -54,6 +57,8 @@ fun VeilShell() {
     val currentRoute = backStackEntry?.destination?.route
     val onTab = Tab.entries.any { tab -> tab.route == currentRoute }
 
+    val glassBackdrop = rememberHazeState()
+
     LaunchedEffect(currentRoute) { hideOnScroll.show() }
 
     Scaffold { innerPadding ->
@@ -64,7 +69,8 @@ fun VeilShell() {
                 modifier = Modifier
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
-                    .nestedScroll(hideOnScroll.connection),
+                    .nestedScroll(hideOnScroll.connection)
+                    .hazeSource(glassBackdrop),
                 enterTransition = { PageTransitions.enter(initialState, targetState) },
                 exitTransition = { PageTransitions.exit(initialState, targetState) },
                 popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
@@ -73,13 +79,15 @@ fun VeilShell() {
                 tabScreens(navigator)
                 detailScreens(navigator)
             }
-            FloatingNavBar(
-                currentRoute = currentRoute,
-                visible = onTab && hideOnScroll.visible,
-                onTab = { tab -> navigator.openTab(tab.route) },
-                onSearch = { navigator.openSearch() },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            CompositionLocalProvider(LocalGlassBackdrop provides glassBackdrop) {
+                FloatingNavBar(
+                    currentRoute = currentRoute,
+                    visible = onTab && hideOnScroll.visible,
+                    onTab = { tab -> navigator.openTab(tab.route) },
+                    onSearch = { navigator.openSearch() },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         }
     }
 }

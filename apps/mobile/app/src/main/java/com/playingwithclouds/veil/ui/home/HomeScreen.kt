@@ -1,27 +1,15 @@
 package com.playingwithclouds.veil.ui.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -35,20 +23,22 @@ import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.SceneShelf
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.ShelfHeading
-import com.playingwithclouds.veil.ui.components.ScrollingTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.design.LargeHeader
+import com.playingwithclouds.veil.ui.design.PillRow
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.VeilIcons
 
 /** How many tag chips the topic row offers. */
 private const val TOPIC_COUNT = 12
 
 /** Header rows before the feed in the grid; impressions count feed positions only. */
-private const val HEADER_ROWS = 3
+private const val HEADER_ROWS = 4
 
 /**
  * The Home tab: topic chips from the feed, the continue-watching shelf, then the personalized
- * feed, with impression logging and refresh. The top bar slides away while scrolling down.
+ * feed, with impression logging and refresh. The large header scrolls away with the feed.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navigator: AppNavigator) {
     val viewModel = viewModel { HomeViewModel() }
@@ -56,7 +46,6 @@ fun HomeScreen(navigator: AppNavigator) {
     val state by viewModel.feed.state.collectAsStateWithLifecycle()
     val continueWatching by viewModel.continueWatching.collectAsStateWithLifecycle()
     val topics = remember(state.items) { topTags(state.items) }
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshProgress() }
     LaunchedEffect(gridState) {
@@ -72,21 +61,7 @@ fun HomeScreen(navigator: AppNavigator) {
         }
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            ScrollingTopBar(
-                title = "Veil",
-                scrollBehavior = scrollBehavior,
-                actions = {
-                    IconButton(onClick = { viewModel.feed.refresh() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-                    }
-                    SettingsMenuButton(navigator)
-                },
-            )
-        },
-    ) { padding ->
+    Scaffold { padding ->
         PagedGrid(
             paged = viewModel.feed,
             keyOf = { item -> item.scene.id },
@@ -94,7 +69,13 @@ fun HomeScreen(navigator: AppNavigator) {
             modifier = Modifier.padding(padding),
             gridState = gridState,
             header = {
-                fullWidthItem("topics") { TopicChips(topics, onOpen = { tag -> navigator.openTag(tag.id) }) }
+                fullWidthItem("header") {
+                    LargeHeader("Home") {
+                        RoundIconButton(VeilIcons.Refresh, contentDescription = "Refresh", onClick = { viewModel.feed.refresh() })
+                        SettingsMenuButton(navigator)
+                    }
+                }
+                fullWidthItem("topics") { TopicPills(topics, onOpen = { tag -> navigator.openTag(tag.id) }) }
                 fullWidthItem("continue") {
                     SceneShelf(
                         title = "Continue watching",
@@ -122,17 +103,13 @@ fun HomeScreen(navigator: AppNavigator) {
     }
 }
 
-/** A scrolling row of tag chips; each opens its tag. */
+/** A scrolling row of tag pills; each opens its tag. */
 @Composable
-private fun TopicChips(tags: List<EntityRef>, onOpen: (EntityRef) -> Unit) {
+private fun TopicPills(tags: List<EntityRef>, onOpen: (EntityRef) -> Unit) {
     if (tags.isEmpty()) {
         return
     }
-    LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(tags, key = { tag -> tag.id }) { tag ->
-            AssistChip(onClick = { onOpen(tag) }, label = { Text(tag.name) })
-        }
-    }
+    PillRow(tags, labelOf = { tag -> tag.name }, onClick = onOpen, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp))
 }
 
 /** The tags most common across the loaded feed, most frequent first. */

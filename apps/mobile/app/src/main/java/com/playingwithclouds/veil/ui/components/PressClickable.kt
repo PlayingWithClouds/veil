@@ -6,7 +6,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -16,7 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 /** How far a pressed card shrinks. */
 private const val PRESSED_SCALE = 0.96f
 
-/** Clickable with a ripple that also springs the element down while pressed and back on release. */
+/** Clickable that springs the element down while pressed and back on release; the app has no ripples. */
 @Composable
 fun Modifier.pressClickable(onClick: () -> Unit): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
@@ -31,5 +30,5 @@ fun Modifier.pressClickable(onClick: () -> Unit): Modifier {
             scaleX = scale
             scaleY = scale
         }
-        .clickable(interactionSource = interactionSource, indication = ripple(), onClick = onClick)
+        .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
 }
