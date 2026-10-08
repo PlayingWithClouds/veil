@@ -13,10 +13,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +30,7 @@ import com.playingwithclouds.veil.data.PerformerSummary
 import com.playingwithclouds.veil.data.SceneProgress
 import com.playingwithclouds.veil.data.SceneSites
 import com.playingwithclouds.veil.data.SceneSummary
+import com.playingwithclouds.veil.data.SiteDirectory
 import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.WatchProgressStore
 import com.playingwithclouds.veil.ui.design.Badge
@@ -79,23 +82,56 @@ fun SceneCard(
                 )
             }
         }
-        Column(
-            Modifier.padding(horizontal = VeilSpacing.extraSmall, vertical = VeilSpacing.small),
-            verticalArrangement = Arrangement.spacedBy(VeilSpacing.hairline),
+        Row(
+            Modifier.padding(top = VeilSpacing.medium, bottom = VeilSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         ) {
-            Text(
-                scene.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = VeilColors.content,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            SceneCaption(scene)
-            if (!reason.isNullOrBlank()) {
-                Text(reason, style = MaterialTheme.typography.labelMedium, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            CreatorAvatar(scene)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
+                Text(
+                    scene.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = VeilColors.content,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                SceneCaption(scene)
+                if (!reason.isNullOrBlank()) {
+                    Text(reason, style = MaterialTheme.typography.labelMedium, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
+    }
+}
+
+/** Size of the uploader avatar beside a scene's title. */
+private val CreatorAvatarSize = 36.dp
+
+/**
+ * Who a scene is from as a round picture: the studio's image, else the first performer's, else the
+ * site's icon on a dark disc, else the byline's initial.
+ */
+@Composable
+private fun CreatorAvatar(scene: SceneSummary) {
+    val sites by SiteDirectory.sites.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { SiteDirectory.ensureLoaded() }
+    val disc = Modifier.size(CreatorAvatarSize).clip(VeilShapes.capsule).background(VeilColors.surfaceHigh)
+    val photo = scene.studio?.imagePath ?: scene.performers.firstOrNull { performer -> performer.imagePath != null }?.imagePath
+    if (photo != null) {
+        RemoteImage(photo, disc)
+        return
+    }
+    val siteIcon = SceneSites.resolve(scene.sourceUrl, sites)?.iconUrl
+    if (siteIcon != null) {
+        Box(disc, contentAlignment = Alignment.Center) {
+            RemoteImage(siteIcon, Modifier.size(CreatorAvatarSize / 2).clip(VeilShapes.badge), contentScale = ContentScale.Fit)
+        }
+        return
+    }
+    val initial = (scene.byline ?: SceneSites.hostOf(scene.sourceUrl) ?: "?").take(1).uppercase()
+    Box(disc, contentAlignment = Alignment.Center) {
+        Text(initial, style = MaterialTheme.typography.labelLarge, color = VeilColors.contentMuted)
     }
 }
 

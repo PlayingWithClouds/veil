@@ -13,6 +13,7 @@ func seedWatchedScene(t *testing.T, engine *Engine, related map[string]string) {
 	t.Helper()
 	database := engine.database
 	insertScene(t, database, "scene:seed", map[string]any{"title": "Seed Title", "performers": []string{"performer:seed"}})
+	insertRow(t, database, "performer", "performer:seed", map[string]any{"name": "Seed Performer"})
 	insertRow(t, database, "watch_history", "watch_history:seed", map[string]any{
 		"media": "scene:seed", "progress_seconds": 600, "max_progress_seconds": 600,
 		"duration_seconds": 600, "completed": true, "updated_at": ago(time.Hour),
@@ -36,7 +37,7 @@ func TestFeedRanksSiteRelatedOfWatchedScenesFirst(t *testing.T) {
 	if len(items) == 0 || items[0].SceneID != "scene:site" {
 		t.Fatalf("site-related scene must lead the feed, got %+v", items)
 	}
-	if items[0].Source != SourceRelatedSite || items[0].Reason.Text != "Because you watched Seed Title" {
+	if items[0].Source != SourceRelatedSite || items[0].Reason.Text != "Because you watched Seed Performer" {
 		t.Errorf("site item: source %q, reason %q", items[0].Source, items[0].Reason.Text)
 	}
 	if items[1].SceneID != "scene:bytag" || items[1].Source != SourceRelatedTag {
@@ -196,7 +197,7 @@ func TestRowsGroupByReason(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected one row (newest filler is not a row), got %+v", rows)
 	}
-	if rows[0].Title != "Because you watched Seed Title" || len(rows[0].Items) != 3 {
+	if rows[0].Title != "Because you watched Seed Performer" || len(rows[0].Items) != 3 {
 		t.Errorf("row: %q with %d items", rows[0].Title, len(rows[0].Items))
 	}
 }

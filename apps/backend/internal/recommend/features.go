@@ -11,18 +11,24 @@ import (
 // sceneFeatures is what ranking knows about a scene.
 type sceneFeatures struct {
 	id         string
-	title      string
 	tags       []string
 	performers []string
 	studio     string
+	// credit names who the scene is by (first credited performer, else the
+	// studio), what a viewer remembers better than a title; empty when neither.
+	credit string
 	// site is the plugin that first observed the scene.
 	site        string
 	publishedAt time.Time
 }
 
 // featureQuery reads the features of the scenes in $ids.
-const featureQuery = `SELECT scene.id, scene.title, scene.tags, scene.performers, scene.studio,
+const featureQuery = `SELECT scene.id, scene.tags, scene.performers, scene.studio,
 	scene.date, scene.created_at,
+	coalesce(
+		(SELECT performer.name FROM json_each(scene.performers) AS credited
+		 JOIN performer ON performer.id = credited.value ORDER BY credited.key LIMIT 1),
+		(SELECT studio.name FROM studio WHERE studio.id = scene.studio)) AS credit,
 	(SELECT plugin FROM observation WHERE observation.target = scene.id ORDER BY observed_at LIMIT 1) AS site
 	FROM scene WHERE scene.id IN (SELECT value FROM json_each($ids))`
 
@@ -48,10 +54,10 @@ func (e *Engine) loadFeatures(ctx context.Context, ids []string) (map[string]*sc
 func featuresFromRow(row db.Row) *sceneFeatures {
 	return &sceneFeatures{
 		id:          rowString(row, "id"),
-		title:       rowString(row, "title"),
 		tags:        rowStrings(row, "tags"),
 		performers:  rowStrings(row, "performers"),
 		studio:      rowString(row, "studio"),
+		credit:      rowString(row, "credit"),
 		site:        rowString(row, "site"),
 		publishedAt: publishedAt(row),
 	}

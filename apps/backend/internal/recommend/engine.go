@@ -227,7 +227,7 @@ func (e *Engine) describeReasons(ctx context.Context, items []scoredItem) error 
 }
 
 // namedEntityIDs lists the performer, studio and tag ids the reasons refer to;
-// seed titles and subscription queries already carry their names.
+// seed credits and subscription queries already carry their names.
 func namedEntityIDs(items []scoredItem) []string {
 	seen := map[string]bool{}
 	for _, item := range items {

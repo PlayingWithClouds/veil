@@ -38,7 +38,7 @@ type Reason struct {
 	// EntityID is the scene/performer/studio/tag/subscription behind the
 	// reason; empty for kinds without one.
 	EntityID string
-	// EntityName is the entity's display name (seed title, performer name,
+	// EntityName is the entity's display name (seed credit, performer name,
 	// subscription query, ...).
 	EntityName string
 	// Text is the human-readable explanation.
@@ -94,7 +94,10 @@ func isExploration(source string) bool {
 func (reason *Reason) describe() {
 	switch reason.Kind {
 	case ReasonRelated:
-		reason.Text = "Because you watched " + reason.EntityName
+		reason.Text = "Similar to what you watched"
+		if reason.EntityName != "" {
+			reason.Text = "Because you watched " + reason.EntityName
+		}
 	case ReasonPerformer, ReasonStudio:
 		reason.Text = "More from " + reason.EntityName
 	case ReasonTag:
