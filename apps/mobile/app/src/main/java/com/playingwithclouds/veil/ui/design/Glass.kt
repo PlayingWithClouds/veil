@@ -33,15 +33,15 @@ private val glassStyle = HazeBlurStyle {
     blurRadius(28.dp)
     noiseFactor(0.08f)
     backgroundColor(VeilColors.canvas)
-    colorEffects(listOf(HazeColorEffect.tint(Color(0xFF101013).copy(alpha = 0.62f))))
+    colorEffects(listOf(HazeColorEffect.tint(VeilColors.glassTint)))
 }
-
-/** Edge highlight of glass surfaces. */
-private val glassEdge = Color.White.copy(alpha = 0.10f)
 
 /**
  * Turns the element into glass of [shape]: the page behind it, blurred and tinted, with a hairline
  * edge. Without a backdrop it falls back to a translucent fill.
+ *
+ * Glass is for things floating over scrolling content (the tab bar, a pinned title bar). Controls
+ * that sit in the layout use flat fills ([RoundIconButton], [SecondaryButton]).
  */
 @Composable
 fun Modifier.glass(shape: Shape): Modifier {
@@ -50,12 +50,12 @@ fun Modifier.glass(shape: Shape): Modifier {
     val surface = if (backdrop != null) {
         clipped.hazeBlur(HazeInput.Sources(backdrop), glassStyle)
     } else {
-        clipped.background(VeilColors.surfaceHigh.copy(alpha = 0.92f))
+        clipped.background(VeilColors.glassFallback)
     }
-    return surface.border(1.dp, glassEdge, shape)
+    return surface.border(1.dp, VeilColors.glassEdge, shape)
 }
 
-/** A round glass button holding one icon. */
+/** A round glass button holding one icon, for controls floating over content. */
 @Composable
 fun GlassIconButton(
     icon: ImageVector,

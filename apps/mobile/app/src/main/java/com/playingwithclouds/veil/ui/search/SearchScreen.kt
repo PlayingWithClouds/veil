@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -55,10 +54,16 @@ import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.PillRow
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.fadingEdges
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.PerformerRow
 import com.playingwithclouds.veil.ui.entity.StudioRow
+
+/** Padding of the result grids: the screen gutter at the sides. */
+private val ResultGridPadding = PaddingValues(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.medium)
 
 /** Search: suggestions while typing, then library and live site results. */
 @Composable
@@ -75,7 +80,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
     Scaffold(
         topBar = {
             Row(
-                Modifier.statusBarsPadding().padding(start = 12.dp, top = 8.dp, bottom = 4.dp),
+                Modifier.statusBarsPadding().padding(start = VeilSpacing.gutter, top = VeilSpacing.small, bottom = VeilSpacing.extraSmall),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = navigator::back)
@@ -91,7 +96,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
     ) { padding ->
         Column(Modifier.padding(padding)) {
             if (state.isLoading || state.isSearchingSites) {
-                LoadingBar(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                LoadingBar(Modifier.padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraSmall))
             }
             if (state.submitted == null) {
                 SuggestionList(state.suggestions, viewModel, navigator)
@@ -106,7 +111,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
 /** Recent searches, taste-based picks and completions for the typed text. */
 @Composable
 private fun SuggestionList(suggestions: List<SearchSuggestion>, viewModel: SearchViewModel, navigator: AppNavigator) {
-    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+    LazyColumn(contentPadding = PaddingValues(vertical = VeilSpacing.small)) {
         items(suggestions, key = { suggestion -> "${suggestion.kind}:${suggestion.text}:${suggestion.entityId}" }) { suggestion ->
             SuggestionRow(
                 suggestion,
@@ -121,8 +126,8 @@ private fun SuggestionList(suggestions: List<SearchSuggestion>, viewModel: Searc
 @Composable
 private fun SuggestionRow(suggestion: SearchSuggestion, onChoose: () -> Unit, onForget: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().pressClickable(onChoose).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        Modifier.fillMaxWidth().pressClickable(onChoose).padding(start = VeilSpacing.gutter, end = VeilSpacing.small, top = VeilSpacing.small, bottom = VeilSpacing.small),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SuggestionIcon(suggestion)
@@ -171,7 +176,7 @@ private fun SuggestionIcon(suggestion: SearchSuggestion) {
         "STUDIO" -> VeilIcons.Studios
         else -> VeilIcons.Search
     }
-    Box(Modifier.size(40.dp).clip(CircleShape).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(40.dp).clip(VeilShapes.capsule).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
         Icon(icon, contentDescription = null, tint = VeilColors.contentMuted, modifier = Modifier.size(20.dp))
     }
 }
@@ -180,8 +185,9 @@ private fun SuggestionIcon(suggestion: SearchSuggestion) {
 @Composable
 private fun ResultFilters(state: SearchState, viewModel: SearchViewModel) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Modifier.fadingEdges(),
+        contentPadding = PaddingValues(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         item {
             FollowSearchPill(state.isFollowed, viewModel::followSearch)
@@ -196,7 +202,7 @@ private fun ResultFilters(state: SearchState, viewModel: SearchViewModel) {
             labelOf = { site -> site.label },
             onClick = { site -> viewModel.toggleSite(site.name) },
             isSelected = { site -> site.name in state.selectedSites },
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.padding(vertical = VeilSpacing.extraSmall),
         )
     }
 }
@@ -242,9 +248,9 @@ private fun AllResults(state: SearchState, navigator: AppNavigator) {
 private fun SceneGrid(state: SearchState, navigator: AppNavigator, header: LazyGridScope.() -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(SceneCellWidth),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = ResultGridPadding,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         header()
         items(state.scenes, key = { scene -> scene.id }) { scene ->
@@ -261,9 +267,9 @@ private fun SceneGrid(state: SearchState, navigator: AppNavigator, header: LazyG
 private fun GalleryGrid(state: SearchState, navigator: AppNavigator) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(PosterCellWidth),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = ResultGridPadding,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         items(state.galleries, key = { gallery -> gallery.id }) { gallery ->
             GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
@@ -276,9 +282,9 @@ private fun GalleryGrid(state: SearchState, navigator: AppNavigator) {
 private fun AvatarGrid(state: SearchState, navigator: AppNavigator, performers: Boolean) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(AvatarCellWidth),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = ResultGridPadding,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         if (performers) {
             items(state.performers, key = { performer -> performer.id }) { performer ->

@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,21 +38,26 @@ import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SceneCard
-import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.ProgressBar
 import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.SegmentedControl
 import com.playingwithclouds.veil.ui.design.VeilCard
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.formatBytes
 import kotlinx.coroutines.delay
 
 /** How often the download queue is reloaded while it is on screen. */
 private const val QUEUE_POLL_MILLISECONDS = 3000L
+
+/** Padding of each section's list: the screen gutter at the sides. */
+private val SectionPadding = PaddingValues(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.medium)
 
 /** The sections of the Library tab. */
 enum class LibrarySection(val label: String) {
@@ -83,7 +87,7 @@ fun LibraryScreen(initialSection: String, navigator: AppNavigator) {
                 labels = LibrarySection.entries.map { entry -> entry.label },
                 selectedIndex = selected,
                 onSelect = { index -> selected = index },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
             )
             when (section) {
                 LibrarySection.DOWNLOADED -> DownloadedSection(viewModel, navigator)
@@ -118,9 +122,9 @@ private fun SceneList(scenes: List<SceneSummary>, emptyText: String, navigator: 
     }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(300.dp),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = SectionPadding,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         items(scenes, key = { scene -> scene.id }) { scene ->
             SceneCard(scene, onClick = { navigator.openScene(scene.id) })
@@ -137,7 +141,7 @@ private fun WatchlistSection(viewModel: LibraryViewModel, navigator: AppNavigato
             EmptyMessage("Your watchlist is empty.")
             return@LoadStateContent
         }
-        LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(contentPadding = SectionPadding, verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
             items(cards, key = { card -> card.mediaId }) { card ->
                 WatchlistRow(card, navigator, onRemove = { viewModel.removeFromWatchlist(card) })
             }
@@ -150,10 +154,10 @@ private fun WatchlistSection(viewModel: LibraryViewModel, navigator: AppNavigato
 private fun WatchlistRow(card: MediaCard, navigator: AppNavigator, onRemove: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().pressClickable { navigator.openScene(card.mediaId) },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(card.posterPath, Modifier.width(128.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)))
+        RemoteImage(card.posterPath, Modifier.width(128.dp).aspectRatio(16f / 9f).clip(VeilShapes.card))
         Text(card.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 3)
         IconTap(VeilIcons.Delete, contentDescription = "Remove from watchlist", onClick = onRemove)
     }
@@ -175,24 +179,20 @@ private fun QueueList(jobs: JobQueue, viewModel: LibraryViewModel, navigator: Ap
         EmptyMessage("No downloads or background jobs.")
         return
     }
-    LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(contentPadding = SectionPadding, verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         items(jobs.downloads, key = { job -> job.id }) { job ->
             DownloadRow(job, navigator, onRetry = { viewModel.retry(job.id) }, onDelete = { viewModel.delete(job.id) })
         }
         if (jobs.background.isNotEmpty()) {
             item {
                 Column {
-                    SectionTitle("Background jobs")
+                    SectionHeading("Background jobs")
                     val failed = jobs.background.count { job -> job.status == "failed" }
-                    Text(
-                        "${jobs.background.size} jobs, $failed failed",
-                        Modifier.padding(horizontal = 16.dp),
-                        color = VeilColors.contentMuted,
-                    )
+                    Text("${jobs.background.size} jobs, $failed failed", color = VeilColors.contentMuted)
                     SecondaryButton(
                         "Clear background jobs",
                         onClick = viewModel::clearBackgroundJobs,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(vertical = VeilSpacing.medium),
                     )
                 }
             }
@@ -207,7 +207,7 @@ private fun DownloadRow(job: DownloadJob, navigator: AppNavigator, onRetry: () -
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
                 Modifier.weight(1f).pressClickable(enabled = job.scene != null) { job.scene?.let { scene -> navigator.openScene(scene.id) } },
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             ) {
                 Text(job.title, maxLines = 2, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 Text(statusLine(job), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)

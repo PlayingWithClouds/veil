@@ -21,6 +21,7 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.paging.PagedList
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.launch
 
 /** The watch history, most recently watched first. */
@@ -68,7 +69,7 @@ fun HistoryScreen(navigator: AppNavigator) {
                     VeilIcons.Close,
                     contentDescription = "Remove from history",
                     onClick = { viewModel.remove(entry) },
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(VeilSpacing.small),
                     size = 32.dp,
                 )
             }

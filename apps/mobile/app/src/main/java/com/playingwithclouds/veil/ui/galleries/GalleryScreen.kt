@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,7 +35,10 @@ import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,15 +102,20 @@ private fun ImageGrid(detail: GalleryDetail, navigator: AppNavigator, modifier: 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(110.dp),
         modifier = modifier,
-        contentPadding = PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(VeilSpacing.gutter),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         fullWidthItem("about") {
             if (!detail.details.isNullOrBlank()) {
-                Text(detail.details, Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium, color = VeilColors.contentMuted)
+                Text(
+                    detail.details,
+                    Modifier.padding(vertical = VeilSpacing.small),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = VeilColors.contentMuted,
+                )
             }
-            TagChips(detail.tags, onClick = { tag -> navigator.openTag(tag.id) })
+            TagChips(detail.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
         }
         if (detail.images.isEmpty()) {
             fullWidthItem("empty") { EmptyMessage("This gallery has no images yet.") }
@@ -116,7 +123,7 @@ private fun ImageGrid(detail: GalleryDetail, navigator: AppNavigator, modifier: 
         itemsIndexed(detail.images, key = { _, image -> image.id }) { index, image ->
             RemoteImage(
                 image.filePath,
-                Modifier.fillMaxWidth().aspectRatio(1f).pressClickable { onOpenImage(index) }.clip(RoundedCornerShape(12.dp)),
+                Modifier.fillMaxWidth().aspectRatio(1f).pressClickable { onOpenImage(index) }.clip(VeilShapes.small),
             )
         }
     }

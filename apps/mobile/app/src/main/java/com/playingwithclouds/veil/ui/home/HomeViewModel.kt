@@ -61,6 +61,12 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    /** Removes a scene from the loaded feed, e.g. after the user marked it not interested. */
+    fun dropFromFeed(sceneId: String) {
+        feed.update { items -> items.filter { item -> item.scene.id != sceneId } }
+        mutableContinueWatching.value = mutableContinueWatching.value.filter { scene -> scene.id != sceneId }
+    }
+
     /** Logs that a recommendation was shown. */
     fun recordShown(item: RecommendedScene, position: Int) {
         AppServices.impressions.recordShown(item.scene.id, item.source, SURFACE, position)

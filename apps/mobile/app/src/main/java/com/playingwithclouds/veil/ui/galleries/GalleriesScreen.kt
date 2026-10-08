@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,6 +34,9 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.loadInto
+import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -66,9 +68,9 @@ fun GalleriesScreen(navigator: AppNavigator) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(150.dp),
                 modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(VeilSpacing.gutter),
+                horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+                verticalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
             ) {
                 items(list, key = { category -> category.id }) { category ->
                     CategoryTile(category, onClick = { navigator.openGalleryCategory(category.name) })
@@ -82,14 +84,14 @@ fun GalleriesScreen(navigator: AppNavigator) {
 @Composable
 private fun CategoryTile(category: GalleryCategory, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().aspectRatio(4f / 3f).pressClickable(onClick).clip(RoundedCornerShape(20.dp)),
+        Modifier.fillMaxWidth().aspectRatio(4f / 3f).pressClickable(onClick).clip(VeilShapes.card),
     ) {
         RemoteImage(category.poster, Modifier.matchParentSize())
-        Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f))))
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to VeilColors.imageLabel)))
         Text(
             category.name,
-            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
-            color = Color.White,
+            modifier = Modifier.align(Alignment.BottomStart).padding(VeilSpacing.medium),
+            color = VeilColors.content,
             style = MaterialTheme.typography.titleSmall,
         )
     }

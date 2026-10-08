@@ -14,8 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-/** The top of a performer, studio or tag page: photo, name, a muted line, then actions. */
+/**
+ * The top of a performer, studio or tag page: photo, name, a muted line, then actions. Draws no
+ * side padding; it sits in a grid that already pads with the gutter.
+ */
 @Composable
 fun EntityHeader(
     name: String,
@@ -24,8 +28,11 @@ fun EntityHeader(
     showAvatar: Boolean = true,
     actions: @Composable () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = VeilSpacing.large),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.large), verticalAlignment = Alignment.CenterVertically) {
             if (showAvatar) {
                 Avatar(imagePath, Modifier.size(88.dp))
             }
@@ -36,7 +43,7 @@ fun EntityHeader(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalAlignment = Alignment.CenterVertically) {
             actions()
         }
     }

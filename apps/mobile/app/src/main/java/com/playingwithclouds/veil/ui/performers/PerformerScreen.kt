@@ -26,6 +26,7 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.entity.EntityHeader
 import com.playingwithclouds.veil.ui.entity.GalleryRow
@@ -142,7 +143,7 @@ private fun PerformerHeader(performer: PerformerDetail, viewModel: PerformerView
         },
     )
     ProfileInfo(performerFacts(performer), performer.details)
-    TagChips(performer.tags, onClick = { tag -> navigator.openTag(tag.id) })
+    TagChips(performer.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
 }
 
 /** The round heart that toggles the favorite flag, filled red while set. */

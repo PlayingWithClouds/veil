@@ -49,6 +49,7 @@ import com.playingwithclouds.veil.ui.design.VeilMenuItem
 import com.playingwithclouds.veil.ui.design.VeilSwitch
 import com.playingwithclouds.veil.ui.loadInto
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.paging.PagedList
 import com.playingwithclouds.veil.util.intervalLabel
 import com.playingwithclouds.veil.util.scheduleLabel
@@ -195,10 +196,10 @@ private fun SubscriptionSettings(
     viewModel: SubscriptionViewModel,
     navigator: AppNavigator,
 ) {
-    Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.padding(vertical = VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.large)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.large), verticalAlignment = Alignment.CenterVertically) {
             Avatar(subscription.targetImageUrl, Modifier.size(72.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
                 Text(
                     subscription.kind.lowercase().replaceFirstChar { letter -> letter.uppercase() },
                     style = MaterialTheme.typography.labelMedium,
@@ -207,19 +208,19 @@ private fun SubscriptionSettings(
                 Text("${subscription.totalCount} videos, ${subscription.newCount} new", style = MaterialTheme.typography.titleMedium)
             }
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
             PrimaryButton(runLabel(running), onClick = viewModel::runNow, enabled = !running, icon = VeilIcons.Play)
             val targetId = subscription.targetId
             if (targetId != null) {
                 SecondaryButton("Open page", onClick = { openTarget(subscription, targetId, navigator) })
             }
         }
-        VeilCard(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
                 Text("Run on schedule", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 VeilSwitch(checked = subscription.enabled, onCheckedChange = viewModel::setEnabled)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
                 Text("Interval", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 IntervalPicker(subscription.intervalHours, viewModel::setInterval)
             }

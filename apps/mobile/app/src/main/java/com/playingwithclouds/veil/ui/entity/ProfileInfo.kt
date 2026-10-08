@@ -6,13 +6,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.InfoRow
+import com.playingwithclouds.veil.ui.design.bleed
+import com.playingwithclouds.veil.ui.design.gutterPadding
+import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-/** Label and value pairs; entries without a value are left out. */
+/**
+ * Label and value pairs; entries without a value are left out. Bleeds past the grid's gutter
+ * because [InfoRow] insets itself by the gutter.
+ */
 @Composable
 fun ProfileInfo(rows: List<Pair<String, String?>>, details: String?) {
-    Column {
+    Column(Modifier.bleed()) {
         for ((label, value) in rows) {
             if (!value.isNullOrBlank()) {
                 InfoRow(label, value)
@@ -21,9 +27,9 @@ fun ProfileInfo(rows: List<Pair<String, String?>>, details: String?) {
         if (!details.isNullOrBlank()) {
             Text(
                 details,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.gutterPadding().padding(vertical = VeilSpacing.small),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = VeilColors.contentMuted,
             )
         }
     }

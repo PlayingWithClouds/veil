@@ -1,7 +1,6 @@
 package com.playingwithclouds.veil.ui.collections
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import com.playingwithclouds.veil.ui.design.PillRow
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.paging.PagedList
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -113,8 +113,8 @@ fun CollectionsScreen(navigator: AppNavigator) {
                 CollectionOrigin.entries,
                 labelOf = { option -> option.label },
                 onClick = { option -> viewModel.selectOrigin(option) },
+                modifier = Modifier.padding(vertical = VeilSpacing.extraSmall),
                 isSelected = { option -> option == origin },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
             )
             PagedGrid(
                 paged = viewModel.collections,

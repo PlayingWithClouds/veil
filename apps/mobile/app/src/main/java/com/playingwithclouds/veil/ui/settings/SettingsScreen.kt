@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.BackendSettings
@@ -27,11 +26,14 @@ import com.playingwithclouds.veil.ui.components.ServerForm
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.PrimaryButton
+import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.VeilCard
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilSwitch
 import com.playingwithclouds.veil.ui.design.VeilTextField
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** Server choice, job and download settings, and the blocklist. */
 @Composable
@@ -43,8 +45,8 @@ fun SettingsScreen(navigator: AppNavigator) {
 
     Scaffold(topBar = { VeilTopBar("Settings", onBack = navigator::back) }) { padding ->
         Column(
-            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.large),
+            verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         ) {
             SectionHeading("Server")
             VeilCard { ServerForm() }
@@ -56,27 +58,23 @@ fun SettingsScreen(navigator: AppNavigator) {
             }
             SectionHeading("Blocklist")
             BlocklistSection(blocklist, viewModel)
+            SectionHeading("Appearance")
+            SecondaryButton("Design kit", onClick = navigator::openDesignKit)
         }
     }
-}
-
-/** A heading above a group of settings. */
-@Composable
-private fun SectionHeading(text: String) {
-    Text(text, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 4.dp, top = 12.dp))
 }
 
 /** Job and download settings with a save button. */
 @Composable
 private fun BackendSettingsForm(settings: BackendSettings, status: String?, viewModel: SettingsViewModel) {
-    VeilCard(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         NumberField("Max concurrent jobs", settings.maxConcurrentJobs) { value -> viewModel.edit(settings.copy(maxConcurrentJobs = value)) }
         NumberField("Max job retries", settings.maxJobRetries) { value -> viewModel.edit(settings.copy(maxJobRetries = value)) }
         NumberField("Download speed limit (KB/s, 0 = unlimited)", settings.downloadSpeedLimitKBps) { value ->
             viewModel.edit(settings.copy(downloadSpeedLimitKBps = value))
         }
     }
-    VeilCard(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         SwitchRow("Require VPN for downloads", settings.requireVpn) { value -> viewModel.edit(settings.copy(requireVpn = value)) }
         SwitchRow("Allow downloads while streaming", settings.allowDownloadsWhileStreaming) { value ->
             viewModel.edit(settings.copy(allowDownloadsWhileStreaming = value))
@@ -85,7 +83,7 @@ private fun BackendSettingsForm(settings: BackendSettings, status: String?, view
             viewModel.edit(settings.copy(autoEnrichAfterScrape = value))
         }
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         PrimaryButton("Save", onClick = viewModel::save)
         if (status != null) {
             Text(status, color = VeilColors.contentMuted)
@@ -113,7 +111,7 @@ private fun NumberField(label: String, value: Int, onChange: (Int) -> Unit) {
 /** A label with a switch. */
 @Composable
 private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         VeilSwitch(checked = checked, onCheckedChange = onChange)
     }
@@ -123,10 +121,10 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
 @Composable
 private fun BlocklistSection(blocklist: List<BlockedEntity>, viewModel: SettingsViewModel) {
     if (blocklist.isEmpty()) {
-        Text("Nothing is blocked.", color = VeilColors.contentMuted, modifier = Modifier.padding(start = 4.dp))
+        Text("Nothing is blocked.", color = VeilColors.contentMuted)
         return
     }
-    VeilCard(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall)) {
         for (entry in blocklist) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

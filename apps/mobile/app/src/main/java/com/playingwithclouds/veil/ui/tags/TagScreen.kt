@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -22,14 +21,14 @@ import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.TagDetail
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
-import com.playingwithclouds.veil.ui.components.Badge
 import com.playingwithclouds.veil.ui.components.FollowButton
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
-import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.design.Badge
+import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.entity.CollectionRow
 import com.playingwithclouds.veil.ui.entity.EntityHeader
 import com.playingwithclouds.veil.ui.entity.GalleryRow
@@ -38,6 +37,7 @@ import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.entity.StudioRow
 import com.playingwithclouds.veil.ui.loadInto
 import com.playingwithclouds.veil.ui.paging.PagedList
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.tagLabel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -121,13 +121,13 @@ fun TagScreen(id: String, navigator: AppNavigator) {
                 modifier = Modifier.padding(padding),
                 header = {
                     fullWidthItem("header") { TagHeader(tag, relations, navigator) }
-                    fullWidthItem("scenes-title") { SectionTitle("Videos") }
+                    fullWidthItem("scenes-title") { SectionHeading("Videos") }
                 },
             ) { _, tagged ->
                 Box {
                     SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })
                     if (tagged.inherited) {
-                        Badge("via studio or performer", Modifier.align(Alignment.TopEnd).padding(6.dp))
+                        Badge("via studio or performer", Modifier.align(Alignment.TopEnd).padding(VeilSpacing.small))
                     }
                 }
             }

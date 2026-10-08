@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -40,6 +39,8 @@ import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.paging.PagedList
 
 /** How many items before the end the next page starts loading. */
@@ -67,7 +68,12 @@ fun <T> PagedGrid(
     modifier: Modifier = Modifier,
     cellWidth: Dp = SceneCellWidth,
     gridState: LazyGridState = rememberLazyGridState(),
-    contentPadding: PaddingValues = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp + LocalFloatingBarInset.current),
+    contentPadding: PaddingValues = PaddingValues(
+        start = VeilSpacing.gutter,
+        top = VeilSpacing.small,
+        end = VeilSpacing.gutter,
+        bottom = VeilSpacing.large + LocalFloatingBarInset.current,
+    ),
     header: (LazyGridScope.() -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T) -> Unit,
 ) {
@@ -85,8 +91,8 @@ fun <T> PagedGrid(
             columns = GridCells.Adaptive(cellWidth),
             state = gridState,
             contentPadding = contentPadding,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+            verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             modifier = Modifier.fillMaxSize(),
         ) {
             header?.invoke(this)
@@ -122,7 +128,7 @@ private fun RefreshIndicator(refreshState: PullToRefreshState, isRefreshing: Boo
                 alpha = fraction
             }
             .size(40.dp)
-            .clip(CircleShape)
+            .clip(VeilShapes.capsule)
             .background(VeilColors.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
@@ -151,13 +157,13 @@ private fun LoadMoreEffect(gridState: LazyGridState, itemCount: Int, loadMore: (
 @Composable
 private fun PagedFooter(isLoading: Boolean, error: String?, isEmpty: Boolean, emptyText: String, onRetry: () -> Unit) {
     if (isLoading) {
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(VeilSpacing.large), contentAlignment = Alignment.Center) {
             Spinner()
         }
         return
     }
     if (error != null) {
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(VeilSpacing.large), contentAlignment = Alignment.Center) {
             TextAction("$error. Tap to retry", onClick = onRetry, color = VeilColors.error)
         }
         return

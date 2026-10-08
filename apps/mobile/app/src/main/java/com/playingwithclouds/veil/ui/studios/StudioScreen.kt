@@ -1,11 +1,11 @@
 package com.playingwithclouds.veil.ui.studios
 
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -25,11 +25,13 @@ import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.TextAction
+import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.entity.EntityHeader
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.loadInto
 import com.playingwithclouds.veil.ui.paging.PagedList
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -111,8 +113,9 @@ private fun StudioHeader(studio: StudioDetail, navigator: AppNavigator) {
     )
     val parent = studio.parent
     if (parent != null) {
-        TextAction("Part of ${parent.name}", onClick = { navigator.openStudio(parent.id) }, modifier = Modifier.padding(horizontal = 8.dp))
+        // Pulled back by the action's own inset so its text lines up with the gutter.
+        TextAction("Part of ${parent.name}", onClick = { navigator.openStudio(parent.id) }, modifier = Modifier.offset(x = -VeilSpacing.small))
     }
     ProfileInfo(listOf("Aliases" to studio.aliases.joinToString(", ").ifEmpty { null }, "Website" to studio.url), studio.details)
-    TagChips(studio.tags, onClick = { tag -> navigator.openTag(tag.id) })
+    TagChips(studio.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
 }

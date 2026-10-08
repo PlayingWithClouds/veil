@@ -26,6 +26,7 @@ object Routes {
     const val PLUGINS = "plugins"
     const val SETTINGS = "settings"
     const val RANDOM = "random"
+    const val DESIGN_KIT = "design-kit"
     const val SUBSCRIPTION = "subscription/{id}"
 
     /** Search, optionally with a query to run right away. */
@@ -105,6 +106,8 @@ class AppNavigator(private val controller: NavHostController) {
     fun openSettings() = controller.navigate(Routes.SETTINGS)
 
     fun openRandom() = controller.navigate(Routes.RANDOM)
+
+    fun openDesignKit() = controller.navigate(Routes.DESIGN_KIT)
 
     fun openSubscription(id: String) = controller.navigate(Routes.subscription(id))
 }

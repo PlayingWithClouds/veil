@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,23 +29,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
-
-/** Corner radius of cards. */
-val CardShape = RoundedCornerShape(20.dp)
-
-/** Corner radius of dialogs and sheets. */
-private val SheetCorner = 28.dp
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** A flat rounded panel on the dark surface: no elevation, no tint. */
 @Composable
 fun VeilCard(
     modifier: Modifier = Modifier,
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(8.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(VeilSpacing.small),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier.fillMaxWidth().clip(CardShape).background(VeilColors.surface).padding(16.dp),
+        modifier.fillMaxWidth().clip(VeilShapes.panel).background(VeilColors.surface).padding(VeilSpacing.large),
         verticalArrangement = verticalArrangement,
         content = content,
     )
@@ -67,22 +63,25 @@ fun VeilDialog(
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(SheetCorner))
+                .clip(VeilShapes.sheet)
                 .background(VeilColors.surfaceHigh)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(VeilSpacing.extraLarge),
+            verticalArrangement = Arrangement.spacedBy(VeilSpacing.large),
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge, color = VeilColors.content)
-            Column(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+            Column(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium), content = content)
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
                 content = buttons,
             )
         }
     }
 }
+
+/** Top corners of a bottom sheet, matching [VeilShapes.sheet]. */
+private val SheetTopShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 
 /** A bottom sheet with large top corners, a slim handle and the dark surface. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,11 +90,11 @@ fun VeilBottomSheet(onDismissRequest: () -> Unit, content: @Composable ColumnSco
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = rememberModalBottomSheetState(),
-        shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
+        shape = SheetTopShape,
         containerColor = VeilColors.surface,
         contentColor = VeilColors.content,
         tonalElevation = 0.dp,
-        scrimColor = VeilColors.canvas.copy(alpha = 0.6f),
+        scrimColor = VeilColors.scrim,
         dragHandle = { SheetHandle() },
     ) {
         Column(Modifier.navigationBarsPadding(), content = content)
@@ -105,7 +104,13 @@ fun VeilBottomSheet(onDismissRequest: () -> Unit, content: @Composable ColumnSco
 /** The grabber at the top of a sheet. */
 @Composable
 private fun SheetHandle() {
-    Box(Modifier.padding(top = 10.dp, bottom = 14.dp).size(width = 40.dp, height = 5.dp).clip(CircleShape).background(VeilColors.contentFaint))
+    Box(
+        Modifier
+            .padding(top = VeilSpacing.medium, bottom = VeilSpacing.medium)
+            .size(width = 40.dp, height = 5.dp)
+            .clip(VeilShapes.capsule)
+            .background(VeilColors.contentFaint),
+    )
 }
 
 /** A popup menu on the raised surface with large corners. */
@@ -114,7 +119,7 @@ fun VeilMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
-        shape = RoundedCornerShape(18.dp),
+        shape = VeilShapes.panel,
         containerColor = VeilColors.surfaceHigh,
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
@@ -131,7 +136,7 @@ fun VeilMenuItem(label: String, onClick: () -> Unit, icon: ImageVector? = null, 
     }
     var trailing: (@Composable () -> Unit)? = null
     if (selected) {
-        trailing = { Icon(VeilIcons.Check, contentDescription = null, tint = VeilColors.content, modifier = Modifier.size(18.dp)) }
+        trailing = { Icon(VeilIcons.Check, contentDescription = null, tint = VeilColors.accent, modifier = Modifier.size(18.dp)) }
     }
     DropdownMenuItem(
         text = { Text(label, style = MaterialTheme.typography.bodyLarge, color = VeilColors.content) },
@@ -141,14 +146,37 @@ fun VeilMenuItem(label: String, onClick: () -> Unit, icon: ImageVector? = null, 
     )
 }
 
+/** One tappable row of an action sheet: icon, label, and an accent tint while [active]. */
+@Composable
+fun SheetAction(label: String, icon: ImageVector, onClick: () -> Unit, active: Boolean = false) {
+    var tint = VeilColors.content
+    if (active) {
+        tint = VeilColors.accent
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .pressClickable(onClick)
+            .padding(horizontal = VeilSpacing.extraLarge, vertical = VeilSpacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.large),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = tint)
+    }
+}
+
 /** Snackbar messages as a dark capsule floating at the bottom. */
 @Composable
 fun VeilSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(hostState, modifier) { data ->
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(VeilSpacing.large), contentAlignment = Alignment.Center) {
             Text(
                 data.visuals.message,
-                modifier = Modifier.clip(CircleShape).background(VeilColors.surfaceHigh).padding(horizontal = 20.dp, vertical = 14.dp),
+                modifier = Modifier
+                    .clip(VeilShapes.capsule)
+                    .background(VeilColors.surfaceHigh)
+                    .padding(horizontal = VeilSpacing.large, vertical = VeilSpacing.medium),
                 style = MaterialTheme.typography.bodyMedium,
                 color = VeilColors.content,
             )

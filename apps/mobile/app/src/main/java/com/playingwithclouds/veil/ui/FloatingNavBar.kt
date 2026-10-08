@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -46,10 +44,12 @@ import com.playingwithclouds.veil.ui.design.GlassIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** Height of the floating bar plus its gap to the screen edge. */
 private val FloatingBarHeight = 64.dp
-private val FloatingBarGap = 12.dp
+private val FloatingBarGap = VeilSpacing.medium
 
 /** Scroll distance in pixels that hides or reveals the bar, so small jitters don't toggle it. */
 private const val HIDE_THRESHOLD_PIXELS = 24f
@@ -136,8 +136,8 @@ fun FloatingNavBar(
         exit = slideOutVertically { height -> height } + fadeOut(),
     ) {
         Row(
-            Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = FloatingBarGap),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.navigationBarsPadding().padding(horizontal = VeilSpacing.gutter, vertical = FloatingBarGap),
+            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TabPill(currentRoute, onTab)
@@ -155,14 +155,14 @@ private fun TabPill(currentRoute: String?, onTab: (Tab) -> Unit) {
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "indicator",
     )
-    Box(Modifier.height(FloatingBarHeight).glass(CircleShape).padding(PillPadding)) {
+    Box(Modifier.height(FloatingBarHeight).glass(VeilShapes.capsule).padding(PillPadding)) {
         Box(
             Modifier
                 .offset(x = indicatorOffset)
                 .width(TabWidth)
                 .fillMaxHeight()
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.14f)),
+                .clip(VeilShapes.capsule)
+                .background(VeilColors.glassSelection),
         )
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             for (tab in Tab.entries) {
@@ -172,12 +172,12 @@ private fun TabPill(currentRoute: String?, onTab: (Tab) -> Unit) {
     }
 }
 
-/** One tab slot: icon over label, bright and filled when selected. */
+/** One tab slot: icon over label, in the accent and filled when selected. */
 @Composable
 private fun TabItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
-    val tint by animateColorAsState(if (selected) VeilColors.content else VeilColors.contentMuted, label = "tint")
+    val tint by animateColorAsState(if (selected) VeilColors.accent else VeilColors.contentMuted, label = "tint")
     Column(
-        Modifier.width(TabWidth).fillMaxHeight().clip(CircleShape).pressClickable(onClick),
+        Modifier.width(TabWidth).fillMaxHeight().clip(VeilShapes.capsule).pressClickable(onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

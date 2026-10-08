@@ -9,10 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilTextField
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** A rounded search box with a clear button; [onSearch] fires on the keyboard's search key. */
 @Composable
@@ -24,7 +24,7 @@ fun SearchField(
     onSearch: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
 ) {
-    var fieldModifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+    var fieldModifier = modifier.fillMaxWidth().padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraSmall)
     if (focusRequester != null) {
         fieldModifier = fieldModifier.focusRequester(focusRequester)
     }

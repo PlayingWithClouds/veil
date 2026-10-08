@@ -15,13 +15,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.api.ServerSettings
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.ui.design.VeilTextField
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.restartApp
 import kotlinx.coroutines.launch
 
@@ -34,7 +34,7 @@ fun ServerForm() {
     var checking by remember { mutableStateOf(false) }
     var problem by remember { mutableStateOf<String?>(null) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         Text(
             currentServerDescription(),
             style = MaterialTheme.typography.bodyMedium,
@@ -50,7 +50,7 @@ fun ServerForm() {
         if (problem != null) {
             Text(problem.orEmpty(), color = VeilColors.error, style = MaterialTheme.typography.bodySmall)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
             PrimaryButton(
                 "Connect",
                 enabled = address.isNotBlank() && !checking,
