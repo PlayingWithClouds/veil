@@ -47,9 +47,9 @@ import com.playingwithclouds.veil.util.formatVideoCount
 private const val LANDSCAPE_RATIO = 16f / 9f
 
 /**
- * A scene as a landscape card: poster with runtime (or time left) and resume bar, then title,
- * byline and, on recommendations, why it was picked in the accent. A long press opens
- * [onLongClick], typically the quick actions sheet.
+ * A scene as a landscape card: poster with runtime (or time left) and resume bar, then the
+ * creator's avatar beside title and byline. A long press opens [onLongClick], typically the quick
+ * actions sheet. While [previewing], the preview clip plays over the poster.
  */
 @Composable
 fun SceneCard(
@@ -57,14 +57,18 @@ fun SceneCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
-    reason: String? = null,
     onLongClick: (() -> Unit)? = null,
+    previewing: Boolean = false,
 ) {
     val progress by WatchProgressStore.progress.collectAsStateWithLifecycle()
     val sceneProgress = progress[scene.id]
     Column(modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(VeilShapes.card)) {
             RemoteImage(scene.posterPath, Modifier.matchParentSize())
+            val previewVideo = scene.previewVideo
+            if (previewing && previewVideo != null) {
+                ScenePreview(previewVideo, Modifier.matchParentSize())
+            }
             val runtime = runtimeLabel(scene.durationSeconds, sceneProgress)
             if (runtime != null) {
                 Badge(runtime, Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.small))
@@ -97,9 +101,6 @@ fun SceneCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 SceneCaption(scene)
-                if (!reason.isNullOrBlank()) {
-                    Text(reason, style = MaterialTheme.typography.labelMedium, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
             }
         }
     }

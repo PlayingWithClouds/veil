@@ -393,7 +393,7 @@ type ComplexityRoot struct {
 		Plugins               func(childComplexity int) int
 		RandomScenes          func(childComplexity int, limit *int) int
 		RecommendationPair    func(childComplexity int) int
-		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool) int
+		Recommendations       func(childComplexity int, limit *int, offset *int, refresh *bool, sources []string) int
 		RecommendedBrowse     func(childComplexity int, limit *int) int
 		RecommendedCategories func(childComplexity int, categoryLimit *int, perCategory *int) int
 		RecommendedFeed       func(childComplexity int, limit *int, offset *int) int
@@ -754,7 +754,7 @@ type QueryResolver interface {
 	Plugin(ctx context.Context, id string) (*model.Plugin, error)
 	PluginPackages(ctx context.Context, query *string) ([]*model.PluginPackage, error)
 	PluginCategories(ctx context.Context, plugin string, limit *int) ([]*model.PluginCategory, error)
-	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool) ([]*model.RecommendedScene, error)
+	Recommendations(ctx context.Context, limit *int, offset *int, refresh *bool, sources []string) ([]*model.RecommendedScene, error)
 	RecommendedRows(ctx context.Context, rowLimit *int, perRow *int) ([]*model.RecommendationRow, error)
 	RecommendedCategories(ctx context.Context, categoryLimit *int, perCategory *int) ([]*model.RecommendedCategory, error)
 	RecommendationPair(ctx context.Context) ([]*model.Scene, error)
@@ -2979,7 +2979,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool)), true
+		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int), args["refresh"].(*bool), args["sources"].([]string)), true
 	case "Query.recommendedBrowse":
 		if e.ComplexityRoot.Query.RecommendedBrowse == nil {
 			break
@@ -4912,8 +4912,10 @@ extend type Query {
   # The ranked personalized feed, each scene with why it was picked. offset 0
   # re-ranks once the ranking is 10 minutes old, or always with refresh; later
   # pages read the same ranking (for 30 minutes) so pages don't overlap.
-  # recommendedFeed is the same list without reasons.
-  recommendations(limit: Int, offset: Int, refresh: Boolean): [RecommendedScene!]!
+  # recommendedFeed is the same list without reasons. Non-empty sources (plugin
+  # names) keep only scenes one of those plugins observed, like the scenes
+  # source filter; offset and limit page through that filtered ranking.
+  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!]): [RecommendedScene!]!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row
@@ -8356,6 +8358,14 @@ func (ec *executionContext) field_Query_recommendations_args(ctx context.Context
 		return nil, err
 	}
 	args["refresh"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "sources",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sources"] = arg3
 	return args, nil
 }
 
@@ -17296,7 +17306,7 @@ func (ec *executionContext) _Query_recommendations(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool))
+			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int), fc.Args["refresh"].(*bool), fc.Args["sources"].([]string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*model.RecommendedScene) graphql.Marshaler {

@@ -28,4 +28,20 @@ class VisibleImpressionsTest {
         val items = listOf(ItemExtent(0, 10, 0), ItemExtent(1, 500, 100))
         assertEquals(emptyList<Int>(), VisibleImpressions.shownIndices(items, 0, 200))
     }
+
+    @Test
+    fun previewPicksTheMostlyVisibleItemNearestTheUpperThird() {
+        val items = listOf(
+            ItemExtent(index = 0, offset = -150, size = 300),
+            ItemExtent(index = 1, offset = 150, size = 300),
+            ItemExtent(index = 2, offset = 450, size = 300),
+        )
+        assertEquals(1, VisibleImpressions.previewIndex(items, viewportStart = 0, viewportEnd = 900))
+    }
+
+    @Test
+    fun noPreviewWhileNothingIsMostlyVisible() {
+        val items = listOf(ItemExtent(0, -200, 300), ItemExtent(1, 250, 300))
+        assertEquals(null, VisibleImpressions.previewIndex(items, viewportStart = 0, viewportEnd = 300))
+    }
 }

@@ -721,7 +721,7 @@ export interface QueryGenqlSelection{
     plugin?: (PluginGenqlSelection & { __args: {id: Scalars['ID']} })
     pluginPackages?: (PluginPackageGenqlSelection & { __args?: {query?: (Scalars['String'] | null)} })
     pluginCategories?: (PluginCategoryGenqlSelection & { __args: {plugin: Scalars['String'], limit?: (Scalars['Int'] | null)} })
-    recommendations?: (RecommendedSceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), refresh?: (Scalars['Boolean'] | null)} })
+    recommendations?: (RecommendedSceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), refresh?: (Scalars['Boolean'] | null), sources?: (Scalars['String'][] | null)} })
     recommendedRows?: (RecommendationRowGenqlSelection & { __args?: {rowLimit?: (Scalars['Int'] | null), perRow?: (Scalars['Int'] | null)} })
     recommendedCategories?: (RecommendedCategoryGenqlSelection & { __args?: {categoryLimit?: (Scalars['Int'] | null), perCategory?: (Scalars['Int'] | null)} })
     recommendationPair?: SceneGenqlSelection

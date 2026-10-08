@@ -1,5 +1,5 @@
-query HomeFeed($limit: Int, $offset: Int, $refresh: Boolean) {
-  recommendations(limit: $limit, offset: $offset, refresh: $refresh) {
+query HomeFeed($limit: Int, $offset: Int, $refresh: Boolean, $sources: [String!]) {
+  recommendations(limit: $limit, offset: $offset, refresh: $refresh, sources: $sources) {
     source
     reason {
       kind

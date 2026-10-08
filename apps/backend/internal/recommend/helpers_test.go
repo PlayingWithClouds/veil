@@ -67,7 +67,7 @@ func assertClose(t *testing.T, label string, got, want float64) {
 // error.
 func feed(t *testing.T, engine *Engine, disabledPlugins []string) []Item {
 	t.Helper()
-	items, err := engine.Feed(context.Background(), disabledPlugins, 100, 0, true)
+	items, err := engine.Feed(context.Background(), disabledPlugins, nil, 100, 0, true)
 	if err != nil {
 		t.Fatalf("feed: %v", err)
 	}

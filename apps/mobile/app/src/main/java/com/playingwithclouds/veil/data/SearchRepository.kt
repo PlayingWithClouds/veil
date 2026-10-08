@@ -26,11 +26,25 @@ data class SearchSuggestion(
 )
 
 /** A site that can be searched. */
-data class SearchSite(val name: String, val displayName: String?, val iconUrl: String?, val domains: List<String>) {
+data class SearchSite(
+    val name: String,
+    val displayName: String?,
+    val iconUrl: String?,
+    val domains: List<String>,
+    val capabilities: List<String> = emptyList(),
+) {
 
     /** The name to show: the plugin's display name, else its identifier. */
     val label: String
         get() = displayName ?: name
+
+    /** Whether the site lists scenes. */
+    val listsScenes: Boolean
+        get() = capabilities.contains("scene:list")
+
+    /** Whether the site lists galleries. */
+    val listsGalleries: Boolean
+        get() = capabilities.contains("gallery:list")
 }
 
 /** A result of the live search that is not stored yet, as a card. */
@@ -116,7 +130,7 @@ object SearchRepository {
         val data = VeilApi.client.query(SearchPluginsQuery()).execute().dataOrThrow()
         return data.plugins
             .filter { plugin -> plugin.available && listsContent(plugin.capabilities) }
-            .map { plugin -> SearchSite(plugin.name, plugin.displayName, plugin.iconUrl, plugin.domains) }
+            .map { plugin -> SearchSite(plugin.name, plugin.displayName, plugin.iconUrl, plugin.domains, plugin.capabilities) }
     }
 
     /** Every installed plugin as a site, for labeling a scene with where it came from. */
