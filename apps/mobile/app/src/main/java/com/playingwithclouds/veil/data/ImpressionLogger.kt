@@ -28,6 +28,7 @@ data class Impression(
 class ImpressionLogger(
     private val scope: CoroutineScope,
     private val send: suspend (List<Impression>) -> Unit,
+    private val enabled: () -> Boolean = { true },
     private val flushDelayMilliseconds: Long = FLUSH_DELAY_MILLISECONDS,
     private val batchLimit: Int = BATCH_LIMIT,
 ) {
@@ -63,9 +64,13 @@ class ImpressionLogger(
 
     /**
      * Adds an impression to the batch and schedules or triggers the send. Impressions without a
-     * media id are dropped: one invalid id would fail the whole batch.
+     * media id are dropped: one invalid id would fail the whole batch. Nothing is queued while
+     * [enabled] says no (incognito).
      */
     private fun enqueue(impression: Impression) {
+        if (!enabled()) {
+            return
+        }
         if (impression.mediaId.isEmpty()) {
             return
         }

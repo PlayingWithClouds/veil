@@ -9,6 +9,7 @@ import com.playingwithclouds.veil.graphql.AddBlockMutation
 import com.playingwithclouds.veil.graphql.AddToCollectionMutation
 import com.playingwithclouds.veil.graphql.AddToWatchlistMutation
 import com.playingwithclouds.veil.graphql.AttachAlikeSourceMutation
+import com.playingwithclouds.veil.privacy.PrivacyPreferences
 import com.playingwithclouds.veil.graphql.CreateSceneMarkerMutation
 import com.playingwithclouds.veil.graphql.DecrementOCountMutation
 import com.playingwithclouds.veil.graphql.DeleteSceneMarkerMutation
@@ -311,8 +312,11 @@ object SceneRepository {
         return ResumePoint(entry.progressSeconds, entry.durationSeconds, entry.completed)
     }
 
-    /** Records playback progress for resume; whether the watch is completed follows from the position. */
+    /** Records playback progress for resume, except in incognito; whether the watch is completed follows from the position. */
     suspend fun saveProgress(sceneId: String, positionSeconds: Double, durationSeconds: Double?) {
+        if (PrivacyPreferences.incognito.value) {
+            return
+        }
         var completed = false
         if (durationSeconds != null && durationSeconds > 0) {
             completed = positionSeconds >= durationSeconds * COMPLETE_FRACTION

@@ -35,6 +35,20 @@ class ImpressionLoggerTest {
     }
 
     @Test
+    fun nothingIsQueuedWhileDisabled() = runTest {
+        var enabled = false
+        val logger = ImpressionLogger(this, { batch -> batches.add(batch) }, enabled = { enabled }, flushDelayMilliseconds = 3000)
+        logger.recordShown("scene:1", null, "feed", 0)
+        logger.recordClicked("scene:1", null, "feed", 0)
+        advanceUntilIdle()
+        assertTrue(batches.isEmpty())
+        enabled = true
+        logger.recordShown("scene:2", null, "feed", 1)
+        advanceUntilIdle()
+        assertEquals(1, batches.size)
+    }
+
+    @Test
     fun aSceneIsShownOnlyOncePerSurface() = runTest {
         val logger = logger()
         logger.recordShown("scene:1", null, "feed", 0)

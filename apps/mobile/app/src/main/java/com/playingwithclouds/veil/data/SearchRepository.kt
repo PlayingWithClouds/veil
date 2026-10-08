@@ -8,6 +8,7 @@ import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.api.orAbsentIfEmpty
 import com.playingwithclouds.veil.graphql.ForgetSearchMutation
 import com.playingwithclouds.veil.graphql.RecordSearchMutation
+import com.playingwithclouds.veil.privacy.PrivacyPreferences
 import com.playingwithclouds.veil.graphql.SearchGalleriesQuery
 import com.playingwithclouds.veil.graphql.SearchPerformersQuery
 import com.playingwithclouds.veil.graphql.SearchPluginsQuery
@@ -77,8 +78,11 @@ object SearchRepository {
         }
     }
 
-    /** Remembers a submitted search as a recent one. */
+    /** Remembers a submitted search as a recent one, except in incognito. */
     suspend fun recordSearch(query: String) {
+        if (PrivacyPreferences.incognito.value) {
+            return
+        }
         VeilApi.client.mutation(RecordSearchMutation(query)).execute().dataOrThrow()
     }
 
