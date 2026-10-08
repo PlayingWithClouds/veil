@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.haze)
     implementation(libs.haze.blur)
     implementation(libs.phosphor)
+    implementation(libs.biometric)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)

@@ -33,6 +33,8 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.compose.ContentFrame
 import com.playingwithclouds.veil.data.PlayableStream
 import com.playingwithclouds.veil.data.SceneSummary
+import com.playingwithclouds.veil.privacy.NeutralMedia
+import com.playingwithclouds.veil.privacy.PrivacyEvents
 import com.playingwithclouds.veil.util.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -49,6 +51,7 @@ fun rememberScenePlayer(): ExoPlayer {
     val context = LocalContext.current
     val player = remember { ExoPlayer.Builder(context).build() }
     DisposableEffect(player) { onDispose { player.release() } }
+    LaunchedEffect(player) { PrivacyEvents.pauseRequests.collect { player.pause() } }
     return player
 }
 
@@ -64,7 +67,7 @@ fun streamMediaSource(stream: PlayableStream): MediaSource {
     val httpFactory = DefaultHttpDataSource.Factory()
         .setAllowCrossProtocolRedirects(true)
         .setDefaultRequestProperties(stream.headers)
-    return createMediaSource(stream, httpFactory, MediaItem.fromUri(stream.url))
+    return createMediaSource(stream, httpFactory, MediaItem.Builder().setUri(stream.url).setMediaMetadata(NeutralMedia.metadata()).build())
 }
 
 /** The HLS or progressive media source for a stream. */

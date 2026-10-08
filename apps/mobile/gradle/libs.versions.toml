@@ -14,6 +14,7 @@ junit = "4.13.2"
 json = "20250517"
 haze = "2.0.1"
 phosphor = "1.0.0"
+biometric = "1.1.0"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -38,6 +39,7 @@ json = { group = "org.json", name = "json", version.ref = "json" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 haze-blur = { group = "dev.chrisbanes.haze", name = "haze-blur", version.ref = "haze" }
 phosphor = { group = "com.adamglin", name = "phosphor-icon", version.ref = "phosphor" }
+biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

@@ -50,6 +50,8 @@ fun SettingsScreen(navigator: AppNavigator) {
         ) {
             SectionHeading("Server")
             VeilCard { ServerForm() }
+            SectionHeading("Privacy")
+            PrivacySection()
             SectionHeading("Jobs and downloads")
             when (val current = settings) {
                 is LoadState.Loading -> Text("Loading backend settings...", color = VeilColors.contentMuted)
@@ -110,7 +112,7 @@ private fun NumberField(label: String, value: Int, onChange: (Int) -> Unit) {
 
 /** A label with a switch. */
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         VeilSwitch(checked = checked, onCheckedChange = onChange)

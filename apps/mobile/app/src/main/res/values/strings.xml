@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Veil</string>
+    <!-- Launcher labels of the disguises; keep in sync with privacy/Disguise.kt. -->
+    <string name="disguise_files">Files</string>
+    <string name="disguise_gallery">Gallery</string>
+    <string name="disguise_notes">Notes</string>
+    <string name="disguise_calculator">Calculator</string>
 </resources>
