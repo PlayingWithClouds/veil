@@ -51,7 +51,9 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "scene-$sceneId") { SceneViewModel(sceneId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val player = rememberScenePlayer()
-    val fullscreen = rememberFullscreenState()
+    val fullscreen = rememberFullscreenState(player)
+    val pictureInPicture = rememberPictureInPicture(player)
+    val options = rememberPlayerOptions(player)
     val snackbarHostState = remember { SnackbarHostState() }
     val detail = state.detail
     var showingAlternates by remember { mutableStateOf(false) }
@@ -81,9 +83,15 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
         }
         return
     }
+    val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
+    val extras = PlayerExtras(
+        markers = state.markers,
+        heatmap = state.heatmap,
+        onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
+    )
     Scaffold(
         topBar = {
-            if (!fullscreen.isFullscreen) {
+            if (!immersive) {
                 VeilTopBar(title = (detail as? LoadState.Loaded)?.value?.title.orEmpty(), onBack = navigator::back)
             }
         },
@@ -94,10 +102,14 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
                 state,
                 player,
                 fullscreen,
+                pictureInPicture,
+                options,
+                extras,
+                immersive,
                 onFindAlternates = findAlternates,
                 onOpenScene = { scene -> navigator.openScene(scene.id) },
             )
-            if (!fullscreen.isFullscreen) {
+            if (!immersive) {
                 SceneContent(state, viewModel, player, navigator, onFindAlternates = findAlternates)
             }
         }
@@ -125,11 +137,15 @@ private fun PlayerArea(
     state: SceneState,
     player: ExoPlayer,
     fullscreen: FullscreenState,
+    pictureInPicture: PictureInPictureState,
+    options: PlayerOptions,
+    extras: PlayerExtras,
+    immersive: Boolean,
     onFindAlternates: () -> Unit,
     onOpenScene: (SceneSummary) -> Unit,
 ) {
     var boxModifier = Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO)
-    if (fullscreen.isFullscreen) {
+    if (immersive) {
         boxModifier = Modifier.fillMaxSize()
     }
     Box(boxModifier.background(VeilColors.canvas), contentAlignment = Alignment.Center) {
@@ -140,6 +156,9 @@ private fun PlayerArea(
                 stream = active.playable,
                 title = (state.detail as? LoadState.Loaded)?.value?.title.orEmpty(),
                 fullscreen = fullscreen,
+                pictureInPicture = pictureInPicture,
+                options = options,
+                extras = extras,
                 related = state.related,
                 onOpenScene = onOpenScene,
                 modifier = Modifier.fillMaxSize(),

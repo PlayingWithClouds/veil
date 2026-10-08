@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.ui.scene
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -31,6 +35,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.playingwithclouds.veil.data.PlayableStream
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.privacy.NeutralMedia
@@ -45,11 +50,11 @@ private const val PROGRESS_SAVE_INTERVAL_MILLISECONDS = 15_000L
 /** How long to keep portrait locked after leaving fullscreen, so the rotation settles. */
 private const val ORIENTATION_RELEASE_DELAY_MILLISECONDS = 600L
 
-/** An ExoPlayer that lives as long as the page it is remembered on. */
+/** An ExoPlayer that lives as long as the page it is remembered on; it pauses when headphones are unplugged. */
 @Composable
 fun rememberScenePlayer(): ExoPlayer {
     val context = LocalContext.current
-    val player = remember { ExoPlayer.Builder(context).build() }
+    val player = remember { ExoPlayer.Builder(context).setHandleAudioBecomingNoisy(true).build() }
     DisposableEffect(player) { onDispose { player.release() } }
     LaunchedEffect(player) { PrivacyEvents.pauseRequests.collect { player.pause() } }
     return player
@@ -81,7 +86,8 @@ private fun createMediaSource(stream: PlayableStream, httpFactory: DefaultHttpDa
 /**
  * The video with the app's own controls over it, keeping the screen on while shown. Scrubbing
  * shows frames of [stream] above the seek bar. In fullscreen, when there are [related] scenes, a
- * swipe up (or the related button) raises them over the video.
+ * swipe up (or the related button) raises them over the video. In the picture-in-picture window
+ * only the video shows, shown, blurred or hidden as [options] say.
  */
 @Composable
 fun ScenePlayerView(
@@ -89,10 +95,17 @@ fun ScenePlayerView(
     stream: PlayableStream,
     title: String,
     fullscreen: FullscreenState,
+    pictureInPicture: PictureInPictureState,
+    options: PlayerOptions,
+    extras: PlayerExtras,
     related: List<SceneSummary>,
     onOpenScene: (SceneSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (pictureInPicture.isActive) {
+        PictureInPictureVideo(player, options, modifier)
+        return
+    }
     var showingRelated by remember { mutableStateOf(false) }
     val relatedAvailable = fullscreen.isFullscreen && related.isNotEmpty()
     LaunchedEffect(relatedAvailable) {
@@ -102,7 +115,7 @@ fun ScenePlayerView(
     }
     KeepScreenOn()
     Box(modifier) {
-        ContentFrame(player, Modifier.fillMaxSize())
+        ContentFrame(player, Modifier.fillMaxSize(), contentScale = videoContentScale(options.zoomToFill))
         var openRelated: (() -> Unit)? = null
         if (relatedAvailable) {
             openRelated = { showingRelated = true }
@@ -110,6 +123,8 @@ fun ScenePlayerView(
         CompositionLocalProvider(LocalSeekPreview provides rememberSeekPreview(stream)) {
             PlayerControls(
                 player = player,
+                options = options,
+                extras = extras,
                 title = title,
                 isFullscreen = fullscreen.isFullscreen,
                 onToggleFullscreen = fullscreen::toggle,
@@ -127,6 +142,34 @@ fun ScenePlayerView(
         )
     }
 }
+
+/** Crops the video to fill its box when zooming to fill, else shows all of it. */
+private fun videoContentScale(zoomToFill: Boolean): ContentScale {
+    if (zoomToFill) {
+        return ContentScale.Crop
+    }
+    return ContentScale.Fit
+}
+
+/** The video alone, as the picture-in-picture window shows it: untouched, blurred or replaced by a cover. */
+@Composable
+private fun PictureInPictureVideo(player: ExoPlayer, options: PlayerOptions, modifier: Modifier) {
+    val privacy = options.pictureInPicturePrivacy
+    val blurAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(modifier) {
+        if (privacy == PictureInPicturePrivacy.SHOW) {
+            ContentFrame(player, Modifier.fillMaxSize())
+        }
+        if (privacy == PictureInPicturePrivacy.BLUR && blurAvailable) {
+            ContentFrame(player, Modifier.fillMaxSize().blur(PictureInPictureBlurRadius), surfaceType = SURFACE_TYPE_TEXTURE_VIEW)
+        }
+        if (privacy == PictureInPicturePrivacy.HIDE || (privacy == PictureInPicturePrivacy.BLUR && !blurAvailable)) {
+            PictureInPictureCover()
+        }
+    }
+}
+
+private val PictureInPictureBlurRadius = 32.dp
 
 /** Keeps the display awake while composed, as the player is on screen. */
 @Composable
@@ -207,11 +250,12 @@ class FullscreenState {
 }
 
 /**
- * Fullscreen playback: landscape, system bars hidden, back leaves it. Turning the phone to
- * landscape enters it too and turning back leaves it. The window is restored when the page closes.
+ * Fullscreen playback: landscape, system bars hidden, back leaves it. A vertical video stays in
+ * portrait and fills the screen instead. Turning the phone to landscape enters fullscreen too and
+ * turning back leaves it. The window is restored when the page closes.
  */
 @Composable
-fun rememberFullscreenState(): FullscreenState {
+fun rememberFullscreenState(player: Player): FullscreenState {
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -221,7 +265,12 @@ fun rememberFullscreenState(): FullscreenState {
 
     state.enter = {
         state.isFullscreen = true
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        val size = player.videoSize
+        if (isVerticalVideo(size.width, size.height)) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
     }
     state.exit = {
         state.isFullscreen = false

@@ -20,14 +20,21 @@ import com.playingwithclouds.veil.ui.design.VeilMenu
 import com.playingwithclouds.veil.ui.design.VeilMenuItem
 
 /** Which list the settings menu shows. */
-private enum class SettingsPage { MAIN, SPEED, QUALITY }
+private enum class SettingsPage { MAIN, SPEED, QUALITY, PICTURE_IN_PICTURE }
 
 /**
- * A glass gear opening the playback settings: speed, and the video quality when the stream offers
- * several (HLS variants). [onOpenChange] reports the menu so the controls stay up while it is open.
+ * A glass gear opening the playback settings: speed (slow motion included), the video quality when
+ * the stream offers several (HLS variants), the A–B loop, zoom to fill and what picture-in-picture
+ * shows. [onOpenChange] reports the menu so the controls stay up while it is open.
  */
 @Composable
-fun PlayerSettingsButton(player: Player, buttonSize: Dp, onOpenChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun PlayerSettingsButton(
+    player: Player,
+    options: PlayerOptions,
+    buttonSize: Dp,
+    onOpenChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var open by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf(SettingsPage.MAIN) }
     val tracks = rememberPlayerTracks(player)
@@ -48,9 +55,10 @@ fun PlayerSettingsButton(player: Player, buttonSize: Dp, onOpenChange: (Boolean)
         RoundIconButton(VeilIcons.Settings, contentDescription = "Playback settings", onClick = { setOpen(true) }, size = buttonSize)
         VeilMenu(expanded = open, onDismissRequest = { setOpen(false) }) {
             when (page) {
-                SettingsPage.MAIN -> MainSettings(player, tracks, onPage = { chosen -> page = chosen })
+                SettingsPage.MAIN -> MainSettings(player, options, tracks, onPage = { chosen -> page = chosen }, onDone = { setOpen(false) })
                 SettingsPage.SPEED -> SpeedSettings(player, onDone = { setOpen(false) })
                 SettingsPage.QUALITY -> QualitySettings(player, tracks, onDone = { setOpen(false) })
+                SettingsPage.PICTURE_IN_PICTURE -> PictureInPictureSettings(options, onDone = { setOpen(false) })
             }
         }
     }
@@ -58,11 +66,49 @@ fun PlayerSettingsButton(player: Player, buttonSize: Dp, onOpenChange: (Boolean)
 
 /** The menu's first page: one entry per setting with its current value. */
 @Composable
-private fun MainSettings(player: Player, tracks: Tracks, onPage: (SettingsPage) -> Unit) {
+private fun MainSettings(player: Player, options: PlayerOptions, tracks: Tracks, onPage: (SettingsPage) -> Unit, onDone: () -> Unit) {
     val speedState = rememberPlaybackSpeedState(player)
     VeilMenuItem("Speed · ${formatSpeed(speedState.playbackSpeed)}", onClick = { onPage(SettingsPage.SPEED) })
     if (videoQualities(tracks).size > 1) {
         VeilMenuItem("Quality · ${selectedQualityLabel(player, tracks)}", onClick = { onPage(SettingsPage.QUALITY) })
+    }
+    VeilMenuItem(
+        loopMenuLabel(options.loop),
+        onClick = {
+            options.advanceLoop(player)
+            onDone()
+        },
+        icon = VeilIcons.Repeat,
+        selected = options.loop.isActive,
+    )
+    VeilMenuItem(
+        "Zoom to fill",
+        onClick = {
+            options.updateZoomToFill(!options.zoomToFill)
+            onDone()
+        },
+        icon = VeilIcons.ZoomToFill,
+        selected = options.zoomToFill,
+    )
+    VeilMenuItem(
+        "Picture-in-picture · ${options.pictureInPicturePrivacy.label}",
+        onClick = { onPage(SettingsPage.PICTURE_IN_PICTURE) },
+        icon = VeilIcons.PictureInPicture,
+    )
+}
+
+/** What the picture-in-picture window shows of the video, the current choice ticked. */
+@Composable
+private fun PictureInPictureSettings(options: PlayerOptions, onDone: () -> Unit) {
+    for (privacy in PictureInPicturePrivacy.entries) {
+        VeilMenuItem(
+            privacy.label,
+            onClick = {
+                options.updatePictureInPicturePrivacy(privacy)
+                onDone()
+            },
+            selected = options.pictureInPicturePrivacy == privacy,
+        )
     }
 }
 

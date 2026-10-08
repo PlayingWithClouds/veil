@@ -21,6 +21,9 @@ import com.adamglin.phosphoricons.regular.BookmarkSimple
 import com.adamglin.phosphoricons.regular.Books
 import com.adamglin.phosphoricons.regular.Buildings
 import com.adamglin.phosphoricons.regular.CaretRight
+import com.adamglin.phosphoricons.regular.ArrowsOutSimple
+import com.adamglin.phosphoricons.regular.CaretLineLeft
+import com.adamglin.phosphoricons.regular.CaretLineRight
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.ClockCounterClockwise
 import com.adamglin.phosphoricons.regular.CornersIn
@@ -35,6 +38,11 @@ import com.adamglin.phosphoricons.regular.Images
 import com.adamglin.phosphoricons.regular.ListMagnifyingGlass
 import com.adamglin.phosphoricons.regular.MagnifyingGlass
 import com.adamglin.phosphoricons.regular.PencilSimple
+import com.adamglin.phosphoricons.regular.PictureInPicture
+import com.adamglin.phosphoricons.regular.ListPlus
+import com.adamglin.phosphoricons.regular.Queue
+import com.adamglin.phosphoricons.regular.Repeat
+import com.adamglin.phosphoricons.regular.SkipForward
 import com.adamglin.phosphoricons.regular.Playlist
 import com.adamglin.phosphoricons.regular.Plus
 import com.adamglin.phosphoricons.regular.Prohibit
@@ -55,6 +63,14 @@ import com.adamglin.phosphoricons.regular.X
  * look stays consistent; add an entry before using a new one.
  */
 object VeilIcons {
+    val PictureInPicture: ImageVector get() = PhosphorIcons.Regular.PictureInPicture
+    val PlayNext: ImageVector get() = PhosphorIcons.Regular.ListPlus
+    val Queue: ImageVector get() = PhosphorIcons.Regular.Queue
+    val Repeat: ImageVector get() = PhosphorIcons.Regular.Repeat
+    val SkipNext: ImageVector get() = PhosphorIcons.Regular.SkipForward
+    val StepBack: ImageVector get() = PhosphorIcons.Regular.CaretLineLeft
+    val StepForward: ImageVector get() = PhosphorIcons.Regular.CaretLineRight
+    val ZoomToFill: ImageVector get() = PhosphorIcons.Regular.ArrowsOutSimple
     val Alternates: ImageVector get() = PhosphorIcons.Regular.ListMagnifyingGlass
     val Back: ImageVector get() = PhosphorIcons.Regular.ArrowLeft
     val Block: ImageVector get() = PhosphorIcons.Regular.Prohibit

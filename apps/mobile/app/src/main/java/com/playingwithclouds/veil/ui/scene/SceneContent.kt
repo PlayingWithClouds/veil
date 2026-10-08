@@ -79,6 +79,7 @@ fun SceneContent(
 
     LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.large)) {
         item { SceneTitleBlock(detail, state) }
+        item { MarkerChips(state.markers, player, Modifier.padding(bottom = VeilSpacing.small)) }
         item { ReactionRow(state, viewModel, onOpen = { chosen -> dialog = chosen }, onFindAlternates = onFindAlternates) }
         if (state.streams.isNotEmpty()) {
             item { SourcePicker(groupStreams(state.streams), state, viewModel) }

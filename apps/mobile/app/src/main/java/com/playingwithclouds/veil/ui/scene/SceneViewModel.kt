@@ -41,6 +41,8 @@ data class SceneState(
     val playbackProblem: String? = null,
     val resume: ResumePoint? = null,
     val markers: List<SceneMarker> = emptyList(),
+    /** How much each slice of the scene gets rewatched, 0 to 1; empty until known. */
+    val heatmap: List<Float> = emptyList(),
     val verdict: Verdict? = null,
     val oCount: Int = 0,
     val onWatchlist: Boolean = false,
