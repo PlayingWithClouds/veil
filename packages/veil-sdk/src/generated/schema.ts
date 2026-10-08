@@ -461,6 +461,7 @@ export interface SceneFilter {
     dateFrom: (Scalars['String'] | null)
     dateTo: (Scalars['String'] | null)
     sort: (Scalars['String'] | null)
+    sources: (Scalars['String'][] | null)
     __typename: 'SceneFilter'
 }
 
@@ -1164,7 +1165,7 @@ export interface RecommendedCategoryGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface SceneFilterInput {search?: (Scalars['String'] | null),studioId?: (Scalars['ID'] | null),performerId?: (Scalars['ID'] | null),tagId?: (Scalars['ID'] | null),minRating?: (Scalars['Float'] | null),minDuration?: (Scalars['Int'] | null),maxDuration?: (Scalars['Int'] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),sort?: (Scalars['String'] | null)}
+export interface SceneFilterInput {search?: (Scalars['String'] | null),studioId?: (Scalars['ID'] | null),performerId?: (Scalars['ID'] | null),tagId?: (Scalars['ID'] | null),minRating?: (Scalars['Float'] | null),minDuration?: (Scalars['Int'] | null),maxDuration?: (Scalars['Int'] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),sort?: (Scalars['String'] | null),sources?: (Scalars['String'][] | null)}
 
 export interface SceneFilterGenqlSelection{
     search?: boolean | number
@@ -1177,6 +1178,7 @@ export interface SceneFilterGenqlSelection{
     dateFrom?: boolean | number
     dateTo?: boolean | number
     sort?: boolean | number
+    sources?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

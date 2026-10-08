@@ -488,6 +488,7 @@ type ComplexityRoot struct {
 		PerformerID func(childComplexity int) int
 		Search      func(childComplexity int) int
 		Sort        func(childComplexity int) int
+		Sources     func(childComplexity int) int
 		StudioID    func(childComplexity int) int
 		TagID       func(childComplexity int) int
 	}
@@ -3542,6 +3543,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SceneFilter.Sort(childComplexity), true
+	case "SceneFilter.sources":
+		if e.ComplexityRoot.SceneFilter.Sources == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneFilter.Sources(childComplexity), true
 	case "SceneFilter.studioId":
 		if e.ComplexityRoot.SceneFilter.StudioID == nil {
 			break
@@ -5035,6 +5042,8 @@ input SceneFilterInput {
   dateFrom: String
   dateTo: String
   sort: String
+  # Plugin names to keep; empty = any site.
+  sources: [String!]
 }
 
 type SceneFilter {
@@ -5048,6 +5057,8 @@ type SceneFilter {
   dateFrom: String
   dateTo: String
   sort: String
+  # Plugin names to keep; empty = any site.
+  sources: [String!]
 }
 
 type SavedFilter {
@@ -6263,6 +6274,8 @@ func (ec *executionContext) childFields_SceneFilter(ctx context.Context, field g
 		return ec.fieldContext_SceneFilter_dateTo(ctx, field)
 	case "sort":
 		return ec.fieldContext_SceneFilter_sort(ctx, field)
+	case "sources":
+		return ec.fieldContext_SceneFilter_sources(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SceneFilter", field.Name)
 }
@@ -19995,6 +20008,29 @@ func (ec *executionContext) fieldContext_SceneFilter_sort(_ context.Context, fie
 	return graphql.NewScalarFieldContext("SceneFilter", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _SceneFilter_sources(ctx context.Context, field graphql.CollectedField, obj *model.SceneFilter) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneFilter_sources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sources, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneFilter_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneFilter", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _SceneMarker_id(ctx context.Context, field graphql.CollectedField, obj *model.SceneMarker) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24236,7 +24272,7 @@ func (ec *executionContext) unmarshalInputSceneFilterInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"search", "studioId", "performerId", "tagId", "minRating", "minDuration", "maxDuration", "dateFrom", "dateTo", "sort"}
+	fieldsInOrder := [...]string{"search", "studioId", "performerId", "tagId", "minRating", "minDuration", "maxDuration", "dateFrom", "dateTo", "sort", "sources"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -24313,6 +24349,13 @@ func (ec *executionContext) unmarshalInputSceneFilterInput(ctx context.Context, 
 				return it, err
 			}
 			it.Sort = data
+		case "sources":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sources"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sources = data
 		}
 	}
 	return it, nil
@@ -28183,6 +28226,8 @@ func (ec *executionContext) _SceneFilter(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._SceneFilter_dateTo(ctx, field, obj)
 		case "sort":
 			out.Values[i] = ec._SceneFilter_sort(ctx, field, obj)
+		case "sources":
+			out.Values[i] = ec._SceneFilter_sources(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
