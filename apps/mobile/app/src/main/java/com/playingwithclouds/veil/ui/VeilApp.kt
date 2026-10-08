@@ -20,12 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.ui.components.ServerForm
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.theme.VeilTheme
 
 /** Whether the backend answers yet. */
@@ -40,7 +40,7 @@ private enum class BootState {
 fun VeilApp() {
     VeilTheme {
         // Sets the default content color; bare Text would otherwise be black.
-        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+        Surface(color = VeilColors.canvas, modifier = Modifier.fillMaxSize()) {
             BootGate { VeilShell() }
         }
     }
@@ -75,15 +75,15 @@ private fun BootWaiting() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spinner()
-        Text("Starting Veil...", Modifier.padding(top = 16.dp), color = VeilColors.contentMuted)
+        Text("Starting Veil...", Modifier.padding(top = VeilSpacing.large), color = VeilColors.contentMuted)
     }
 }
 
 /** Shown when the backend does not come up: retry, or pick another server. */
 @Composable
 private fun BootUnreachable(onRetry: () -> Unit) {
-    Box(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraLarge)) {
+        Column(verticalArrangement = Arrangement.spacedBy(VeilSpacing.large)) {
             Text("The backend is not reachable", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "Check the server address below, or retry if the on-device backend is still starting.",

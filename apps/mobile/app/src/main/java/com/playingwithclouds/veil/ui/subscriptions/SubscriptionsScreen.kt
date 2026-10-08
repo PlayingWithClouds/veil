@@ -8,14 +8,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -31,16 +33,20 @@ import com.playingwithclouds.veil.data.SubscriptionRepository
 import com.playingwithclouds.veil.data.SubscriptionSummary
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.Avatar
-import com.playingwithclouds.veil.ui.components.Badge
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.Badge
+import com.playingwithclouds.veil.ui.design.GutterRowPadding
 import com.playingwithclouds.veil.ui.design.LargeHeader
 import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.design.PinnedTitleBar
+import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.paging.PagedList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -94,46 +100,51 @@ class SubscriptionsViewModel : ViewModel() {
     }
 }
 
-/** The Following tab. */
+/** The Following tab. The large header scrolls away and a slim title bar takes its place. */
 @Composable
 fun SubscriptionsScreen(navigator: AppNavigator) {
     val viewModel = viewModel { SubscriptionsViewModel() }
+    val gridState = rememberLazyGridState()
     val subscriptions by viewModel.subscriptions.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
+    val headerScrolledAway by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 } }
     LaunchedEffect(Unit) { viewModel.loadSubscriptions() }
 
     Scaffold { padding ->
-        PagedGrid(
-            paged = viewModel.feed,
-            keyOf = { entry -> entry.scene.id },
-            emptyText = "Nothing found yet. Follow a studio, performer, tag or search to fill this feed.",
-            modifier = Modifier.padding(padding),
-            header = {
-                fullWidthItem("header") {
-                    LargeHeader("Following") { SettingsMenuButton(navigator) }
-                }
-                fullWidthItem("strip") { SubscriptionStrip(subscriptions, navigator) }
-                fullWidthItem("filters") { FeedFilters(options, viewModel::setOptions) }
-            },
-        ) { _, entry ->
-            SceneCard(entry.scene, onClick = { navigator.openScene(entry.scene.id) }, isNew = entry.isNew)
+        Box(Modifier.padding(padding)) {
+            PagedGrid(
+                paged = viewModel.feed,
+                keyOf = { entry -> entry.scene.id },
+                emptyText = "Nothing found yet. Follow a studio, performer, tag or search to fill this feed.",
+                gridState = gridState,
+                header = {
+                    fullWidthItem("header") {
+                        LargeHeader("Following") { SettingsMenuButton(navigator) }
+                    }
+                    fullWidthItem("strip") { SubscriptionStrip(subscriptions, navigator) }
+                    fullWidthItem("filters") { FeedFilters(options, viewModel::setOptions) }
+                },
+            ) { _, entry ->
+                SceneCard(entry.scene, onClick = { navigator.openScene(entry.scene.id) }, isNew = entry.isNew)
+            }
+            PinnedTitleBar("Following", visible = headerScrolledAway, modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 }
 
-/** The followed things as a row of avatars with their new-scene counts. */
+/** The followed things as a row of avatars with their new-scene counts, running edge to edge. */
 @Composable
 private fun SubscriptionStrip(subscriptions: List<SubscriptionSummary>, navigator: AppNavigator) {
     if (subscriptions.isEmpty()) {
         EmptyMessage("You are not following anything yet.")
         return
     }
-    LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(Modifier.bleed(), contentPadding = GutterRowPadding, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         items(subscriptions, key = { subscription -> subscription.id }) { subscription ->
             Column(
                 Modifier.width(76.dp).pressClickable { navigator.openSubscription(subscription.id) },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             ) {
                 Box {
                     Avatar(subscription.targetImageUrl, Modifier.size(64.dp))
@@ -142,7 +153,7 @@ private fun SubscriptionStrip(subscriptions: List<SubscriptionSummary>, navigato
                             subscription.newCount.toString(),
                             Modifier.align(Alignment.TopEnd),
                             background = VeilColors.accent,
-                            foreground = VeilColors.canvas,
+                            foreground = VeilColors.onAccent,
                         )
                     }
                 }
@@ -161,7 +172,7 @@ private fun SubscriptionStrip(subscriptions: List<SubscriptionSummary>, navigato
 /** Pills narrowing the feed to new or unwatched scenes. */
 @Composable
 private fun FeedFilters(options: FeedOptions, onChange: (FeedOptions) -> Unit) {
-    Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.padding(vertical = VeilSpacing.small), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         Pill(
             "New only",
             selected = options.newOnly,

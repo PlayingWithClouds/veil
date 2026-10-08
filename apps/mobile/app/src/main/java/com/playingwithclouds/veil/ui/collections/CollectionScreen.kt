@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.ui.collections
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,7 +10,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,7 +34,6 @@ import com.playingwithclouds.veil.data.CollectionRepository
 import com.playingwithclouds.veil.data.MemberType
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
-import com.playingwithclouds.veil.ui.components.Badge
 import com.playingwithclouds.veil.ui.components.ConfirmDialog
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.ImageViewer
@@ -43,9 +42,12 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.TextInputDialog
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.loadInto
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -188,9 +190,9 @@ private fun MemberGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(160.dp),
         modifier = modifier,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(VeilSpacing.gutter),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
     ) {
         items(collection.members, key = { member -> "${member.type}:${member.mediaId}" }) { member ->
             MemberCard(
@@ -227,15 +229,15 @@ private fun openMember(member: CollectionMember, navigator: AppNavigator) {
 @Composable
 private fun MemberCard(member: CollectionMember, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick),
+        Modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick),
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(16.dp))) {
+        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(VeilShapes.card)) {
             RemoteImage(member.posterPath, Modifier.matchParentSize())
-            Badge(member.type.name.lowercase(), Modifier.align(Alignment.TopStart).padding(6.dp))
+            Badge(member.type.name.lowercase(), Modifier.align(Alignment.TopStart).padding(VeilSpacing.small))
         }
         Text(
             member.title,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = VeilSpacing.extraSmall, vertical = VeilSpacing.small),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             maxLines = 2,

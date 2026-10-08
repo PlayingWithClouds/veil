@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.data.EntityRef
-import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.design.TagPill
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.tagLabel
 
-/** Tags as a wrapping row of pills. */
+/** Tags as a wrapping row of tag pills, inset by the gutter. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TagChips(tags: List<EntityRef>, onClick: (EntityRef) -> Unit, modifier: Modifier = Modifier) {
@@ -20,12 +20,12 @@ fun TagChips(tags: List<EntityRef>, onClick: (EntityRef) -> Unit, modifier: Modi
         return
     }
     FlowRow(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         for (tag in tags) {
-            Pill(tagLabel(tag.name), onClick = { onClick(tag) })
+            TagPill(tagLabel(tag.name), onClick = { onClick(tag) })
         }
     }
 }

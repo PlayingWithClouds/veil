@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,6 +28,8 @@ import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.paging.SearchablePagedList
 import com.playingwithclouds.veil.util.formatCount
 import com.playingwithclouds.veil.util.tagLabel
@@ -73,10 +74,10 @@ private fun TagTile(tag: TagSummary, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .pressClickable(onClick)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(VeilShapes.card)
             .background(VeilColors.surface)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = VeilSpacing.large, vertical = VeilSpacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         Text(
             tagLabel(tag.name),

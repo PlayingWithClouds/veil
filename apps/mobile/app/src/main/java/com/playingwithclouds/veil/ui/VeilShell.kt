@@ -26,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.playingwithclouds.veil.ui.collections.CollectionScreen
 import com.playingwithclouds.veil.ui.collections.CollectionsScreen
+import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
 import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryCategoryScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryScreen
@@ -129,6 +130,7 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.PLUGINS) { PluginsScreen(navigator) }
     composable(Routes.SETTINGS) { SettingsScreen(navigator) }
     composable(Routes.RANDOM) { RandomScreen(navigator) }
+    composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
     composable(Routes.SUBSCRIPTION) { entry -> SubscriptionScreen(entry.argument("id"), navigator) }
 }
 

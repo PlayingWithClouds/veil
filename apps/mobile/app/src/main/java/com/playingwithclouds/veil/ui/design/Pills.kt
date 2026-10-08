@@ -5,9 +5,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,13 +33,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-/** A filled capsule label, optionally with a leading icon: white with dark text when selected, a dark fill otherwise. */
+/**
+ * A choice capsule, optionally with a leading icon: accent with dark text when selected, a dark
+ * fill otherwise. For filters and options; tags use [TagPill].
+ */
 @Composable
 fun Pill(
     text: String,
@@ -46,16 +50,16 @@ fun Pill(
     selected: Boolean = false,
     icon: ImageVector? = null,
 ) {
-    val background by animateColorAsState(if (selected) VeilColors.content else VeilColors.surfaceHigh, label = "pill")
-    val foreground by animateColorAsState(if (selected) VeilColors.canvas else VeilColors.content, label = "pillText")
+    val background by animateColorAsState(if (selected) VeilColors.accent else VeilColors.surfaceHigh, label = "pill")
+    val foreground by animateColorAsState(if (selected) VeilColors.onAccent else VeilColors.content, label = "pillText")
     Row(
         modifier
             .height(36.dp)
             .pressClickable(onClick)
-            .clip(CircleShape)
+            .clip(VeilShapes.capsule)
             .background(background)
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = VeilSpacing.large),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -65,7 +69,28 @@ fun Pill(
     }
 }
 
-/** A horizontally scrolling row of pills, one of which may be selected. */
+/** A tag as a link: a lighter outlined capsule, so tags read differently from choices. */
+@Composable
+fun TagPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        modifier = modifier
+            .height(32.dp)
+            .pressClickable(onClick)
+            .clip(VeilShapes.capsule)
+            .background(VeilColors.surface)
+            .border(1.dp, VeilColors.surfaceHigh, VeilShapes.capsule)
+            .padding(horizontal = VeilSpacing.medium, vertical = 7.dp),
+        color = VeilColors.contentMuted,
+        style = MaterialTheme.typography.labelMedium,
+        maxLines = 1,
+    )
+}
+
+/**
+ * A horizontally scrolling row of pills, one of which may be selected. Meant to span the screen
+ * (add [bleed] inside a padded grid): pills start at the gutter and fade out where clipped.
+ */
 @Composable
 fun <T> PillRow(
     options: List<T>,
@@ -73,9 +98,12 @@ fun <T> PillRow(
     onClick: (T) -> Unit,
     modifier: Modifier = Modifier,
     isSelected: (T) -> Boolean = { false },
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    LazyRow(modifier, contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(
+        modifier.fillMaxWidth().fadingEdges(),
+        contentPadding = GutterRowPadding,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+    ) {
         itemsIndexed(options) { _, option ->
             Pill(labelOf(option), onClick = { onClick(option) }, selected = isSelected(option))
         }
@@ -104,12 +132,12 @@ fun SegmentedControl(
         modifier
             .fillMaxWidth()
             .height(40.dp)
-            .clip(CircleShape)
+            .clip(VeilShapes.capsule)
             .background(VeilColors.surfaceHigh)
             .padding(3.dp)
             .onSizeChanged { size -> width = size.width },
     ) {
-        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(CircleShape).background(VeilColors.content))
+        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(VeilShapes.capsule).background(VeilColors.content))
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             labels.forEachIndexed { index, label ->
                 val color by animateColorAsState(
@@ -117,7 +145,7 @@ fun SegmentedControl(
                     label = "segment",
                 )
                 Box(
-                    Modifier.weight(1f).fillMaxHeight().clip(CircleShape).pressClickable { onSelect(index) },
+                    Modifier.weight(1f).fillMaxHeight().clip(VeilShapes.capsule).pressClickable { onSelect(index) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = color, style = MaterialTheme.typography.labelLarge, maxLines = 1)

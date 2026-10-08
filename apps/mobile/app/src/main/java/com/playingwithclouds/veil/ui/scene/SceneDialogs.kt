@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,17 +26,20 @@ import com.playingwithclouds.veil.data.AlikeCandidate
 import com.playingwithclouds.veil.data.SceneDetail
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.TextInputDialog
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SecondaryButton
+import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilBottomSheet
 import com.playingwithclouds.veil.ui.design.VeilCheck
 import com.playingwithclouds.veil.ui.design.VeilDialog
 import com.playingwithclouds.veil.ui.design.VeilTextField
+import com.playingwithclouds.veil.ui.design.gutterPadding
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.formatClock
 import com.playingwithclouds.veil.util.formatDuration
 
@@ -104,8 +106,8 @@ private fun CollectionPickerDialog(viewModel: SceneViewModel, onDismiss: () -> U
             items(collections, key = { collection -> collection.id }) { collection ->
                 val included = collection.id in memberOf
                 Row(
-                    Modifier.fillMaxWidth().pressClickable { viewModel.setInCollection(collection, !included) }.padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    Modifier.fillMaxWidth().pressClickable { viewModel.setInCollection(collection, !included) }.padding(vertical = VeilSpacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     VeilCheck(checked = included)
@@ -124,7 +126,7 @@ private fun BlockDialog(detail: SceneDetail, viewModel: SceneViewModel, onDismis
         onDismissRequest = onDismiss,
         buttons = { PrimaryButton("Done", onClick = onDismiss) },
     ) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall)) {
             val studio = detail.studio
             if (studio != null) {
                 item { BlockRow("Studio", studio.name) { viewModel.block("studio", studio.id, studio.name) } }
@@ -142,7 +144,7 @@ private fun BlockDialog(detail: SceneDetail, viewModel: SceneViewModel, onDismis
 /** One blockable entity with its kind and a block button. */
 @Composable
 private fun BlockRow(kind: String, name: String, onBlock: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = VeilSpacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(kind, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
@@ -178,9 +180,9 @@ private fun MarkerDialog(seconds: Double, onSave: (Double, String?, String?) -> 
 fun AlternatesSheet(viewModel: SceneViewModel, onDismiss: () -> Unit) {
     val alike by viewModel.alike.collectAsStateWithLifecycle()
     VeilBottomSheet(onDismissRequest = onDismiss) {
-        SectionTitle("Other sources for this video")
+        SectionHeading("Other sources for this video", Modifier.gutterPadding())
         if (alike.isLoading) {
-            Spinner(Modifier.padding(24.dp).align(Alignment.CenterHorizontally))
+            Spinner(Modifier.padding(VeilSpacing.extraLarge).align(Alignment.CenterHorizontally))
             return@VeilBottomSheet
         }
         if (alike.candidates.isEmpty()) {
@@ -202,11 +204,11 @@ fun AlternatesSheet(viewModel: SceneViewModel, onDismiss: () -> Unit) {
 @Composable
 private fun AlternateRow(candidate: AlikeCandidate, attaching: Boolean, onChoose: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().pressClickable(enabled = !attaching, onClick = onChoose).padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxWidth().pressClickable(enabled = !attaching, onClick = onChoose).padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(candidate.posterUrl, Modifier.size(width = 120.dp, height = 68.dp).clip(RoundedCornerShape(12.dp)))
+        RemoteImage(candidate.posterUrl, Modifier.size(width = 120.dp, height = 68.dp).clip(VeilShapes.card))
         Column(Modifier.weight(1f)) {
             Text(candidate.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val facts = listOfNotNull(candidate.plugin, formatDuration(candidate.durationSeconds), "${(candidate.matchScore * PERCENT).toInt()}% match")

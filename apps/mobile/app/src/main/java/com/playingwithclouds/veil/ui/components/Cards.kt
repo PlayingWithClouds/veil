@@ -1,18 +1,14 @@
 package com.playingwithclouds.veil.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,118 +17,138 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.playingwithclouds.veil.data.CollectionSummary
 import com.playingwithclouds.veil.data.GallerySummary
 import com.playingwithclouds.veil.data.PerformerSummary
+import com.playingwithclouds.veil.data.SceneProgress
+import com.playingwithclouds.veil.data.SceneSites
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.WatchProgressStore
+import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.ProgressBar
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.util.formatClock
-import com.playingwithclouds.veil.util.formatCount
-import com.playingwithclouds.veil.util.formatVideoCount
 import com.playingwithclouds.veil.util.formatReleaseDate
+import com.playingwithclouds.veil.util.formatTimeLeft
+import com.playingwithclouds.veil.util.formatVideoCount
 
 private const val LANDSCAPE_RATIO = 16f / 9f
 
-/** A scene as a landscape card: poster with runtime and resume bar, then title and byline. */
+/**
+ * A scene as a landscape card: poster with runtime (or time left) and resume bar, then title,
+ * byline and, on recommendations, why it was picked in the accent. A long press opens
+ * [onLongClick], typically the quick actions sheet.
+ */
 @Composable
 fun SceneCard(
     scene: SceneSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
+    reason: String? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val progress by WatchProgressStore.progress.collectAsStateWithLifecycle()
-    val resumeFraction = progress[scene.id]?.fraction
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(RoundedCornerShape(16.dp))) {
+    val sceneProgress = progress[scene.id]
+    Column(modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(VeilShapes.card)) {
             RemoteImage(scene.posterPath, Modifier.matchParentSize())
-            val duration = scene.durationSeconds
-            if (duration != null && duration > 0) {
-                Badge(formatClock(duration.toDouble()), Modifier.align(Alignment.BottomEnd).padding(6.dp))
+            val runtime = runtimeLabel(scene.durationSeconds, sceneProgress)
+            if (runtime != null) {
+                Badge(runtime, Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.small))
             }
             if (isNew) {
-                Badge("NEW", Modifier.align(Alignment.TopStart).padding(6.dp), VeilColors.accent, Color.Black)
+                Badge("NEW", Modifier.align(Alignment.TopStart).padding(VeilSpacing.small), VeilColors.accent, VeilColors.onAccent)
             }
+            val resumeFraction = sceneProgress?.fraction
             if (resumeFraction != null) {
                 ProgressBar(
                     progress = resumeFraction,
                     modifier = Modifier.align(Alignment.BottomStart),
-                    trackColor = Color.Black.copy(alpha = 0.5f),
+                    trackColor = VeilColors.imageTrack,
                     height = 3.dp,
                 )
             }
         }
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            Modifier.padding(horizontal = VeilSpacing.extraSmall, vertical = VeilSpacing.small),
+            verticalArrangement = Arrangement.spacedBy(VeilSpacing.hairline),
+        ) {
             Text(
                 scene.title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
+                color = VeilColors.content,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             SceneCaption(scene)
+            if (!reason.isNullOrBlank()) {
+                Text(reason, style = MaterialTheme.typography.labelMedium, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
 
-/** The muted line under a scene title: channel or performers, then the release date. */
+/** The poster badge: time left while the scene is part-watched, else its runtime; null when unknown. */
+private fun runtimeLabel(durationSeconds: Int?, progress: SceneProgress?): String? {
+    var total = durationSeconds
+    if (progress?.durationSeconds != null) {
+        total = progress.durationSeconds
+    }
+    if (total == null || total <= 0) {
+        return null
+    }
+    if (progress != null && progress.progressSeconds in 1 until total) {
+        return formatTimeLeft((total - progress.progressSeconds).toDouble())
+    }
+    return formatClock(total.toDouble())
+}
+
+/** The muted line under a scene title: channel or performers (else the site), then the release date. */
 @Composable
 private fun SceneCaption(scene: SceneSummary) {
-    val parts = listOfNotNull(scene.byline, formatReleaseDate(scene.date))
+    var source = scene.byline
+    if (source == null) {
+        source = SceneSites.hostOf(scene.sourceUrl)
+    }
+    val parts = listOfNotNull(source, formatReleaseDate(scene.date))
     if (parts.isEmpty()) {
         return
     }
     Text(
         parts.joinToString(" · "),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = VeilColors.contentMuted,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-    )
-}
-
-/** A small rounded label over an image. */
-@Composable
-fun Badge(
-    text: String,
-    modifier: Modifier = Modifier,
-    background: Color = Color.Black.copy(alpha = 0.75f),
-    foreground: Color = Color.White,
-) {
-    Text(
-        text,
-        modifier = modifier.clip(RoundedCornerShape(6.dp)).background(background).padding(horizontal = 6.dp, vertical = 2.dp),
-        color = foreground,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
     )
 }
 
 /** A gallery as a poster card with its image count. */
 @Composable
 fun GalleryCard(gallery: GallerySummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(16.dp))) {
+    Column(modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(VeilShapes.card)) {
             RemoteImage(gallery.coverPath, Modifier.matchParentSize())
             if (gallery.imageCount > 0) {
-                Badge("${gallery.imageCount} photos", Modifier.align(Alignment.BottomEnd).padding(6.dp))
+                Badge("${gallery.imageCount} photos", Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.small))
             }
         }
         Text(
             gallery.title,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = VeilSpacing.extraSmall, vertical = VeilSpacing.small),
             style = MaterialTheme.typography.bodyMedium,
+            color = VeilColors.content,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -150,9 +166,9 @@ fun AvatarCard(
     isFavorite: Boolean = false,
 ) {
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(onClick).padding(8.dp),
+        modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(onClick).padding(VeilSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         Box {
             Avatar(imagePath, Modifier.fillMaxWidth(0.8f).aspectRatio(1f))
@@ -169,12 +185,13 @@ fun AvatarCard(
             name,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
+            color = VeilColors.content,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         if (subtitle != null) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)
         }
     }
 }
@@ -207,23 +224,24 @@ fun StudioCard(studio: StudioSummary, onClick: () -> Unit, modifier: Modifier = 
 /** A collection with its cover and size. */
 @Composable
 fun CollectionCard(collection: CollectionSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).pressClickable(onClick)) {
+    Column(modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(onClick)) {
         RemoteImage(
             collection.coverPath,
-            Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(RoundedCornerShape(16.dp)),
+            Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(VeilShapes.card),
         )
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = VeilSpacing.extraSmall, vertical = VeilSpacing.small)) {
             Text(
                 collection.name,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
+                color = VeilColors.content,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "${collection.itemCount} items",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = VeilColors.contentMuted,
             )
         }
     }
@@ -232,7 +250,7 @@ fun CollectionCard(collection: CollectionSummary, onClick: () -> Unit, modifier:
 /** A round image, or a person silhouette when there is none. */
 @Composable
 fun Avatar(imagePath: String?, modifier: Modifier = Modifier) {
-    Box(modifier.clip(CircleShape).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
+    Box(modifier.clip(VeilShapes.capsule).background(VeilColors.surfaceHigh), contentAlignment = Alignment.Center) {
         if (imagePath == null) {
             Icon(VeilIcons.Performer, contentDescription = null, tint = VeilColors.contentFaint)
             return@Box
@@ -241,22 +259,20 @@ fun Avatar(imagePath: String?, modifier: Modifier = Modifier) {
     }
 }
 
-/** A small section heading. */
-@Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-        style = MaterialTheme.typography.titleLarge,
-        color = VeilColors.content,
-    )
-}
-
 /** A row of text with a trailing value, for info lists. */
 @Composable
 fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.padding(start = 16.dp))
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = VeilColors.contentMuted, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = VeilColors.content,
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(start = VeilSpacing.large),
+        )
     }
 }

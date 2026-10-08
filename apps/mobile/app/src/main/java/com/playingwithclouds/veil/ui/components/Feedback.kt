@@ -12,11 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** A centered spinner. */
 @Composable
@@ -30,8 +30,8 @@ fun LoadingIndicator(modifier: Modifier = Modifier) {
 @Composable
 fun FailedMessage(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        modifier = modifier.fillMaxSize().padding(VeilSpacing.extraLarge),
+        verticalArrangement = Arrangement.spacedBy(VeilSpacing.large, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(message, color = VeilColors.error, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
@@ -42,7 +42,7 @@ fun FailedMessage(message: String, onRetry: () -> Unit, modifier: Modifier = Mod
 /** A muted centered note for lists without entries. */
 @Composable
 fun EmptyMessage(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxWidth().padding(VeilSpacing.huge), contentAlignment = Alignment.Center) {
         Text(text, color = VeilColors.contentMuted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }

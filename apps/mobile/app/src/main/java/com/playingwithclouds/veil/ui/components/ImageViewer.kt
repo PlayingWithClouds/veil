@@ -9,13 +9,14 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.draw.clip
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,12 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -44,7 +43,7 @@ fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Un
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         val pagerState = rememberPagerState(initialPage = initialIndex) { imagePaths.size }
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+        Box(Modifier.fillMaxSize().background(VeilColors.canvas)) {
             HorizontalPager(pagerState, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
                 ZoomableImage(imagePaths[page], isCurrent = pagerState.currentPage == page)
             }
@@ -52,17 +51,17 @@ fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Un
                 VeilIcons.Close,
                 contentDescription = "Close",
                 onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(VeilSpacing.medium),
             )
             Text(
                 "${pagerState.currentPage + 1} / ${imagePaths.size}",
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(16.dp)
-                    .clip(CircleShape)
+                    .padding(VeilSpacing.large)
+                    .clip(VeilShapes.capsule)
                     .background(VeilColors.surfaceHigh)
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                    .padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.extraSmall),
                 color = VeilColors.content,
                 style = MaterialTheme.typography.labelMedium,
             )

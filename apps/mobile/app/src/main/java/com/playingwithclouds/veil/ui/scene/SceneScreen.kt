@@ -21,10 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
@@ -41,6 +39,7 @@ import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
 private const val MILLISECONDS_PER_SECOND = 1000L
@@ -120,7 +119,7 @@ private fun PlayerArea(state: SceneState, player: ExoPlayer, fullscreen: Fullscr
     if (fullscreen.isFullscreen) {
         boxModifier = Modifier.fillMaxSize()
     }
-    Box(boxModifier.background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(boxModifier.background(VeilColors.canvas), contentAlignment = Alignment.Center) {
         val active = state.active
         if (active != null) {
             ScenePlayerView(player, onToggleFullscreen = fullscreen::toggle, modifier = Modifier.fillMaxSize())
@@ -132,7 +131,7 @@ private fun PlayerArea(state: SceneState, player: ExoPlayer, fullscreen: Fullscr
         if (problem != null) {
             Text(
                 problem,
-                modifier = Modifier.align(Alignment.BottomCenter).background(Color.Black.copy(alpha = 0.7f)).padding(8.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).background(VeilColors.imageLabel).padding(VeilSpacing.small),
                 color = VeilColors.error,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
@@ -150,15 +149,15 @@ private fun PlayerPlaceholder(state: SceneState, onFindAlternates: () -> Unit) {
         return
     }
     RemoteImage(detail.posterPath, Modifier.fillMaxSize(), ContentScale.Crop)
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(VeilColors.scrim), contentAlignment = Alignment.Center) {
         val searching = state.fetchingDetail || state.resolvingStreamId != null
         if (searching) {
             Spinner()
             return@Box
         }
         if (state.streams.isEmpty()) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("No playable source found", color = Color.White, style = MaterialTheme.typography.titleSmall)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
+                Text("No playable source found", color = VeilColors.content, style = MaterialTheme.typography.titleSmall)
                 PrimaryButton("Find other sources", onClick = onFindAlternates, icon = VeilIcons.Alternates)
             }
         }

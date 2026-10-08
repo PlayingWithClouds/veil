@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +21,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** Opacity of a control that cannot be used right now. */
 const val DISABLED_ALPHA = 0.4f
@@ -74,10 +75,10 @@ private fun CapsuleButton(
             .height(44.dp)
             .alpha(enabledAlpha(enabled))
             .pressClickable(enabled = enabled, onClick = onClick)
-            .clip(CircleShape)
+            .clip(VeilShapes.capsule)
             .background(background)
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            .padding(horizontal = VeilSpacing.extraLarge),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -101,8 +102,8 @@ fun TextAction(
         modifier
             .alpha(enabledAlpha(enabled))
             .pressClickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = VeilSpacing.small, vertical = VeilSpacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {

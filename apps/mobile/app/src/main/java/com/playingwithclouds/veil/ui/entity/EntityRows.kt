@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.entity
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -15,10 +14,14 @@ import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.ui.components.CollectionCard
 import com.playingwithclouds.veil.ui.components.GalleryCard
 import com.playingwithclouds.veil.ui.components.PerformerCard
-import com.playingwithclouds.veil.ui.components.SectionTitle
 import com.playingwithclouds.veil.ui.components.StudioCard
+import com.playingwithclouds.veil.ui.design.GutterRowPadding
+import com.playingwithclouds.veil.ui.design.SectionHeading
+import com.playingwithclouds.veil.ui.design.bleed
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-private val rowPadding = PaddingValues(horizontal = 12.dp)
+// The rows below sit inside a grid that pads with the gutter: headings take that padding, the
+// scrolling rows bleed past it to the screen edges.
 
 /** A titled horizontal row of performers; nothing when the list is empty. */
 @Composable
@@ -26,8 +29,8 @@ fun PerformerRow(title: String, performers: List<PerformerSummary>, onOpen: (Str
     if (performers.isEmpty()) {
         return
     }
-    SectionTitle(title)
-    LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    SectionHeading(title)
+    LazyRow(Modifier.bleed(), contentPadding = GutterRowPadding, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         items(performers, key = { performer -> performer.id }) { performer ->
             PerformerCard(performer, onClick = { onOpen(performer.id) }, modifier = Modifier.width(112.dp))
         }
@@ -40,8 +43,8 @@ fun StudioRow(title: String, studios: List<StudioSummary>, onOpen: (String) -> U
     if (studios.isEmpty()) {
         return
     }
-    SectionTitle(title)
-    LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    SectionHeading(title)
+    LazyRow(Modifier.bleed(), contentPadding = GutterRowPadding, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         items(studios, key = { studio -> studio.id }) { studio ->
             StudioCard(studio, onClick = { onOpen(studio.id) }, modifier = Modifier.width(112.dp))
         }
@@ -54,8 +57,8 @@ fun GalleryRow(title: String, galleries: List<GallerySummary>, onOpen: (String) 
     if (galleries.isEmpty()) {
         return
     }
-    SectionTitle(title)
-    LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    SectionHeading(title)
+    LazyRow(Modifier.bleed(), contentPadding = GutterRowPadding, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap)) {
         items(galleries, key = { gallery -> gallery.id }) { gallery ->
             GalleryCard(gallery, onClick = { onOpen(gallery.id) }, modifier = Modifier.width(140.dp))
         }
@@ -68,8 +71,8 @@ fun CollectionRow(title: String, collections: List<CollectionSummary>, onOpen: (
     if (collections.isEmpty()) {
         return
     }
-    SectionTitle(title)
-    LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    SectionHeading(title)
+    LazyRow(Modifier.bleed(), contentPadding = GutterRowPadding, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap)) {
         items(collections, key = { collection -> collection.id }) { collection ->
             CollectionCard(collection, onClick = { onOpen(collection.id) }, modifier = Modifier.width(220.dp))
         }

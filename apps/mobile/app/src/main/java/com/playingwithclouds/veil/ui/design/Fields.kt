@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,9 +23,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.theme.VeilColors
-
-/** Corner radius of text fields. */
-val FieldShape = RoundedCornerShape(16.dp)
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /**
  * A filled dark text field: an optional static label above, the input in a rounded box with an
@@ -47,9 +45,9 @@ fun VeilTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         if (label != null) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = VeilColors.contentMuted, modifier = Modifier.padding(start = 4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = VeilColors.contentMuted, modifier = Modifier.padding(start = VeilSpacing.extraSmall))
         }
         BasicTextField(
             value = value,
@@ -65,7 +63,7 @@ fun VeilTextField(
             },
         )
         if (supportingText != null) {
-            Text(supportingText, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint, modifier = Modifier.padding(start = 4.dp))
+            Text(supportingText, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint, modifier = Modifier.padding(start = VeilSpacing.extraSmall))
         }
     }
 }
@@ -79,28 +77,28 @@ private fun FieldBox(
     trailing: (@Composable () -> Unit)?,
     innerTextField: @Composable () -> Unit,
 ) {
-    var startPadding = 16.dp
+    var startPadding = VeilSpacing.large
     if (leadingIcon != null) {
-        startPadding = 12.dp
+        startPadding = VeilSpacing.medium
     }
-    var endPadding = 16.dp
+    var endPadding = VeilSpacing.large
     if (trailing != null) {
-        endPadding = 4.dp
+        endPadding = VeilSpacing.extraSmall
     }
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 50.dp)
-            .clip(FieldShape)
+            .clip(VeilShapes.card)
             .background(VeilColors.surfaceHigh)
             .padding(start = startPadding, end = endPadding),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) {
             Icon(leadingIcon, contentDescription = null, tint = VeilColors.contentMuted, modifier = Modifier.size(20.dp))
         }
-        Box(Modifier.weight(1f).padding(vertical = 14.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.weight(1f).padding(vertical = VeilSpacing.medium), contentAlignment = Alignment.CenterStart) {
             if (isEmpty && placeholder != null) {
                 Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = VeilColors.contentFaint, maxLines = 1)
             }

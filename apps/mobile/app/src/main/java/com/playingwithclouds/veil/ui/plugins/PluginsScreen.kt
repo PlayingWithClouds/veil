@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -52,6 +51,11 @@ import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.design.VeilSwitch
 import com.playingwithclouds.veil.ui.design.VeilTextField
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
+
+/** Padding of the plugin and catalog lists: the screen gutter at the sides. */
+private val ListPadding = PaddingValues(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.medium)
 
 /** Installed plugins: enable, configure, update, remove and install more. */
 @Composable
@@ -95,14 +99,14 @@ fun PluginsScreen(navigator: AppNavigator) {
     ) { padding ->
         Column(Modifier.padding(padding)) {
             if (busy) {
-                LoadingBar(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                LoadingBar(Modifier.padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.extraSmall))
             }
             LoadStateContent(plugins, onRetry = viewModel::load) { list ->
                 if (list.isEmpty()) {
                     EmptyMessage("No plugins installed.")
                     return@LoadStateContent
                 }
-                LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(contentPadding = ListPadding, verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                     items(list, key = { plugin -> plugin.name }) { plugin -> PluginCard(plugin, viewModel) }
                 }
             }
@@ -136,7 +140,7 @@ private fun PluginCard(plugin: PluginInfo, viewModel: PluginsViewModel) {
     }
 
     VeilCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
             PluginIcon(plugin)
             Column(Modifier.weight(1f)) {
                 Text(plugin.label, style = MaterialTheme.typography.titleMedium)
@@ -158,7 +162,7 @@ private fun PluginCard(plugin: PluginInfo, viewModel: PluginsViewModel) {
         if (!plugin.available) {
             Text("Unavailable: needs FlareSolverr, which this device cannot reach.", color = VeilColors.error, style = MaterialTheme.typography.bodySmall)
         }
-        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(top = VeilSpacing.extraSmall), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
             if (plugin.settings.isNotEmpty()) {
                 SecondaryButton("Settings", onClick = { editingSettings = true }, icon = VeilIcons.Settings)
             }
@@ -171,7 +175,7 @@ private fun PluginCard(plugin: PluginInfo, viewModel: PluginsViewModel) {
 @Composable
 private fun PluginIcon(plugin: PluginInfo) {
     Box(
-        Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(VeilColors.surfaceHigh),
+        Modifier.size(44.dp).clip(VeilShapes.small).background(VeilColors.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
         val icon = plugin.iconUrl
@@ -199,7 +203,7 @@ private fun PluginSettingsDialog(plugin: PluginInfo, onSave: (Map<String, String
             PrimaryButton("Save", onClick = { onSave(values.value) })
         },
     ) {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
             for (field in plugin.settings) {
                 VeilTextField(
                     value = values.value[field.key].orEmpty(),
@@ -225,7 +229,7 @@ private fun CatalogSheet(viewModel: PluginsViewModel, onDismiss: () -> Unit) {
                 EmptyMessage("No plugins found.")
                 return@LoadStateContent
             }
-            LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(contentPadding = ListPadding, verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                 items(packages, key = { entry -> entry.name }) { entry -> CatalogRow(entry, onInstall = { viewModel.install(entry) }) }
             }
         }
@@ -235,7 +239,7 @@ private fun CatalogSheet(viewModel: PluginsViewModel, onDismiss: () -> Unit) {
 /** A catalog package with its version and an install or update button. */
 @Composable
 private fun CatalogRow(entry: PluginPackage, onInstall: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         Column(Modifier.weight(1f)) {
             Text(entry.name, style = MaterialTheme.typography.titleSmall)
             Text(

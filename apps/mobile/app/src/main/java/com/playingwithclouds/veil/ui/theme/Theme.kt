@@ -1,6 +1,5 @@
 package com.playingwithclouds.veil.ui.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
@@ -15,12 +14,17 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.playingwithclouds.veil.R
 
-/** Surface ramp and accents of the web client's design tokens (`routes/layout.css`). */
+/**
+ * Surface ramp and accents of the web client's design tokens (`routes/layout.css`), plus the
+ * translucent layers drawn over images and glass. The only place colours are defined.
+ *
+ * The accent marks selection and progress: the current tab, selected pills and toggles,
+ * resume bars, why a scene is recommended. Main actions stay white ([content]).
+ */
 object VeilColors {
     val canvas = Color(0xFF000000)
     val elevated = Color(0xFF0B0B0D)
@@ -30,10 +34,33 @@ object VeilColors {
     val contentMuted = Color(0xFFA1A1AA)
     val contentFaint = Color(0xFF71717A)
     val accent = Color(0xFFA78BFA)
+    val onAccent = Color(0xFF0B0B0D)
+    val accentSoft = Color(0xFFA78BFA).copy(alpha = 0.18f)
     val info = Color(0xFF60A5FA)
     val success = Color(0xFF4ADE80)
     val warning = Color(0xFFFBBF24)
     val error = Color(0xFFF87171)
+
+    /** Behind labels drawn over images (runtime badge). */
+    val imageLabel = Color.Black.copy(alpha = 0.75f)
+
+    /** Track of a bar drawn over an image (resume progress). */
+    val imageTrack = Color.Black.copy(alpha = 0.5f)
+
+    /** Dims the page behind sheets and full-screen viewers. */
+    val scrim = Color.Black.copy(alpha = 0.6f)
+
+    /** Hairline edge of glass surfaces. */
+    val glassEdge = Color.White.copy(alpha = 0.10f)
+
+    /** Tint laid over the blurred backdrop of glass. */
+    val glassTint = Color(0xFF101013).copy(alpha = 0.62f)
+
+    /** Glass where nothing behind can be blurred. */
+    val glassFallback = surfaceHigh.copy(alpha = 0.92f)
+
+    /** The selected slot inside a glass control. */
+    val glassSelection = Color.White.copy(alpha = 0.14f)
 }
 
 private val veilColorScheme = darkColorScheme(
@@ -102,11 +129,11 @@ private val veilTypography = Typography(
 )
 
 private val veilShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    extraSmall = VeilShapes.extraSmall,
+    small = VeilShapes.small,
+    medium = VeilShapes.medium,
+    large = VeilShapes.large,
+    extraLarge = VeilShapes.extraLarge,
 )
 
 /**
