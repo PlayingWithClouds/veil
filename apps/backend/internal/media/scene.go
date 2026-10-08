@@ -282,14 +282,15 @@ func tagFromMap(m map[string]any) *model.Tag {
 
 func (r *Repository) ListTags(ctx context.Context, filters EntityFilters, limit, offset *int) ([]*model.Tag, error) {
 	vars := db.Vars{"limit": pageLimit(limit), "offset": pageOffset(offset)}
-	where := ""
+	conditions := []string{notBlockedCondition("tag")}
 	if filters.Search != nil && *filters.Search != "" {
 		vars["q"] = *filters.Search
-		where = "WHERE " + searchCondition("name")
+		conditions = append(conditions, searchCondition("name"))
 	} else if filters.Category != nil && *filters.Category != "" {
 		vars["cat"] = *filters.Category
-		where = "WHERE category = $cat"
+		conditions = append(conditions, "category = $cat")
 	}
+	where := "WHERE " + joinAnd(conditions)
 	query := fmt.Sprintf("SELECT * FROM tag %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
@@ -334,7 +335,7 @@ func (r *Repository) studioFromMap(ctx context.Context, m map[string]any, parent
 
 func (r *Repository) ListStudios(ctx context.Context, filters EntityFilters, limit, offset *int) ([]*model.Studio, error) {
 	vars := db.Vars{"limit": pageLimit(limit), "offset": pageOffset(offset)}
-	var conditions []string
+	conditions := []string{notBlockedCondition("studio")}
 	if filters.Search != nil && *filters.Search != "" {
 		vars["q"] = *filters.Search
 		conditions = append(conditions, searchCondition("name"))
@@ -343,10 +344,7 @@ func (r *Repository) ListStudios(ctx context.Context, filters EntityFilters, lim
 		vars["tag"] = *rid
 		conditions = append(conditions, jsonContains("studio.tags", "$tag"))
 	}
-	where := ""
-	if len(conditions) > 0 {
-		where = "WHERE " + joinAnd(conditions)
-	}
+	where := "WHERE " + joinAnd(conditions)
 	query := fmt.Sprintf("SELECT * FROM studio %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
@@ -457,7 +455,7 @@ func (r *Repository) performerFromMap(ctx context.Context, m map[string]any, wit
 
 func (r *Repository) ListPerformers(ctx context.Context, filters EntityFilters, limit, offset *int) ([]*model.Performer, error) {
 	vars := db.Vars{"limit": pageLimit(limit), "offset": pageOffset(offset)}
-	var conditions []string
+	conditions := []string{notBlockedCondition("performer")}
 	if filters.Search != nil && *filters.Search != "" {
 		vars["q"] = *filters.Search
 		conditions = append(conditions, searchCondition("name"))
@@ -466,10 +464,7 @@ func (r *Repository) ListPerformers(ctx context.Context, filters EntityFilters, 
 		vars["tag"] = *rid
 		conditions = append(conditions, jsonContains("performer.tags", "$tag"))
 	}
-	where := ""
-	if len(conditions) > 0 {
-		where = "WHERE " + joinAnd(conditions)
-	}
+	where := "WHERE " + joinAnd(conditions)
 	query := fmt.Sprintf("SELECT * FROM performer %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
