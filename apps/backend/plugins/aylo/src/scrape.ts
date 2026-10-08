@@ -1,5 +1,5 @@
 import { HTMLElement, parse } from "node-html-parser";
-import type { DiscoveredItem, ScenePerformer, Scene, ScrapeResult } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, Download, ScenePerformer, Scene, ScrapeResult } from "@playingwithclouds/veil-sdk";
 import { fetchText, parseIsoDuration, performerFromLink, studioFromLink } from "./http.ts";
 import { parseCards } from "./listing.ts";
 import { extractFlashvars, extractVideoObject } from "./page.ts";
@@ -41,7 +41,16 @@ export function buildScene(site: Site, id: string, html: string): Scene {
   scene.performers = extractPerformers(site, doc);
   scene.tags = extractTags(site, doc);
   scene.related = extractRelated(site, doc, scene.external_id);
+  scene.downloads = pageDownloads(site, scene.source_url);
   return scene;
+}
+
+/**
+ * The scene's playback source: the page itself, which stream:resolve turns
+ * into a stream URL on demand (the signed CDN URLs expire and are IP-bound).
+ */
+function pageDownloads(site: Site, pageUrl: string): Download[] {
+  return [{ label: site.key, url: pageUrl }];
 }
 
 /** Title from the structured data, then the player config, then the og:title meta. */

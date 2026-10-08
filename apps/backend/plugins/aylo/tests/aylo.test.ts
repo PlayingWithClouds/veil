@@ -181,6 +181,19 @@ describe("scene pages", () => {
     expect(scene.related![0].studio?.name).toBe("Wolf Wagner Love");
   });
 
+  test("every site offers the scene page as its playback source", async () => {
+    const pages: [string, string, string][] = [
+      ["pornhub", "6aacc98152b5f", "ph-scene.html"],
+      ["redtube", "103634591", "rt-scene.html"],
+      ["youporn", "214140131", "yp-scene.html"],
+      ["tube8", "31252491", "t8-scene.html"],
+    ];
+    for (const [key, id, file] of pages) {
+      const scene = buildScene(site(key), id, await fixture(file));
+      expect(scene.downloads).toEqual([{ label: key, url: scene.source_url }]);
+    }
+  });
+
   test("pornhub: mediaDefinitions come from the flashvars", async () => {
     const html = await fixture("ph-scene.html");
     expect(extractFlashvars(html).video_duration).toBe(768);
