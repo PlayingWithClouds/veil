@@ -1,0 +1,26 @@
+fragment SavedFilterFields on SavedFilter {
+  id
+  name
+  filter {
+    tagId
+    minDuration
+    maxDuration
+    sources
+  }
+}
+
+query SavedFilters {
+  savedFilters {
+    ...SavedFilterFields
+  }
+}
+
+mutation CreateSavedFilter($name: String!, $filter: SceneFilterInput!) {
+  createSavedFilter(name: $name, filter: $filter) {
+    ...SavedFilterFields
+  }
+}
+
+mutation DeleteSavedFilter($filterId: ID!) {
+  deleteSavedFilter(filterId: $filterId)
+}

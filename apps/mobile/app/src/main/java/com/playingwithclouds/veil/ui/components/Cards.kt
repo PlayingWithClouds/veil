@@ -1,7 +1,9 @@
 package com.playingwithclouds.veil.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +20,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,13 +38,15 @@ import com.playingwithclouds.veil.data.SiteDirectory
 import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.WatchProgressStore
 import com.playingwithclouds.veil.ui.design.Badge
+import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.ProgressBar
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
+import com.playingwithclouds.veil.ui.theme.VeilType
+import com.playingwithclouds.veil.util.sceneMetaLine
 import com.playingwithclouds.veil.util.formatClock
-import com.playingwithclouds.veil.util.formatReleaseDate
 import com.playingwithclouds.veil.util.formatTimeLeft
 import com.playingwithclouds.veil.util.formatVideoCount
 
@@ -49,7 +55,9 @@ private const val LANDSCAPE_RATIO = 16f / 9f
 /**
  * A scene as a landscape card: poster with runtime (or time left) and resume bar, then the
  * creator's avatar beside title and byline. A long press opens [onLongClick], typically the quick
- * actions sheet. While [previewing], the preview clip plays over the poster.
+ * actions sheet. While [previewing], the preview clip plays over the poster. With [onMenu] the
+ * caption ends in a ⋮ button. [edgeToEdge] runs the poster across the full width without rounded
+ * corners, YouTube style; the caption keeps the gutter, so place the card in a list without one.
  */
 @Composable
 fun SceneCard(
@@ -58,12 +66,24 @@ fun SceneCard(
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    onMenu: (() -> Unit)? = null,
     previewing: Boolean = false,
+    edgeToEdge: Boolean = false,
 ) {
     val progress by WatchProgressStore.progress.collectAsStateWithLifecycle()
     val sceneProgress = progress[scene.id]
-    Column(modifier.fillMaxWidth().clip(VeilShapes.card).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(VeilShapes.card)) {
+    var cardModifier = modifier.fillMaxWidth()
+    var posterShape: Shape = VeilShapes.card
+    var captionPadding = PaddingValues(top = VeilSpacing.medium, bottom = VeilSpacing.small)
+    if (edgeToEdge) {
+        posterShape = RectangleShape
+        captionPadding = PaddingValues(start = VeilSpacing.gutter, top = VeilSpacing.medium, end = VeilSpacing.extraSmall, bottom = VeilSpacing.medium)
+        cardModifier = cardModifier.combinedClickable(interactionSource = null, indication = null, onLongClick = onLongClick, onClick = onClick)
+    } else {
+        cardModifier = cardModifier.clip(VeilShapes.card).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)
+    }
+    Column(cardModifier) {
+        Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(posterShape)) {
             RemoteImage(scene.posterPath, Modifier.matchParentSize())
             val previewVideo = scene.previewVideo
             if (previewing && previewVideo != null) {
@@ -87,24 +107,29 @@ fun SceneCard(
             }
         }
         Row(
-            Modifier.padding(top = VeilSpacing.medium, bottom = VeilSpacing.small),
+            Modifier.padding(captionPadding),
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         ) {
             CreatorAvatar(scene)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
                 Text(
                     scene.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = VeilType.cardTitle,
                     color = VeilColors.content,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 SceneCaption(scene)
             }
+            if (onMenu != null) {
+                IconTap(VeilIcons.More, contentDescription = "More actions", onClick = onMenu, size = MenuButtonSize)
+            }
         }
     }
 }
+
+/** Tap target of the ⋮ button in a scene card's caption. */
+private val MenuButtonSize = 32.dp
 
 /** Size of the uploader avatar beside a scene's title. */
 private val CreatorAvatarSize = 36.dp
@@ -151,20 +176,16 @@ private fun runtimeLabel(durationSeconds: Int?, progress: SceneProgress?): Strin
     return formatClock(total.toDouble())
 }
 
-/** The muted line under a scene title: channel or performers (else the site), then the release date. */
+/** The muted line under a scene title, see [sceneMetaLine]. */
 @Composable
 private fun SceneCaption(scene: SceneSummary) {
-    var source = scene.byline
-    if (source == null) {
-        source = SceneSites.hostOf(scene.sourceUrl)
-    }
-    val parts = listOfNotNull(source, formatReleaseDate(scene.date))
-    if (parts.isEmpty()) {
+    val line = sceneMetaLine(scene, SceneSites.hostOf(scene.sourceUrl))
+    if (line == null) {
         return
     }
     Text(
-        parts.joinToString(" · "),
-        style = MaterialTheme.typography.bodySmall,
+        line,
+        style = VeilType.cardMeta,
         color = VeilColors.contentMuted,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

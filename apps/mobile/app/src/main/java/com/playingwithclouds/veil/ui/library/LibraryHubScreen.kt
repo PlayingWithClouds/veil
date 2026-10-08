@@ -40,6 +40,7 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.SceneShelf
 import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.components.SearchButton
 import com.playingwithclouds.veil.ui.components.SettingsMenuButton
 import com.playingwithclouds.veil.ui.Tab
 import com.playingwithclouds.veil.ui.design.LargeHeader
@@ -55,8 +56,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/** How many recently watched scenes the hub's shelf shows. */
-private const val RECENT_COUNT = 12
+/** How many history entries the hub looks through for its shelves. */
+private const val HISTORY_SCAN = 40
+
+/** How many scenes a hub shelf shows at most. */
+private const val SHELF_SIZE = 12
 
 /** One entry of the hub grid. */
 private data class HubEntry(val label: String, val icon: ImageVector, val open: (AppNavigator) -> Unit)
@@ -72,16 +76,30 @@ private val hubEntries = listOf(
     HubEntry("Galleries", VeilIcons.Galleries) { navigator -> navigator.openTab(Tab.GALLERIES) },
 )
 
-/** The recently watched scenes shown at the top of the hub. */
+/** The started-but-unfinished and the recently watched scenes shown at the top of the hub. */
 class LibraryHubViewModel : ViewModel() {
+    private val mutableContinueWatching = MutableStateFlow<List<SceneSummary>>(emptyList())
+
+    /** Started but unfinished scenes, most recent first. */
+    val continueWatching: StateFlow<List<SceneSummary>> = mutableContinueWatching
+
     private val mutableRecent = MutableStateFlow<List<SceneSummary>>(emptyList())
+
+    /** The other recently watched scenes, most recent first. */
     val recent: StateFlow<List<SceneSummary>> = mutableRecent
 
-    /** Reloads the shelf. */
+    /** Reloads both shelves from the watch history. */
     fun reload() {
         viewModelScope.launch {
             try {
-                mutableRecent.value = FeedRepository.watchHistory(RECENT_COUNT, 0).mapNotNull { entry -> entry.scene }
+                val history = FeedRepository.watchHistory(HISTORY_SCAN, 0)
+                val unfinished = history.filter { entry -> !entry.completed && entry.progressSeconds > 0 }
+                val unfinishedIds = unfinished.map { entry -> entry.mediaId }.toSet()
+                mutableContinueWatching.value = unfinished.mapNotNull { entry -> entry.scene }.take(SHELF_SIZE)
+                mutableRecent.value = history
+                    .filter { entry -> entry.mediaId !in unfinishedIds }
+                    .mapNotNull { entry -> entry.scene }
+                    .take(SHELF_SIZE)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -92,12 +110,13 @@ class LibraryHubViewModel : ViewModel() {
 }
 
 /**
- * The Library tab: recently watched, then a tile for every saved or browsable kind of thing. The
+ * The Library tab: continue watching and recently watched, then a tile for every saved or browsable kind of thing. The
  * large header scrolls away and a slim title bar takes its place.
  */
 @Composable
 fun LibraryHubScreen(navigator: AppNavigator) {
     val viewModel = viewModel { LibraryHubViewModel() }
+    val continueWatching by viewModel.continueWatching.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
     val headerScrolledAway by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 } }
@@ -118,7 +137,18 @@ fun LibraryHubScreen(navigator: AppNavigator) {
                 verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    LargeHeader("Library") { SettingsMenuButton(navigator) }
+                    LargeHeader("Library") {
+                        SearchButton(navigator)
+                        SettingsMenuButton(navigator)
+                    }
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    SceneShelf(
+                        title = "Continue watching",
+                        scenes = continueWatching,
+                        onOpen = { scene -> navigator.openScene(scene.id) },
+                        onSeeAll = navigator::openHistory,
+                    )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     SceneShelf(

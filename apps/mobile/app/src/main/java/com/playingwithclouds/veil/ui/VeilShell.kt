@@ -100,7 +100,6 @@ fun VeilShell() {
                     selected = Tab.entries[pagerState.currentPage],
                     visible = onTabs && hideOnScroll.visible,
                     onTab = navigator::openTab,
-                    onSearch = { navigator.openSearch() },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }

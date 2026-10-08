@@ -76,6 +76,46 @@ fun Pill(
     }
 }
 
+/**
+ * A compact chip for the filter row on top of a feed, YouTube style: a flat grey fill, white with
+ * dark text when selected. Lighter than [Pill], which is the glass choice capsule of settings
+ * and forms.
+ */
+@Composable
+fun FeedChip(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    icon: ImageVector? = null,
+    leading: (@Composable () -> Unit)? = null,
+) {
+    var fill = VeilColors.surfaceHigh
+    var foreground = VeilColors.content
+    if (selected) {
+        fill = VeilColors.content
+        foreground = VeilColors.canvas
+    }
+    Row(
+        modifier
+            .height(32.dp)
+            .pressClickable(onClick)
+            .clip(VeilShapes.small)
+            .background(fill)
+            .padding(horizontal = VeilSpacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(16.dp))
+        }
+        if (leading != null) {
+            leading()
+        }
+        Text(text, color = foreground, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+    }
+}
+
 /** A tag as a link: a lighter outlined capsule, so tags read differently from choices. */
 @Composable
 fun TagPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {

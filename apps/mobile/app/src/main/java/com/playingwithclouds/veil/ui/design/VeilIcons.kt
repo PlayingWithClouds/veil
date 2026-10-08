@@ -30,6 +30,7 @@ import com.adamglin.phosphoricons.regular.FolderSimplePlus
 import com.adamglin.phosphoricons.regular.GearSix
 import com.adamglin.phosphoricons.regular.Heart
 import com.adamglin.phosphoricons.regular.House
+import com.adamglin.phosphoricons.regular.DotsThreeVertical
 import com.adamglin.phosphoricons.regular.Images
 import com.adamglin.phosphoricons.regular.ListMagnifyingGlass
 import com.adamglin.phosphoricons.regular.MagnifyingGlass
@@ -40,6 +41,7 @@ import com.adamglin.phosphoricons.regular.Prohibit
 import com.adamglin.phosphoricons.regular.PuzzlePiece
 import com.adamglin.phosphoricons.regular.Rss
 import com.adamglin.phosphoricons.regular.Shuffle
+import com.adamglin.phosphoricons.regular.SlidersHorizontal
 import com.adamglin.phosphoricons.regular.Tag
 import com.adamglin.phosphoricons.regular.ThumbsDown
 import com.adamglin.phosphoricons.regular.ThumbsUp
@@ -81,6 +83,8 @@ object VeilIcons {
     val Home: ImageVector get() = PhosphorIcons.Regular.House
     val HomeFilled: ImageVector get() = PhosphorIcons.Fill.HouseFill
     val Library: ImageVector get() = PhosphorIcons.Regular.Books
+    val More: ImageVector get() = PhosphorIcons.Regular.DotsThreeVertical
+    val Tune: ImageVector get() = PhosphorIcons.Regular.SlidersHorizontal
     val LibraryFilled: ImageVector get() = PhosphorIcons.Fill.BooksFill
     val Like: ImageVector get() = PhosphorIcons.Regular.ThumbsUp
     val LikeFilled: ImageVector get() = PhosphorIcons.Fill.ThumbsUpFill

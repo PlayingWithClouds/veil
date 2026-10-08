@@ -21,6 +21,10 @@ data class SceneSummary(
     val studio: EntityRef?,
     val performers: List<EntityRef>,
     val tags: List<EntityRef>,
+    /** The site's rating on a 0 to 10 scale, when the plugin sends one. */
+    val rating: Double? = null,
+    /** The site's view counter, 0 when the plugin sends none. */
+    val viewCount: Int = 0,
 ) {
 
     /** Caption byline: the channel/studio, else up to two performers. */
@@ -135,6 +139,8 @@ fun SceneCardFields.toSummary(): SceneSummary {
         studio = studioEntity,
         performers = performers.map { performer -> EntityRef(performer.id, performer.name, performer.imagePath) },
         tags = tags.map { tag -> EntityRef(tag.id, tag.name, null) },
+        rating = rating,
+        viewCount = viewCount,
     )
 }
 

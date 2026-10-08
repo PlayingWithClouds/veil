@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,7 +52,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.VeilIcons
-import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -59,7 +59,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Height of the floating bar plus its gap to the screen edge. */
-private val FloatingBarHeight = 64.dp
+private val FloatingBarHeight = 52.dp
 private val FloatingBarGap = VeilSpacing.medium
 
 /** Scroll distance in pixels that hides or reveals the bar, so small jitters don't toggle it. */
@@ -126,11 +126,11 @@ fun rememberHideOnScrollState(): HideOnScrollState {
     return remember { HideOnScrollState() }
 }
 
-/** Inner padding of the glass pill around the tab slots. */
-private val PillPadding = 6.dp
+/** Inner padding of the pill around the tab slots. */
+private val PillPadding = 4.dp
 
 /**
- * The detached glass pill with the tabs, and the round glass search button beside it.
+ * The detached solid pill with the tabs (no glass, so it stays calm over busy thumbnails).
  * [pagerPosition] is the tab pager's position in pages (fractional mid-swipe), so the selection
  * pill follows the finger.
  */
@@ -140,7 +140,6 @@ fun FloatingNavBar(
     selected: Tab,
     visible: Boolean,
     onTab: (Tab) -> Unit,
-    onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -149,20 +148,8 @@ fun FloatingNavBar(
         enter = slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) { height -> height } + fadeIn(),
         exit = slideOutVertically { height -> height } + fadeOut(),
     ) {
-        Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = FloatingBarGap, vertical = FloatingBarGap),
-            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.weight(1f)) {
-                TabPill(pagerPosition, selected, onTab)
-            }
-            Box(
-                Modifier.size(FloatingBarHeight).pressClickable(onSearch).glass(VeilShapes.capsule),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(VeilIcons.Search, contentDescription = "Search", tint = VeilColors.contentMuted, modifier = Modifier.size(22.dp))
-            }
+        Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = FloatingBarGap, vertical = FloatingBarGap)) {
+            TabPill(pagerPosition, selected, onTab)
         }
     }
 }
@@ -170,7 +157,15 @@ fun FloatingNavBar(
 /** The tab slots over a selection pill that sits at the pager's position. */
 @Composable
 private fun TabPill(pagerPosition: () -> Float, selected: Tab, onTab: (Tab) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth().height(FloatingBarHeight).glass(VeilShapes.capsule).padding(PillPadding)) {
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .height(FloatingBarHeight)
+            .clip(VeilShapes.capsule)
+            .background(VeilColors.surface)
+            .border(1.dp, VeilColors.glassEdge, VeilShapes.capsule)
+            .padding(PillPadding),
+    ) {
         val tabWidth = maxWidth / Tab.entries.size
         Box(
             Modifier
@@ -214,7 +209,7 @@ private fun TabItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
             if (selected) tab.selectedIcon else tab.icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(22.dp).graphicsLayer {
+            modifier = Modifier.size(20.dp).graphicsLayer {
                 scaleX = iconScale.value
                 scaleY = iconScale.value
             },
