@@ -100,7 +100,6 @@ object VeilIcons {
     val Home: ImageVector get() = PhosphorIcons.Regular.House
     val HomeFilled: ImageVector get() = PhosphorIcons.Fill.HouseFill
     val Library: ImageVector get() = PhosphorIcons.Regular.Books
-    val More: ImageVector get() = PhosphorIcons.Regular.DotsThreeVertical
     val Tune: ImageVector get() = PhosphorIcons.Regular.SlidersHorizontal
     val LibraryFilled: ImageVector get() = PhosphorIcons.Fill.BooksFill
     val Like: ImageVector get() = PhosphorIcons.Regular.ThumbsUp
