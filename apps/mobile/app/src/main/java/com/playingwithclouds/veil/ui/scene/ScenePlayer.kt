@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -53,13 +54,17 @@ fun rememberScenePlayer(): ExoPlayer {
 
 /** Loads a resolved stream (HLS or progressive, with its request headers) and starts playing at the position. */
 fun ExoPlayer.playStream(stream: PlayableStream, startPositionMilliseconds: Long) {
+    setMediaSource(streamMediaSource(stream), startPositionMilliseconds)
+    prepare()
+    playWhenReady = true
+}
+
+/** The HLS or progressive media source for a stream, sending its request headers. */
+fun streamMediaSource(stream: PlayableStream): MediaSource {
     val httpFactory = DefaultHttpDataSource.Factory()
         .setAllowCrossProtocolRedirects(true)
         .setDefaultRequestProperties(stream.headers)
-    val mediaItem = MediaItem.fromUri(stream.url)
-    setMediaSource(createMediaSource(stream, httpFactory, mediaItem), startPositionMilliseconds)
-    prepare()
-    playWhenReady = true
+    return createMediaSource(stream, httpFactory, MediaItem.fromUri(stream.url))
 }
 
 /** The HLS or progressive media source for a stream. */
@@ -71,12 +76,14 @@ private fun createMediaSource(stream: PlayableStream, httpFactory: DefaultHttpDa
 }
 
 /**
- * The video with the app's own controls over it, keeping the screen on while shown. In fullscreen,
- * when there are [related] scenes, a swipe up (or the related button) raises them over the video.
+ * The video with the app's own controls over it, keeping the screen on while shown. Scrubbing
+ * shows frames of [stream] above the seek bar. In fullscreen, when there are [related] scenes, a
+ * swipe up (or the related button) raises them over the video.
  */
 @Composable
 fun ScenePlayerView(
     player: ExoPlayer,
+    stream: PlayableStream,
     title: String,
     fullscreen: FullscreenState,
     related: List<SceneSummary>,
@@ -97,13 +104,15 @@ fun ScenePlayerView(
         if (relatedAvailable) {
             openRelated = { showingRelated = true }
         }
-        PlayerControls(
-            player = player,
-            title = title,
-            isFullscreen = fullscreen.isFullscreen,
-            onToggleFullscreen = fullscreen::toggle,
-            onOpenRelated = openRelated,
-        )
+        CompositionLocalProvider(LocalSeekPreview provides rememberSeekPreview(stream)) {
+            PlayerControls(
+                player = player,
+                title = title,
+                isFullscreen = fullscreen.isFullscreen,
+                onToggleFullscreen = fullscreen::toggle,
+                onOpenRelated = openRelated,
+            )
+        }
         RelatedPanel(
             visible = showingRelated,
             related = related,
