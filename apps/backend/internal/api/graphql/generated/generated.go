@@ -211,6 +211,7 @@ type ComplexityRoot struct {
 		DeleteUserRating           func(childComplexity int, mediaID string) int
 		DeleteWatchHistory         func(childComplexity int, mediaID string) int
 		EnrichPerformer            func(childComplexity int, id string) int
+		EnsureEntityScenes         func(childComplexity int, entityID string) int
 		EnsureGalleryImages        func(childComplexity int, galleryID string) int
 		EnsureSceneStreams         func(childComplexity int, sceneID string) int
 		ForgetSearch               func(childComplexity int, query string) int
@@ -705,6 +706,7 @@ type MutationResolver interface {
 	DeleteSceneMarker(ctx context.Context, markerID string) (bool, error)
 	ResolvePluginResult(ctx context.Context, pluginName string, url string, posterURL *string) (string, error)
 	AttachAlikeSource(ctx context.Context, sceneID string, pluginName string, url string) ([]*model.Stream, error)
+	EnsureEntityScenes(ctx context.Context, entityID string) (int, error)
 	RecordSearch(ctx context.Context, query string) (bool, error)
 	ForgetSearch(ctx context.Context, query string) (bool, error)
 	UpdateSettings(ctx context.Context, input model.UpdateSettingsInput) (*model.Settings, error)
@@ -1741,6 +1743,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.EnrichPerformer(childComplexity, args["id"].(string)), true
+	case "Mutation.ensureEntityScenes":
+		if e.ComplexityRoot.Mutation.EnsureEntityScenes == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_ensureEntityScenes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.EnsureEntityScenes(childComplexity, args["entityId"].(string)), true
 	case "Mutation.ensureGalleryImages":
 		if e.ComplexityRoot.Mutation.EnsureGalleryImages == nil {
 			break
@@ -5162,6 +5175,14 @@ extend type Mutation {
   # existing scene, deduped by URL — no duplicate scene is created. Returns the
   # scene's ranked streams, including the newly attached ones.
   attachAlikeSource(sceneId: ID!, pluginName: String!, url: String!): [Stream!]!
+
+  # Called when a studio or performer page opens. Lists its own site page when
+  # a plugin can, searches its name on every available scene plugin, ingests
+  # the hits as stubs and credits the matching ones to it (page listings, and
+  # uncredited stubs whose title names it or an alias). Skipped when it ran
+  # within the last 24 h. Returns once done with the number of fetched scenes
+  # credited to it (0 when skipped), so the page can reload its scenes.
+  ensureEntityScenes(entityId: ID!): Int!
 }
 
 # One result from a source plugin's search/browse capability. Rendered as a
@@ -7028,6 +7049,20 @@ func (ec *executionContext) field_Mutation_enrichPerformer_args(ctx context.Cont
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_ensureEntityScenes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "entityId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["entityId"] = arg0
 	return args, nil
 }
 
@@ -13300,6 +13335,50 @@ func (ec *executionContext) fieldContext_Mutation_attachAlikeSource(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_attachAlikeSource_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_ensureEntityScenes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_ensureEntityScenes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().EnsureEntityScenes(ctx, fc.Args["entityId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_ensureEntityScenes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_ensureEntityScenes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -25596,6 +25675,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "attachAlikeSource":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_attachAlikeSource(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ensureEntityScenes":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_ensureEntityScenes(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

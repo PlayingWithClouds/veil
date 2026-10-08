@@ -27,6 +27,8 @@ import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.entity.EntityHeader
+import com.playingwithclouds.veil.ui.entity.EntitySceneFetch
+import com.playingwithclouds.veil.ui.entity.EntitySceneFetchBar
 import com.playingwithclouds.veil.ui.entity.GalleryRow
 import com.playingwithclouds.veil.ui.entity.ProfileInfo
 import com.playingwithclouds.veil.ui.loadInto
@@ -53,9 +55,28 @@ class StudioViewModel(private val studioId: String) : ViewModel() {
         EntityRepository.scenes(EntityFilter(studioId = studioId), PAGE_SIZE, offset)
     }
 
+    /** The search for the studio's videos on every site, started when the page opens. */
+    val siteFetch = EntitySceneFetch(viewModelScope, studioId) {
+        scenes.refresh()
+        refreshProfile()
+    }
+
     init {
         load()
         scenes.loadMore()
+        siteFetch.start()
+    }
+
+    /** Reloads the profile in place (its video count), keeping the current one on failure. */
+    private fun refreshProfile() {
+        viewModelScope.launch {
+            try {
+                val studio = EntityRepository.studio(studioId) ?: return@launch
+                mutableDetail.value = LoadState.Loaded(studio)
+            } catch (error: Exception) {
+                // The page keeps the profile it shows.
+            }
+        }
     }
 
     /** Loads the profile and galleries. */
@@ -94,6 +115,7 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
                 header = {
                     fullWidthItem("header") { StudioHeader(studio, navigator) }
                     fullWidthItem("galleries") { GalleryRow("Galleries", galleries, navigator::openGallery) }
+                    fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
             ) { _, tagged ->
                 SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })

@@ -5,6 +5,7 @@ import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.api.orAbsent
 import com.playingwithclouds.veil.graphql.EnrichPerformerMutation
+import com.playingwithclouds.veil.graphql.EnsureEntityScenesMutation
 import com.playingwithclouds.veil.graphql.FollowTargetMutation
 import com.playingwithclouds.veil.graphql.GalleriesListQuery
 import com.playingwithclouds.veil.graphql.PerformerDetailQuery
@@ -123,6 +124,14 @@ object EntityRepository {
     /** Queues a job that fills in the performer's photo, measurements and bio. */
     suspend fun enrichPerformer(id: String) {
         VeilApi.client.mutation(EnrichPerformerMutation(id)).execute().dataOrThrow()
+    }
+
+    /**
+     * Has the backend search every site for a studio's or performer's videos (at most once a day)
+     * and credit the matches to it. Returns once done with the number of videos found for it.
+     */
+    suspend fun ensureEntityScenes(entityId: String): Int {
+        return VeilApi.client.mutation(EnsureEntityScenesMutation(entityId)).execute().dataOrThrow().ensureEntityScenes
     }
 
     /** Studios for the index grid. */

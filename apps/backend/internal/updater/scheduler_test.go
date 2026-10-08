@@ -83,9 +83,15 @@ func testPlugins() []*plugins.Plugin {
 	}
 }
 
+// seedRow is a row inserted into the scratch database.
+type seedRow struct {
+	table  string
+	fields map[string]any
+}
+
 // newTestScheduler opens a scratch database seeded with a followed studio and
-// performer, their credited scene and a few stubs.
-func newTestScheduler(t *testing.T, fake *fakeDiscovery) (*Scheduler, *media.Repository) {
+// performer, their credited scene and a few stubs, plus any extra rows.
+func newTestScheduler(t *testing.T, fake *fakeDiscovery, extra ...seedRow) (*Scheduler, *media.Repository) {
 	t.Helper()
 	ctx := context.Background()
 	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "test.db"))
@@ -93,10 +99,7 @@ func newTestScheduler(t *testing.T, fake *fakeDiscovery) (*Scheduler, *media.Rep
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	rows := []struct {
-		table  string
-		fields map[string]any
-	}{
+	rows := []seedRow{
 		{"studio", map[string]any{"id": "studio:vixen", "name": "Vixen", "source_url": "https://www.eporner.com/channel/vixen/"}},
 		{"performer", map[string]any{"id": "performer:riley", "name": "Riley"}},
 		{"scene", map[string]any{"id": "scene:credited", "source_url": "https://x.test/credited", "studio": "studio:vixen", "performers": []string{"performer:riley"}}},
@@ -105,7 +108,7 @@ func newTestScheduler(t *testing.T, fake *fakeDiscovery) (*Scheduler, *media.Rep
 		{"scene", map[string]any{"id": "scene:page", "source_url": "https://x.test/page"}},
 		{"observation", map[string]any{"id": "observation:credited", "target": "scene:credited", "plugin": "xhamster"}},
 	}
-	for _, row := range rows {
+	for _, row := range append(rows, extra...) {
 		if _, err := database.Insert(ctx, row.table, row.fields); err != nil {
 			t.Fatalf("insert %v: %v", row.fields["id"], err)
 		}

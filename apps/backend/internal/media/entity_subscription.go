@@ -20,7 +20,9 @@ var ErrSubscriptionTargetNotFound = errors.New("subscription target not found")
 // EntityOrigin says where a followed studio, performer or tag comes from, so
 // the scheduler can ask the right plugins for its new scenes.
 type EntityOrigin struct {
-	Name      string
+	Name string
+	// Aliases are the record's other names.
+	Aliases   []string
 	SourceURL string
 	// Observers are the plugins that ingested the record itself (from its own
 	// page or a listing), most recent first.
@@ -95,6 +97,7 @@ func (r *Repository) EntityOrigin(ctx context.Context, entityID string) (*Entity
 	}
 	return &EntityOrigin{
 		Name:         mString(target.Row, "name"),
+		Aliases:      mStringSlice(target.Row, "aliases"),
 		SourceURL:    mString(target.Row, "source_url"),
 		Observers:    observers,
 		SceneSources: sceneSources,

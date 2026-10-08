@@ -47,6 +47,10 @@ mutation EnrichPerformer($id: ID!) {
   enrichPerformer(id: $id)
 }
 
+mutation EnsureEntityScenes($entityId: ID!) {
+  ensureEntityScenes(entityId: $entityId)
+}
+
 query Studios($search: String, $tagId: ID, $sort: String, $limit: Int, $offset: Int) {
   studios(search: $search, tagId: $tagId, sort: $sort, limit: $limit, offset: $offset) {
     id
