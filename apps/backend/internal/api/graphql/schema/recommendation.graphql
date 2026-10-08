@@ -8,7 +8,16 @@ extend type Query {
   # recommendedFeed is the same list without reasons. Non-empty sources (plugin
   # names) keep only scenes one of those plugins observed, like the scenes
   # source filter; offset and limit page through that filtered ranking.
-  recommendations(limit: Int, offset: Int, refresh: Boolean, sources: [String!]): [RecommendedScene!]!
+  # minDuration/maxDuration (seconds) keep only scenes with a known runtime
+  # inside that window.
+  recommendations(
+    limit: Int
+    offset: Int
+    refresh: Boolean
+    sources: [String!]
+    minDuration: Int
+    maxDuration: Int
+  ): [RecommendedScene!]!
 
   # Recommendations grouped into titled rows by reason ("Because you watched
   # X", "More from <performer>", "New for “<query>”", ...), strongest row

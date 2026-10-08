@@ -50,7 +50,7 @@ type IngestResult struct {
 var canonicalColumns = map[string][]string{
 	"scene": {
 		"external_id", "source_url", "title", "details", "date",
-		"duration_seconds", "rating", "poster_path", "preview_video", "preview_images",
+		"duration_seconds", "rating", "view_count", "poster_path", "preview_video", "preview_images",
 	},
 	"gallery": {
 		"external_id", "source_url", "title", "details", "date", "cover_path",
@@ -748,6 +748,7 @@ func (s *Service) IngestDiscoveredItem(ctx context.Context, pluginName string, i
 		results = []*plugins.ScrapeResult{{Type: item.MediaType, Scene: &plugins.Scene{
 			Type: item.MediaType, ExternalID: item.ExternalID, SourceURL: item.SourceURL,
 			Title: item.Title, Date: item.Date, Duration: item.DurationSeconds,
+			Rating: item.Rating, ViewCount: item.ViewCount,
 			PosterPath: item.PosterPath, PreviewImages: item.PreviewImages, PreviewVideo: item.PreviewVideo,
 			Studio: item.Studio,
 			// Deterministic sources from the listing attach a stream to the stub

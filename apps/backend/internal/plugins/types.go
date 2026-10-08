@@ -210,6 +210,8 @@ type Scene struct {
 	Date       string    `json:"date,omitempty"`    // ISO 8601 release/publish date
 	Duration   int       `json:"duration_seconds,omitempty"`
 	Rating     float64   `json:"rating,omitempty"` // 0..10
+	// ViewCount is the site's own view counter, not Veil's watch count.
+	ViewCount int `json:"view_count,omitempty"`
 	// Related entities by name/reference (resolved to records during ingest).
 	Studio     *StudioRef       `json:"studio,omitempty"`
 	Performers []ScenePerformer `json:"performers,omitempty"`
@@ -390,6 +392,9 @@ type DiscoveredItem struct {
 	PreviewVideo string `json:"preview_video,omitempty"`
 	// DurationSeconds is the item's runtime when the listing shows one (scenes).
 	DurationSeconds int `json:"duration_seconds,omitempty"`
+	// Rating (0..10) and ViewCount are the site's numbers when the listing shows them (scenes).
+	Rating    float64 `json:"rating,omitempty"`
+	ViewCount int     `json:"view_count,omitempty"`
 	// Count is the number of items behind this entry (tag/performer listings).
 	Count int `json:"count,omitempty"`
 	// Studio is the channel/uploader when the listing card names it (scenes),
