@@ -24,6 +24,10 @@ func TestSameScene(t *testing.T) {
 		{"same part number", Candidate{Title: "Cumworld Ultimate Cumshot Compilation 14", DurationSeconds: 2215}, Candidate{Title: "The Ultimate Cumshot Compilation #14", DurationSeconds: 2215}, true},
 		{"different ids", Candidate{Title: "FC2PPV 3635198 [Uncensored]", DurationSeconds: 4200}, Candidate{Title: "FC2PPV 4657517 [Uncensored]", DurationSeconds: 4200}, false},
 		{"short generic titles, same second", Candidate{Title: "Cumshot compilation", DurationSeconds: 546}, Candidate{Title: "Cumshot Compilation - Simony Diamond", DurationSeconds: 546}, false},
+		{"reworded title, different performers named", Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother Isla Summer", Named: []string{"performer:isla"}, DurationSeconds: 620}, Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother Zoe Bloom", Named: []string{"performer:zoe"}, DurationSeconds: 620}, false},
+		{"reworded title, same performer named", Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother Isla Summer", Named: []string{"performer:isla"}, DurationSeconds: 620}, Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother With Isla Summer", Named: []string{"performer:isla"}, DurationSeconds: 620}, true},
+		{"naming the same performer alone proves nothing", Candidate{Title: "Isla Summer in one scene", Named: []string{"performer:isla"}, DurationSeconds: 360}, Candidate{Title: "Something else entirely with Isla Summer", Named: []string{"performer:isla"}, DurationSeconds: 360}, false},
+		{"only one copy names anyone", Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother Isla Summer", Named: []string{"performer:isla"}, DurationSeconds: 620}, Candidate{Title: "Hot Teen Gets Fucked Hard By Her Step Brother Isla Summers", DurationSeconds: 620}, true},
 		{"partial performer overlap", Candidate{Performers: []string{"Ana Lee", "Bo Kim"}, Title: "One", DurationSeconds: 600}, Candidate{Performers: []string{"Ana Lee"}, Title: "Two", DurationSeconds: 600}, false},
 	}
 	for _, testCase := range cases {

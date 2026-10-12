@@ -27,8 +27,8 @@ const (
 // symmetric and strict, because a wrong merge hides a scene: both runtimes must
 // be known and nearly equal, and then either the credited performers or the
 // title tokens must agree. Titles that carry different numbers ("Part 14" and
-// "Part 15") are different videos. Copies with the same runtime to the second
-// need only a loose title agreement.
+// "Part 15") are different videos, and so are copies with different casts.
+// Copies with the same runtime to the second need only a loose title agreement.
 func SameScene(first, second Candidate) bool {
 	if !similarDuration(first.DurationSeconds, second.DurationSeconds) {
 		return false
@@ -40,11 +40,39 @@ func SameScene(first, second Candidate) bool {
 	if jaccard(nameSet(first.Performers), nameSet(second.Performers)) == 1 {
 		return true
 	}
+	if castsConflict(first, second) {
+		return false
+	}
 	firstSet, secondSet := tokenSet(firstTokens), tokenSet(secondTokens)
 	if jaccard(firstSet, secondSet) >= sameSceneTitleSimilarity {
 		return true
 	}
 	return sameRuntimeToTheSecond(first.DurationSeconds, second.DurationSeconds) && looseTitleMatch(firstSet, secondSet)
+}
+
+// cast is who a copy features: its credited performers, else the ones its
+// title names.
+func cast(candidate Candidate) map[string]struct{} {
+	if len(candidate.Performers) > 0 {
+		return nameSet(candidate.Performers)
+	}
+	return nameSet(candidate.Named)
+}
+
+// castsConflict reports whether both copies feature someone and no one in
+// common. Naming the same performer proves nothing (a performer has many videos
+// of one length), but featuring different ones does.
+func castsConflict(first, second Candidate) bool {
+	firstCast, secondCast := cast(first), cast(second)
+	if len(firstCast) == 0 || len(secondCast) == 0 {
+		return false
+	}
+	for member := range firstCast {
+		if _, shared := secondCast[member]; shared {
+			return false
+		}
+	}
+	return true
 }
 
 // sameRuntimeToTheSecond reports whether two runtimes differ by at most

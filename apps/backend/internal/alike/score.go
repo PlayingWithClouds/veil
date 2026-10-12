@@ -27,7 +27,10 @@ type Target struct {
 // search time only Title/PosterHash/Date are known; after a stage-2 scrape the
 // performers and duration are populated too.
 type Candidate struct {
-	Performers      []string
+	Performers []string
+	// Named are the known performers the title mentions, for a copy that
+	// credits no one; SameScene uses them only to tell two videos apart.
+	Named           []string
 	Title           string
 	DurationSeconds int
 	PosterHash      uint64
