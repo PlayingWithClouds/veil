@@ -73,9 +73,9 @@ func (s *Service) findRegisteredIdentity(ctx context.Context, table, kind, value
 	return matches[0], nil
 }
 
-// findIdentityFallback resolves an observation of a name-keyed table that matched
-// no record by its own identity: first through identities of merged records,
-// then by the spelling-insensitive name, so a performer or channel page adopts
+// findIdentityFallback resolves an observation that matched no record by its own
+// identity: first through identities of merged records, then (name-keyed tables
+// only) by the spelling-insensitive name, so a performer or channel page adopts
 // the record a scene credit created (and the other way round). "" when
 // nothing matches.
 func (s *Service) findIdentityFallback(ctx context.Context, table string, obs map[string]any) (string, error) {
@@ -88,6 +88,9 @@ func (s *Service) findIdentityFallback(ctx context.Context, table string, obs ma
 		if err != nil || record != "" {
 			return record, err
 		}
+	}
+	if !nameKeyedTables[table] {
+		return "", nil
 	}
 	name, _ := obs["name"].(string)
 	id, found, err := s.findByNameKey(ctx, table, strings.TrimSpace(name))

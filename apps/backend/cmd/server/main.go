@@ -186,12 +186,19 @@ func main() {
 	repo := media.NewRepository(database)
 
 	ingestSvc := ingest.New(database)
-	// Performers and studios made before names were compared loosely: fill their name key
+	// Performers, studios and tags made before names were compared loosely: fill their name key
 	// and merge the ones that are the same. A failure leaves the data as
 	// it was, so it only costs the cleanup.
 	if _, err := ingestSvc.RepairNamedRecords(ctx); err != nil {
-		log.Printf("repair performers and studios: %v", err)
+		log.Printf("repair performers, studios and tags: %v", err)
 	}
+	// Scenes, galleries and collections that several sites carry are merged
+	// in the background; new ones are merged as they are ingested.
+	go func() {
+		if _, err := ingestSvc.MergeDuplicateMedia(ctx); err != nil {
+			log.Printf("merge duplicate media: %v", err)
+		}
+	}()
 
 	queue := jobs.NewQueue(database, cfg.MaxJobRetries)
 
