@@ -41,3 +41,49 @@ func TestSameScene(t *testing.T) {
 		})
 	}
 }
+
+// TestSameGallery checks the strict image-set rule: equal known counts, near
+// identical titles, no conflicting casts.
+func TestSameGallery(t *testing.T) {
+	base := Candidate{Title: "Katie Morgan poolside bikini photoshoot", Performers: []string{"performer:katie"}}
+	cases := []struct {
+		name         string
+		other        Candidate
+		firstImages  int
+		secondImages int
+		want         bool
+	}{
+		{"same set", Candidate{Title: "Katie Morgan Poolside Bikini Photoshoot", Performers: []string{"performer:katie"}}, 40, 40, true},
+		{"different counts", Candidate{Title: "Katie Morgan poolside bikini photoshoot"}, 40, 42, false},
+		{"unknown count", Candidate{Title: "Katie Morgan poolside bikini photoshoot"}, 0, 0, false},
+		{"too few images", Candidate{Title: "Katie Morgan poolside bikini photoshoot"}, 4, 4, false},
+		{"different title", Candidate{Title: "Katie Morgan garden party"}, 40, 40, false},
+		{"different cast", Candidate{Title: "Katie Morgan poolside bikini photoshoot", Performers: []string{"performer:other"}}, 40, 40, false},
+		{"different number", Candidate{Title: "Katie Morgan poolside bikini photoshoot 22"}, 40, 40, false},
+	}
+	for _, testCase := range cases {
+		if got := SameGallery(base, testCase.other, testCase.firstImages, testCase.secondImages); got != testCase.want {
+			t.Errorf("%s: SameGallery = %v, want %v", testCase.name, got, testCase.want)
+		}
+	}
+}
+
+// TestSameSceneStrictLeavesLooseMatchesApart checks that the loose title rule
+// (same runtime, half the words) hides a copy but does not merge it, and that a
+// single-digit part number tells two parts apart.
+func TestSameSceneStrictLeavesLooseMatchesApart(t *testing.T) {
+	first := Candidate{Title: "Sexy Minx finds Creative ways to Fuck Stepdad on the Sly", DurationSeconds: 864}
+	second := Candidate{Title: "Sexy Minx Finds Creative Ways To Screw Stepdad On The Sly", DurationSeconds: 864}
+	if !SameScene(first, second) {
+		t.Errorf("SameScene should hide the reworded copy")
+	}
+	if SameSceneStrict(first, second) {
+		t.Errorf("SameSceneStrict should not merge the reworded copy")
+	}
+
+	partFour := Candidate{Title: "Addyson James in Summer with Step Mom (Parts 4), Scene #01", DurationSeconds: 374}
+	partFive := Candidate{Title: "Addyson James in Summer with Step Mom (Parts 5), Scene #01", DurationSeconds: 374}
+	if SameScene(partFour, partFive) {
+		t.Errorf("different parts were taken for one video")
+	}
+}

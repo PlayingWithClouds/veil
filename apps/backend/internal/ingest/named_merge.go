@@ -20,6 +20,12 @@ var fillColumns = map[string][]string{
 	},
 	"studio": {"url", "image_path", "details", "parent"},
 	"tag":    {"description", "category"},
+	"scene": {
+		"details", "date", "duration_seconds", "studio", "poster_path", "preview_video",
+		"thumbnail_path", "thumbnail_seconds", "rating",
+	},
+	"gallery":    {"details", "date", "studio", "cover_path", "image_count", "rating"},
+	"collection": {"details", "cover_path"},
 }
 
 // taggedTables are the tables with a JSON list of tag ids in "tags", and
@@ -124,15 +130,23 @@ func keepIdentity(ctx context.Context, tx *db.DB, kind string, survivor, merged 
 }
 
 // fillStatement copies each fillColumns value the survivor lacks from the
-// merged record, and keeps a performer's favorite flag set on either.
+// merged record, and keeps the flags (a performer's favorite, a scene's
+// organized mark) set on either.
 func fillStatement(table string) string {
 	assignments := make([]string, 0, len(fillColumns[table])+1)
 	for _, column := range fillColumns[table] {
 		assignments = append(assignments, fmt.Sprintf(
 			"%[1]s = coalesce(nullif(%[1]s, ''), (SELECT nullif(%[1]s, '') FROM %[2]s WHERE id = $merged))", column, table))
 	}
-	if table == "performer" {
+	switch table {
+	case "performer":
 		assignments = append(assignments, "favorite = (favorite OR coalesce((SELECT favorite FROM performer WHERE id = $merged), 0))")
+	case "scene":
+		assignments = append(assignments,
+			"organized = (organized OR coalesce((SELECT organized FROM scene WHERE id = $merged), 0))",
+			"view_count = max(view_count, coalesce((SELECT view_count FROM scene WHERE id = $merged), 0))")
+	case "gallery":
+		assignments = append(assignments, "organized = (organized OR coalesce((SELECT organized FROM gallery WHERE id = $merged), 0))")
 	}
 	return fmt.Sprintf("UPDATE %s SET %s WHERE id = $survivor", table, strings.Join(assignments, ", "))
 }

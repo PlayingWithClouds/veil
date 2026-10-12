@@ -160,6 +160,7 @@ func (s *Service) ingestScene(ctx context.Context, pluginName, sourceURL string,
 	s.linkPerformers(ctx, "scene", result.CanonicalID, scene.Performers, pluginName)
 	s.linkTags(ctx, "scene", result.CanonicalID, scene.Tags, pluginName)
 	s.syncStreamsLogged(ctx, result.CanonicalID, pluginName, scene.Downloads)
+	s.mergeNewIntoTwin(ctx, "scene", result)
 	s.syncSceneMarkersLogged(ctx, result.CanonicalID, pluginName, scene.Markers)
 	if len(scene.Related) > 0 {
 		if _, err := s.LinkRelated(ctx, result.CanonicalID, pluginName, RelatedSourceSite, scene.Related); err != nil {
@@ -186,6 +187,7 @@ func (s *Service) ingestGallery(ctx context.Context, pluginName, sourceURL strin
 	s.linkPerformers(ctx, "gallery", result.CanonicalID, gallery.Performers, pluginName)
 	s.linkTags(ctx, "gallery", result.CanonicalID, gallery.Tags, pluginName)
 	s.syncGalleryImagesLogged(ctx, result.CanonicalID, pluginName, gallery.Images)
+	s.mergeNewIntoTwin(ctx, "gallery", result)
 	return result, nil
 }
 
@@ -340,7 +342,7 @@ func (s *Service) findByIdentity(ctx context.Context, table, field, value string
 			return matches[0], nil
 		}
 	}
-	if nameKeyedTables[table] {
+	if nameKeyedTables[table] || mergeableMediaTables[table] {
 		return s.findIdentityFallback(ctx, table, obs)
 	}
 	return "", nil

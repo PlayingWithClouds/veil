@@ -10,6 +10,10 @@ const (
 	// performer match when a copy credits no one.
 	sameSceneTitleSimilarity = 0.9
 
+	// sameSceneTitleMinimumTokens is the fewest title words that can stand in for a
+	// performer match: a one-word title ("Anal") fits countless videos.
+	sameSceneTitleMinimumTokens = 2
+
 	// sameSceneRuntimeSlackSeconds is how far apart two runtimes may be to count
 	// as the same to the second, which lets a looser title agree.
 	sameSceneRuntimeSlackSeconds = 2
@@ -30,6 +34,19 @@ const (
 // "Part 15") are different videos, and so are copies with different casts.
 // Copies with the same runtime to the second need only a loose title agreement.
 func SameScene(first, second Candidate) bool {
+	return sameScene(first, second, true)
+}
+
+// SameSceneStrict is SameScene without the loose title rule for copies with the
+// same runtime: for merging records for good, where a wrong match loses a scene
+// instead of hiding one. The copies it leaves apart stay hidden from feeds.
+func SameSceneStrict(first, second Candidate) bool {
+	return sameScene(first, second, false)
+}
+
+// sameScene is the matcher behind SameScene and SameSceneStrict; allowLoose
+// enables the loose title rule.
+func sameScene(first, second Candidate, allowLoose bool) bool {
 	if !similarDuration(first.DurationSeconds, second.DurationSeconds) {
 		return false
 	}
@@ -44,10 +61,11 @@ func SameScene(first, second Candidate) bool {
 		return false
 	}
 	firstSet, secondSet := tokenSet(firstTokens), tokenSet(secondTokens)
-	if jaccard(firstSet, secondSet) >= sameSceneTitleSimilarity {
+	if len(firstSet) >= sameSceneTitleMinimumTokens && len(secondSet) >= sameSceneTitleMinimumTokens &&
+		jaccard(firstSet, secondSet) >= sameSceneTitleSimilarity {
 		return true
 	}
-	return sameRuntimeToTheSecond(first.DurationSeconds, second.DurationSeconds) && looseTitleMatch(firstSet, secondSet)
+	return allowLoose && sameRuntimeToTheSecond(first.DurationSeconds, second.DurationSeconds) && looseTitleMatch(firstSet, secondSet)
 }
 
 // cast is who a copy features: its credited performers, else the ones its
@@ -112,19 +130,23 @@ func containsAll(set, subset map[string]struct{}) bool {
 	return true
 }
 
-// conflictingNumbers reports whether both titles carry numbers and share none:
-// episode, part and ID numbers tell videos of one series or uploader apart.
+// conflictingNumbers reports whether each title carries a number the other lacks
+// ("Parts 4" and "Parts 5", even when both say "Scene 01"): episode, part and ID
+// numbers tell videos of one series or uploader apart. A title that merely has
+// an extra number (a year, a resolution) does not conflict.
 func conflictingNumbers(first, second []string) bool {
 	firstNumbers, secondNumbers := numberSet(first), numberSet(second)
-	if len(firstNumbers) == 0 || len(secondNumbers) == 0 {
-		return false
-	}
-	for number := range firstNumbers {
-		if _, shared := secondNumbers[number]; shared {
-			return false
+	return hasMemberOutside(firstNumbers, secondNumbers) && hasMemberOutside(secondNumbers, firstNumbers)
+}
+
+// hasMemberOutside reports whether set has a member that other lacks.
+func hasMemberOutside(set, other map[string]struct{}) bool {
+	for member := range set {
+		if _, found := other[member]; !found {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // numberSet collects the all-digit tokens.
@@ -149,4 +171,32 @@ func similarDuration(firstSeconds, secondSeconds int) bool {
 		shorter, longer = longer, shorter
 	}
 	return float64(shorter)/float64(longer) >= sameSceneDurationRatio
+}
+
+const (
+	// sameGalleryMinimumImages is the smallest image count that identifies a
+	// set: a handful of images is common to many unrelated galleries.
+	sameGalleryMinimumImages = 5
+
+	// sameGalleryMinimumTokens is the fewest title words a gallery needs before
+	// its title can identify it.
+	sameGalleryMinimumTokens = 3
+)
+
+// SameGallery reports whether two stored galleries are the same image set on
+// different sites. Image counts must be known and equal, the titles must agree
+// almost word for word (numbers included) and the casts must not conflict:
+// sites reword little when they repost a set, and a wrong merge loses a set.
+func SameGallery(first, second Candidate, firstImages, secondImages int) bool {
+	if firstImages < sameGalleryMinimumImages || firstImages != secondImages {
+		return false
+	}
+	firstTokens, secondTokens := titleTokens(first.Title), titleTokens(second.Title)
+	if len(firstTokens) < sameGalleryMinimumTokens || len(secondTokens) < sameGalleryMinimumTokens {
+		return false
+	}
+	if conflictingNumbers(firstTokens, secondTokens) || castsConflict(first, second) {
+		return false
+	}
+	return jaccard(tokenSet(firstTokens), tokenSet(secondTokens)) >= sameSceneTitleSimilarity
 }

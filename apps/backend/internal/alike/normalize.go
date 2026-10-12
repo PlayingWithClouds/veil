@@ -77,11 +77,11 @@ func stripNoiseGroups(title string) string {
 }
 
 // titleTokens returns the meaningful tokens of a title: noise groups, junk and
-// site names removed, single-character tokens dropped.
+// site names removed, single letters dropped (single digits stay: they tell parts apart).
 func titleTokens(title string) []string {
 	tokens := make([]string, 0)
 	for _, token := range tokenize(stripNoiseGroups(title)) {
-		if len(token) < 2 {
+		if len(token) < 2 && !isNumber(token) {
 			continue
 		}
 		if _, junk := junkTokens[token]; junk {
