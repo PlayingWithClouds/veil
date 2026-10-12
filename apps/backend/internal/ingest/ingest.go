@@ -204,7 +204,27 @@ func (s *Service) ingestPerformer(ctx context.Context, pluginName string, perfor
 		return nil, err
 	}
 	s.linkTags(ctx, "performer", result.CanonicalID, performer.Tags, pluginName)
+	s.mergeAliasedPerformers(ctx, result, performer.Aliases)
 	return result, nil
+}
+
+// mergeAliasedPerformers records the stage names a site gives a performer and
+// merges the records of other performers that carry one of them, pointing the
+// result at the record that holds them all.
+func (s *Service) mergeAliasedPerformers(ctx context.Context, result *IngestResult, aliases []string) {
+	if err := s.absorbAliases(ctx, result.CanonicalID, aliases); err != nil {
+		log.Printf("ingest: aliases of %s: %v", result.CanonicalID, err)
+		return
+	}
+	survivorID, err := s.mergeAliasTwins(ctx, result.CanonicalID)
+	if err != nil {
+		log.Printf("ingest: merge aliased %s: %v", result.CanonicalID, err)
+		return
+	}
+	if survivorID != result.CanonicalID {
+		result.CanonicalID = survivorID
+		result.IsNew = false
+	}
 }
 
 // ingestStudio upserts a studio by source_url when present, else by name. Tags

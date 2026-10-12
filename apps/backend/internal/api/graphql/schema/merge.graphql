@@ -1,0 +1,9 @@
+# Manual merge of two records that are the same thing.
+
+extend type Mutation {
+  # Folds mergedId into survivorId and returns survivorId. Both must be the
+  # same kind of record (performer, studio, tag, scene, gallery or collection).
+  # Their credits, memberships, history and site addresses move to the survivor;
+  # the merged record is deleted. It cannot be undone.
+  mergeRecords(survivorId: ID!, mergedId: ID!): ID!
+}

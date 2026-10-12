@@ -160,7 +160,7 @@ func mergedAliases(table string, survivor, merged db.Row) []string {
 	if nameKey(table, mergedName) != nameKey(table, survivorName) {
 		aliases = unionStrings(aliases, []string{mergedName})
 	}
-	return aliases
+	return withoutName(aliases, survivorName)
 }
 
 // unionStrings appends the values of extra missing from base, comparing names
@@ -288,7 +288,22 @@ func (s *Service) RepairNamedRecords(ctx context.Context) (int, error) {
 			return total, err
 		}
 	}
-	return total, nil
+	return total, s.repairAliasTwins(ctx)
+}
+
+// repairAliasTwins merges performers that carry another performer's name as an
+// alias (see mergeAliasTwins).
+func (s *Service) repairAliasTwins(ctx context.Context) error {
+	performerIDs, err := s.database.Strings(ctx, `SELECT id FROM performer WHERE json_array_length(aliases) > 0`, nil)
+	if err != nil {
+		return fmt.Errorf("find performers with aliases: %w", err)
+	}
+	for _, performerID := range performerIDs {
+		if _, err := s.mergeAliasTwins(ctx, performerID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // repairTable backfills one table's name keys and merges its duplicates.

@@ -88,6 +88,7 @@ type Mutation {
   clearJobs: Int!
   reorderDownloads(jobIds: [ID!]!): Boolean!
   retryJob(id: ID!): Boolean!
+  mergeRecords(survivorId: ID!, mergedId: ID!): ID!
   incrementOCount(mediaId: ID!): Int!
   decrementOCount(mediaId: ID!): Int!
   updateObservationStatus(id: ID!, status: ObservationStatus!): Observation!

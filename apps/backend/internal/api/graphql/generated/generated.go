@@ -218,6 +218,7 @@ type ComplexityRoot struct {
 		IncrementOCount            func(childComplexity int, mediaID string) int
 		InstallPlugin              func(childComplexity int, packageName string) int
 		MarkSearchSubscriptionSeen func(childComplexity int, id string) int
+		MergeRecords               func(childComplexity int, survivorID string, mergedID string) int
 		QueueDownload              func(childComplexity int, url string, title string, pluginName *string) int
 		RecordImpressions          func(childComplexity int, impressions []*model.ImpressionInput) int
 		RecordRecommendationChoice func(childComplexity int, chosenMediaID string, rejectedMediaID string) int
@@ -721,6 +722,7 @@ type MutationResolver interface {
 	ClearJobs(ctx context.Context) (int, error)
 	ReorderDownloads(ctx context.Context, jobIds []string) (bool, error)
 	RetryJob(ctx context.Context, id string) (bool, error)
+	MergeRecords(ctx context.Context, survivorID string, mergedID string) (string, error)
 	IncrementOCount(ctx context.Context, mediaID string) (int, error)
 	DecrementOCount(ctx context.Context, mediaID string) (int, error)
 	UpdateObservationStatus(ctx context.Context, id string, status model.ObservationStatus) (*model.Observation, error)
@@ -1858,6 +1860,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.MarkSearchSubscriptionSeen(childComplexity, args["id"].(string)), true
+	case "Mutation.mergeRecords":
+		if e.ComplexityRoot.Mutation.MergeRecords == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_mergeRecords_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.MergeRecords(childComplexity, args["survivorId"].(string), args["mergedId"].(string)), true
 	case "Mutation.queueDownload":
 		if e.ComplexityRoot.Mutation.QueueDownload == nil {
 			break
@@ -4926,6 +4939,16 @@ type MediaCard {
   backdropPath: String
 }
 `, BuiltIn: false},
+	{Name: "../schema/merge.graphql", Input: `# Manual merge of two records that are the same thing.
+
+extend type Mutation {
+  # Folds mergedId into survivorId and returns survivorId. Both must be the
+  # same kind of record (performer, studio, tag, scene, gallery or collection).
+  # Their credits, memberships, history and site addresses move to the survivor;
+  # the merged record is deleted. It cannot be undone.
+  mergeRecords(survivorId: ID!, mergedId: ID!): ID!
+}
+`, BuiltIn: false},
 	{Name: "../schema/o_count.graphql", Input: `# O-counter. Count is history-backed (one event per "o"); increment
 # adds an event, decrement removes the most recent. Each mutation returns the new
 # total.
@@ -7491,6 +7514,28 @@ func (ec *executionContext) field_Mutation_markSearchSubscriptionSeen_args(ctx c
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_mergeRecords_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "survivorId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["survivorId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "mergedId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mergedId"] = arg1
 	return args, nil
 }
 
@@ -13042,6 +13087,50 @@ func (ec *executionContext) fieldContext_Mutation_retryJob(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_retryJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_mergeRecords(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_mergeRecords(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().MergeRecords(ctx, fc.Args["survivorId"].(string), fc.Args["mergedId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_mergeRecords(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_mergeRecords_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -26746,6 +26835,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "retryJob":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_retryJob(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mergeRecords":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_mergeRecords(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

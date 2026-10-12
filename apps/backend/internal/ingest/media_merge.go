@@ -177,3 +177,17 @@ func galleryImageStatements() []string {
 		`UPDATE image SET media = $survivor WHERE media = $merged`,
 	}
 }
+
+// MergeByID folds the record mergedID into survivorID, both of the same kind
+// (performer, studio, tag, scene, gallery or collection), for a merge the user
+// asked for.
+func (s *Service) MergeByID(ctx context.Context, survivorID, mergedID string) error {
+	table := TableFromID(survivorID)
+	if table != TableFromID(mergedID) {
+		return fmt.Errorf("merge: %s and %s are different kinds of record", survivorID, mergedID)
+	}
+	if nameKeyedTables[table] {
+		return s.MergeRecords(ctx, table, survivorID, mergedID)
+	}
+	return s.MergeMedia(ctx, table, survivorID, mergedID)
+}

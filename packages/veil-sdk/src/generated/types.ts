@@ -893,6 +893,19 @@ export default {
                     ]
                 }
             ],
+            "mergeRecords": [
+                2,
+                {
+                    "survivorId": [
+                        2,
+                        "ID!"
+                    ],
+                    "mergedId": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
             "incrementOCount": [
                 3,
                 {

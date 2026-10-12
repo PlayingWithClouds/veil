@@ -10,6 +10,7 @@
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import NotificationManager from '$lib/components/NotificationManager.svelte';
 	import CollectionDialog from '$lib/components/CollectionDialog.svelte';
+	import MergeDialog from '$lib/components/MergeDialog.svelte';
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { loadWatchProgress } from '$lib/stores/watchProgress';
@@ -116,6 +117,7 @@
 	<TopBar />
 	<NotificationManager />
 	<CollectionDialog />
+	<MergeDialog />
 	<MiniPlayer />
 	<div class="flex min-h-0 flex-1">
 		{#if !$isCompact}
