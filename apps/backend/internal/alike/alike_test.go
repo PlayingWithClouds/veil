@@ -53,7 +53,8 @@ func TestNormalizeName(t *testing.T) {
 	if got := normalizeName("Riley  Reid!"); got != "riley reid" {
 		t.Fatalf("normalizeName = %q", got)
 	}
-	if got := normalizeName("O'Neil"); got != "o neil" {
+	// Apostrophes join the letters around them, as in names.Key.
+	if got := normalizeName("O'Neil"); got != "oneil" {
 		t.Fatalf("normalizeName = %q", got)
 	}
 }
