@@ -33,6 +33,8 @@ type Orchestrator struct {
 	// Scene ids with a detail fetch / related fill in progress (VisitScene).
 	detailInflight  sync.Map
 	relatedInflight sync.Map
+	// When a visited scene without streams was last fetched again (VisitScene).
+	detailRetried sync.Map
 }
 
 func New(
