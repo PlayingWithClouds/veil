@@ -22,7 +22,11 @@ export type Capability =
   // Declares that sceneList honours args.url: it lists the scenes on one of
   // the site's own pages (a channel, performer or category page), which is how
   // subscriptions follow a studio/performer/tag.
-  | "scene:list:page";
+  | "scene:list:page"
+  // The site's own search-box completions for a partly typed query
+  // (args.query), best first, so the search field can offer things the library
+  // doesn't hold yet.
+  | "search:suggest";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
 // standalone images, the performers/studios/tags that describe them, and
@@ -337,6 +341,25 @@ export interface ListArgs {
 /** Result of every list capability. */
 export interface ItemsResult {
   items: DiscoveredItem[];
+}
+
+/** Arguments of the search:suggest capability. */
+export interface SuggestArgs {
+  /** What the user has typed so far. */
+  query: string;
+  limit?: number;
+}
+
+/** One completion a site's search box offers. */
+export interface SiteSuggestion {
+  text: string;
+  /** "query" when absent. */
+  kind?: "query" | "performer" | "tag" | "studio";
+}
+
+/** Result of the search:suggest capability, best first. */
+export interface SuggestResult {
+  suggestions: SiteSuggestion[];
 }
 
 export interface EnrichArgs {

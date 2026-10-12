@@ -9,46 +9,28 @@
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import { searchQuery } from '$lib/stores/searchQuery';
 	import {
-		fetchSearchSuggestions,
 		forgetSearch,
 		openSuggestion,
 		submitSearch,
 		type SearchSuggestion
 	} from '$lib/searchSuggestions';
+	import { createSuggestionFeed } from '$lib/suggestionFeed.svelte';
 	import SearchSuggestionIcon from './SearchSuggestionIcon.svelte';
 
 	/** Element id the Ctrl+K shortcut focuses. */
 	const SEARCH_INPUT_ID = 'global-search';
-	// Wait this long after the last keystroke before asking the backend.
-	const SUGGEST_DEBOUNCE_MS = 120;
 
 	let input = $state<HTMLInputElement | null>(null);
 	// What is typed. It follows the shared searchQuery when a search is set from
 	// elsewhere (Home restoring ?q=), but typing never writes back to it.
 	let draft = $derived($searchQuery);
 	let focused = $state(false);
-	let suggestions = $state<SearchSuggestion[]>([]);
 	// Suggestion highlighted with the arrow keys; -1 is the typed text itself.
 	let activeIndex = $state(-1);
-	// Answers can arrive out of order; only the newest request may land.
-	let requestToken = 0;
 
+	const feed = createSuggestionFeed({ query: () => draft, active: () => focused });
+	let suggestions = $derived(feed.items);
 	let open = $derived(focused && suggestions.length > 0);
-
-	$effect(() => {
-		if (!focused) return;
-		const query = draft.trim();
-		const token = ++requestToken;
-		const timer = setTimeout(async () => {
-			try {
-				const next = await fetchSearchSuggestions(query);
-				if (token === requestToken) suggestions = next;
-			} catch {
-				if (token === requestToken) suggestions = [];
-			}
-		}, SUGGEST_DEBOUNCE_MS);
-		return () => clearTimeout(timer);
-	});
 
 	/** Runs the typed text as a search and closes the suggestions. */
 	function submit() {
@@ -71,7 +53,7 @@
 
 	/** Drops a recent search from the list and the backend. */
 	async function forget(suggestion: SearchSuggestion) {
-		suggestions = suggestions.filter((entry) => entry !== suggestion);
+		feed.remove(suggestion);
 		await forgetSearch(suggestion.text).catch(() => {});
 	}
 

@@ -411,6 +411,7 @@ type ComplexityRoot struct {
 		SearchSuggestions     func(childComplexity int, query string, limit *int) int
 		SettingEntries        func(childComplexity int, scope *string) int
 		Settings              func(childComplexity int) int
+		SourceSuggestions     func(childComplexity int, query string, limit *int) int
 		Stream                func(childComplexity int, url string, pluginName *string) int
 		Studio                func(childComplexity int, id string) int
 		Studios               func(childComplexity int, limit *int, offset *int, search *string, tagID *string, sort *string) int
@@ -562,6 +563,12 @@ type ComplexityRoot struct {
 		MaxConcurrentJobs            func(childComplexity int) int
 		MaxJobRetries                func(childComplexity int) int
 		RequireVpn                   func(childComplexity int) int
+	}
+
+	SourceSuggestion struct {
+		Kind    func(childComplexity int) int
+		Sources func(childComplexity int) int
+		Text    func(childComplexity int) int
 	}
 
 	Stream struct {
@@ -801,6 +808,7 @@ type QueryResolver interface {
 	RecommendedBrowse(ctx context.Context, limit *int) ([]*model.PluginSearchResult, error)
 	FindAlikeSources(ctx context.Context, sceneID string, limit *int) ([]*model.AlikeCandidate, error)
 	SearchSuggestions(ctx context.Context, query string, limit *int) ([]*model.SearchSuggestion, error)
+	SourceSuggestions(ctx context.Context, query string, limit *int) ([]*model.SourceSuggestion, error)
 	Settings(ctx context.Context) (*model.Settings, error)
 	SettingEntries(ctx context.Context, scope *string) ([]*model.SettingEntry, error)
 	MediaStreams(ctx context.Context, mediaID string) ([]*model.Stream, error)
@@ -3184,6 +3192,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Settings(childComplexity), true
+	case "Query.sourceSuggestions":
+		if e.ComplexityRoot.Query.SourceSuggestions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_sourceSuggestions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SourceSuggestions(childComplexity, args["query"].(string), args["limit"].(*int)), true
 	case "Query.stream":
 		if e.ComplexityRoot.Query.Stream == nil {
 			break
@@ -3922,6 +3941,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Settings.RequireVpn(childComplexity), true
+
+	case "SourceSuggestion.kind":
+		if e.ComplexityRoot.SourceSuggestion.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SourceSuggestion.Kind(childComplexity), true
+	case "SourceSuggestion.sources":
+		if e.ComplexityRoot.SourceSuggestion.Sources == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SourceSuggestion.Sources(childComplexity), true
+	case "SourceSuggestion.text":
+		if e.ComplexityRoot.SourceSuggestion.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SourceSuggestion.Text(childComplexity), true
 
 	case "Stream.createdAt":
 		if e.ComplexityRoot.Stream.CreatedAt == nil {
@@ -5479,9 +5517,20 @@ type SearchSuggestion {
   detail: String
 }
 
+"A completion offered by the search boxes of the plugins' sites, for things the library doesn't hold yet."
+type SourceSuggestion {
+  "QUERY, PERFORMER, TAG or STUDIO; never RECENT."
+  kind: SearchSuggestionKind!
+  text: String!
+  "Names of the plugins whose site offered it."
+  sources: [String!]!
+}
+
 extend type Query {
   "Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks."
   searchSuggestions(query: String!, limit: Int = 12): [SearchSuggestion!]!
+  "Completions from the active plugins' own search boxes, fetched live (and briefly cached), so slower than searchSuggestions."
+  sourceSuggestions(query: String!, limit: Int = 8): [SourceSuggestion!]!
 }
 
 extend type Mutation {
@@ -6631,6 +6680,18 @@ func (ec *executionContext) childFields_Settings(ctx context.Context, field grap
 		return ec.fieldContext_Settings_kindLimits(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Settings", field.Name)
+}
+
+func (ec *executionContext) childFields_SourceSuggestion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "kind":
+		return ec.fieldContext_SourceSuggestion_kind(ctx, field)
+	case "text":
+		return ec.fieldContext_SourceSuggestion_text(ctx, field)
+	case "sources":
+		return ec.fieldContext_SourceSuggestion_sources(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SourceSuggestion", field.Name)
 }
 
 func (ec *executionContext) childFields_Stream(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -9050,6 +9111,28 @@ func (ec *executionContext) field_Query_settingEntries_args(ctx context.Context,
 		return nil, err
 	}
 	args["scope"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_sourceSuggestions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -18582,6 +18665,50 @@ func (ec *executionContext) fieldContext_Query_searchSuggestions(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sourceSuggestions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_sourceSuggestions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SourceSuggestions(ctx, fc.Args["query"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.SourceSuggestion) graphql.Marshaler {
+			return ec.marshalNSourceSuggestion2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSourceSuggestionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_sourceSuggestions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SourceSuggestion(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_sourceSuggestions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_settings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21668,6 +21795,75 @@ func (ec *executionContext) fieldContext_Settings_kindLimits(_ context.Context, 
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _SourceSuggestion_kind(ctx context.Context, field graphql.CollectedField, obj *model.SourceSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SourceSuggestion_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.SearchSuggestionKind) graphql.Marshaler {
+			return ec.marshalNSearchSuggestionKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSearchSuggestionKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SourceSuggestion_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SourceSuggestion", field, false, false, errors.New("field of type SearchSuggestionKind does not have child fields"))
+}
+
+func (ec *executionContext) _SourceSuggestion_text(ctx context.Context, field graphql.CollectedField, obj *model.SourceSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SourceSuggestion_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SourceSuggestion_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SourceSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SourceSuggestion_sources(ctx context.Context, field graphql.CollectedField, obj *model.SourceSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SourceSuggestion_sources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sources, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SourceSuggestion_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SourceSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Stream_id(ctx context.Context, field graphql.CollectedField, obj *model.Stream) (ret graphql.Marshaler) {
@@ -28426,6 +28622,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sourceSuggestions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sourceSuggestions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "settings":
 			field := field
 
@@ -29726,6 +29944,55 @@ func (ec *executionContext) _Settings(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "kindLimits":
 			out.Values[i] = ec._Settings_kindLimits(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sourceSuggestionImplementors = []string{"SourceSuggestion"}
+
+func (ec *executionContext) _SourceSuggestion(ctx context.Context, sel ast.SelectionSet, obj *model.SourceSuggestion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sourceSuggestionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SourceSuggestion")
+		case "kind":
+			out.Values[i] = ec._SourceSuggestion_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "text":
+			out.Values[i] = ec._SourceSuggestion_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sources":
+			out.Values[i] = ec._SourceSuggestion_sources(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31979,6 +32246,32 @@ func (ec *executionContext) marshalNSettings2ᚖgithubᚗcomᚋplayingwithclouds
 		return graphql.Null
 	}
 	return ec._Settings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSourceSuggestion2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSourceSuggestionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SourceSuggestion) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSourceSuggestion2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSourceSuggestion(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSourceSuggestion2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSourceSuggestion(ctx context.Context, sel ast.SelectionSet, v *model.SourceSuggestion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SourceSuggestion(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStream2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐStream(ctx context.Context, sel ast.SelectionSet, v model.Stream) graphql.Marshaler {

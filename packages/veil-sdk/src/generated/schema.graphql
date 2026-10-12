@@ -46,6 +46,11 @@ type Query {
   Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks.
   """
   searchSuggestions(query: String!, limit: Int = 12): [SearchSuggestion!]!
+
+  """
+  Completions from the active plugins' own search boxes, fetched live (and briefly cached), so slower than searchSuggestions.
+  """
+  sourceSuggestions(query: String!, limit: Int = 8): [SourceSuggestion!]!
   settings: Settings!
   settingEntries(scope: String): [SettingEntry!]!
   mediaStreams(mediaId: ID!): [Stream!]!
@@ -587,6 +592,18 @@ type SearchSuggestion {
 
   """Short grey detail line, e.g. '128 videos' or 'Performer'."""
   detail: String
+}
+
+"""
+A completion offered by the search boxes of the plugins' sites, for things the library doesn't hold yet.
+"""
+type SourceSuggestion {
+  """QUERY, PERFORMER, TAG or STUDIO; never RECENT."""
+  kind: SearchSuggestionKind!
+  text: String!
+
+  """Names of the plugins whose site offered it."""
+  sources: [String!]!
 }
 
 type Settings {

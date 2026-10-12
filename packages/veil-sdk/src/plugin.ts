@@ -7,6 +7,8 @@ import type {
   EnrichArgs,
   EnrichResult,
   ResolveResult,
+  SuggestArgs,
+  SuggestResult,
 } from "./types.ts";
 
 /** Handler for an "<entity>:list" capability. */
@@ -30,6 +32,8 @@ export interface PluginHandlers {
   enrich?: (args: EnrichArgs) => Promise<EnrichResult>;
   /** Serves the "stream:resolve" capability. */
   resolve?: (url: string) => Promise<ResolveResult>;
+  /** Serves the "search:suggest" capability: the site's own search-box completions. */
+  suggest?: (args: SuggestArgs) => Promise<SuggestResult>;
 }
 
 interface Invocation {
@@ -119,6 +123,15 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       const url = input.args?.url;
       if (!url) fail("args.url required for stream:resolve");
       respond<ResolveResult>(await handlers.resolve(String(url)));
+    }
+
+    if (input.capability === "search:suggest") {
+      if (!handlers.suggest) fail("search:suggest not implemented");
+      const query = input.args?.query;
+      if (typeof query !== "string" || query === "") fail("args.query required for search:suggest");
+      let limit: number | undefined;
+      if (typeof input.args?.limit === "number") limit = input.args.limit;
+      respond<SuggestResult>(await handlers.suggest({ query, limit }));
     }
 
     fail(`unsupported capability: ${input.capability}`);
