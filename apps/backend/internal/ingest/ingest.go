@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/db"
+	"github.com/playingwithclouds/veil/internal/names"
 	"github.com/playingwithclouds/veil/internal/plugins"
 )
 
@@ -329,17 +330,19 @@ func (s *Service) findByIdentity(ctx context.Context, table, field, value string
 		}
 	}
 	externalID, _ := obs["external_id"].(string)
-	if externalID == "" || field == "external_id" || !tablesWithExternalID[table] {
-		return "", nil
+	if externalID != "" && field != "external_id" && tablesWithExternalID[table] {
+		matches, err := s.database.Strings(ctx,
+			fmt.Sprintf("SELECT id FROM %s WHERE external_id = $externalID LIMIT 1", table),
+			db.Vars{"externalID": externalID})
+		if err != nil {
+			return "", fmt.Errorf("lookup %s by external_id: %w", table, err)
+		}
+		if len(matches) > 0 {
+			return matches[0], nil
+		}
 	}
-	matches, err := s.database.Strings(ctx,
-		fmt.Sprintf("SELECT id FROM %s WHERE external_id = $externalID LIMIT 1", table),
-		db.Vars{"externalID": externalID})
-	if err != nil {
-		return "", fmt.Errorf("lookup %s by external_id: %w", table, err)
-	}
-	if len(matches) > 0 {
-		return matches[0], nil
+	if table == "performer" {
+		return s.findPerformerFallback(ctx, obs)
 	}
 	return "", nil
 }
@@ -356,6 +359,11 @@ func (s *Service) resolveByIdentity(ctx context.Context, table, field, value str
 		if mergeErr != nil {
 			return "", false, nil, fmt.Errorf("apply merge: %w", mergeErr)
 		}
+		if table == "performer" {
+			if identityErr := s.registerAlternateIdentities(ctx, existingID, obs); identityErr != nil {
+				return "", false, nil, identityErr
+			}
+		}
 		return existingID, false, changed, nil
 	}
 
@@ -369,7 +377,11 @@ func (s *Service) resolveByIdentity(ctx context.Context, table, field, value str
 // createCanonical inserts a new canonical record from an observation, keeping
 // only the whitelisted scalar columns for the table.
 func (s *Service) createCanonical(ctx context.Context, table string, obs map[string]any) (string, error) {
-	created, err := s.database.Insert(ctx, table, pickColumns(table, obs))
+	columns := pickColumns(table, obs)
+	if name, ok := columns["name"].(string); ok && table == "performer" {
+		columns["name_key"] = names.Key(name)
+	}
+	created, err := s.database.Insert(ctx, table, columns)
 	if err != nil {
 		return "", fmt.Errorf("create %s: %w", table, err)
 	}
@@ -676,7 +688,7 @@ func (s *Service) findOrCreateNamed(ctx context.Context, table, name string) (db
 		return id, nil
 	}
 
-	created, createErr := s.database.Insert(ctx, table, map[string]any{"name": name})
+	created, createErr := s.database.Insert(ctx, table, namedRecordFields(table, name))
 	if createErr == nil {
 		return created, nil
 	}
@@ -687,6 +699,9 @@ func (s *Service) findOrCreateNamed(ctx context.Context, table, name string) (db
 }
 
 func (s *Service) findNamed(ctx context.Context, table, name string) (db.RecordID, bool, error) {
+	if table == "performer" {
+		return s.findPerformerByName(ctx, name)
+	}
 	// Tags merge synonyms on ingest: a name matching an existing tag's alias
 	// resolves to that canonical tag instead of creating a duplicate. Sites
 	// disagree on casing ("Anal" / "anal"), so tags also match case-insensitively,
