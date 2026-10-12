@@ -115,7 +115,7 @@
 				id="search-suggestions"
 				role="listbox"
 				onmousedown={(event) => event.preventDefault()}
-				class="border-base-300 bg-base-200 z-overlay absolute top-full right-0 left-0 mt-2 flex max-h-96 flex-col overflow-y-auto rounded-2xl border py-1 shadow-xl"
+				class="border-base-300 bg-base-200 z-overlay absolute top-full right-0 left-0 mt-2 flex max-h-[28rem] flex-col overflow-y-auto rounded-2xl border py-1 shadow-xl"
 			>
 				{#each suggestions as suggestion, index (suggestion.kind + suggestion.text)}
 					<li

@@ -127,7 +127,9 @@ func (s *Service) store(key string, suggestions []plugins.SiteSuggestion) {
 
 // merge joins the sites' answers into one list: a completion several sites
 // offer counts once and ranks above single-site ones, then by how early the
-// sites list it. The typed text itself is not a suggestion.
+// sites list it. When sites disagree on what a completion is, the more specific
+// kind (performer, tag, studio) wins over a plain query. The typed text itself
+// is not a suggestion.
 func merge(sites []*plugins.Plugin, answers [][]plugins.SiteSuggestion, typed string, limit int) []Suggestion {
 	type entry struct {
 		suggestion Suggestion
@@ -148,6 +150,9 @@ func merge(sites []*plugins.Plugin, answers [][]plugins.SiteSuggestion, typed st
 				order = append(order, key)
 			}
 			existing.suggestion.Sources = append(existing.suggestion.Sources, sites[index].Meta.Name)
+			if existing.suggestion.Kind == "query" {
+				existing.suggestion.Kind = kindOf(offered)
+			}
 			if rank < existing.bestRank {
 				existing.bestRank = rank
 			}

@@ -67,14 +67,21 @@ function textKey(text: string): string {
 	return text.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** The library's suggestions first, then the sites' completions the library's don't already cover. */
+// How many of the library's suggestions lead the list before the sites' completions
+// join it, so a long library list never pushes the sites' out of view.
+const LIBRARY_LEAD = 5;
+
+/**
+ * The library's best suggestions first, then the sites' completions the library's
+ * don't already cover, then the rest of the library's.
+ */
 export function withSourceSuggestions(
 	local: SearchSuggestion[],
 	fromSources: SearchSuggestion[]
 ): SearchSuggestion[] {
 	const known = new Set(local.map((suggestion) => textKey(suggestion.text)));
 	const extra = fromSources.filter((suggestion) => !known.has(textKey(suggestion.text)));
-	return [...local, ...extra];
+	return [...local.slice(0, LIBRARY_LEAD), ...extra, ...local.slice(LIBRARY_LEAD)];
 }
 
 /** Remembers a submitted search for the recent list. Failures are ignored. */
