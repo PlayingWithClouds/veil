@@ -59,7 +59,7 @@ func TestRepairPerformersMergesSpellingDuplicates(t *testing.T) {
 		t.Fatalf("insert blocklist: %v", err)
 	}
 
-	merged, err := service.RepairPerformers(ctx)
+	merged, err := service.RepairNamedRecords(ctx)
 	if err != nil {
 		t.Fatalf("repair: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestRepairPerformersMergesSpellingDuplicates(t *testing.T) {
 		t.Fatalf("merged site's page resolved to %s (new=%v), want %s", page.CanonicalID, page.IsNew, survivorID)
 	}
 
-	again, err := service.RepairPerformers(ctx)
+	again, err := service.RepairNamedRecords(ctx)
 	if err != nil || again != 0 {
 		t.Fatalf("second repair merged %d (err %v), want 0", again, err)
 	}
@@ -117,5 +117,96 @@ func assertSceneCredits(t *testing.T, ctx context.Context, service *Service, sce
 		if got[index] != want[index] {
 			t.Fatalf("scene %s performers = %v, want %v", sceneID, got, want)
 		}
+	}
+}
+
+// insertLegacyStudio inserts a studio the way old ingest did: no name_key.
+func insertLegacyStudio(t *testing.T, ctx context.Context, database *db.DB, fields map[string]any) string {
+	t.Helper()
+	id, err := database.Insert(ctx, "studio", fields)
+	if err != nil {
+		t.Fatalf("insert studio: %v", err)
+	}
+	return id.String()
+}
+
+// insertSceneOfStudio inserts a scene of the studio.
+func insertSceneOfStudio(t *testing.T, ctx context.Context, database *db.DB, sourceURL, studioID string) string {
+	t.Helper()
+	id, err := database.Insert(ctx, "scene", map[string]any{"source_url": sourceURL, "title": sourceURL, "studio": studioID})
+	if err != nil {
+		t.Fatalf("insert scene: %v", err)
+	}
+	return id.String()
+}
+
+// TestRepairMergesSpellingDuplicateStudios checks the cleanup of studios that old
+// ingest split by spelling: scenes and parent links move to the studio with the
+// most scenes, its data is completed, and the other site's channel page still
+// resolves to it.
+func TestRepairMergesSpellingDuplicateStudios(t *testing.T) {
+	service, database, ctx := openTestService(t)
+	survivorID := insertLegacyStudio(t, ctx, database, map[string]any{
+		"name": "Cum4K", "source_url": "https://xhamster.test/channels/cum4k", "external_id": "xhamster-channel-cum4k",
+	})
+	mergedID := insertLegacyStudio(t, ctx, database, map[string]any{
+		"name": "CUM 4K", "source_url": "https://spankbang.test/channel/cum4k/", "external_id": "spankbang-channel-cum4k",
+		"image_path": "https://cdn.test/cum4k.png",
+	})
+	childID := insertLegacyStudio(t, ctx, database, map[string]any{"name": "Cum4K Originals", "parent": mergedID})
+	insertSceneOfStudio(t, ctx, database, "https://a.test/1", survivorID)
+	insertSceneOfStudio(t, ctx, database, "https://a.test/2", survivorID)
+	onlyMerged := insertSceneOfStudio(t, ctx, database, "https://a.test/3", mergedID)
+
+	merged, err := service.RepairNamedRecords(ctx)
+	if err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+	if merged != 1 {
+		t.Fatalf("merged = %d, want 1", merged)
+	}
+
+	if studios := countRows(t, ctx, database, `SELECT count(*) FROM studio WHERE name_key = 'cum4k'`, nil); studios != 1 {
+		t.Fatalf("cum4k studios = %d, want 1", studios)
+	}
+	scene, err := service.GetByID(ctx, onlyMerged)
+	if err != nil || scene == nil || scene["studio"] != survivorID {
+		t.Fatalf("scene studio = %v (err %v), want %s", scene["studio"], err, survivorID)
+	}
+	child, err := service.GetByID(ctx, childID)
+	if err != nil || child == nil || child["parent"] != survivorID {
+		t.Fatalf("child parent = %v (err %v), want %s", child["parent"], err, survivorID)
+	}
+	survivor, err := service.GetByID(ctx, survivorID)
+	if err != nil || survivor == nil || survivor["image_path"] != "https://cdn.test/cum4k.png" {
+		t.Fatalf("image not carried over: %+v (err %v)", survivor, err)
+	}
+
+	page := ingestStudioPage(t, service, "spankbang", &plugins.Studio{
+		Name: "CUM 4K", SourceURL: "https://spankbang.test/channel/cum4k/", ExternalID: "spankbang-channel-cum4k",
+	})
+	if page.IsNew || page.CanonicalID != survivorID {
+		t.Fatalf("merged site's page resolved to %s (new=%v), want %s", page.CanonicalID, page.IsNew, survivorID)
+	}
+}
+
+// TestMergingStudioIntoItsParentLeavesNoSelfParent checks that merging a studio
+// with its own parent doesn't leave the survivor its own parent.
+func TestMergingStudioIntoItsParentLeavesNoSelfParent(t *testing.T) {
+	service, database, ctx := openTestService(t)
+	parentID := insertLegacyStudio(t, ctx, database, map[string]any{"name": "Network"})
+	childID := insertLegacyStudio(t, ctx, database, map[string]any{"name": "NETWORK", "parent": parentID})
+	insertSceneOfStudio(t, ctx, database, "https://a.test/1", parentID)
+
+	if err := service.MergeRecords(ctx, "studio", parentID, childID); err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+
+	survivor, err := service.GetByID(ctx, parentID)
+	if err != nil || survivor == nil {
+		t.Fatalf("survivor missing: %v", err)
+	}
+	if survivor["parent"] != nil {
+		t.Fatalf("survivor parent = %v, want none", survivor["parent"])
 	}
 }

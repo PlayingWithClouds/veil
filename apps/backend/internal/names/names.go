@@ -34,6 +34,14 @@ func Key(name string) string {
 	return key.String()
 }
 
+// CompactKey is Key with the spaces removed, for names that sites write both as
+// one word and as several ("JulesJordan", "Jules Jordan", "Jules-Jordan" all
+// give "julesjordan"). Fit for brands and channels; for people it would
+// join different names, so performers use Key.
+func CompactKey(name string) string {
+	return strings.ReplaceAll(Key(name), " ", "")
+}
+
 // isApostrophe reports whether the character is one of the apostrophes sites
 // use inside names ("O'Reilly", "Summer’s"), which join the letters around them.
 func isApostrophe(character rune) bool {

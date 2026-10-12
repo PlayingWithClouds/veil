@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/db"
-	"github.com/playingwithclouds/veil/internal/names"
 	"github.com/playingwithclouds/veil/internal/plugins"
 )
 
@@ -341,8 +340,8 @@ func (s *Service) findByIdentity(ctx context.Context, table, field, value string
 			return matches[0], nil
 		}
 	}
-	if table == "performer" {
-		return s.findPerformerFallback(ctx, obs)
+	if nameKeyedTables[table] {
+		return s.findIdentityFallback(ctx, table, obs)
 	}
 	return "", nil
 }
@@ -359,7 +358,7 @@ func (s *Service) resolveByIdentity(ctx context.Context, table, field, value str
 		if mergeErr != nil {
 			return "", false, nil, fmt.Errorf("apply merge: %w", mergeErr)
 		}
-		if table == "performer" {
+		if nameKeyedTables[table] {
 			if identityErr := s.registerAlternateIdentities(ctx, existingID, obs); identityErr != nil {
 				return "", false, nil, identityErr
 			}
@@ -378,8 +377,8 @@ func (s *Service) resolveByIdentity(ctx context.Context, table, field, value str
 // only the whitelisted scalar columns for the table.
 func (s *Service) createCanonical(ctx context.Context, table string, obs map[string]any) (string, error) {
 	columns := pickColumns(table, obs)
-	if name, ok := columns["name"].(string); ok && table == "performer" {
-		columns["name_key"] = names.Key(name)
+	if name, ok := columns["name"].(string); ok && nameKeyedTables[table] {
+		columns["name_key"] = nameKey(table, name)
 	}
 	created, err := s.database.Insert(ctx, table, columns)
 	if err != nil {
@@ -456,6 +455,11 @@ func (s *Service) findOrCreateStudio(ctx context.Context, ref *plugins.StudioRef
 			s.backfillStudioIdentity(ctx, studioID, ref)
 			return studioID, nil
 		}
+		if record, err := s.findRegisteredIdentity(ctx, "studio", field, value); err == nil && record != "" {
+			if parsed, parseErr := db.ParseRecordID(record); parseErr == nil {
+				return *parsed, nil
+			}
+		}
 	}
 
 	studioID, err := s.findOrCreateNamed(ctx, "studio", strings.TrimSpace(ref.Name))
@@ -463,7 +467,18 @@ func (s *Service) findOrCreateStudio(ctx context.Context, ref *plugins.StudioRef
 		return db.RecordID{}, err
 	}
 	s.backfillStudioIdentity(ctx, studioID, ref)
+	s.rememberStudioIdentities(ctx, studioID, ref)
 	return studioID, nil
+}
+
+// rememberStudioIdentities registers the ref's source_url and external_id as
+// identities of a studio found by name when it holds other ones, so the next
+// scrape of that channel page resolves to it.
+func (s *Service) rememberStudioIdentities(ctx context.Context, studioID db.RecordID, ref *plugins.StudioRef) {
+	identities := map[string]any{"source_url": ref.SourceURL, "external_id": ref.ExternalID}
+	if err := s.registerAlternateIdentities(ctx, studioID.String(), identities); err != nil {
+		log.Printf("ingest: register studio identities %s: %v", studioID, err)
+	}
 }
 
 // backfillStudioIdentity fills empty source_url/external_id/image_path columns from the ref.
@@ -699,8 +714,8 @@ func (s *Service) findOrCreateNamed(ctx context.Context, table, name string) (db
 }
 
 func (s *Service) findNamed(ctx context.Context, table, name string) (db.RecordID, bool, error) {
-	if table == "performer" {
-		return s.findPerformerByName(ctx, name)
+	if nameKeyedTables[table] {
+		return s.findByNameKey(ctx, table, name)
 	}
 	// Tags merge synonyms on ingest: a name matching an existing tag's alias
 	// resolves to that canonical tag instead of creating a duplicate. Sites

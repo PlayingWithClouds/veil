@@ -2,6 +2,18 @@ package names
 
 import "testing"
 
+// TestCompactKey checks that one-word and several-word spellings of a brand meet.
+func TestCompactKey(t *testing.T) {
+	for _, name := range []string{"Jules Jordan", "JulesJordan", "jules-jordan", "JULES  JORDAN"} {
+		if got := CompactKey(name); got != "julesjordan" {
+			t.Errorf("CompactKey(%q) = %q, want julesjordan", name, got)
+		}
+	}
+	if got := CompactKey("???"); got != "" {
+		t.Errorf("CompactKey of punctuation = %q, want empty", got)
+	}
+}
+
 // TestKey checks that spellings of one name share a key and different names don't.
 func TestKey(t *testing.T) {
 	cases := []struct {
