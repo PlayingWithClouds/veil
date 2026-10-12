@@ -185,6 +185,12 @@ func main() {
 	repo := media.NewRepository(database)
 
 	ingestSvc := ingest.New(database)
+	// Performers made before names were compared loosely: fill their name key
+	// and merge the ones that are the same person. A failure leaves the data as
+	// it was, so it only costs the cleanup.
+	if _, err := ingestSvc.RepairPerformers(ctx); err != nil {
+		log.Printf("repair performers: %v", err)
+	}
 
 	queue := jobs.NewQueue(database, cfg.MaxJobRetries)
 
