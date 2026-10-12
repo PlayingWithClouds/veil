@@ -4,7 +4,8 @@ import { sceneList } from "../src/scenes.ts";
 import { performerList, tagList } from "../src/catalog.ts";
 import { scrape } from "../src/scrape.ts";
 import { resolve } from "../src/resolve.ts";
-import type { Scene } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, Scene } from "@playingwithclouds/veil-sdk";
+import type { SiteConfig } from "../src/sites.ts";
 
 // Live checks against every configured site: search, open the first hit and
 // resolve its best download. They hit the real sites, like the other plugins'
@@ -29,6 +30,26 @@ async function withSite<T>(key: string, body: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * The first hit whose page yields a download, with its scene. Only sites
+ * flagged membersOnlyVideos may pass over hits (private uploads have no
+ * player); elsewhere the first hit must be playable.
+ */
+async function scrapePlayableHit(
+  site: SiteConfig,
+  items: DiscoveredItem[]
+): Promise<{ item: DiscoveredItem; scene: Scene }> {
+  const candidates = site.membersOnlyVideos ? items : items.slice(0, 1);
+  const scraped: { item: DiscoveredItem; scene: Scene }[] = [];
+  for (const item of candidates) {
+    const results = await scrape(item.source_url);
+    const scene = (results[0] as { scene: Scene }).scene;
+    if (scene.downloads?.length) return { item, scene };
+    scraped.push({ item, scene });
+  }
+  return scraped[0];
+}
+
 describe("every site (live)", () => {
   for (const site of SITES) {
     if (BUN_BLOCKED.has(site.key)) continue;
@@ -42,9 +63,8 @@ describe("every site (live)", () => {
           expect(item.title.length).toBeGreaterThan(0);
         }
 
-        const results = await scrape(items[0].source_url);
-        const scene = (results[0] as { scene: Scene }).scene;
-        expect(scene.external_id).toBe(items[0].external_id);
+        const { item, scene } = await scrapePlayableHit(site, items);
+        expect(scene.external_id).toBe(item.external_id);
         expect(scene.title.length).toBeGreaterThan(0);
         expect(scene.poster_path).toBeTruthy();
         expect(scene.downloads?.length).toBeGreaterThan(0);

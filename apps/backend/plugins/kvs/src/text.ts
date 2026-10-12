@@ -29,10 +29,15 @@ export function entityName(anchor: HTMLElement): string {
     const counterText = counter.text;
     if (counterText) text = text.replace(counterText, " ");
   }
-  const name = cleanText(text).replace(/^[@#]\s*/, "");
+  const name = withoutRankBadge(cleanText(text)).replace(/^[@#]\s*/, "");
   // A name needs a letter or digit; separators like "-" are no tag.
   if (!/[A-Za-z0-9\u00C0-\uFFFF]/.test(name)) return "";
   return name;
+}
+
+/** `text` without a leading rank badge: "#1 Name" becomes "Name". */
+export function withoutRankBadge(text: string): string {
+  return text.replace(/^#\d+\s*/, "");
 }
 
 /**

@@ -3,7 +3,7 @@ import { parse } from "node-html-parser";
 import { siteByKey, siteForUrl, supportedDomains, SITES, type SiteConfig } from "../src/sites.ts";
 import { canonicalUrl, entitySlug, pathPageUrl, searchUrl, videoKey } from "../src/urls.ts";
 import { asyncPageUrl, parseBlock } from "../src/crawl.ts";
-import { entityName, parseDurationText, parseIsoDuration, parseMinuteBadge } from "../src/text.ts";
+import { entityName, parseDurationText, parseIsoDuration, parseMinuteBadge, withoutRankBadge } from "../src/text.ts";
 import { extractSources, parseFlashvars } from "../src/media.ts";
 import { parseListingCards, parseVideoCards } from "../src/listing.ts";
 import { MODELS, TAGS, parseCatalogEntries, splitCount } from "../src/catalog.ts";
@@ -118,16 +118,23 @@ describe("text", () => {
     expect(parseIsoDuration("")).toBe(0);
   });
 
+  test("withoutRankBadge drops a leading #N only", () => {
+    expect(withoutRankBadge("#1Dainty Wilder")).toBe("Dainty Wilder");
+    expect(withoutRankBadge("#Hashtag")).toBe("#Hashtag");
+  });
+
   test("entityName drops counters and prefers name elements", () => {
     const root = parse(`
       <a id="a" href="/channels/adult-time/"><i></i>Adult Time<span class="count">1348</span></a>
       <a id="b" href="/models/tony/"><span class="name"><i></i> Tony Rubino </span><span class="button-info"> 2 </span></a>
       <a id="c" href="/sites/x/"><span class="text">Glowing Desire</span> <span>11</span></a>
-      <a id="d" href="/tags/x/">-</a>`);
+      <a id="d" href="/tags/x/">-</a>
+      <a id="e" href="/onlyfans-creators/dainty/"><span>#1</span><div class="text-truncate">Dainty Wilder</div></a>`);
     expect(entityName(root.querySelector("#a")!)).toBe("Adult Time");
     expect(entityName(root.querySelector("#b")!)).toBe("Tony Rubino");
     expect(entityName(root.querySelector("#c")!)).toBe("Glowing Desire");
     expect(entityName(root.querySelector("#d")!)).toBe("");
+    expect(entityName(root.querySelector("#e")!)).toBe("Dainty Wilder");
   });
 
   test("withoutSiteSuffix strips the site name and SEO tails only", () => {
@@ -346,5 +353,42 @@ describe("xgroovy", () => {
     expect(videoKey(site("xgroovy"), "https://xgroovy.com/videos/770762/leather-clothed/")).toBe("770762");
     expect(site("xgroovy").latestPath).toBe("/new/");
     expect(siteForUrl("https://xgroovy.com/videos/1/x/")?.key).toBe("xgroovy");
+  });
+});
+
+describe("javbangers members-only videos", () => {
+  test("a private upload's page has no player, so it yields no sources", () => {
+    const html = `
+      <div class="no-player" style="width: 100%; height: 0; padding-bottom: 56%">
+        <img src="https://jav.cdntrex.com/contents/videos_screenshots/391000/391800/preview.jpg" alt="Blonde">
+        <span class="message">This video is a private video uploaded by FossilMan. Only active members can watch private videos.</span>
+      </div>`;
+    expect(extractSources(site("javbangers"), parse(html), html)).toEqual([]);
+    expect(site("javbangers").membersOnlyVideos).toBe(true);
+  });
+});
+
+describe("pimpbunny", () => {
+  test("video pages are /videos/<slug>/, while /videos/<page>/ is a listing", () => {
+    const pimpbunny = site("pimpbunny");
+    expect(videoKey(pimpbunny, "https://pimpbunny.com/videos/alannasworldx-tittyfucks-her-boyfriend-s-cock/")).toBe(
+      "alannasworldx-tittyfucks-her-boyfriend-s-cock"
+    );
+    expect(videoKey(pimpbunny, "https://pimpbunny.com/videos/2/")).toBe("");
+    expect(videoKey(pimpbunny, "https://pimpbunny.com/videos/")).toBe("");
+    expect(pimpbunny.latestPath).toBe("/videos/");
+    expect(pimpbunny.searchPath).toBe("/search/{query}/");
+  });
+
+  test("related videos come from the similar-videos block", () => {
+    const html = `
+      <div id="list_videos_similar_videos"><div id="list_videos_similar_videos_items">
+        <a href="https://pimpbunny.com/videos/angela-5-5-s-dildo-ride-under-the-sun/">Angela</a>
+      </div></div>`;
+    const blocks = parse(html).querySelectorAll(site("pimpbunny").relatedSelector);
+    expect(blocks.length).toBeGreaterThan(0);
+    expect(parseVideoCards(site("pimpbunny"), blocks[0]!).map((item) => item.external_id)).toEqual([
+      "kvs-pimpbunny-angela-5-5-s-dildo-ride-under-the-sun",
+    ]);
   });
 });

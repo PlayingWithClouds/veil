@@ -4,7 +4,7 @@ import { enabledSites, type SiteConfig } from "./sites.ts";
 import { crawlListing } from "./crawl.ts";
 import { listAcrossSites } from "./fanout.ts";
 import { imageSource } from "./listing.ts";
-import { cleanText, entityName } from "./text.ts";
+import { cleanText, entityName, withoutRankBadge } from "./text.ts";
 import { entityExternalId, entitySlug, entityUrl } from "./urls.ts";
 
 const MAX_INDEX_PAGES = 50;
@@ -123,7 +123,7 @@ export function splitCount(text: string): [string, number] {
 function entryTitle(anchor: HTMLElement): string {
   const named = anchor.querySelector('[class*="title"], [class*="name"]');
   if (named) {
-    const text = cleanText(named.text);
+    const text = withoutRankBadge(cleanText(named.text));
     if (text) return text;
   }
   const alt = cleanText(anchor.querySelector("img[alt]")?.getAttribute("alt") ?? "");

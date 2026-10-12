@@ -42,6 +42,11 @@ export interface SiteConfig {
   adaptiveStreams?: boolean;
   /** The site answers plain requests with a Cloudflare challenge. */
   requiresSolver?: boolean;
+  /**
+   * Some videos are members-only private uploads whose page has no player,
+   * so they yield no downloads; the live check picks a playable hit.
+   */
+  membersOnlyVideos?: boolean;
 }
 
 /** Path prefixes most KVS themes use; sites override what differs. */
@@ -214,6 +219,50 @@ export const SITES: SiteConfig[] = [
     infoSelector: ".meta-data",
   }),
   kvsSite({
+    ...STOCK_THEME,
+    key: "javbangers",
+    name: "JavBangers",
+    origin: "https://www.javbangers.com",
+    videoPath: /^\/video\/(\d+)\//,
+    membersOnlyVideos: true,
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "fpo",
+    name: "FPO.XXX",
+    origin: "https://www.fpo.xxx",
+    mirrors: ["fpo.xxx"],
+    videoPath: /^\/video\/(\d+)\//,
+    // The newest listing pages as /new-1/2/, not /new-1/page/2/.
+    latestPath: "/new-1/",
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "pornwex",
+    name: "PornWex",
+    origin: "https://www.pornwex.tv",
+    mirrors: ["pornwex.tv"],
+    videoPath: /^\/video\/(\d+)\//,
+    // The tag index lists every tag on one 19 MB page, so categories stand in.
+    tagIndexPath: "/categories/",
+    tagPrefixes: ["/tags/", "/categories/"],
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "pimpbunny",
+    name: "PimpBunny",
+    origin: "https://pimpbunny.com",
+    // Video pages are /videos/<slug>/; /videos/<page>/ is the listing.
+    videoPath: /^\/videos\/(?!\d+\/)([a-z0-9][a-z0-9-]*)\//,
+    latestPath: "/videos/",
+    tagIndexPath: "/categories/",
+    modelIndexPath: "/onlyfans-creators/",
+    modelPrefixes: ["/onlyfans-creators/", "/onlyfans-models/", "/models/"],
+    // Credits sit in the info block's model list and the categories/tags list beside it.
+    infoSelector: '[class*="pages-view-video-info"], [class*="pages-view-video-categories"]',
+    relatedSelector: '[id*="similar_videos"]',
+  }),
+  kvsSite({
     key: "xcum",
     name: "xCum",
     origin: "https://xcum.com",
@@ -337,13 +386,6 @@ export const SITES: SiteConfig[] = [
     origin: "https://cherrygasp.com",
     videoPath: /^\/video\/([a-z0-9][a-z0-9-]*)\//,
     infoSelector: ".clean-info-container",
-  }),
-  kvsSite({
-    ...STOCK_THEME,
-    key: "pornwex",
-    name: "PornWex",
-    origin: "https://www.pornwex.tv",
-    videoPath: /^\/video\/(\d+)\//,
   }),
   kvsSite({
     ...STOCK_THEME,
