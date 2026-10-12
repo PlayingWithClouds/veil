@@ -1,8 +1,10 @@
 // Search suggestions for the phone search overlay (backend: internal/suggest),
 // plus the search history they draw on.
+import { goto } from '$app/navigation';
 import { gqlClient } from '$lib/veil';
 import { cacheUrl } from '$lib/img';
 import { performerUrl, studioUrl, tagUrl } from '$lib/routes';
+import { searchQuery } from '$lib/stores/searchQuery';
 
 export type SearchSuggestionKind = 'RECENT' | 'QUERY' | 'TAG' | 'PERFORMER' | 'STUDIO';
 
@@ -59,4 +61,30 @@ export function suggestionUrl(suggestion: SearchSuggestion): string | null {
 	if (suggestion.kind === 'STUDIO') return studioUrl(suggestion.entityId);
 	if (suggestion.kind === 'TAG') return tagUrl(suggestion.entityId);
 	return null;
+}
+
+/**
+ * Runs a query on Home: makes it the shared search, remembers it and opens the
+ * results. An empty query goes back to the feed.
+ */
+export function submitSearch(query: string): void {
+	const trimmed = query.trim();
+	searchQuery.set(trimmed);
+	if (!trimmed) {
+		goto('/');
+		return;
+	}
+	recordSearch(trimmed);
+	goto(`/?q=${encodeURIComponent(trimmed)}`);
+}
+
+/** Opens an entity suggestion's page, or searches for the suggestion's text. */
+export function openSuggestion(suggestion: SearchSuggestion): void {
+	const url = suggestionUrl(suggestion);
+	if (!url) {
+		submitSearch(suggestion.text);
+		return;
+	}
+	recordSearch(suggestion.text);
+	goto(url);
 }

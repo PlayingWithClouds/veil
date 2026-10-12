@@ -5,23 +5,21 @@
 	choosing a performer, studio or tag opens its page.
 -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import ArrowUpLeftIcon from 'phosphor-svelte/lib/ArrowUpLeftIcon';
 	import ClockCounterClockwiseIcon from 'phosphor-svelte/lib/ClockCounterClockwiseIcon';
-	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
-	import TagSimpleIcon from 'phosphor-svelte/lib/TagSimpleIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import { searchQuery } from '$lib/stores/searchQuery';
+	import SearchSuggestionIcon from './SearchSuggestionIcon.svelte';
 	import { searchOverlayOpen } from '$lib/stores/searchOverlay';
 	import { pushOverlay } from '$lib/stores/overlayStack';
 	import {
 		fetchSearchSuggestions,
 		forgetSearch,
-		recordSearch,
-		suggestionUrl,
+		openSuggestion,
+		submitSearch,
 		type SearchSuggestion
 	} from '$lib/searchSuggestions';
 
@@ -65,27 +63,14 @@
 
 	/** Runs a search on Home and remembers it. */
 	function runSearch(query: string) {
-		const trimmed = query.trim();
 		close();
-		searchQuery.set(trimmed);
-		if (!trimmed) {
-			goto('/');
-			return;
-		}
-		recordSearch(trimmed);
-		goto(`/?q=${encodeURIComponent(trimmed)}`);
+		submitSearch(query);
 	}
 
 	/** Opens an entity's page, or searches for the suggestion's text. */
 	function choose(suggestion: SearchSuggestion) {
-		const url = suggestionUrl(suggestion);
-		if (!url) {
-			runSearch(suggestion.text);
-			return;
-		}
-		recordSearch(suggestion.text);
 		close();
-		goto(url);
+		openSuggestion(suggestion);
 	}
 
 	/** Puts the suggestion into the field to keep typing from it. */
@@ -184,7 +169,7 @@
 							onclick={() => choose(suggestion)}
 							class="flex min-w-0 flex-1 items-center gap-4 py-2.5 pl-4 text-left"
 						>
-							{@render suggestionIcon(suggestion)}
+							<SearchSuggestionIcon {suggestion} />
 							<span class="flex min-w-0 flex-col">
 								<span class="truncate text-[15px]">
 									<span class="text-base-content/60">{parts.typed}</span><span class="font-semibold">{parts.rest}</span>
@@ -245,7 +230,7 @@
 							class="pick-chip bg-base-200 ring-base-content/10 flex h-9 items-center gap-2 rounded-full pr-3.5 pl-1 text-sm ring-1 ring-inset"
 							style:--stagger={index}
 						>
-							{@render suggestionIcon(suggestion)}
+							<SearchSuggestionIcon {suggestion} />
 							{suggestion.text}
 						</button>
 					{/each}
@@ -254,22 +239,6 @@
 		{/if}
 	</div>
 </div>
-
-{#snippet suggestionIcon(suggestion: SearchSuggestion)}
-	{#if suggestion.imageUrl}
-		<img src={suggestion.imageUrl} alt="" class="h-7 w-7 shrink-0 rounded-full object-cover" />
-	{:else if suggestion.kind === 'TAG'}
-		<span class="flex h-7 w-7 shrink-0 items-center justify-center"><TagSimpleIcon size={18} class="text-base-content/50" /></span>
-	{:else if suggestion.kind === 'RECENT'}
-		<span class="flex h-7 w-7 shrink-0 items-center justify-center"><ClockCounterClockwiseIcon size={18} class="text-base-content/50" /></span>
-	{:else if suggestion.kind === 'PERFORMER' || suggestion.kind === 'STUDIO'}
-		<span class="bg-base-300 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold uppercase">
-			{suggestion.text.charAt(0)}
-		</span>
-	{:else}
-		<span class="flex h-7 w-7 shrink-0 items-center justify-center"><MagnifyingGlassIcon size={18} class="text-base-content/50" /></span>
-	{/if}
-{/snippet}
 
 <style>
 	/* Floating glass like the tab bar and action sheet, clear of the screen edges. */
