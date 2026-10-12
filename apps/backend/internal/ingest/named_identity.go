@@ -14,14 +14,20 @@ var identityKinds = []string{"source_url", "external_id"}
 
 // nameKeyedTables are the tables whose records are matched by spelling-insensitive
 // name (the name_key column) as well as by site identity.
-var nameKeyedTables = map[string]bool{"performer": true, "studio": true}
+var nameKeyedTables = map[string]bool{"performer": true, "studio": true, "tag": true}
 
-// nameKey is the comparison form of a name in table. Studios compare without
-// spaces, so a brand written "JulesJordan" and "Jules Jordan" is one studio;
-// people compare word by word, since joining their names would merge different
-// ones.
+// hasSiteIdentity reports whether records of table carry a source_url and
+// external_id of their own. Tags are known by name only.
+func hasSiteIdentity(table string) bool {
+	return table != "tag"
+}
+
+// nameKey is the comparison form of a name in table. Studios and tags compare
+// without spaces, so a brand written "JulesJordan" and "Jules Jordan" is one
+// studio and "blow job" and "blowjob" one tag; people compare word by word,
+// since joining their names would merge different ones.
 func nameKey(table, name string) string {
-	if table == "studio" {
+	if table == "studio" || table == "tag" {
 		return names.CompactKey(name)
 	}
 	return names.Key(name)
@@ -75,7 +81,7 @@ func (s *Service) findRegisteredIdentity(ctx context.Context, table, kind, value
 func (s *Service) findIdentityFallback(ctx context.Context, table string, obs map[string]any) (string, error) {
 	for _, kind := range identityKinds {
 		value, _ := obs[kind].(string)
-		if value == "" {
+		if value == "" || !hasSiteIdentity(table) {
 			continue
 		}
 		record, err := s.findRegisteredIdentity(ctx, table, kind, value)
