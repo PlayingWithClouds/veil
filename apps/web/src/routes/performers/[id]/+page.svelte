@@ -10,6 +10,7 @@
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import DotsThreeIcon from 'phosphor-svelte/lib/DotsThreeIcon';
 	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
+	import GitMergeIcon from 'phosphor-svelte/lib/GitMergeIcon';
 	import ShareNetworkIcon from 'phosphor-svelte/lib/ShareNetworkIcon';
 	import FolderSimplePlusIcon from 'phosphor-svelte/lib/FolderSimplePlusIcon';
 	import TagChips from '$lib/components/TagChips.svelte';
@@ -23,6 +24,7 @@
 	import { cacheUrl } from '$lib/img';
 	import { isCompact } from '$lib/stores/viewport';
 	import { openMoveDialog } from '$lib/stores/moveDialog';
+	import { openMergeDialog } from '$lib/stores/mergeDialog';
 	import { notifications } from '$lib/stores/notifications';
 	import { addBlock } from '$lib/blocklist';
 	import { shareLink } from '$lib/share';
@@ -155,6 +157,11 @@
 				run: () => openMoveDialog('performer', info.id, info.name)
 			},
 			{ label: 'Share', icon: ShareNetworkIcon, run: () => shareLink(info.name, info.url) },
+			{
+				label: 'Merge into…',
+				icon: GitMergeIcon,
+				run: () => openMergeDialog('performer', info.id, info.name)
+			},
 			{ label: 'Block performer', icon: ProhibitIcon, run: () => block(info), destructive: true }
 		];
 	}

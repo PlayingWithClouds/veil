@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import TagSimpleIcon from 'phosphor-svelte/lib/TagSimpleIcon';
+	import GitMergeIcon from 'phosphor-svelte/lib/GitMergeIcon';
+	import { openMergeDialog } from '$lib/stores/mergeDialog';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import SubscribeButton from '$lib/components/SubscribeButton.svelte';
@@ -108,6 +110,15 @@
 			{/if}
 			{#if tag}
 				<SubscribeButton kind="TAG" targetId={tag.id} targetName={tag.name} />
+				<button
+					type="button"
+					onclick={() => openMergeDialog('tag', tag.id, tag.name)}
+					aria-label="Merge into another tag"
+					title="Merge into another tag"
+					class="hover:bg-base-300 flex h-9 w-9 items-center justify-center rounded-full"
+				>
+					<GitMergeIcon size={18} />
+				</button>
 			{/if}
 		</div>
 		{#if tag?.aliases?.length}

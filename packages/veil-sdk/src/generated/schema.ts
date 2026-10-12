@@ -96,6 +96,7 @@ export interface Mutation {
     clearJobs: Scalars['Int']
     reorderDownloads: Scalars['Boolean']
     retryJob: Scalars['Boolean']
+    mergeRecords: Scalars['ID']
     incrementOCount: Scalars['Int']
     decrementOCount: Scalars['Int']
     updateObservationStatus: Observation
@@ -823,6 +824,7 @@ export interface MutationGenqlSelection{
     clearJobs?: boolean | number
     reorderDownloads?: { __args: {jobIds: Scalars['ID'][]} }
     retryJob?: { __args: {id: Scalars['ID']} }
+    mergeRecords?: { __args: {survivorId: Scalars['ID'], mergedId: Scalars['ID']} }
     incrementOCount?: { __args: {mediaId: Scalars['ID']} }
     decrementOCount?: { __args: {mediaId: Scalars['ID']} }
     updateObservationStatus?: (ObservationGenqlSelection & { __args: {id: Scalars['ID'], status: ObservationStatus} })

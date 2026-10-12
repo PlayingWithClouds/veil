@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -28,6 +29,7 @@ type Orchestrator struct {
 	streamResolver *resolve.Service
 	streamCache    *stream.CacheService
 	settings       *settings.Service
+	profileCache   *cache.Client
 	// Scene ids with a detail fetch / related fill in progress (VisitScene).
 	detailInflight  sync.Map
 	relatedInflight sync.Map

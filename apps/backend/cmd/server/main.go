@@ -116,6 +116,36 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 	return store.WithEncryption(key, "stream-cache/")
 }
 
+// performerProfileInterval is how often performers without a profile page on
+// the profile site are looked up, performerProfileBatch at a time.
+const (
+	performerProfileInterval = 6 * time.Hour
+	performerProfileBatch    = 100
+)
+
+// profilePerformers fetches profile pages for performers shortly after start
+// (once the plugins have loaded) and then on every interval.
+func profilePerformers(ctx context.Context, orch *pipeline.Orchestrator) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(time.Minute):
+	}
+	for {
+		profiled, err := orch.ProfilePerformers(ctx, performerProfileBatch)
+		if err != nil {
+			log.Printf("profile performers: %v", err)
+		} else if profiled > 0 {
+			log.Printf("profile performers: %d profiled", profiled)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(performerProfileInterval):
+		}
+	}
+}
+
 // cacheMaxBytes returns the cache size limit: CACHE_MAX_BYTES when it is a
 // positive number of bytes, else blobcache.DefaultMaxBytes.
 func cacheMaxBytes() int64 {
@@ -245,6 +275,8 @@ func main() {
 	}
 	registry.RestoreDisabled(cfg.DisabledPlugins)
 	orch.SetRegistry(registry)
+	orch.SetProfileCache(cacheClient)
+	go profilePerformers(ctx, orch)
 	go pluginStore.Run(ctx, pluginUpdateInterval)
 
 	// Worker pool: size from settings.
