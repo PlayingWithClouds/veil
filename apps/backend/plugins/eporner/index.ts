@@ -7,6 +7,7 @@ import { studioList } from "./src/studios.ts";
 import { galleryList } from "./src/galleries.ts";
 import { resolve } from "./src/resolve.ts";
 import { enrich } from "./src/enrich.ts";
+import { suggest } from "./src/suggest.ts";
 
 runPlugin({
   meta: {
@@ -27,6 +28,7 @@ runPlugin({
       "gallery:list",
       "stream:resolve",
       "enrich",
+      "search:suggest",
     ],
     // Resolve handles eporner's own pages/embeds and its CDN host.
     domains: ["eporner.com"],
@@ -38,4 +40,5 @@ runPlugin({
   galleryList,
   resolve: (url) => resolve(url),
   enrich: (args) => enrich(args),
+  suggest,
 });
