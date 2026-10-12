@@ -75,3 +75,31 @@ func TestTasteListsLikedThenDislikedEntries(t *testing.T) {
 		t.Errorf("disliked tag must follow: %+v", taste.Tags[1])
 	}
 }
+
+// TestFeedKeepsStubsNamingDifferentPerformers checks that two search stubs whose
+// titles read alike but name different known performers are different videos,
+// while the same title naming one performer on both is one video.
+func TestFeedKeepsStubsNamingDifferentPerformers(t *testing.T) {
+	engine, database, _ := newTestEngine(t)
+	insertRow(t, database, "performer", "performer:isla", map[string]any{"name": "Isla Summer"})
+	insertRow(t, database, "performer", "performer:zoe", map[string]any{"name": "Zoe Bloom"})
+	reworded := "Hot Teen Gets Fucked Hard By Her Step Brother"
+	insertScene(t, database, "scene:isla1", map[string]any{"title": reworded + " Isla Summer", "duration_seconds": 620})
+	insertScene(t, database, "scene:isla2", map[string]any{"title": reworded + " With Isla Summer", "duration_seconds": 620})
+	insertScene(t, database, "scene:zoe1", map[string]any{"title": reworded + " Zoe Bloom", "duration_seconds": 620})
+
+	items := feed(t, engine, nil)
+
+	if itemBySceneID(items, "scene:zoe1") == nil {
+		t.Error("the stub naming a different performer was dropped as a duplicate")
+	}
+	copies := 0
+	for _, sceneID := range []string{"scene:isla1", "scene:isla2"} {
+		if itemBySceneID(items, sceneID) != nil {
+			copies++
+		}
+	}
+	if copies != 1 {
+		t.Errorf("exactly one of the two Isla Summer copies must be listed, got %d", copies)
+	}
+}
