@@ -358,7 +358,7 @@ func (s *Service) resolveByIdentity(ctx context.Context, table, field, value str
 		if mergeErr != nil {
 			return "", false, nil, fmt.Errorf("apply merge: %w", mergeErr)
 		}
-		if nameKeyedTables[table] {
+		if nameKeyedTables[table] && hasSiteIdentity(table) {
 			if identityErr := s.registerAlternateIdentities(ctx, existingID, obs); identityErr != nil {
 				return "", false, nil, identityErr
 			}
@@ -713,21 +713,14 @@ func (s *Service) findOrCreateNamed(ctx context.Context, table, name string) (db
 	return db.RecordID{}, createErr
 }
 
+// findNamed returns the record of table called name. Name-keyed tables match
+// spelling-insensitively and through aliases (so tag synonyms resolve to their
+// canonical tag); the others match exactly.
 func (s *Service) findNamed(ctx context.Context, table, name string) (db.RecordID, bool, error) {
 	if nameKeyedTables[table] {
 		return s.findByNameKey(ctx, table, name)
 	}
-	// Tags merge synonyms on ingest: a name matching an existing tag's alias
-	// resolves to that canonical tag instead of creating a duplicate. Sites
-	// disagree on casing ("Anal" / "anal"), so tags also match case-insensitively,
-	// preferring an exact spelling when both exist.
 	query := fmt.Sprintf("SELECT id FROM %s WHERE name = $name LIMIT 1", table)
-	if table == "tag" {
-		query = `SELECT id FROM tag
-			WHERE name = $name COLLATE NOCASE
-			   OR EXISTS (SELECT 1 FROM json_each(tag.aliases) WHERE value = $name COLLATE NOCASE)
-			ORDER BY name = $name DESC LIMIT 1`
-	}
 	matches, err := s.database.Strings(ctx, query, db.Vars{"name": name})
 	if err != nil {
 		return db.RecordID{}, false, err

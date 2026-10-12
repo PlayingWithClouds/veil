@@ -8,6 +8,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/db"
+	"github.com/playingwithclouds/veil/internal/names"
 )
 
 // sceneMarkerRecord mirrors the `scene_marker` table.
@@ -130,13 +131,16 @@ func (r *Repository) DeleteSceneMarker(ctx context.Context, markerID string) (bo
 	return true, nil
 }
 
-// findOrCreateTag resolves a tag by name or alias, creating it when absent.
+// findOrCreateTag resolves a tag by name or alias, spelling-insensitively (the
+// same comparison ingest uses), creating it when absent.
 func (r *Repository) findOrCreateTag(ctx context.Context, name string) (db.RecordID, error) {
+	key := names.CompactKey(name)
 	existing, err := r.database.Strings(ctx,
 		`SELECT id FROM tag
-			WHERE name = $name OR EXISTS (SELECT 1 FROM json_each(tag.aliases) WHERE value = $name)
-			LIMIT 1`,
-		db.Vars{"name": name})
+			WHERE name = $name OR ($key <> '' AND name_key = $key)
+			   OR EXISTS (SELECT 1 FROM json_each(tag.aliases) WHERE value = $name COLLATE NOCASE)
+			ORDER BY name = $name DESC LIMIT 1`,
+		db.Vars{"name": name, "key": key})
 	if err != nil {
 		return db.RecordID{}, fmt.Errorf("find tag: %w", err)
 	}
@@ -147,7 +151,7 @@ func (r *Repository) findOrCreateTag(ctx context.Context, name string) (db.Recor
 		}
 		return *parsed, nil
 	}
-	created, err := r.database.Insert(ctx, "tag", map[string]any{"name": name})
+	created, err := r.database.Insert(ctx, "tag", map[string]any{"name": name, "name_key": key})
 	if err != nil {
 		return db.RecordID{}, fmt.Errorf("create tag: %w", err)
 	}

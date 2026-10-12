@@ -19,10 +19,18 @@ var fillColumns = map[string][]string{
 		"piercings", "career_length", "url", "twitter", "instagram", "image_path", "rating",
 	},
 	"studio": {"url", "image_path", "details", "parent"},
+	"tag":    {"description", "category"},
 }
 
+// taggedTables are the tables with a JSON list of tag ids in "tags", and
+// performerListTables those with one of performer ids in "performers".
+var (
+	taggedTables        = []string{"scene", "gallery", "image", "performer", "studio", "collection"}
+	performerListTables = []string{"scene", "gallery", "image"}
+)
+
 // MergeRecords folds the record mergedID into survivorID of the same name-keyed
-// table (performer or studio) in one transaction: every credit and reference
+// table (performer, studio or tag) in one transaction: every credit and reference
 // moves to the survivor, fields the survivor lacks are copied over, the merged
 // record's site identities stay resolvable (see entity_identity) and the merged
 // record is deleted.
@@ -61,20 +69,12 @@ func foldFields(ctx context.Context, tx *db.DB, table, survivorID string, surviv
 	if _, err := tx.Exec(ctx, fillStatement(table), vars); err != nil {
 		return fmt.Errorf("fill %s fields: %w", table, err)
 	}
-	// The merged row is deleted at the end, but its external_id is unique, so it
-	// is released before the survivor may take it.
-	if _, err := tx.Exec(ctx, fmt.Sprintf(`UPDATE %s SET external_id = NULL, source_url = NULL WHERE id = $merged`, table), vars); err != nil {
-		return fmt.Errorf("release merged identities: %w", err)
+	updates := map[string]any{"aliases": mergedAliases(table, survivor, merged)}
+	if table != "tag" {
+		updates["tags"] = unionStrings(jsonStringList(survivor["tags"]), jsonStringList(merged["tags"]))
 	}
-	if _, err := tx.Exec(ctx, `UPDATE entity_identity SET record = $survivor WHERE record = $merged`, vars); err != nil {
-		return fmt.Errorf("repoint identities: %w", err)
-	}
-	updates := map[string]any{
-		"aliases": mergedAliases(table, survivor, merged),
-		"tags":    unionStrings(jsonStringList(survivor["tags"]), jsonStringList(merged["tags"])),
-	}
-	for _, kind := range identityKinds {
-		if err := keepIdentity(ctx, tx, kind, survivor, merged, updates, vars); err != nil {
+	if hasSiteIdentity(table) {
+		if err := foldIdentities(ctx, tx, table, survivor, merged, updates, vars); err != nil {
 			return err
 		}
 	}
@@ -83,6 +83,24 @@ func foldFields(ctx context.Context, tx *db.DB, table, survivorID string, surviv
 		return err
 	}
 	return tx.Merge(ctx, *survivorRecord, updates)
+}
+
+// foldIdentities moves the merged record's site identities to the survivor.
+func foldIdentities(ctx context.Context, tx *db.DB, table string, survivor, merged db.Row, updates map[string]any, vars db.Vars) error {
+	// The merged row is deleted at the end, but its external_id is unique, so it
+	// is released before the survivor may take it.
+	if _, err := tx.Exec(ctx, fmt.Sprintf(`UPDATE %s SET external_id = NULL, source_url = NULL WHERE id = $merged`, table), vars); err != nil {
+		return fmt.Errorf("release merged identities: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE entity_identity SET record = $survivor WHERE record = $merged`, vars); err != nil {
+		return fmt.Errorf("repoint identities: %w", err)
+	}
+	for _, kind := range identityKinds {
+		if err := keepIdentity(ctx, tx, kind, survivor, merged, updates, vars); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // keepIdentity gives the survivor the merged record's source_url or external_id
@@ -191,12 +209,19 @@ func repointStatements(table string) []string {
 }
 
 // specificRepointStatements are the references only one kind of record has:
-// credits for a performer, the studio column and the parent link for a studio.
+// tag lists for a tag, credits for a performer, the studio column and the parent link for a studio.
 func specificRepointStatements(table string) []string {
+	if table == "tag" {
+		statements := []string{}
+		for _, listTable := range taggedTables {
+			statements = append(statements, replaceIDInList(listTable, "tags"))
+		}
+		return append(statements, `UPDATE scene_marker SET tag = $survivor WHERE tag = $merged`)
+	}
 	if table == "performer" {
 		statements := []string{}
-		for _, listTable := range []string{"scene", "gallery", "image"} {
-			statements = append(statements, replacePerformerInList(listTable))
+		for _, listTable := range performerListTables {
+			statements = append(statements, replaceIDInList(listTable, "performers"))
 		}
 		return append(statements,
 			`UPDATE OR IGNORE performs_in SET performer = $survivor WHERE performer = $merged`,
@@ -212,23 +237,27 @@ func specificRepointStatements(table string) []string {
 	}
 }
 
-// replacePerformerInList rewrites a table's performers JSON list so $merged
-// becomes $survivor, keeping the first occurrence order and no repeats.
-func replacePerformerInList(table string) string {
-	return fmt.Sprintf(`UPDATE %[1]s SET performers = (
+// replaceIDInList rewrites a table's JSON id list (column) so $merged becomes
+// $survivor, keeping the first occurrence order and no repeats.
+func replaceIDInList(table, column string) string {
+	return fmt.Sprintf(`UPDATE %[1]s SET %[2]s = (
 		SELECT json_group_array(value) FROM (
 			SELECT CASE WHEN entry.value = $merged THEN $survivor ELSE entry.value END AS value, min(entry.key) AS position
-			FROM json_each(%[1]s.performers) AS entry
+			FROM json_each(%[1]s.%[2]s) AS entry
 			GROUP BY CASE WHEN entry.value = $merged THEN $survivor ELSE entry.value END
 			ORDER BY position))
-		WHERE EXISTS (SELECT 1 FROM json_each(%[1]s.performers) WHERE value = $merged)`, table)
+		WHERE EXISTS (SELECT 1 FROM json_each(%[1]s.%[2]s) WHERE value = $merged)`, table, column)
 }
 
 // creditCount is the SQL that counts what a record is used for, which decides
-// which of several duplicates survives: credits for a performer, scenes for a studio.
+// which of several duplicates survives: credits for a performer, scenes for a
+// studio or tag.
 func creditCount(table string) string {
 	if table == "performer" {
 		return "(SELECT count(*) FROM performs_in WHERE performs_in.performer = performer.id)"
+	}
+	if table == "tag" {
+		return "(SELECT count(*) FROM scene, json_each(scene.tags) AS entry WHERE entry.value = tag.id)"
 	}
 	return "(SELECT count(*) FROM scene WHERE scene.studio = studio.id)"
 }
@@ -238,7 +267,7 @@ func creditCount(table string) string {
 // (then the better-cased name, then the oldest). Returns how many were merged away.
 func (s *Service) RepairNamedRecords(ctx context.Context) (int, error) {
 	total := 0
-	for _, table := range []string{"performer", "studio"} {
+	for _, table := range []string{"performer", "studio", "tag"} {
 		count, err := s.repairTable(ctx, table)
 		total += count
 		if err != nil {
