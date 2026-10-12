@@ -19,8 +19,10 @@ export function metaContent(root: HTMLElement, property: string): string {
 }
 
 /**
- * The scene record of a watch page. The stream is not part of it: its links
- * expire, so the resolve capability fetches a fresh one when the video plays.
+ * The scene record of a watch page. Its one download is the watch page itself:
+ * the real mp4 links are signed and expire within minutes, so the resolve
+ * capability (routed by this site's domain) fetches a fresh one when the video
+ * plays.
  */
 export function sceneFromWatchPage(root: HTMLElement, videoId: string): Scene {
   const scene: Scene = {
@@ -29,6 +31,7 @@ export function sceneFromWatchPage(root: HTMLElement, videoId: string): Scene {
     source_url: watchUrl(videoId),
     title: normalizeText(metaContent(root, "og:title")),
     tags: tagsFrom(metaContent(root, "video:tag")),
+    downloads: [{ label: "Stream", url: watchUrl(videoId), format: "mp4" }],
     related: relatedFrom(root, videoId),
   };
   const date = metaContent(root, "ya:ovs:upload_date");

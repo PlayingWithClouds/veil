@@ -105,8 +105,8 @@ describe("watch page (offline)", () => {
     }
   });
 
-  test("the stream is left out of the record: its links expire", () => {
-    expect(scene.downloads).toBeUndefined();
+  test("the one download is the watch page: the signed links expire, so resolve fetches one at play time", () => {
+    expect(scene.downloads?.map((download) => download.url)).toEqual([scene.source_url]);
   });
 });
 
