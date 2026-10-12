@@ -37,6 +37,46 @@ export async function fetchSearchSuggestions(query: string, limit = 12): Promise
 	}));
 }
 
+/**
+ * Completions from the plugins' own search boxes, shaped like the library's
+ * suggestions so one list can show both. They carry no entity, so choosing one
+ * searches for its text.
+ */
+export async function fetchSourceSuggestions(query: string, limit = 8): Promise<SearchSuggestion[]> {
+	const data = await gqlClient.query({
+		sourceSuggestions: { __args: { query, limit }, kind: true, text: true, sources: true }
+	});
+	return data.sourceSuggestions.map((suggestion) => ({
+		kind: suggestion.kind as SearchSuggestionKind,
+		text: suggestion.text,
+		entityId: null,
+		imageUrl: null,
+		detail: sourceDetail(suggestion.sources)
+	}));
+}
+
+/** The grey line under a site completion: which sites offered it. */
+function sourceDetail(sources: string[]): string {
+	const shown = sources.slice(0, 2).join(', ');
+	if (sources.length > 2) return `From ${shown} +${sources.length - 2}`;
+	return `From ${shown}`;
+}
+
+/** How a suggestion's text is compared for duplicates: case and spacing ignored. */
+function textKey(text: string): string {
+	return text.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/** The library's suggestions first, then the sites' completions the library's don't already cover. */
+export function withSourceSuggestions(
+	local: SearchSuggestion[],
+	fromSources: SearchSuggestion[]
+): SearchSuggestion[] {
+	const known = new Set(local.map((suggestion) => textKey(suggestion.text)));
+	const extra = fromSources.filter((suggestion) => !known.has(textKey(suggestion.text)));
+	return [...local, ...extra];
+}
+
 /** Remembers a submitted search for the recent list. Failures are ignored. */
 export async function recordSearch(query: string): Promise<void> {
 	try {

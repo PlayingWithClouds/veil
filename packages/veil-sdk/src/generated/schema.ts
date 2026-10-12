@@ -56,6 +56,8 @@ export interface Query {
     findAlikeSources: AlikeCandidate[]
     /** Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks. */
     searchSuggestions: SearchSuggestion[]
+    /** Completions from the active plugins' own search boxes, fetched live (and briefly cached), so slower than searchSuggestions. */
+    sourceSuggestions: SourceSuggestion[]
     settings: Settings
     settingEntries: SettingEntry[]
     mediaStreams: Stream[]
@@ -579,6 +581,17 @@ export interface SearchSuggestion {
     __typename: 'SearchSuggestion'
 }
 
+
+/** A completion offered by the search boxes of the plugins' sites, for things the library doesn't hold yet. */
+export interface SourceSuggestion {
+    /** QUERY, PERFORMER, TAG or STUDIO; never RECENT. */
+    kind: SearchSuggestionKind
+    text: Scalars['String']
+    /** Names of the plugins whose site offered it. */
+    sources: Scalars['String'][]
+    __typename: 'SourceSuggestion'
+}
+
 export interface Settings {
     maxConcurrentJobs: Scalars['Int']
     maxJobRetries: Scalars['Int']
@@ -769,6 +782,8 @@ export interface QueryGenqlSelection{
     findAlikeSources?: (AlikeCandidateGenqlSelection & { __args: {sceneId: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
     /** Suggestions for a partially typed query. Empty query = recent searches plus taste-based picks. */
     searchSuggestions?: (SearchSuggestionGenqlSelection & { __args: {query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
+    /** Completions from the active plugins' own search boxes, fetched live (and briefly cached), so slower than searchSuggestions. */
+    sourceSuggestions?: (SourceSuggestionGenqlSelection & { __args: {query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     settings?: SettingsGenqlSelection
     settingEntries?: (SettingEntryGenqlSelection & { __args?: {scope?: (Scalars['String'] | null)} })
     mediaStreams?: (StreamGenqlSelection & { __args: {mediaId: Scalars['ID']} })
@@ -1336,6 +1351,18 @@ export interface SearchSuggestionGenqlSelection{
     __scalar?: boolean | number
 }
 
+
+/** A completion offered by the search boxes of the plugins' sites, for things the library doesn't hold yet. */
+export interface SourceSuggestionGenqlSelection{
+    /** QUERY, PERFORMER, TAG or STUDIO; never RECENT. */
+    kind?: boolean | number
+    text?: boolean | number
+    /** Names of the plugins whose site offered it. */
+    sources?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface SettingsGenqlSelection{
     maxConcurrentJobs?: boolean | number
     maxJobRetries?: boolean | number
@@ -1806,6 +1833,14 @@ export interface WatchlistItemGenqlSelection{
     export const isSearchSuggestion = (obj?: { __typename?: any } | null): obj is SearchSuggestion => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isSearchSuggestion"')
       return SearchSuggestion_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SourceSuggestion_possibleTypes: string[] = ['SourceSuggestion']
+    export const isSourceSuggestion = (obj?: { __typename?: any } | null): obj is SourceSuggestion => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSourceSuggestion"')
+      return SourceSuggestion_possibleTypes.includes(obj.__typename)
     }
     
 

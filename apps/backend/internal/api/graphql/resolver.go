@@ -11,6 +11,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
 	"github.com/playingwithclouds/veil/internal/settings"
+	"github.com/playingwithclouds/veil/internal/sitesuggest"
 	"github.com/playingwithclouds/veil/internal/storage"
 	"github.com/playingwithclouds/veil/internal/stream"
 	"github.com/playingwithclouds/veil/internal/subscriptions"
@@ -37,6 +38,7 @@ type Resolver struct {
 	recommender  *recommend.Engine
 	pluginStore  *pluginstore.Store
 	suggestions  *suggest.Service
+	siteSuggest  *sitesuggest.Service
 	blobStore    *storage.Client
 }
 
@@ -89,3 +91,6 @@ func (r *Resolver) SetPluginStore(store *pluginstore.Store) { r.pluginStore = st
 
 // SetSuggestions wires in the search suggestion engine.
 func (r *Resolver) SetSuggestions(service *suggest.Service) { r.suggestions = service }
+
+// SetSiteSuggestions wires in the sites' own search-box suggestions.
+func (r *Resolver) SetSiteSuggestions(service *sitesuggest.Service) { r.siteSuggest = service }

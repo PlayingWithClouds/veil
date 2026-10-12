@@ -30,3 +30,11 @@ func (r *queryResolver) SearchSuggestions(ctx context.Context, query string, lim
 	}
 	return searchSuggestionModels(suggestions), nil
 }
+
+// SourceSuggestions is the resolver for the sourceSuggestions field.
+func (r *queryResolver) SourceSuggestions(ctx context.Context, query string, limit *int) ([]*model.SourceSuggestion, error) {
+	if r.siteSuggest == nil {
+		return []*model.SourceSuggestion{}, nil
+	}
+	return sourceSuggestionModels(r.siteSuggest.Suggest(ctx, query, derefInt(limit, defaultSourceSuggestionLimit))), nil
+}

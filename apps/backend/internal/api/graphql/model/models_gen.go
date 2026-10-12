@@ -482,6 +482,15 @@ type Settings struct {
 	KindLimits                   []*KindRateLimit `json:"kindLimits"`
 }
 
+// A completion offered by the search boxes of the plugins' sites, for things the library doesn't hold yet.
+type SourceSuggestion struct {
+	// QUERY, PERFORMER, TAG or STUDIO; never RECENT.
+	Kind SearchSuggestionKind `json:"kind"`
+	Text string               `json:"text"`
+	// Names of the plugins whose site offered it.
+	Sources []string `json:"sources"`
+}
+
 type Stream struct {
 	ID               string   `json:"id"`
 	MediaID          string   `json:"mediaId"`

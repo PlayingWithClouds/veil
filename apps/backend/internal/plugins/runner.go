@@ -130,6 +130,20 @@ func (r *Runner) items(ctx context.Context, p *Plugin, cap Capability, args any)
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// Suggest invokes "search:suggest" — the site's own search-box completions for a
+// partly typed query.
+func (r *Runner) Suggest(ctx context.Context, p *Plugin, args SuggestArgs) (*SuggestResult, error) {
+	if !p.Meta.Has(CapabilitySearchSuggest) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilitySearchSuggest)
+	}
+	raw, err := r.invoke(ctx, p, CapabilitySearchSuggest, args)
+	if err != nil {
+		return nil, err
+	}
+	var result SuggestResult
+	return &result, json.Unmarshal(raw, &result)
+}
+
 // Find invokes "<entity>:find" — one full record by URL — and reads the NDJSON
 // stream. Plugins emit one ScrapeResult per line: root entity first, then
 // related standalone entities (performers, studio, tags, collection).

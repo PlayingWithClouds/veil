@@ -34,6 +34,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
 	"github.com/playingwithclouds/veil/internal/settings"
+	"github.com/playingwithclouds/veil/internal/sitesuggest"
 	"github.com/playingwithclouds/veil/internal/storage"
 	"github.com/playingwithclouds/veil/internal/stream"
 	"github.com/playingwithclouds/veil/internal/subscriptions"
@@ -307,6 +308,7 @@ func main() {
 	// Search suggestions: build the name/phrase index now, not on the first keystroke.
 	suggestions := suggest.New(database, recommender, repo)
 	resolver.SetSuggestions(suggestions)
+	resolver.SetSiteSuggestions(sitesuggest.New(registry, runner))
 	go suggestions.Warm(ctx)
 
 	mux := http.NewServeMux()

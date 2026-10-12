@@ -31,6 +31,11 @@ const (
 	// lists the scenes on one of the site's own pages (a channel, performer or
 	// category page), which is how subscriptions follow a studio/performer/tag.
 	CapabilitySceneListPage Capability = "scene:list:page"
+
+	// CapabilitySearchSuggest returns the site's own search-box completions for
+	// a partly typed query, so the search field can offer things the library
+	// doesn't hold yet.
+	CapabilitySearchSuggest Capability = "search:suggest"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -424,6 +429,24 @@ type ListArgs struct {
 // ItemsResult is returned by every find/list capability.
 type ItemsResult struct {
 	Items []DiscoveredItem `json:"items"`
+}
+
+// SuggestArgs is passed to a plugin's search:suggest capability.
+type SuggestArgs struct {
+	Query string `json:"query"`
+	Limit int    `json:"limit,omitempty"`
+}
+
+// SiteSuggestion is one completion a site's search box offers. Kind is "query"
+// (the default), "performer", "tag" or "studio".
+type SiteSuggestion struct {
+	Text string `json:"text"`
+	Kind string `json:"kind,omitempty"`
+}
+
+// SuggestResult is returned by a plugin's search:suggest capability, best first.
+type SuggestResult struct {
+	Suggestions []SiteSuggestion `json:"suggestions"`
 }
 
 // EnrichArgs is passed to a plugin's enrich capability.

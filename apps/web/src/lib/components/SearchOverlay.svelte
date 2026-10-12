@@ -16,24 +16,19 @@
 	import { searchOverlayOpen } from '$lib/stores/searchOverlay';
 	import { pushOverlay } from '$lib/stores/overlayStack';
 	import {
-		fetchSearchSuggestions,
 		forgetSearch,
 		openSuggestion,
 		submitSearch,
 		type SearchSuggestion
 	} from '$lib/searchSuggestions';
-
-	// Wait this long after the last keystroke before asking the backend.
-	const SUGGEST_DEBOUNCE_MS = 120;
+	import { createSuggestionFeed } from '$lib/suggestionFeed.svelte';
 
 	let input = $state<HTMLInputElement | null>(null);
 	let text = $state($searchQuery);
-	let suggestions = $state<SearchSuggestion[]>([]);
-	// Answers can arrive out of order; only the newest request may land.
-	let requestToken = 0;
+	const feed = createSuggestionFeed({ query: () => text, active: () => true });
 
-	let recent = $derived(suggestions.filter((suggestion) => suggestion.kind === 'RECENT'));
-	let picks = $derived(suggestions.filter((suggestion) => suggestion.kind !== 'RECENT'));
+	let recent = $derived(feed.library.filter((suggestion) => suggestion.kind === 'RECENT'));
+	let picks = $derived(feed.library.filter((suggestion) => suggestion.kind !== 'RECENT'));
 	let typing = $derived(text.trim().length > 0);
 
 	$effect(() => {
@@ -41,20 +36,6 @@
 	});
 
 	$effect(() => pushOverlay(close));
-
-	$effect(() => {
-		const query = text.trim();
-		const token = ++requestToken;
-		const timer = setTimeout(async () => {
-			try {
-				const next = await fetchSearchSuggestions(query);
-				if (token === requestToken) suggestions = next;
-			} catch {
-				if (token === requestToken) suggestions = [];
-			}
-		}, SUGGEST_DEBOUNCE_MS);
-		return () => clearTimeout(timer);
-	});
 
 	/** Closes the overlay without searching. */
 	function close() {
@@ -87,7 +68,7 @@
 
 	/** Drops a recent search from the list and the backend. */
 	async function forget(suggestion: SearchSuggestion) {
-		suggestions = suggestions.filter((entry) => entry !== suggestion);
+		feed.remove(suggestion);
 		await forgetSearch(suggestion.text).catch(() => {});
 	}
 
@@ -161,7 +142,7 @@
 	<div class="no-scrollbar flex-1 overflow-y-auto pb-2">
 		{#if typing}
 			<ul class="flex flex-col py-1">
-				{#each suggestions as suggestion (suggestion.kind + suggestion.text)}
+				{#each feed.items as suggestion (suggestion.kind + suggestion.text)}
 					{@const parts = splitOnTyped(suggestion.text)}
 					<li class="suggestion-row flex items-center">
 						<button
