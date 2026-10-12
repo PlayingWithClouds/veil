@@ -114,3 +114,20 @@ func TestSuggestDropsTheTypedText(t *testing.T) {
 		t.Fatalf("got %+v, want only the completion", got)
 	}
 }
+
+// TestSuggestPrefersTheMoreSpecificKind checks that a completion one site calls
+// a performer is a performer even when another site lists it as a plain search.
+func TestSuggestPrefersTheMoreSpecificKind(t *testing.T) {
+	service := newTestService(func(_ context.Context, plugin *plugins.Plugin, _ plugins.SuggestArgs) (*plugins.SuggestResult, error) {
+		if plugin.Meta.Name == "alpha" {
+			return queries("isla moon"), nil
+		}
+		return &plugins.SuggestResult{Suggestions: []plugins.SiteSuggestion{{Text: "isla moon", Kind: "performer"}}}, nil
+	}, testSite("alpha"), testSite("beta"))
+
+	got := service.Suggest(context.Background(), "isla", 10)
+
+	if len(got) != 1 || got[0].Kind != "performer" {
+		t.Fatalf("got %+v, want one performer", got)
+	}
+}
