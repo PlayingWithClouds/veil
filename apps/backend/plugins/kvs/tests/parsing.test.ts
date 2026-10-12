@@ -3,7 +3,7 @@ import { parse } from "node-html-parser";
 import { siteByKey, siteForUrl, supportedDomains, SITES, type SiteConfig } from "../src/sites.ts";
 import { canonicalUrl, entitySlug, pathPageUrl, searchUrl, videoKey } from "../src/urls.ts";
 import { asyncPageUrl, parseBlock } from "../src/crawl.ts";
-import { entityName, parseDurationText, parseIsoDuration } from "../src/text.ts";
+import { entityName, parseDurationText, parseIsoDuration, parseMinuteBadge } from "../src/text.ts";
 import { extractSources, parseFlashvars } from "../src/media.ts";
 import { parseListingCards, parseVideoCards } from "../src/listing.ts";
 import { MODELS, TAGS, parseCatalogEntries, splitCount } from "../src/catalog.ts";
@@ -288,6 +288,12 @@ describe("catalog entries", () => {
     expect(entries.map((entry) => entry.external_id)).toEqual(["kvs-anysex-tag-beauty"]);
   });
 
+  test("parseMinuteBadge reads a bare minute count only", () => {
+    expect(parseMinuteBadge("3 min")).toBe(180);
+    expect(parseMinuteBadge("45 minutes")).toBe(2700);
+    expect(parseMinuteBadge("3 min ago")).toBe(0);
+  });
+
   test("splitCount separates trailing counts", () => {
     expect(splitCount("1080p (896)")).toEqual(["1080p", 896]);
     expect(splitCount("Big Tits (1,234)")).toEqual(["Big Tits", 1234]);
@@ -314,5 +320,31 @@ describe("helpers", () => {
       "application/x-mpegURL"
     );
     expect(mimeTypeOf("https://cdn/x.mp4?secure=1", "video/mp4")).toBe("video/mp4");
+  });
+});
+
+describe("xgroovy", () => {
+  test("cards read the video id, the src poster and the minute runtime", () => {
+    const html = `
+      <div class="list-videos"><div id="list_videos_custom_videos_list_items">
+        <div class="item" data-video-id="795901">
+          <a href="https://xgroovy.com/videos/795901/curvy-babe-shakes/" class="popito">
+            <div class="img"><img class="thumb " src="https://i.xgroovy.com/contents/videos_screenshots/795000/795901/608x342/1.jpg" alt="Curvy Babe Shakes"></div>
+            <strong class="title">Curvy Babe Shakes</strong>
+          </a>
+          <div class="wrap"><div class="duration">3 min</div></div>
+        </div>
+      </div></div>`;
+    const items = parseListingCards(site("xgroovy"), parse(html));
+    expect(items.map((item) => item.external_id)).toEqual(["kvs-xgroovy-795901"]);
+    expect(items[0]!.title).toBe("Curvy Babe Shakes");
+    expect(items[0]!.poster_path).toContain("795901/608x342/1.jpg");
+    expect(items[0]!.duration_seconds).toBe(180);
+  });
+
+  test("video and listing URLs follow the /videos/<id>/ and /new/ scheme", () => {
+    expect(videoKey(site("xgroovy"), "https://xgroovy.com/videos/770762/leather-clothed/")).toBe("770762");
+    expect(site("xgroovy").latestPath).toBe("/new/");
+    expect(siteForUrl("https://xgroovy.com/videos/1/x/")?.key).toBe("xgroovy");
   });
 });

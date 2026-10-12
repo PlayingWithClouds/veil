@@ -10,7 +10,7 @@ import {
   videoExternalId,
   videoKey,
 } from "./urls.ts";
-import { cleanText, entityName, parseDurationText } from "./text.ts";
+import { cleanText, entityName, parseDurationText, parseMinuteBadge } from "./text.ts";
 
 // KVS themes differ in card markup, so cards are found structurally rather
 // than by class: every anchor to a video page marks a card, and the card is
@@ -202,7 +202,8 @@ function cardPreview(site: SiteConfig, card: HTMLElement): string {
  */
 function cardDuration(card: HTMLElement): number {
   for (const element of card.querySelectorAll('[class*="duration"], [class*="time"]')) {
-    const seconds = parseDurationText(element.text);
+    let seconds = parseDurationText(element.text);
+    if (seconds === 0) seconds = parseMinuteBadge(element.text);
     if (seconds > 0) return seconds;
   }
   for (const element of card.querySelectorAll("span, div, em, strong, small, b, i")) {

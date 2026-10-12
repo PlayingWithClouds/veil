@@ -203,6 +203,17 @@ export const SITES: SiteConfig[] = [
     modelIndexPath: undefined,
   }),
   kvsSite({
+    ...STOCK_THEME,
+    key: "xgroovy",
+    name: "XGroovy",
+    origin: "https://xgroovy.com",
+    videoPath: /^\/videos\/(\d+)\//,
+    // The newest videos are at /new/ (with /new/<page>/ paging).
+    latestPath: "/new/",
+    // The video's tags sit in the title's meta line, not the sidebar menu.
+    infoSelector: ".meta-data",
+  }),
+  kvsSite({
     key: "xcum",
     name: "xCum",
     origin: "https://xcum.com",
