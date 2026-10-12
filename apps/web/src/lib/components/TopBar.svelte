@@ -7,7 +7,6 @@
 	the media toggle moves into Home's chip row.
 -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import ListIcon from 'phosphor-svelte/lib/ListIcon';
 	import FilmReelIcon from 'phosphor-svelte/lib/FilmReelIcon';
@@ -26,26 +25,8 @@
 	import { fly } from 'svelte/transition';
 	import { newSubscriptionScenes } from '$lib/stores/newSubscriptionScenes';
 	import { subscriptionsUrl } from '$lib/routes';
+	import DesktopSearchBox from './DesktopSearchBox.svelte';
 	import MediaFilterToggle from './MediaFilterToggle.svelte';
-
-	/** Element id the Ctrl+K shortcut focuses. */
-	const SEARCH_INPUT_ID = 'global-search';
-
-	/** Shows the query's results: Home already follows the store, other pages navigate there. */
-	function showResults() {
-		if ($page.url.pathname === '/') return;
-		const query = $searchQuery.trim();
-		if (!query) {
-			goto('/');
-			return;
-		}
-		goto(`/?q=${encodeURIComponent(query)}`);
-	}
-
-	/** Submits on Enter. */
-	function onKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') showResults();
-	}
 
 	/** Toggles between the full sidebar and the icon rail. */
 	function toggleSidebar() {
@@ -157,36 +138,7 @@
 		</div>
 
 		<div class="mx-auto flex w-full max-w-2xl items-center">
-			<div
-				class="border-base-300 bg-base-200 focus-within:border-base-content/30 relative flex h-10 flex-1 items-center rounded-l-full border"
-			>
-				<input
-					id={SEARCH_INPUT_ID}
-					type="search"
-					bind:value={$searchQuery}
-					onkeydown={onKeydown}
-					placeholder="Search"
-					class="h-full w-full bg-transparent pr-10 pl-5 text-[15px] outline-none"
-				/>
-				{#if $searchQuery.length > 0}
-					<button
-						type="button"
-						aria-label="Clear search"
-						onclick={() => searchQuery.set('')}
-						class="text-base-content/50 hover:text-base-content absolute right-3 flex items-center"
-					>
-						<XIcon size={18} />
-					</button>
-				{/if}
-			</div>
-			<button
-				type="button"
-				onclick={showResults}
-				aria-label="Search"
-				class="border-base-300 bg-base-300 hover:bg-base-content/15 flex h-10 w-16 items-center justify-center rounded-r-full border border-l-0 transition-colors"
-			>
-				<MagnifyingGlassIcon size={20} />
-			</button>
+			<DesktopSearchBox />
 			<div class="ml-3">
 				<MediaFilterToggle />
 			</div>
