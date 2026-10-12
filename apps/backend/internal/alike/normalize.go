@@ -3,6 +3,8 @@ package alike
 import (
 	"regexp"
 	"strings"
+
+	"github.com/playingwithclouds/veil/internal/names"
 )
 
 // Site names, quality markers and generic adult-content filler that carry no
@@ -27,26 +29,58 @@ var siteNames = map[string]struct{}{
 	"missav": {}, "pornpics": {}, "pornhub": {}, "xvideos": {}, "youporn": {},
 }
 
-var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
+// bracketedGroup matches a parenthesised or square-bracketed part of a title.
+var bracketedGroup = regexp.MustCompile(`\([^()]*\)|\[[^\[\]]*\]`)
 
-// tokenize lowercases and splits on any run of non-alphanumeric characters.
+// tokenize splits text into lower-case words as names.Key spells them: accents
+// folded, apostrophes joined to their word ("Summer's" is "summers"), any other
+// punctuation a separator.
 func tokenize(text string) []string {
-	lowered := strings.ToLower(text)
-	parts := nonAlphanumeric.Split(lowered, -1)
-	tokens := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if part != "" {
-			tokens = append(tokens, part)
-		}
-	}
-	return tokens
+	return strings.Fields(names.Key(text))
 }
 
-// titleTokens returns the meaningful tokens of a title: junk and site names
-// removed, single-character tokens dropped.
+// isNoiseToken reports whether a token says nothing about which video a title
+// names: filler, a site name, or a bare number of at most four digits
+// (resolution, age notice).
+func isNoiseToken(token string) bool {
+	if _, junk := junkTokens[token]; junk {
+		return true
+	}
+	if _, site := siteNames[token]; site {
+		return true
+	}
+	return len(token) <= 4 && isNumber(token)
+}
+
+// isNumber reports whether token is made of digits only.
+func isNumber(token string) bool {
+	for _, character := range token {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return token != ""
+}
+
+// stripNoiseGroups removes the bracketed parts of a title that hold only
+// noise: "(18+)", "(1080)", "[Full HD]". Groups with real words, such as a
+// cast list, stay.
+func stripNoiseGroups(title string) string {
+	return bracketedGroup.ReplaceAllStringFunc(title, func(group string) string {
+		for _, token := range tokenize(group[1 : len(group)-1]) {
+			if !isNoiseToken(token) {
+				return group
+			}
+		}
+		return " "
+	})
+}
+
+// titleTokens returns the meaningful tokens of a title: noise groups, junk and
+// site names removed, single-character tokens dropped.
 func titleTokens(title string) []string {
 	tokens := make([]string, 0)
-	for _, token := range tokenize(title) {
+	for _, token := range tokenize(stripNoiseGroups(title)) {
 		if len(token) < 2 {
 			continue
 		}
