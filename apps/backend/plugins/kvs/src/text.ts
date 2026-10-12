@@ -56,6 +56,13 @@ export function parseDurationText(text: string): number {
   return 0;
 }
 
+/** A bare minute count ("3 min", "45 minutes") from a runtime badge; 0 when it is not one. */
+export function parseMinuteBadge(text: string): number {
+  const match = text.trim().match(/^(\d{1,3})\s*min(?:ute)?s?$/i);
+  if (!match) return 0;
+  return parseInt(match[1], 10) * 60;
+}
+
 /** Seconds of an ISO 8601 duration ("PT12M01S", "PT0H7M17S", "T8M01S"); 0 when unparseable. */
 export function parseIsoDuration(text: string): number {
   const match = text.trim().match(/^P?(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
