@@ -3,6 +3,7 @@ import packageJson from "./package.json" with { type: "json" };
 import { scrape } from "./src/scrape.ts";
 import { sceneList } from "./src/scenes.ts";
 import { resolve } from "./src/resolve.ts";
+import { suggest } from "./src/suggest.ts";
 import { DEFAULT_HOST, NETWORK_DOMAINS } from "./src/http.ts";
 
 runPlugin({
@@ -14,7 +15,7 @@ runPlugin({
     // /favicon.ico is a near-transparent 16px placeholder; this is the real logo.
     icon: "https://txxx.com/static/images/favicons/apple-touch-icon.png",
     version: packageJson.version,
-    capabilities: ["scene:find", "scene:list", "stream:resolve"],
+    capabilities: ["scene:find", "scene:list", "stream:resolve", "search:suggest"],
     // find/resolve derive the host from the video URL, so every network
     // domain routes to this plugin.
     domains: NETWORK_DOMAINS,
@@ -32,4 +33,5 @@ runPlugin({
   find: (url) => scrape(url),
   sceneList,
   resolve: (url) => resolve(url),
+  suggest,
 });
