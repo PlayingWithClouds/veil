@@ -20,6 +20,9 @@ const (
 	// Fallback searches per kind, strongest first (billing / tag order).
 	maxPerformerSearches = 2
 	maxTagSearches       = 2
+	// detailRetryInterval is the least time between detail fetches of a visited
+	// scene that still has no streams.
+	detailRetryInterval = 10 * time.Minute
 	// relatedFillTimeout bounds the background fallback searches of one visit.
 	relatedFillTimeout = 2 * time.Minute
 )
@@ -34,17 +37,44 @@ type relatedSearch struct {
 // scene's detail page from its origin plugin (details, streams, and the site's
 // related list); every visit then tops up related scenes in the background.
 func (o *Orchestrator) VisitScene(ctx context.Context, sceneID string) error {
-	fetched, err := o.ingestSvc.DetailFetched(ctx, sceneID)
+	needsFetch, err := o.needsDetailFetch(ctx, sceneID)
 	if err != nil {
 		return err
 	}
-	if !fetched {
+	if needsFetch {
 		if err := o.fetchSceneDetail(ctx, sceneID); err != nil {
 			return err
 		}
 	}
 	o.startRelatedFill(sceneID)
 	return nil
+}
+
+// needsDetailFetch reports whether a visit should fetch the scene's detail page:
+// on the first visit, and again (at most once per detailRetryInterval) while a
+// visited scene still has no streams, which is the case when its plugin gained
+// the stream since, or the site failed to show one that time.
+func (o *Orchestrator) needsDetailFetch(ctx context.Context, sceneID string) (bool, error) {
+	fetched, err := o.ingestSvc.DetailFetched(ctx, sceneID)
+	if err != nil || !fetched {
+		return !fetched, err
+	}
+	streams, err := o.ingestSvc.StreamCount(ctx, sceneID)
+	if err != nil || streams > 0 {
+		return false, err
+	}
+	return o.mayRetryDetail(sceneID), nil
+}
+
+// mayRetryDetail reports whether a refetch of the scene is due and, if so,
+// starts the interval.
+func (o *Orchestrator) mayRetryDetail(sceneID string) bool {
+	lastTry, tried := o.detailRetried.Load(sceneID)
+	if tried && time.Since(lastTry.(time.Time)) < detailRetryInterval {
+		return false
+	}
+	o.detailRetried.Store(sceneID, time.Now())
+	return true
 }
 
 // fetchSceneDetail runs the origin plugin's scene:find on the scene's page and

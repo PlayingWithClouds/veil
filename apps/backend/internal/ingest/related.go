@@ -91,6 +91,11 @@ func (s *Service) DetailFetched(ctx context.Context, sceneID string) (bool, erro
 	return count > 0, err
 }
 
+// StreamCount is how many streams (playback sources) sceneID has.
+func (s *Service) StreamCount(ctx context.Context, sceneID string) (int, error) {
+	return s.database.Int(ctx, `SELECT count(*) FROM stream WHERE media = $id`, db.Vars{"id": sceneID})
+}
+
 // GalleryHasImages reports whether galleryID has any content images yet.
 func (s *Service) GalleryHasImages(ctx context.Context, galleryID string) (bool, error) {
 	count, err := s.database.Int(ctx,
