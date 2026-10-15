@@ -26,7 +26,11 @@ export type Capability =
   // The site's own search-box completions for a partly typed query
   // (args.query), best first, so the search field can offer things the library
   // doesn't hold yet.
-  | "search:suggest";
+  | "search:suggest"
+  // Live webcam rooms: "cam:list" lists the rooms online right now, "cam:stream"
+  // resolves one room to its live HLS master playlist.
+  | "cam:list"
+  | "cam:stream";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
 // standalone images, the performers/studios/tags that describe them, and
@@ -378,6 +382,47 @@ export type EnrichResult = Partial<
 
 export interface ResolveArgs {
   url: string;
+}
+
+/** Arguments of the cam:list capability. */
+export interface CamListArgs {
+  /** free-text search over room names and subjects */
+  query?: string;
+  /** one tag / hashtag the room must carry */
+  tag?: string;
+  /** site category: "female" | "male" | "couple" | "trans" */
+  gender?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** One live room as a cam site's listing shows it. */
+export interface CamRoom {
+  /** the room's stable handle on the site; identity together with the plugin */
+  username: string;
+  display_name?: string;
+  /** the room's page on the site */
+  source_url: string;
+  thumbnail_url?: string;
+  viewers?: number;
+  tags?: string[];
+  /** "female" | "male" | "couple" | "trans" when the site says */
+  gender?: string;
+  /** the room's current title / subject line */
+  subject?: string;
+  /** false for rooms in a private or password show, which cannot be watched */
+  online: boolean;
+}
+
+/** Result of cam:list: one page of rooms and the number the site has in total. */
+export interface CamListResult {
+  rooms: CamRoom[];
+  total?: number;
+}
+
+/** Arguments of the cam:stream capability. */
+export interface CamStreamArgs {
+  username: string;
 }
 
 export interface ResolveResult {

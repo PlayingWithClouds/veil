@@ -9,6 +9,9 @@ import type {
   ResolveResult,
   SuggestArgs,
   SuggestResult,
+  CamListArgs,
+  CamListResult,
+  CamStreamArgs,
 } from "./types.ts";
 
 /** Handler for an "<entity>:list" capability. */
@@ -34,6 +37,10 @@ export interface PluginHandlers {
   resolve?: (url: string) => Promise<ResolveResult>;
   /** Serves the "search:suggest" capability: the site's own search-box completions. */
   suggest?: (args: SuggestArgs) => Promise<SuggestResult>;
+  /** Serves the "cam:list" capability: the rooms online right now. */
+  camList?: (args: CamListArgs) => Promise<CamListResult>;
+  /** Serves the "cam:stream" capability: a room's live HLS master playlist. */
+  camStream?: (args: CamStreamArgs) => Promise<ResolveResult>;
 }
 
 interface Invocation {
@@ -55,6 +62,17 @@ function parseListArgs(args: Record<string, unknown> | undefined): ListArgs {
   const parsed: ListArgs = {};
   if (typeof args?.query === "string" && args.query !== "") parsed.query = args.query;
   if (typeof args?.url === "string" && args.url !== "") parsed.url = args.url;
+  if (typeof args?.limit === "number") parsed.limit = args.limit;
+  if (typeof args?.offset === "number") parsed.offset = args.offset;
+  return parsed;
+}
+
+/** Reads the cam:list arguments, dropping anything of the wrong type. */
+function parseCamListArgs(args: Record<string, unknown> | undefined): CamListArgs {
+  const parsed: CamListArgs = {};
+  if (typeof args?.query === "string" && args.query !== "") parsed.query = args.query;
+  if (typeof args?.tag === "string" && args.tag !== "") parsed.tag = args.tag;
+  if (typeof args?.gender === "string" && args.gender !== "") parsed.gender = args.gender;
   if (typeof args?.limit === "number") parsed.limit = args.limit;
   if (typeof args?.offset === "number") parsed.offset = args.offset;
   return parsed;
@@ -110,6 +128,18 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
 
   try {
     if (input.capability === "meta") respond<PluginMeta>(handlers.meta);
+    if (input.capability === "cam:list") {
+      if (!handlers.camList) fail("cam:list not implemented");
+      respond<CamListResult>(await handlers.camList(parseCamListArgs(input.args)));
+    }
+
+    if (input.capability === "cam:stream") {
+      if (!handlers.camStream) fail("cam:stream not implemented");
+      const username = input.args?.username;
+      if (typeof username !== "string" || username === "") fail("args.username required for cam:stream");
+      respond<ResolveResult>(await handlers.camStream({ username }));
+    }
+
     if (FIND_CAPABILITIES.has(input.capability)) return await runFind(handlers, input);
     if (input.capability.endsWith(":list")) return await runList(handlers, input);
 

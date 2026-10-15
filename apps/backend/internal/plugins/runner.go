@@ -231,6 +231,32 @@ func (r *Runner) Resolve(ctx context.Context, p *Plugin, url string) (*ResolveRe
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// CamList invokes "cam:list": the rooms a cam site has online now.
+func (r *Runner) CamList(ctx context.Context, p *Plugin, args CamListArgs) (*CamListResult, error) {
+	if !p.Meta.Has(CapabilityCamList) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityCamList)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityCamList, args)
+	if err != nil {
+		return nil, err
+	}
+	var result CamListResult
+	return &result, json.Unmarshal(raw, &result)
+}
+
+// CamStream invokes "cam:stream": a room's live HLS master playlist.
+func (r *Runner) CamStream(ctx context.Context, p *Plugin, username string) (*ResolveResult, error) {
+	if !p.Meta.Has(CapabilityCamStream) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityCamStream)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityCamStream, CamStreamArgs{Username: username})
+	if err != nil {
+		return nil, err
+	}
+	var result ResolveResult
+	return &result, json.Unmarshal(raw, &result)
+}
+
 func (r *Runner) Enrich(ctx context.Context, p *Plugin, args EnrichArgs) (*EnrichResult, error) {
 	if !p.Meta.Has(CapabilityEnrich) {
 		return nil, fmt.Errorf("plugin %q does not support enrich", p.Meta.Name)
