@@ -1,5 +1,5 @@
 import type { FaceIdentifyArgs, FaceIdentifyResult } from "@playingwithclouds/veil-sdk";
-import { parseCamMatches } from "./parse.ts";
+import { parseCamMatches, parseVideoMatches } from "./parse.ts";
 
 const API_ORIGIN = "https://facedigger.com";
 const AGREEMENT_SETTING = "FACEDIGGER_ACCEPT_AGREEMENT";
@@ -36,7 +36,8 @@ async function callApi(path: string, body?: unknown): Promise<any> {
 
 /**
  * Searches FaceDigger like its page does: create a job with the picture,
- * poll its status until completed, fetch the result. Only cam models are returned.
+ * poll its status until completed, fetch the result. Cam models come back as
+ * named candidates, tube-site videos as links without names.
  */
 export async function identifyFace(args: FaceIdentifyArgs): Promise<FaceIdentifyResult> {
   if (!agreementAccepted()) {
@@ -53,7 +54,8 @@ export async function identifyFace(args: FaceIdentifyArgs): Promise<FaceIdentify
   for (let poll = 0; poll < MAX_POLLS; poll++) {
     const status = await callApi(`/api/job-status/${job.job_id}`);
     if (status.status === "completed" || status.status === "complete") {
-      return { candidates: parseCamMatches(await callApi(`/api/job-result/${job.job_id}`)) };
+      const result = await callApi(`/api/job-result/${job.job_id}`);
+      return { candidates: parseCamMatches(result), videos: parseVideoMatches(result) };
     }
     if (status.status === "failed" || status.success === false) {
       throw new Error(String(status.message || "FaceDigger could not process the picture"));

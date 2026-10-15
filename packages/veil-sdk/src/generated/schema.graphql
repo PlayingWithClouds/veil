@@ -296,9 +296,18 @@ type CollectionMember {
 
 type FaceIdentification {
   candidates: [FaceCandidate!]!
+  videos: [FaceVideoMatch!]!
   sources: [String!]!
   failures: [String!]!
   pictureUrl: String
+}
+
+type FaceVideoMatch {
+  title: String!
+  similarity: Float!
+  url: String!
+  thumbnailUrl: String
+  sources: [String!]!
 }
 
 type FaceCandidate {

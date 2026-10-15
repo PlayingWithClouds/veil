@@ -2,9 +2,10 @@
 // scene, gallery or image to every active face:identify plugin, merges and ranks
 // what they answer, and credits the performer the user picks.
 //
-// Only plugins backed by databases of professional performers or cam models
-// may offer face:identify; this package takes whatever plugin declares it, so
-// that rule is kept at the plugin level (see CLAUDE.md).
+// Named candidates may only come from databases of professional performers or
+// cam models; this package takes whatever plugin declares face:identify, so
+// that rule is kept at the plugin level (see CLAUDE.md). Similar videos are
+// passed through as links and never become candidates.
 package face
 
 import (
@@ -29,6 +30,8 @@ const (
 	maxPictureBytes = 5 << 20
 	// maxCandidates bounds how many candidates are returned, best first.
 	maxCandidates = 20
+	// maxVideos bounds how many similar videos are returned, best first.
+	maxVideos = 12
 )
 
 // Candidate is a performer one or more services think the picture shows.
@@ -44,9 +47,22 @@ type Candidate struct {
 	PerformerID string
 }
 
+// VideoMatch is a tube-site video whose face looks like the picture's. It
+// names no person and is never offered for crediting.
+type VideoMatch struct {
+	Title        string
+	Similarity   float64
+	URL          string
+	ThumbnailURL string
+	// Sources are the plugins that found the video.
+	Sources []string
+}
+
 // Identification is the outcome of one identify run.
 type Identification struct {
 	Candidates []Candidate
+	// Videos are similar videos from tube sites, best first.
+	Videos []VideoMatch
 	// Sources are the plugins that answered; Failures describe those that did not.
 	Sources  []string
 	Failures []string
@@ -158,6 +174,7 @@ func (s *Service) creditTarget(ctx context.Context, mediaID string) (string, err
 type answer struct {
 	plugin     string
 	candidates []plugins.FaceCandidate
+	videos     []plugins.FaceVideoMatch
 	err        error
 }
 
@@ -175,6 +192,7 @@ func (s *Service) askServices(ctx context.Context, services []*plugins.Plugin, a
 			answers[index] = answer{plugin: service.Meta.Name, err: err}
 			if err == nil {
 				answers[index].candidates = result.Candidates
+				answers[index].videos = result.Videos
 			}
 		}()
 	}
@@ -185,7 +203,7 @@ func (s *Service) askServices(ctx context.Context, services []*plugins.Plugin, a
 // rank merges the answers into one candidate list and marks the performers
 // the library already has.
 func (s *Service) rank(ctx context.Context, answers []answer) *Identification {
-	identification := &Identification{Candidates: mergeAnswers(answers)}
+	identification := &Identification{Candidates: mergeAnswers(answers), Videos: mergeVideos(answers)}
 	for _, reply := range answers {
 		if reply.err != nil {
 			log.Printf("face:identify via plugin %s: %v", reply.plugin, reply.err)
@@ -237,6 +255,47 @@ func mergeAnswers(answers []answer) []Candidate {
 		candidates = candidates[:maxCandidates]
 	}
 	return candidates
+}
+
+// mergeVideos joins the videos of all services by page URL (best similarity
+// wins, sources are united). Best first, at most maxVideos.
+func mergeVideos(answers []answer) []VideoMatch {
+	byURL := map[string]*VideoMatch{}
+	var order []string
+	for _, reply := range answers {
+		for _, found := range reply.videos {
+			if found.URL == "" {
+				continue
+			}
+			merged, seen := byURL[found.URL]
+			if !seen {
+				merged = &VideoMatch{URL: found.URL}
+				byURL[found.URL] = merged
+				order = append(order, found.URL)
+			}
+			if found.Similarity > merged.Similarity || !seen {
+				merged.Similarity = found.Similarity
+				merged.Title = found.Title
+			}
+			if merged.ThumbnailURL == "" {
+				merged.ThumbnailURL = found.ThumbnailURL
+			}
+			if !contains(merged.Sources, reply.plugin) {
+				merged.Sources = append(merged.Sources, reply.plugin)
+			}
+		}
+	}
+	videos := make([]VideoMatch, 0, len(order))
+	for _, pageURL := range order {
+		videos = append(videos, *byURL[pageURL])
+	}
+	sort.SliceStable(videos, func(left, right int) bool {
+		return videos[left].Similarity > videos[right].Similarity
+	})
+	if len(videos) > maxVideos {
+		videos = videos[:maxVideos]
+	}
+	return videos
 }
 
 // mergeInto folds one service's candidate into the merged one.

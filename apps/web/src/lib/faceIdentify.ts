@@ -16,8 +16,22 @@ export interface FaceCandidate {
 	performerId: string | null;
 }
 
+/** A tube-site video with a similar face. It names nobody and is only linked. */
+export interface FaceVideoMatch {
+	/** The video's own title. */
+	title: string;
+	/** 0..1, the best any service gave. */
+	similarity: number;
+	/** The video's page. */
+	url: string;
+	thumbnailUrl: string | null;
+	/** Plugins that found this video. */
+	sources: string[];
+}
+
 export interface FaceIdentification {
 	candidates: FaceCandidate[];
+	videos: FaceVideoMatch[];
 	failures: string[];
 	/** The stored picture that was sent; null when a frame was. */
 	pictureUrl: string | null;
@@ -45,6 +59,7 @@ export async function identifyFace(
 				sources: true,
 				performerId: true
 			},
+			videos: { title: true, similarity: true, url: true, thumbnailUrl: true, sources: true },
 			failures: true,
 			pictureUrl: true
 		}

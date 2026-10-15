@@ -319,10 +319,20 @@ export interface CollectionMember {
 
 export interface FaceIdentification {
     candidates: FaceCandidate[]
+    videos: FaceVideoMatch[]
     sources: Scalars['String'][]
     failures: Scalars['String'][]
     pictureUrl: (Scalars['String'] | null)
     __typename: 'FaceIdentification'
+}
+
+export interface FaceVideoMatch {
+    title: Scalars['String']
+    similarity: Scalars['Float']
+    url: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    sources: Scalars['String'][]
+    __typename: 'FaceVideoMatch'
 }
 
 export interface FaceCandidate {
@@ -1154,9 +1164,20 @@ export interface CollectionMemberGenqlSelection{
 
 export interface FaceIdentificationGenqlSelection{
     candidates?: FaceCandidateGenqlSelection
+    videos?: FaceVideoMatchGenqlSelection
     sources?: boolean | number
     failures?: boolean | number
     pictureUrl?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceVideoMatchGenqlSelection{
+    title?: boolean | number
+    similarity?: boolean | number
+    url?: boolean | number
+    thumbnailUrl?: boolean | number
+    sources?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1870,6 +1891,14 @@ export interface WatchlistItemGenqlSelection{
     export const isFaceIdentification = (obj?: { __typename?: any } | null): obj is FaceIdentification => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isFaceIdentification"')
       return FaceIdentification_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceVideoMatch_possibleTypes: string[] = ['FaceVideoMatch']
+    export const isFaceVideoMatch = (obj?: { __typename?: any } | null): obj is FaceVideoMatch => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceVideoMatch"')
+      return FaceVideoMatch_possibleTypes.includes(obj.__typename)
     }
     
 

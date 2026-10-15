@@ -17,6 +17,9 @@ extend type Mutation {
 
 type FaceIdentification {
   candidates: [FaceCandidate!]!
+  # Videos on tube sites with a similar face, best first. They name nobody and
+  # cannot be credited; the dialog shows them as links.
+  videos: [FaceVideoMatch!]!
   # Plugins that answered.
   sources: [String!]!
   # One line per plugin that failed or timed out.
@@ -24,6 +27,18 @@ type FaceIdentification {
   # The stored picture that was sent (scene thumbnail or poster, gallery image);
   # null when frameBase64 was.
   pictureUrl: String
+}
+
+type FaceVideoMatch {
+  # The video's own title.
+  title: String!
+  # 0..1, the best any service gave.
+  similarity: Float!
+  # The video's page.
+  url: String!
+  thumbnailUrl: String
+  # Plugins that found this video.
+  sources: [String!]!
 }
 
 type FaceCandidate {

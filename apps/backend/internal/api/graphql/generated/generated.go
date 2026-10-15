@@ -166,6 +166,15 @@ type ComplexityRoot struct {
 		Failures   func(childComplexity int) int
 		PictureURL func(childComplexity int) int
 		Sources    func(childComplexity int) int
+		Videos     func(childComplexity int) int
+	}
+
+	FaceVideoMatch struct {
+		Similarity   func(childComplexity int) int
+		Sources      func(childComplexity int) int
+		ThumbnailURL func(childComplexity int) int
+		Title        func(childComplexity int) int
+		URL          func(childComplexity int) int
 	}
 
 	Gallery struct {
@@ -1514,6 +1523,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceIdentification.Sources(childComplexity), true
+	case "FaceIdentification.videos":
+		if e.ComplexityRoot.FaceIdentification.Videos == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceIdentification.Videos(childComplexity), true
+
+	case "FaceVideoMatch.similarity":
+		if e.ComplexityRoot.FaceVideoMatch.Similarity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.Similarity(childComplexity), true
+	case "FaceVideoMatch.sources":
+		if e.ComplexityRoot.FaceVideoMatch.Sources == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.Sources(childComplexity), true
+	case "FaceVideoMatch.thumbnailUrl":
+		if e.ComplexityRoot.FaceVideoMatch.ThumbnailURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.ThumbnailURL(childComplexity), true
+	case "FaceVideoMatch.title":
+		if e.ComplexityRoot.FaceVideoMatch.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.Title(childComplexity), true
+	case "FaceVideoMatch.url":
+		if e.ComplexityRoot.FaceVideoMatch.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.URL(childComplexity), true
 
 	case "Gallery.coverPath":
 		if e.ComplexityRoot.Gallery.CoverPath == nil {
@@ -5463,6 +5509,9 @@ extend type Mutation {
 
 type FaceIdentification {
   candidates: [FaceCandidate!]!
+  # Videos on tube sites with a similar face, best first. They name nobody and
+  # cannot be credited; the dialog shows them as links.
+  videos: [FaceVideoMatch!]!
   # Plugins that answered.
   sources: [String!]!
   # One line per plugin that failed or timed out.
@@ -5470,6 +5519,18 @@ type FaceIdentification {
   # The stored picture that was sent (scene thumbnail or poster, gallery image);
   # null when frameBase64 was.
   pictureUrl: String
+}
+
+type FaceVideoMatch {
+  # The video's own title.
+  title: String!
+  # 0..1, the best any service gave.
+  similarity: Float!
+  # The video's page.
+  url: String!
+  thumbnailUrl: String
+  # Plugins that found this video.
+  sources: [String!]!
 }
 
 type FaceCandidate {
@@ -6862,6 +6923,8 @@ func (ec *executionContext) childFields_FaceIdentification(ctx context.Context, 
 	switch field.Name {
 	case "candidates":
 		return ec.fieldContext_FaceIdentification_candidates(ctx, field)
+	case "videos":
+		return ec.fieldContext_FaceIdentification_videos(ctx, field)
 	case "sources":
 		return ec.fieldContext_FaceIdentification_sources(ctx, field)
 	case "failures":
@@ -6870,6 +6933,22 @@ func (ec *executionContext) childFields_FaceIdentification(ctx context.Context, 
 		return ec.fieldContext_FaceIdentification_pictureUrl(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceIdentification", field.Name)
+}
+
+func (ec *executionContext) childFields_FaceVideoMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "title":
+		return ec.fieldContext_FaceVideoMatch_title(ctx, field)
+	case "similarity":
+		return ec.fieldContext_FaceVideoMatch_similarity(ctx, field)
+	case "url":
+		return ec.fieldContext_FaceVideoMatch_url(ctx, field)
+	case "thumbnailUrl":
+		return ec.fieldContext_FaceVideoMatch_thumbnailUrl(ctx, field)
+	case "sources":
+		return ec.fieldContext_FaceVideoMatch_sources(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceVideoMatch", field.Name)
 }
 
 func (ec *executionContext) childFields_Gallery(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -12750,6 +12829,38 @@ func (ec *executionContext) fieldContext_FaceIdentification_candidates(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _FaceIdentification_videos(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceIdentification_videos(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Videos, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FaceVideoMatch) graphql.Marshaler {
+			return ec.marshalNFaceVideoMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceVideoMatchᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceIdentification_videos(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceIdentification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceVideoMatch(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FaceIdentification_sources(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12817,6 +12928,121 @@ func (ec *executionContext) _FaceIdentification_pictureUrl(ctx context.Context, 
 }
 func (ec *executionContext) fieldContext_FaceIdentification_pictureUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceIdentification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_title(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_similarity(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_similarity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Similarity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_similarity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_url(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_thumbnailUrl(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_thumbnailUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_thumbnailUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_sources(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_sources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sources, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Gallery_id(ctx context.Context, field graphql.CollectedField, obj *model.Gallery) (ret graphql.Marshaler) {
@@ -29495,6 +29721,11 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "videos":
+			out.Values[i] = ec._FaceIdentification_videos(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "sources":
 			out.Values[i] = ec._FaceIdentification_sources(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -29507,6 +29738,62 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			}
 		case "pictureUrl":
 			out.Values[i] = ec._FaceIdentification_pictureUrl(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var faceVideoMatchImplementors = []string{"FaceVideoMatch"}
+
+func (ec *executionContext) _FaceVideoMatch(ctx context.Context, sel ast.SelectionSet, obj *model.FaceVideoMatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceVideoMatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceVideoMatch")
+		case "title":
+			out.Values[i] = ec._FaceVideoMatch_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "similarity":
+			out.Values[i] = ec._FaceVideoMatch_similarity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._FaceVideoMatch_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "thumbnailUrl":
+			out.Values[i] = ec._FaceVideoMatch_thumbnailUrl(ctx, field, obj)
+		case "sources":
+			out.Values[i] = ec._FaceVideoMatch_sources(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -35153,6 +35440,32 @@ func (ec *executionContext) marshalNFaceIdentification2ᚖgithubᚗcomᚋplaying
 		return graphql.Null
 	}
 	return ec._FaceIdentification(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFaceVideoMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceVideoMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceVideoMatch) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceVideoMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceVideoMatch(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceVideoMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceVideoMatch(ctx context.Context, sel ast.SelectionSet, v *model.FaceVideoMatch) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceVideoMatch(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {

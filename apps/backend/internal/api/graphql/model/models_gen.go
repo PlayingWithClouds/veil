@@ -147,10 +147,19 @@ type FaceCandidate struct {
 }
 
 type FaceIdentification struct {
-	Candidates []*FaceCandidate `json:"candidates"`
-	Sources    []string         `json:"sources"`
-	Failures   []string         `json:"failures"`
-	PictureURL *string          `json:"pictureUrl,omitempty"`
+	Candidates []*FaceCandidate  `json:"candidates"`
+	Videos     []*FaceVideoMatch `json:"videos"`
+	Sources    []string          `json:"sources"`
+	Failures   []string          `json:"failures"`
+	PictureURL *string           `json:"pictureUrl,omitempty"`
+}
+
+type FaceVideoMatch struct {
+	Title        string   `json:"title"`
+	Similarity   float64  `json:"similarity"`
+	URL          string   `json:"url"`
+	ThumbnailURL *string  `json:"thumbnailUrl,omitempty"`
+	Sources      []string `json:"sources"`
 }
 
 type Gallery struct {

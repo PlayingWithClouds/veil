@@ -31,8 +31,13 @@ func faceIdentificationModel(identification *face.Identification) *model.FaceIde
 	for _, candidate := range identification.Candidates {
 		candidates = append(candidates, faceCandidateModel(candidate))
 	}
+	videos := make([]*model.FaceVideoMatch, 0, len(identification.Videos))
+	for _, video := range identification.Videos {
+		videos = append(videos, faceVideoModel(video))
+	}
 	return &model.FaceIdentification{
 		Candidates: candidates,
+		Videos:     videos,
 		Sources:    nonNilStrings(identification.Sources),
 		Failures:   nonNilStrings(identification.Failures),
 		PictureURL: strPtrIfSet(identification.PictureURL),
@@ -52,6 +57,20 @@ func faceCandidateModel(candidate face.Candidate) *model.FaceCandidate {
 	}
 	if candidate.PerformerID != "" {
 		converted.PerformerID = &candidate.PerformerID
+	}
+	return converted
+}
+
+// faceVideoModel converts one similar video; an empty thumbnail becomes null.
+func faceVideoModel(video face.VideoMatch) *model.FaceVideoMatch {
+	converted := &model.FaceVideoMatch{
+		Title:      video.Title,
+		Similarity: video.Similarity,
+		URL:        video.URL,
+		Sources:    nonNilStrings(video.Sources),
+	}
+	if video.ThumbnailURL != "" {
+		converted.ThumbnailURL = &video.ThumbnailURL
 	}
 	return converted
 }

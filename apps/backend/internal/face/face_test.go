@@ -110,6 +110,44 @@ func TestIdentifyMergesRanksAndMarksLibrary(t *testing.T) {
 	}
 }
 
+// TestIdentifyKeepsVideosApartFromCandidates checks that similar videos are
+// merged by page URL (best similarity, united sources), ranked, capped, and
+// never turn into named candidates.
+func TestIdentifyKeepsVideosApartFromCandidates(t *testing.T) {
+	replies := map[string]*plugins.FaceIdentifyResult{
+		"first": {Videos: []plugins.FaceVideoMatch{
+			{Title: "Low copy", Similarity: 0.5, URL: "https://tube.test/a"},
+			{Title: "Other", Similarity: 0.7, URL: "https://tube.test/b", ThumbnailURL: "https://tube.test/b.jpg"},
+		}},
+		"second": {Videos: []plugins.FaceVideoMatch{
+			{Title: "High copy", Similarity: 0.9, URL: "https://tube.test/a", ThumbnailURL: "https://tube.test/a.jpg"},
+			{Title: "No page", Similarity: 0.99},
+		}},
+	}
+	service, _, _, _ := testService(t, replies, nil)
+
+	result, err := service.IdentifyPicture(context.Background(), []byte("\xff\xd8\xff\xe0 jpeg bytes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Candidates) != 0 {
+		t.Errorf("videos must not become candidates: %+v", result.Candidates)
+	}
+	if len(result.Videos) != 2 {
+		t.Fatalf("videos = %+v", result.Videos)
+	}
+	top := result.Videos[0]
+	if top.URL != "https://tube.test/a" || top.Title != "High copy" || top.Similarity != 0.9 || top.ThumbnailURL != "https://tube.test/a.jpg" {
+		t.Errorf("top video = %+v", top)
+	}
+	if len(top.Sources) != 2 {
+		t.Errorf("sources = %v", top.Sources)
+	}
+	if result.Videos[1].URL != "https://tube.test/b" {
+		t.Errorf("second video = %+v", result.Videos[1])
+	}
+}
+
 // TestPictureSelection picks the stored image per media kind and credits an
 // image's gallery.
 func TestPictureSelection(t *testing.T) {

@@ -1,7 +1,7 @@
 import { test, expect, describe } from "bun:test";
 import { readFileSync } from "fs";
 import { agreementAccepted, identifyFace } from "../src/identify.ts";
-import { parseCamMatches, similarityFrom } from "../src/parse.ts";
+import { parseCamMatches, parseVideoMatches, similarityFrom } from "../src/parse.ts";
 
 /** Loads a saved answer or picture from the fixtures folder. */
 function loadFixture(fileName: string): Buffer {
@@ -41,6 +41,48 @@ describe("parseCamMatches", () => {
   });
 });
 
+describe("parseVideoMatches", () => {
+  const result = JSON.parse(loadFixture("result.json").toString("utf8"));
+  const videos = parseVideoMatches(result);
+
+  test("reads the porn category as links, best first", () => {
+    expect(videos).toHaveLength(result.results.porn.results.length);
+    expect(videos[0].title).toStartWith("Prefect breasts beauty");
+    expect(videos[0].similarity).toBeCloseTo(0.869);
+    expect(videos[0].url).toStartWith("https://www.xvideos.com/");
+    expect(videos[0].thumbnail_url).toStartWith("https://");
+    for (let index = 1; index < videos.length; index++) {
+      expect(videos[index - 1].similarity).toBeGreaterThanOrEqual(videos[index].similarity);
+    }
+  });
+
+  test("carries nothing but title, similarity and links", () => {
+    for (const video of videos) {
+      expect(Object.keys(video).sort()).toEqual(["similarity", "thumbnail_url", "title", "url"]);
+    }
+  });
+
+  test("drops entries without a title or an https page", () => {
+    const dropped = parseVideoMatches({
+      results: {
+        porn: {
+          results: [
+            { title: "", url: "https://a.test/v", similarity: "90%" },
+            { title: "no link", similarity: "90%" },
+            { title: "plain http", url: "http://a.test/v", similarity: "90%" },
+            { title: "kept", url: "https://a.test/v", thumbnail: "http://a.test/t.jpg", similarity: "80%" },
+          ],
+        },
+      },
+    });
+    expect(dropped).toEqual([{ title: "kept", similarity: 0.8, url: "https://a.test/v" }]);
+  });
+
+  test("handles a missing porn category", () => {
+    expect(parseVideoMatches({ results: { cams: { results: [] } } })).toEqual([]);
+  });
+});
+
 describe("agreement", () => {
   test("identifyFace refuses until the agreement setting is on", async () => {
     delete process.env.FACEDIGGER_ACCEPT_AGREEMENT;
@@ -53,7 +95,7 @@ describe("agreement", () => {
 
 describe("live", () => {
   test.skipIf(!process.env.VEIL_LIVE)(
-    "identifies a face among cam models",
+    "identifies a face among cam models and videos",
     async () => {
       process.env.FACEDIGGER_ACCEPT_AGREEMENT = "true";
       const result = await identifyFace({
