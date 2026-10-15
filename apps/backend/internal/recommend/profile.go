@@ -39,6 +39,22 @@ func (profile *Profile) Empty() bool {
 	return profile.SignalCount == 0
 }
 
+// entityAffinity looks up a performer, studio or tag record id in its
+// dimension and returns the matching reason kind with the affinity; kind is
+// empty for any other id.
+func (profile *Profile) entityAffinity(entityID string) (kind string, affinity float64) {
+	table, _, _ := strings.Cut(entityID, ":")
+	switch table {
+	case "performer":
+		return ReasonPerformer, profile.Performers[entityID]
+	case "studio":
+		return ReasonStudio, profile.Studios[entityID]
+	case "tag":
+		return ReasonTag, profile.Tags[entityID]
+	}
+	return "", 0
+}
+
 // newProfile returns a profile with empty affinity maps.
 func newProfile(signalCount int) *Profile {
 	return &Profile{

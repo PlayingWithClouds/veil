@@ -38,6 +38,9 @@ type Options struct {
 	// scroll feeds); plain keyword searches leave it off.
 	Offset   int
 	Paginate bool
+	// Entity, when set, lists only that entity type (the feeder wants scenes);
+	// empty lists every type each plugin searches.
+	Entity plugins.MediaType
 }
 
 // Hit is one plugin result after ingest. ID is the canonical record id, empty
@@ -86,7 +89,7 @@ func (s *Service) Run(ctx context.Context, options Options, searchPlugins []*plu
 	if options.Paginate {
 		args.Offset = options.Offset
 	}
-	jobs := listJobs(searchPlugins)
+	jobs := listJobs(searchPlugins, options.Entity)
 	results := make(chan listResult, len(jobs))
 	for _, job := range jobs {
 		go func(job listJob) {
@@ -112,11 +115,15 @@ func (s *Service) Run(ctx context.Context, options Options, searchPlugins []*plu
 	return errors.Join(pluginFailures(options.Query, searchPlugins, outcomes)...)
 }
 
-// listJobs expands each plugin into one job per entity type it lists for search.
-func listJobs(searchPlugins []*plugins.Plugin) []listJob {
+// listJobs expands each plugin into one job per entity type it lists for
+// search, only the wanted type when one is given.
+func listJobs(searchPlugins []*plugins.Plugin, wanted plugins.MediaType) []listJob {
 	var jobs []listJob
 	for _, plugin := range searchPlugins {
 		for _, entity := range plugin.SearchListEntities() {
+			if wanted != "" && entity != wanted {
+				continue
+			}
 			jobs = append(jobs, listJob{plugin: plugin, entity: entity})
 		}
 	}

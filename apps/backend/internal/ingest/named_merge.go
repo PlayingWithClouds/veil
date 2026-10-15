@@ -218,6 +218,8 @@ func repointStatements(table string) []string {
 			AND EXISTS (SELECT 1 FROM search_subscription WHERE entity = $survivor)`,
 		`UPDATE search_subscription SET entity = $survivor WHERE entity = $merged`,
 		`DELETE FROM search_subscription_item WHERE subscription NOT IN (SELECT id FROM search_subscription)`,
+		`UPDATE OR IGNORE feed_discovery SET entity = $survivor WHERE entity = $merged`,
+		`DELETE FROM feed_discovery WHERE entity = $merged`,
 		fmt.Sprintf(`DELETE FROM %s WHERE id = $merged`, table),
 	)
 }

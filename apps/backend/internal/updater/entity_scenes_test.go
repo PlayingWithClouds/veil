@@ -2,6 +2,7 @@ package updater
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func (m memoryMarks) Get(ctx context.Context, key string) (string, error) {
 
 // Set stores the mark, ignoring its lifetime.
 func (m memoryMarks) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
-	m[key] = "set"
+	m[key] = fmt.Sprint(value)
 	return nil
 }
 

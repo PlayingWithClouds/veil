@@ -1,5 +1,6 @@
-// Package updater re-runs subscriptions on their schedule: saved searches and
-// followed studios (channels), performers and tags.
+// Package updater re-runs subscriptions on their schedule (saved searches and
+// followed studios, performers and tags) and feeds the recommendation feed
+// from the sites in the background (Feeder).
 package updater
 
 import (
@@ -115,21 +116,27 @@ func (s *Scheduler) collectSearch(ctx context.Context, subscription *model.Searc
 // page on its site when a plugin can list that page, otherwise a keyword
 // search for its name; plus the library scenes already credited to it.
 func (s *Scheduler) collectEntity(ctx context.Context, entityID string) ([]string, error) {
-	origin, err := s.repo.EntityOrigin(ctx, entityID)
-	if err != nil {
-		return nil, err
-	}
-	mediaIDs, listed, runErr := s.listEntityPage(ctx, origin)
-	if !listed {
-		searched, searchErr := s.searchEntity(ctx, entityID, origin)
-		mediaIDs = searched
-		runErr = errors.Join(runErr, searchErr)
-	}
+	mediaIDs, runErr := s.fetchEntity(ctx, entityID)
 	library, err := s.repo.LinkedSceneIDs(ctx, entityID)
 	if err != nil {
 		return mediaIDs, errors.Join(runErr, err)
 	}
 	return append(mediaIDs, library...), runErr
+}
+
+// fetchEntity pulls a studio/performer/tag's scenes from the sites: its own
+// page when a plugin can list it, otherwise a keyword search for its name.
+func (s *Scheduler) fetchEntity(ctx context.Context, entityID string) ([]string, error) {
+	origin, err := s.repo.EntityOrigin(ctx, entityID)
+	if err != nil {
+		return nil, err
+	}
+	mediaIDs, listed, listErr := s.listEntityPage(ctx, origin)
+	if listed {
+		return mediaIDs, nil
+	}
+	searched, searchErr := s.searchEntity(ctx, entityID, origin)
+	return searched, errors.Join(listErr, searchErr)
 }
 
 // listEntityPage lists the entity's page on its site, trying each plugin that

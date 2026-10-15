@@ -342,6 +342,10 @@ func main() {
 	resolver.SetSearchScheduler(searchScheduler)
 	resolver.SetEntityScenes(updater.NewEntityScenes(searchScheduler, cacheClient))
 	recommender := recommend.New(database, repo)
+	// The feeder supplies the feed from the sites without a search.
+	feeder := updater.NewFeeder(searchScheduler, database, recommender, cacheClient, recommender.Invalidate)
+	recommender.OnLowPool(feeder.TopUp)
+	go feeder.Start(ctx)
 	resolver.SetRecommender(recommender)
 	resolver.SetPluginStore(pluginStore)
 	// Search suggestions: build the name/phrase index now, not on the first keystroke.

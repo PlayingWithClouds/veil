@@ -74,6 +74,14 @@ const (
 	recentSearchWindow         = 14 * 24 * time.Hour
 	scenesPerSearch            = 24
 	newestCandidateLimit       = 120
+	// The feeder's finds (feed_discovery) count for this long after they
+	// were last listed; catalog finds are capped per plugin.
+	feedDiscoveryWindow   = 14 * 24 * time.Hour
+	catalogPerPluginLimit = 40
+	tasteCandidateLimit   = 120
+	// lowPoolThreshold is how few unwatched, not yet shown candidates a
+	// ranking may have before it asks the feeder for a top-up.
+	lowPoolThreshold = 100
 	// categoryOverfetch widens a tag category's query so scoring has room to
 	// reorder it.
 	categoryOverfetch = 3
@@ -92,12 +100,14 @@ var sourcePriors = map[string]float64{
 	SourceSubscription:     0.8,
 	SourceRelatedPerformer: 0.7,
 	SourcePerformer:        0.65,
+	SourceTaste:            0.6,
 	SourceRelatedTag:       0.55,
 	SourceStudio:           0.5,
 	SourceTag:              0.45,
 	SourceRelatedTitle:     0.4,
 	SourceSearch:           0.4,
 	SourceAdjacentTag:      0.3,
+	SourceCatalog:          0.3,
 	SourceRandom:           0.2,
 	SourceNewest:           0.1,
 }
