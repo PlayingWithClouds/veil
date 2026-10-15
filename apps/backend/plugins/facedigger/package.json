@@ -1,0 +1,14 @@
+{
+  "name": "@playingwithclouds/veil-plugin-facedigger",
+  "version": "0.1.0",
+  "description": "Veil plugin for facedigger.com: which live-cam models look like a face (cam category only)",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@playingwithclouds/veil-sdk": "file:../../../../packages/veil-sdk"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}
