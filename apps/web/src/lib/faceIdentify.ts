@@ -27,6 +27,8 @@ export interface FaceVideoMatch {
 	thumbnailUrl: string | null;
 	/** Plugins that found this video. */
 	sources: string[];
+	/** The scene plugin that serves the page, so it can be opened in the app; null when none does. */
+	scenePlugin: string | null;
 }
 
 export interface FaceIdentification {
@@ -59,7 +61,14 @@ export async function identifyFace(
 				sources: true,
 				performerId: true
 			},
-			videos: { title: true, similarity: true, url: true, thumbnailUrl: true, sources: true },
+			videos: {
+				title: true,
+				similarity: true,
+				url: true,
+				thumbnailUrl: true,
+				sources: true,
+				scenePlugin: true
+			},
 			failures: true,
 			pictureUrl: true
 		}

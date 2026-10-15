@@ -160,6 +160,7 @@ type FaceVideoMatch struct {
 	URL          string   `json:"url"`
 	ThumbnailURL *string  `json:"thumbnailUrl,omitempty"`
 	Sources      []string `json:"sources"`
+	ScenePlugin  *string  `json:"scenePlugin,omitempty"`
 }
 
 type Gallery struct {

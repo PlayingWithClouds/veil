@@ -170,6 +170,7 @@ type ComplexityRoot struct {
 	}
 
 	FaceVideoMatch struct {
+		ScenePlugin  func(childComplexity int) int
 		Similarity   func(childComplexity int) int
 		Sources      func(childComplexity int) int
 		ThumbnailURL func(childComplexity int) int
@@ -1530,6 +1531,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.FaceIdentification.Videos(childComplexity), true
 
+	case "FaceVideoMatch.scenePlugin":
+		if e.ComplexityRoot.FaceVideoMatch.ScenePlugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceVideoMatch.ScenePlugin(childComplexity), true
 	case "FaceVideoMatch.similarity":
 		if e.ComplexityRoot.FaceVideoMatch.Similarity == nil {
 			break
@@ -5535,6 +5542,9 @@ type FaceVideoMatch {
   thumbnailUrl: String
   # Plugins that found this video.
   sources: [String!]!
+  # The scene plugin that serves the page: pass it with url to
+  # resolvePluginResult to open the video as a scene. Null when none does.
+  scenePlugin: String
 }
 
 type FaceCandidate {
@@ -6951,6 +6961,8 @@ func (ec *executionContext) childFields_FaceVideoMatch(ctx context.Context, fiel
 		return ec.fieldContext_FaceVideoMatch_thumbnailUrl(ctx, field)
 	case "sources":
 		return ec.fieldContext_FaceVideoMatch_sources(ctx, field)
+	case "scenePlugin":
+		return ec.fieldContext_FaceVideoMatch_scenePlugin(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceVideoMatch", field.Name)
 }
@@ -13054,6 +13066,29 @@ func (ec *executionContext) _FaceVideoMatch_sources(ctx context.Context, field g
 	)
 }
 func (ec *executionContext) fieldContext_FaceVideoMatch_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceVideoMatch_scenePlugin(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceVideoMatch_scenePlugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ScenePlugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceVideoMatch_scenePlugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -29806,6 +29841,8 @@ func (ec *executionContext) _FaceVideoMatch(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "scenePlugin":
+			out.Values[i] = ec._FaceVideoMatch_scenePlugin(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

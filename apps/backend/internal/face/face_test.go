@@ -125,6 +125,12 @@ func TestIdentifyKeepsVideosApartFromCandidates(t *testing.T) {
 		}},
 	}
 	service, _, _, _ := testService(t, replies, nil)
+	service.scenePluginFor = func(pageURL string) string {
+		if pageURL == "https://tube.test/b" {
+			return "tube"
+		}
+		return ""
+	}
 
 	result, err := service.IdentifyPicture(context.Background(), []byte("\xff\xd8\xff\xe0 jpeg bytes"))
 	if err != nil {
@@ -142,6 +148,9 @@ func TestIdentifyKeepsVideosApartFromCandidates(t *testing.T) {
 	}
 	if len(top.Sources) != 2 {
 		t.Errorf("sources = %v", top.Sources)
+	}
+	if top.ScenePlugin != "" || result.Videos[1].ScenePlugin != "tube" {
+		t.Errorf("scene plugins = %q, %q", top.ScenePlugin, result.Videos[1].ScenePlugin)
 	}
 	if result.Videos[1].URL != "https://tube.test/b" {
 		t.Errorf("second video = %+v", result.Videos[1])

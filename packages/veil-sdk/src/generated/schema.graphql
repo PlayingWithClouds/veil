@@ -308,6 +308,7 @@ type FaceVideoMatch {
   url: String!
   thumbnailUrl: String
   sources: [String!]!
+  scenePlugin: String
 }
 
 type FaceCandidate {
