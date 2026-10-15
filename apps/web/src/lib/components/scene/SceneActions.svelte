@@ -4,6 +4,7 @@
 	// Left/Right arrows move between the pills for D-pad navigation.
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import UserFocusIcon from 'phosphor-svelte/lib/UserFocusIcon';
 	import ListPlusIcon from 'phosphor-svelte/lib/ListPlusIcon';
 	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
 	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
@@ -40,6 +41,7 @@
 		performers: PerformerRef[];
 		ondownload: (stream: SceneStream) => void;
 		onfindsources: () => void;
+		onidentify: () => void;
 		onblock: (kind: BlockKind, id: string, label: string) => void;
 		// Arrow key past the first/last pill, for handing focus to a neighbour zone.
 		onedge?: (direction: Direction) => void;
@@ -56,6 +58,7 @@
 		performers,
 		ondownload,
 		onfindsources,
+		onidentify,
 		onblock,
 		onedge
 	}: Props = $props();
@@ -180,6 +183,11 @@
 				{alikeCount}
 			</span>
 		{/if}
+	</button>
+
+	<button type="button" class={PILL_CLASS} title="Who is this?" onclick={onidentify}>
+		<UserFocusIcon size={18} />
+		Who is this?
 	</button>
 
 	<PopoverMenu label="More actions" align="right" triggerClass={ICON_PILL_CLASS}>
