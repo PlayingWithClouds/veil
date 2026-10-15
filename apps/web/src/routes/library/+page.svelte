@@ -280,7 +280,12 @@
 			{#if queue.length > 0}
 				<h2 class="text-base font-semibold">Downloaded</h2>
 			{/if}
-			<NsfwGrid items={scenes} loading={loading && scenes.length === 0} ariaLabel="Downloaded videos" />
+			<NsfwGrid
+				items={scenes}
+				loading={loading && scenes.length === 0}
+				ariaLabel="Downloaded videos"
+				instantHover
+			/>
 		</section>
 	{/if}
 
