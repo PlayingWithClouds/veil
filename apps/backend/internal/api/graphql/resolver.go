@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"github.com/playingwithclouds/veil/internal/api/imgcache"
+	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/media"
@@ -41,7 +42,11 @@ type Resolver struct {
 	suggestions  *suggest.Service
 	siteSuggest  *sitesuggest.Service
 	blobStore    *storage.Client
+	cams         *cams.Service
 }
+
+// SetCams wires in the live cam service.
+func (r *Resolver) SetCams(service *cams.Service) { r.cams = service }
 
 // SetBlobStore wires in the blob store, where generated scene thumbnails are kept.
 func (r *Resolver) SetBlobStore(store *storage.Client) { r.blobStore = store }

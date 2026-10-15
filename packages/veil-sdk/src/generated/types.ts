@@ -5,9 +5,9 @@ export default {
         3,
         4,
         5,
-        22,
-        48,
-        62
+        26,
+        52,
+        66
     ],
     "types": {
         "Query": {
@@ -38,8 +38,56 @@ export default {
             "blocklist": [
                 14
             ],
-            "changes": [
+            "camRooms": [
+                16,
+                {
+                    "sources": [
+                        1,
+                        "[String!]"
+                    ],
+                    "tag": [
+                        1
+                    ],
+                    "query": [
+                        1
+                    ],
+                    "gender": [
+                        1
+                    ],
+                    "limit": [
+                        3
+                    ],
+                    "offset": [
+                        3
+                    ]
+                }
+            ],
+            "camSources": [
+                17
+            ],
+            "camModel": [
                 15,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
+            "followedCamModels": [
+                15
+            ],
+            "camStream": [
+                18,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
+            "changes": [
+                19,
                 {
                     "targetId": [
                         2,
@@ -57,7 +105,7 @@ export default {
                 }
             ],
             "collections": [
-                16,
+                20,
                 {
                     "search": [
                         1
@@ -77,7 +125,7 @@ export default {
                 }
             ],
             "collection": [
-                16,
+                20,
                 {
                     "id": [
                         2,
@@ -86,7 +134,7 @@ export default {
                 }
             ],
             "collectionMembers": [
-                17,
+                21,
                 {
                     "collectionId": [
                         2,
@@ -104,7 +152,7 @@ export default {
                 }
             ],
             "galleries": [
-                18,
+                22,
                 {
                     "limit": [
                         3
@@ -131,7 +179,7 @@ export default {
                 }
             ],
             "gallery": [
-                18,
+                22,
                 {
                     "id": [
                         2,
@@ -140,7 +188,7 @@ export default {
                 }
             ],
             "findGalleryVideos": [
-                47,
+                51,
                 {
                     "galleryId": [
                         2,
@@ -152,7 +200,7 @@ export default {
                 }
             ],
             "images": [
-                19,
+                23,
                 {
                     "limit": [
                         3
@@ -181,7 +229,7 @@ export default {
                 }
             ],
             "image": [
-                19,
+                23,
                 {
                     "id": [
                         2,
@@ -190,10 +238,10 @@ export default {
                 }
             ],
             "jobs": [
-                20
+                24
             ],
             "job": [
-                20,
+                24,
                 {
                     "id": [
                         2,
@@ -202,10 +250,10 @@ export default {
                 }
             ],
             "downloadedScenes": [
-                41
+                45
             ],
             "mediaCards": [
-                21,
+                25,
                 {
                     "ids": [
                         2,
@@ -223,7 +271,7 @@ export default {
                 }
             ],
             "observation": [
-                23,
+                27,
                 {
                     "id": [
                         2,
@@ -232,7 +280,7 @@ export default {
                 }
             ],
             "observations": [
-                23,
+                27,
                 {
                     "targetId": [
                         2,
@@ -250,7 +298,7 @@ export default {
                 }
             ],
             "performers": [
-                24,
+                28,
                 {
                     "limit": [
                         3
@@ -270,7 +318,7 @@ export default {
                 }
             ],
             "performer": [
-                24,
+                28,
                 {
                     "id": [
                         2,
@@ -279,10 +327,10 @@ export default {
                 }
             ],
             "plugins": [
-                26
+                30
             ],
             "plugin": [
-                26,
+                30,
                 {
                     "id": [
                         2,
@@ -291,7 +339,7 @@ export default {
                 }
             ],
             "pluginPackages": [
-                25,
+                29,
                 {
                     "query": [
                         1
@@ -299,7 +347,7 @@ export default {
                 }
             ],
             "pluginCategories": [
-                30,
+                34,
                 {
                     "plugin": [
                         1,
@@ -311,7 +359,7 @@ export default {
                 }
             ],
             "recommendations": [
-                34,
+                38,
                 {
                     "limit": [
                         3
@@ -339,7 +387,7 @@ export default {
                 }
             ],
             "tasteProfile": [
-                32,
+                36,
                 {
                     "limit": [
                         3
@@ -347,7 +395,7 @@ export default {
                 }
             ],
             "recommendedRows": [
-                36,
+                40,
                 {
                     "rowLimit": [
                         3
@@ -358,7 +406,7 @@ export default {
                 }
             ],
             "recommendedCategories": [
-                37,
+                41,
                 {
                     "categoryLimit": [
                         3
@@ -369,13 +417,13 @@ export default {
                 }
             ],
             "recommendationPair": [
-                41
+                45
             ],
             "savedFilters": [
-                40
+                44
             ],
             "scenes": [
-                41,
+                45,
                 {
                     "limit": [
                         3
@@ -428,7 +476,7 @@ export default {
                 }
             ],
             "scene": [
-                41,
+                45,
                 {
                     "id": [
                         2,
@@ -437,7 +485,7 @@ export default {
                 }
             ],
             "randomScenes": [
-                41,
+                45,
                 {
                     "limit": [
                         3
@@ -445,7 +493,7 @@ export default {
                 }
             ],
             "recommendedFeed": [
-                41,
+                45,
                 {
                     "limit": [
                         3
@@ -456,7 +504,7 @@ export default {
                 }
             ],
             "sceneHeat": [
-                42,
+                46,
                 {
                     "sceneId": [
                         2,
@@ -465,7 +513,7 @@ export default {
                 }
             ],
             "sceneMarkers": [
-                45,
+                49,
                 {
                     "mediaId": [
                         2,
@@ -474,7 +522,7 @@ export default {
                 }
             ],
             "pluginSearch": [
-                46,
+                50,
                 {
                     "query": [
                         1,
@@ -490,7 +538,7 @@ export default {
                 }
             ],
             "pluginBrowse": [
-                46,
+                50,
                 {
                     "limit": [
                         3
@@ -501,7 +549,7 @@ export default {
                 }
             ],
             "recommendedBrowse": [
-                46,
+                50,
                 {
                     "limit": [
                         3
@@ -509,7 +557,7 @@ export default {
                 }
             ],
             "findAlikeSources": [
-                47,
+                51,
                 {
                     "sceneId": [
                         2,
@@ -521,7 +569,7 @@ export default {
                 }
             ],
             "searchSuggestions": [
-                49,
+                53,
                 {
                     "query": [
                         1,
@@ -533,7 +581,7 @@ export default {
                 }
             ],
             "sourceSuggestions": [
-                50,
+                54,
                 {
                     "query": [
                         1,
@@ -545,10 +593,10 @@ export default {
                 }
             ],
             "settings": [
-                51
+                55
             ],
             "settingEntries": [
-                55,
+                59,
                 {
                     "scope": [
                         1
@@ -556,7 +604,7 @@ export default {
                 }
             ],
             "mediaStreams": [
-                57,
+                61,
                 {
                     "mediaId": [
                         2,
@@ -565,7 +613,7 @@ export default {
                 }
             ],
             "studios": [
-                59,
+                63,
                 {
                     "limit": [
                         3
@@ -585,7 +633,7 @@ export default {
                 }
             ],
             "studio": [
-                59,
+                63,
                 {
                     "id": [
                         2,
@@ -594,10 +642,10 @@ export default {
                 }
             ],
             "searchSubscriptions": [
-                64
+                68
             ],
             "searchSubscription": [
-                64,
+                68,
                 {
                     "id": [
                         2,
@@ -606,7 +654,7 @@ export default {
                 }
             ],
             "subscriptionForTarget": [
-                64,
+                68,
                 {
                     "targetId": [
                         2,
@@ -615,10 +663,10 @@ export default {
                 }
             ],
             "subscriptionFeed": [
-                61,
+                65,
                 {
                     "filter": [
-                        60
+                        64
                     ],
                     "limit": [
                         3
@@ -629,7 +677,7 @@ export default {
                 }
             ],
             "tags": [
-                65,
+                69,
                 {
                     "limit": [
                         3
@@ -646,7 +694,7 @@ export default {
                 }
             ],
             "tag": [
-                65,
+                69,
                 {
                     "id": [
                         2,
@@ -655,7 +703,7 @@ export default {
                 }
             ],
             "userRating": [
-                66,
+                70,
                 {
                     "mediaId": [
                         2,
@@ -664,7 +712,7 @@ export default {
                 }
             ],
             "userRatings": [
-                66,
+                70,
                 {
                     "limit": [
                         3
@@ -675,7 +723,7 @@ export default {
                 }
             ],
             "watchHistory": [
-                68,
+                72,
                 {
                     "limit": [
                         3
@@ -686,7 +734,7 @@ export default {
                 }
             ],
             "watchHistoryEntry": [
-                68,
+                72,
                 {
                     "mediaId": [
                         2,
@@ -695,7 +743,7 @@ export default {
                 }
             ],
             "watchlist": [
-                70
+                74
             ],
             "__typename": [
                 1
@@ -761,8 +809,26 @@ export default {
                     ]
                 }
             ],
+            "followCamModel": [
+                15,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
+            "unfollowCamModel": [
+                15,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
             "createCollection": [
-                16,
+                20,
                 {
                     "name": [
                         1,
@@ -771,7 +837,7 @@ export default {
                 }
             ],
             "renameCollection": [
-                16,
+                20,
                 {
                     "collectionId": [
                         2,
@@ -832,7 +898,7 @@ export default {
                 }
             ],
             "setCollectionTags": [
-                16,
+                20,
                 {
                     "collectionId": [
                         2,
@@ -845,7 +911,7 @@ export default {
                 }
             ],
             "ensureGalleryImages": [
-                18,
+                22,
                 {
                     "galleryId": [
                         2,
@@ -854,7 +920,7 @@ export default {
                 }
             ],
             "linkGalleryVideo": [
-                41,
+                45,
                 {
                     "galleryId": [
                         2,
@@ -871,7 +937,7 @@ export default {
                 }
             ],
             "setImageTags": [
-                19,
+                23,
                 {
                     "imageId": [
                         2,
@@ -954,20 +1020,20 @@ export default {
                 }
             ],
             "updateObservationStatus": [
-                23,
+                27,
                 {
                     "id": [
                         2,
                         "ID!"
                     ],
                     "status": [
-                        22,
+                        26,
                         "ObservationStatus!"
                     ]
                 }
             ],
             "setPerformerFavorite": [
-                24,
+                28,
                 {
                     "id": [
                         2,
@@ -1009,7 +1075,7 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        29,
+                        33,
                         "[PluginSettingValueInput!]!"
                     ]
                 }
@@ -1052,20 +1118,20 @@ export default {
                 3,
                 {
                     "impressions": [
-                        31,
+                        35,
                         "[ImpressionInput!]!"
                     ]
                 }
             ],
             "createSavedFilter": [
-                40,
+                44,
                 {
                     "name": [
                         1,
                         "String!"
                     ],
                     "filter": [
-                        38,
+                        42,
                         "SceneFilterInput!"
                     ]
                 }
@@ -1083,7 +1149,7 @@ export default {
                 4,
                 {
                     "input": [
-                        43,
+                        47,
                         "RecordSceneHeatInput!"
                     ]
                 }
@@ -1106,7 +1172,7 @@ export default {
                 }
             ],
             "createSceneMarker": [
-                45,
+                49,
                 {
                     "mediaId": [
                         2,
@@ -1153,7 +1219,7 @@ export default {
                 }
             ],
             "attachAlikeSource": [
-                57,
+                61,
                 {
                     "sceneId": [
                         2,
@@ -1197,19 +1263,19 @@ export default {
                 }
             ],
             "updateSettings": [
-                51,
+                55,
                 {
                     "input": [
-                        52,
+                        56,
                         "UpdateSettingsInput!"
                     ]
                 }
             ],
             "upsertSettingEntry": [
-                55,
+                59,
                 {
                     "input": [
-                        56,
+                        60,
                         "UpsertSettingEntryInput!"
                     ]
                 }
@@ -1224,10 +1290,10 @@ export default {
                 }
             ],
             "createStream": [
-                57,
+                61,
                 {
                     "input": [
-                        58,
+                        62,
                         "CreateStreamInput!"
                     ]
                 }
@@ -1242,7 +1308,7 @@ export default {
                 }
             ],
             "ensureSceneStreams": [
-                57,
+                61,
                 {
                     "sceneId": [
                         2,
@@ -1251,7 +1317,7 @@ export default {
                 }
             ],
             "setStudioTags": [
-                59,
+                63,
                 {
                     "studioId": [
                         2,
@@ -1264,7 +1330,7 @@ export default {
                 }
             ],
             "subscribeSearch": [
-                64,
+                68,
                 {
                     "query": [
                         1,
@@ -1280,10 +1346,10 @@ export default {
                 }
             ],
             "subscribe": [
-                64,
+                68,
                 {
                     "kind": [
-                        62,
+                        66,
                         "SubscriptionKind!"
                     ],
                     "targetId": [
@@ -1296,7 +1362,7 @@ export default {
                 }
             ],
             "updateSearchSubscription": [
-                64,
+                68,
                 {
                     "id": [
                         2,
@@ -1320,7 +1386,7 @@ export default {
                 }
             ],
             "runSearchSubscription": [
-                64,
+                68,
                 {
                     "id": [
                         2,
@@ -1329,7 +1395,7 @@ export default {
                 }
             ],
             "markSearchSubscriptionSeen": [
-                64,
+                68,
                 {
                     "id": [
                         2,
@@ -1338,10 +1404,10 @@ export default {
                 }
             ],
             "upsertUserRating": [
-                66,
+                70,
                 {
                     "input": [
-                        67,
+                        71,
                         "UpsertUserRatingInput!"
                     ]
                 }
@@ -1356,10 +1422,10 @@ export default {
                 }
             ],
             "upsertWatchHistory": [
-                68,
+                72,
                 {
                     "input": [
-                        69,
+                        73,
                         "UpsertWatchHistoryInput!"
                     ]
                 }
@@ -1374,7 +1440,7 @@ export default {
                 }
             ],
             "addToWatchlist": [
-                70,
+                74,
                 {
                     "mediaId": [
                         2,
@@ -1400,10 +1466,10 @@ export default {
                 13
             ],
             "jobUpdated": [
-                20
+                24
             ],
             "streamsChanged": [
-                57,
+                61,
                 {
                     "mediaId": [
                         2,
@@ -1412,7 +1478,7 @@ export default {
                 }
             ],
             "relatedChanged": [
-                41,
+                45,
                 {
                     "sceneId": [
                         2,
@@ -1534,6 +1600,86 @@ export default {
                 1
             ]
         },
+        "CamModel": {
+            "id": [
+                2
+            ],
+            "pluginName": [
+                1
+            ],
+            "username": [
+                1
+            ],
+            "displayName": [
+                1
+            ],
+            "sourceUrl": [
+                1
+            ],
+            "thumbnailUrl": [
+                1
+            ],
+            "tags": [
+                1
+            ],
+            "gender": [
+                1
+            ],
+            "subject": [
+                1
+            ],
+            "viewers": [
+                3
+            ],
+            "online": [
+                4
+            ],
+            "lastSeenOnlineAt": [
+                1
+            ],
+            "followed": [
+                4
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "CamRoomPage": {
+            "rooms": [
+                15
+            ],
+            "totalCount": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "CamSource": {
+            "name": [
+                1
+            ],
+            "displayName": [
+                1
+            ],
+            "iconUrl": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "CamStream": {
+            "url": [
+                1
+            ],
+            "mimeType": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
         "Change": {
             "id": [
                 2
@@ -1610,7 +1756,7 @@ export default {
                 1
             ],
             "tags": [
-                65
+                69
             ],
             "createdAt": [
                 1
@@ -1674,22 +1820,22 @@ export default {
                 4
             ],
             "studio": [
-                59
+                63
             ],
             "performers": [
-                24
+                28
             ],
             "tags": [
-                65
+                69
             ],
             "images": [
-                19
+                23
             ],
             "tagMatch": [
                 1
             ],
             "video": [
-                41
+                45
             ],
             "createdAt": [
                 1
@@ -1742,13 +1888,13 @@ export default {
                 2
             ],
             "studio": [
-                59
+                63
             ],
             "performers": [
-                24
+                28
             ],
             "tags": [
-                65
+                69
             ],
             "tagMatch": [
                 1
@@ -1828,7 +1974,7 @@ export default {
                 5
             ],
             "scene": [
-                41
+                45
             ],
             "__typename": [
                 1
@@ -1872,7 +2018,7 @@ export default {
                 5
             ],
             "status": [
-                22
+                26
             ],
             "data": [
                 1
@@ -1961,7 +2107,7 @@ export default {
                 5
             ],
             "tags": [
-                65
+                69
             ],
             "sceneCount": [
                 3
@@ -2040,10 +2186,10 @@ export default {
                 1
             ],
             "settings": [
-                27
+                31
             ],
             "settingValues": [
-                28
+                32
             ],
             "__typename": [
                 1
@@ -2139,16 +2285,16 @@ export default {
                 3
             ],
             "tags": [
-                33
+                37
             ],
             "performers": [
-                33
+                37
             ],
             "studios": [
-                33
+                37
             ],
             "sites": [
-                33
+                37
             ],
             "__typename": [
                 1
@@ -2173,13 +2319,13 @@ export default {
         },
         "RecommendedScene": {
             "scene": [
-                41
+                45
             ],
             "source": [
                 1
             ],
             "reason": [
-                35
+                39
             ],
             "score": [
                 5
@@ -2213,10 +2359,10 @@ export default {
                 1
             ],
             "reason": [
-                35
+                39
             ],
             "items": [
-                34
+                38
             ],
             "__typename": [
                 1
@@ -2224,10 +2370,10 @@ export default {
         },
         "RecommendedCategory": {
             "tag": [
-                65
+                69
             ],
             "scenes": [
-                41
+                45
             ],
             "__typename": [
                 1
@@ -2317,7 +2463,7 @@ export default {
                 1
             ],
             "filter": [
-                39
+                43
             ],
             "createdAt": [
                 1
@@ -2367,19 +2513,19 @@ export default {
                 1
             ],
             "studio": [
-                59
+                63
             ],
             "performers": [
-                24
+                28
             ],
             "tags": [
-                65
+                69
             ],
             "tagMatch": [
                 1
             ],
             "related": [
-                41,
+                45,
                 {
                     "limit": [
                         3
@@ -2418,7 +2564,7 @@ export default {
                 5
             ],
             "spans": [
-                44
+                48
             ],
             "scrubs": [
                 5
@@ -2443,7 +2589,7 @@ export default {
                 2
             ],
             "tag": [
-                65
+                69
             ],
             "label": [
                 1
@@ -2537,7 +2683,7 @@ export default {
         "SearchSuggestionKind": {},
         "SearchSuggestion": {
             "kind": [
-                48
+                52
             ],
             "text": [
                 1
@@ -2557,7 +2703,7 @@ export default {
         },
         "SourceSuggestion": {
             "kind": [
-                48
+                52
             ],
             "text": [
                 1
@@ -2589,7 +2735,7 @@ export default {
                 4
             ],
             "kindLimits": [
-                53
+                57
             ],
             "__typename": [
                 1
@@ -2615,7 +2761,7 @@ export default {
                 4
             ],
             "kindLimits": [
-                54
+                58
             ],
             "__typename": [
                 1
@@ -2830,7 +2976,7 @@ export default {
                 1
             ],
             "parent": [
-                59
+                63
             ],
             "imagePath": [
                 1
@@ -2839,7 +2985,7 @@ export default {
                 1
             ],
             "tags": [
-                65
+                69
             ],
             "sceneCount": [
                 3
@@ -2859,7 +3005,7 @@ export default {
                 2
             ],
             "kinds": [
-                62
+                66
             ],
             "newOnly": [
                 4
@@ -2873,7 +3019,7 @@ export default {
         },
         "SubscriptionFeedItem": {
             "scene": [
-                41
+                45
             ],
             "foundAt": [
                 1
@@ -2908,13 +3054,13 @@ export default {
                 2
             ],
             "kind": [
-                62
+                66
             ],
             "query": [
                 1
             ],
             "target": [
-                63
+                67
             ],
             "sources": [
                 1
@@ -2944,7 +3090,7 @@ export default {
                 1
             ],
             "scenes": [
-                41,
+                45,
                 {
                     "limit": [
                         3
@@ -3026,7 +3172,7 @@ export default {
                 2
             ],
             "scene": [
-                41
+                45
             ],
             "startedAt": [
                 1

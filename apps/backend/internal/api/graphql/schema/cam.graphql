@@ -1,0 +1,62 @@
+# Live webcam rooms. A room is not a scene: it comes and goes, so a cam model
+# keeps what its site's listing last said and can be followed and shown offline.
+
+extend type Query {
+  # Rooms online right now across the cam plugins, in each site's popularity
+  # order (sites merged by viewers). Listings go live to the plugins and are
+  # cached for a minute so paging stays stable.
+  camRooms(
+    # Plugin names to list; all cam plugins when empty.
+    sources: [String!]
+    tag: String
+    query: String
+    # female | male | couple | trans
+    gender: String
+    limit: Int = 48
+    offset: Int = 0
+  ): CamRoomPage!
+  camSources: [CamSource!]!
+  # One cam model with its online status checked against the site.
+  camModel(id: ID!): CamModel
+  # Followed models, online ones first.
+  followedCamModels: [CamModel!]!
+  # The room's live HLS stream through the backend proxy (never cached on disk).
+  camStream(id: ID!): CamStream!
+}
+
+extend type Mutation {
+  followCamModel(id: ID!): CamModel!
+  unfollowCamModel(id: ID!): CamModel!
+}
+
+type CamModel {
+  id: ID!
+  pluginName: String!
+  username: String!
+  displayName: String!
+  sourceUrl: String!
+  thumbnailUrl: String
+  tags: [String!]!
+  gender: String
+  subject: String
+  viewers: Int!
+  online: Boolean!
+  lastSeenOnlineAt: String
+  followed: Boolean!
+}
+
+type CamRoomPage {
+  rooms: [CamModel!]!
+  totalCount: Int!
+}
+
+type CamSource {
+  name: String!
+  displayName: String!
+  iconUrl: String
+}
+
+type CamStream {
+  url: String!
+  mimeType: String!
+}

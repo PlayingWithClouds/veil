@@ -30,6 +30,38 @@ type BlocklistEntry struct {
 	CreatedAt string  `json:"createdAt"`
 }
 
+type CamModel struct {
+	ID               string   `json:"id"`
+	PluginName       string   `json:"pluginName"`
+	Username         string   `json:"username"`
+	DisplayName      string   `json:"displayName"`
+	SourceURL        string   `json:"sourceUrl"`
+	ThumbnailURL     *string  `json:"thumbnailUrl,omitempty"`
+	Tags             []string `json:"tags"`
+	Gender           *string  `json:"gender,omitempty"`
+	Subject          *string  `json:"subject,omitempty"`
+	Viewers          int      `json:"viewers"`
+	Online           bool     `json:"online"`
+	LastSeenOnlineAt *string  `json:"lastSeenOnlineAt,omitempty"`
+	Followed         bool     `json:"followed"`
+}
+
+type CamRoomPage struct {
+	Rooms      []*CamModel `json:"rooms"`
+	TotalCount int         `json:"totalCount"`
+}
+
+type CamSource struct {
+	Name        string  `json:"name"`
+	DisplayName string  `json:"displayName"`
+	IconURL     *string `json:"iconUrl,omitempty"`
+}
+
+type CamStream struct {
+	URL      string `json:"url"`
+	MimeType string `json:"mimeType"`
+}
+
 type Change struct {
 	ID            string  `json:"id"`
 	Canonical     string  `json:"canonical"`

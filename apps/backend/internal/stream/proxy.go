@@ -25,6 +25,9 @@ const (
 
 type sessionData struct {
 	Headers map[string]string `json:"headers"`
+	// Live marks a live broadcast: nothing is written to the stream cache and
+	// low-latency playlist tags are stripped (see serveLiveManifest).
+	Live bool `json:"live,omitempty"`
 }
 
 // Proxy is an HTTP handler that serves HLS streams through the backend.
@@ -57,7 +60,7 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 		return result.URL, nil
 	}
 	if !isHLS(result) {
-		id, err := p.newSession(ctx, result.Headers)
+		id, err := p.newSession(ctx, result.Headers, false)
 		if err != nil {
 			return result.URL, nil
 		}
@@ -65,9 +68,21 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 		return p.baseURL + "/api/stream/mp4?s=" + id + "&u=" + encURL(result.URL), nil
 	}
 
-	id, err := p.newSession(ctx, result.Headers)
+	id, err := p.newSession(ctx, result.Headers, false)
 	if err != nil {
 		return result.URL, nil // fallback: return remote URL on session failure
+	}
+	return p.baseURL + "/api/stream/manifest?s=" + id + "&u=" + encURL(result.URL), nil
+}
+
+// LiveManifestURL returns a local proxy URL for a live HLS broadcast (a cam
+// room). The session is marked live: playlists change constantly and segments
+// are ephemeral, so nothing is cached — no blob, no kv entry, no redirect to
+// the blob store.
+func (p *Proxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error) {
+	id, err := p.newSession(ctx, result.Headers, true)
+	if err != nil {
+		return "", err
 	}
 	return p.baseURL + "/api/stream/manifest?s=" + id + "&u=" + encURL(result.URL), nil
 }
@@ -107,7 +122,8 @@ func (p *Proxy) serveManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	headers, _ := p.loadSession(r.Context(), sessID)
+	session := p.loadSessionData(r.Context(), sessID)
+	headers := session.Headers
 
 	resp, err := p.cache.fetch(r.Context(), manifestURL, headers)
 	if err != nil {
@@ -122,7 +138,11 @@ func (p *Proxy) serveManifest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base, _ := url.Parse(manifestURL)
-	rewritten := p.rewriteManifest(string(body), base, sessID)
+	manifest := string(body)
+	if session.Live {
+		manifest = stripLowLatencyTags(manifest)
+	}
+	rewritten := p.rewriteManifest(manifest, base, sessID)
 
 	w.Header().Set("Content-Type", "application/x-mpegURL")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -202,6 +222,12 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := p.loadSessionData(r.Context(), sessID)
+	if session.Live {
+		p.serveLiveSeg(w, r, segURL, session.Headers)
+		return
+	}
+
 	key := blobPrefix + "seg/" + h + segExt(segURL)
 
 	// Cache hit: redirect to the blob store — the player fetches directly, saving backend bandwidth.
@@ -212,7 +238,7 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache miss: fetch from CDN and write-through to the blob store.
-	headers, _ := p.loadSession(r.Context(), sessID)
+	headers := session.Headers
 	resp, err := p.cache.fetch(r.Context(), segURL, headers)
 	if err != nil {
 		http.Error(w, "upstream error", http.StatusBadGateway)
@@ -243,6 +269,56 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pw.Close()
+}
+
+// serveLiveSeg relays a live segment (or init/key file) from the origin without
+// touching the stream cache.
+func (p *Proxy) serveLiveSeg(w http.ResponseWriter, r *http.Request, segURL string, headers map[string]string) {
+	resp, err := p.cache.fetch(r.Context(), segURL, headers)
+	if err != nil {
+		http.Error(w, "upstream error", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.Copy(w, resp.Body)
+}
+
+// lowLatencyTagPrefixes are the LL-HLS tags a live playlist loses: they make a
+// player request partial segments with blocking-reload query parameters that
+// the proxy cannot forward, so the stream is served as plain HLS instead.
+var lowLatencyTagPrefixes = []string{
+	"#EXT-X-PART:",
+	"#EXT-X-PART-INF",
+	"#EXT-X-PRELOAD-HINT",
+	"#EXT-X-RENDITION-REPORT",
+	"#EXT-X-SERVER-CONTROL",
+}
+
+// stripLowLatencyTags removes the low-latency lines from a live playlist.
+func stripLowLatencyTags(manifest string) string {
+	lines := strings.Split(manifest, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if hasAnyPrefix(strings.TrimSpace(line), lowLatencyTagPrefixes) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
+// hasAnyPrefix reports whether text starts with one of the prefixes.
+func hasAnyPrefix(text string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(text, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // serveMP4 proxies an MP4: redirects to the blob store if cached, otherwise forwards the
@@ -297,9 +373,9 @@ func (p *Proxy) serveMP4(w http.ResponseWriter, r *http.Request) {
 
 // -- session --
 
-func (p *Proxy) newSession(ctx context.Context, headers map[string]string) (string, error) {
+func (p *Proxy) newSession(ctx context.Context, headers map[string]string, live bool) (string, error) {
 	id := strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
-	data, _ := json.Marshal(sessionData{Headers: headers})
+	data, _ := json.Marshal(sessionData{Headers: headers, Live: live})
 	if err := p.kv.Set(ctx, sessPrefix+id, string(data), sessTTL); err != nil {
 		return "", err
 	}
@@ -307,15 +383,27 @@ func (p *Proxy) newSession(ctx context.Context, headers map[string]string) (stri
 }
 
 func (p *Proxy) loadSession(ctx context.Context, id string) (map[string]string, error) {
+	session, err := p.readSession(ctx, id)
+	return session.Headers, err
+}
+
+// loadSessionData returns the session, or an empty one when it expired.
+func (p *Proxy) loadSessionData(ctx context.Context, id string) sessionData {
+	session, _ := p.readSession(ctx, id)
+	return session
+}
+
+// readSession loads a stream session from the kv store.
+func (p *Proxy) readSession(ctx context.Context, id string) (sessionData, error) {
 	val, err := p.kv.Get(ctx, sessPrefix+id)
 	if err != nil {
-		return nil, err
+		return sessionData{}, err
 	}
-	var s sessionData
-	if err := json.Unmarshal([]byte(val), &s); err != nil {
-		return nil, err
+	var session sessionData
+	if err := json.Unmarshal([]byte(val), &session); err != nil {
+		return sessionData{}, err
 	}
-	return s.Headers, nil
+	return session, nil
 }
 
 // -- URL encoding --
