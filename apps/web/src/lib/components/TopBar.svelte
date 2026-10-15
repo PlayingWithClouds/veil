@@ -1,37 +1,25 @@
 <!--
-	Global top bar, YouTube style: menu toggle + logo on the left, the search and
-	the videos/images toggle in the middle, quick actions (random, subscriptions,
-	downloads) on the right. Phones get a slim bar floating over the page: logo
-	plus a search button that opens the full-screen SearchOverlay. It slides
+	Global top bar, YouTube style: logo on the left, the search and the
+	videos/images toggle in the middle, the library and downloads link on the
+	right. Phones get a slim bar floating over the page: logo plus a search button that opens the full-screen SearchOverlay. It slides
 	away while scrolling down (chromeHidden); the drawer opens by swiping, and
 	the media toggle moves into Home's chip row.
 -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import ListIcon from 'phosphor-svelte/lib/ListIcon';
 	import FilmReelIcon from 'phosphor-svelte/lib/FilmReelIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
-	import ShuffleIcon from 'phosphor-svelte/lib/ShuffleIcon';
-	import BellIcon from 'phosphor-svelte/lib/BellIcon';
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import { searchQuery } from '$lib/stores/searchQuery';
-	import { sidebarCollapsed } from '$lib/stores/sidebar';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { searchOverlayOpen } from '$lib/stores/searchOverlay';
 	import { pageHeroVisible, pageTitle } from '$lib/stores/pageTitle';
 	import { activeTabIndex } from '$lib/tabs';
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import { fly } from 'svelte/transition';
-	import { newSubscriptionScenes } from '$lib/stores/newSubscriptionScenes';
-	import { subscriptionsUrl } from '$lib/routes';
 	import DesktopSearchBox from './DesktopSearchBox.svelte';
 	import MediaFilterToggle from './MediaFilterToggle.svelte';
-
-	/** Toggles between the full sidebar and the icon rail. */
-	function toggleSidebar() {
-		sidebarCollapsed.update((collapsed) => !collapsed);
-	}
 
 	// Phones show the running search in the bar while Home shows its results.
 	let showingSearch = $derived($page.url.pathname === '/' && $searchQuery.trim().length > 0);
@@ -43,7 +31,10 @@
 	let compactHeaderHeight = $state(0);
 	$effect(() => {
 		if (compactHeaderHeight === 0) return;
-		document.documentElement.style.setProperty('--compact-header-height', `${compactHeaderHeight}px`);
+		document.documentElement.style.setProperty(
+			'--compact-header-height',
+			`${compactHeaderHeight}px`
+		);
 	});
 </script>
 
@@ -122,14 +113,6 @@
 {:else}
 	<header class="flex h-14 shrink-0 items-center gap-4 px-4">
 		<div class="flex w-56 shrink-0 items-center gap-3">
-			<button
-				type="button"
-				onclick={toggleSidebar}
-				aria-label="Toggle menu"
-				class="hover:bg-base-300 flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-			>
-				<ListIcon size={22} />
-			</button>
 			<a href="/" class="flex items-center gap-1.5">
 				<span class="text-primary"><FilmReelIcon size={24} weight="fill" /></span>
 				<span class="text-lg font-semibold tracking-tight">Veil</span>
@@ -145,29 +128,6 @@
 		</div>
 
 		<div class="flex w-56 shrink-0 items-center justify-end gap-1">
-			<a
-				href="/random"
-				title="Five random videos"
-				aria-label="Random"
-				class="hover:bg-base-300 flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-			>
-				<ShuffleIcon size={21} />
-			</a>
-			<a
-				href={subscriptionsUrl()}
-				title="Subscriptions"
-				aria-label="Subscriptions"
-				class="hover:bg-base-300 relative flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-			>
-				<BellIcon size={21} />
-				{#if $newSubscriptionScenes > 0}
-					<span
-						class="bg-error absolute top-1 right-0.5 min-w-4 rounded-full px-1 text-center text-[10px] leading-4 font-semibold text-white tabular-nums"
-					>
-						{$newSubscriptionScenes}
-					</span>
-				{/if}
-			</a>
 			<a
 				href="/library"
 				title="Library and downloads"
