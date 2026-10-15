@@ -18,13 +18,14 @@ type sceneFeatures struct {
 	// studio), what a viewer remembers better than a title; empty when neither.
 	credit string
 	// site is the plugin that first observed the scene.
-	site        string
+	site string
+	// publishedAt is the site's release date; zero when the site gave none.
 	publishedAt time.Time
 }
 
 // featureQuery reads the features of the scenes in $ids.
 const featureQuery = `SELECT scene.id, scene.tags, scene.performers, scene.studio,
-	scene.date, scene.created_at,
+	scene.date,
 	coalesce(
 		(SELECT performer.name FROM json_each(scene.performers) AS credited
 		 JOIN performer ON performer.id = credited.value ORDER BY credited.key LIMIT 1),
@@ -63,8 +64,8 @@ func featuresFromRow(row db.Row) *sceneFeatures {
 	}
 }
 
-// publishedAt prefers the release date and falls back to when the scene was
-// first stored.
+// publishedAt parses the release date; zero when there is none. When the
+// scene was stored says nothing about its age, so it is no fallback.
 func publishedAt(row db.Row) time.Time {
 	date := rowString(row, "date")
 	if len(date) >= len("2006-01-02") {
@@ -73,5 +74,5 @@ func publishedAt(row db.Row) time.Time {
 			return parsed
 		}
 	}
-	return rowTime(row, "created_at")
+	return time.Time{}
 }
