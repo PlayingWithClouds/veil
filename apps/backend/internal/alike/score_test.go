@@ -96,10 +96,35 @@ func TestDurationScore(t *testing.T) {
 	if durationScore(600, 600) != 1 {
 		t.Fatal("equal duration must score 1")
 	}
-	if durationScore(120, 1800) != 1 {
-		t.Fatal("a longer full-length candidate must score 1")
+	if durationScore(600, 590) != 1 {
+		t.Fatal("runtimes seconds apart must score 1")
 	}
-	if score := durationScore(600, 300); score >= 1 || score <= 0 {
-		t.Fatalf("a half-length candidate must score between 0 and 1, got %.3f", score)
+	if durationScore(120, 1800) != teaserFullLengthScore {
+		t.Fatal("a teaser's longer candidate stays plausible")
+	}
+	if durationScore(855, 1799) != 0 {
+		t.Fatal("a full video's twice-as-long candidate is another video")
+	}
+	if score := durationScore(600, 500); score >= 1 || score <= 0 {
+		t.Fatalf("a somewhat shorter candidate must score between 0 and 1, got %.3f", score)
+	}
+}
+
+func TestScoreMismatchedRuntimeSinksAPosterLookalike(t *testing.T) {
+	target := Target{Title: "Nikki Brooks Fucks Her Stepson in the Multi MILF-Verse!", DurationSeconds: 855, PosterHash: 0xF0F0F0F0F0F0F0F0}
+	lookalike := Candidate{Title: "This Is What Happens When a Stepmother Is Left Alone", DurationSeconds: 1799, PosterHash: 0xF0F0F0F0F0F0F0F1}
+	copy := Candidate{Title: "Nikki Brooks fucks her stepson in the multi milf verse", DurationSeconds: 856}
+	if lookalike, copy := Score(target, lookalike), Score(target, copy); lookalike >= 0.3 || copy < sameSceneScore {
+		t.Fatalf("lookalike %.3f, copy %.3f", lookalike, copy)
+	}
+}
+
+func TestRuntimeRulesOut(t *testing.T) {
+	target := Target{DurationSeconds: 855}
+	if !RuntimeRulesOut(target, 1799) || RuntimeRulesOut(target, 850) || RuntimeRulesOut(target, 0) || RuntimeRulesOut(Target{}, 1799) {
+		t.Fatal("runtime rule-out")
+	}
+	if RuntimeRulesOut(Target{DurationSeconds: 60}, 1800) {
+		t.Fatal("a teaser's full-length copy must not be ruled out")
 	}
 }

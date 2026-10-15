@@ -1,16 +1,26 @@
 package alike
 
-// Signal weights for the composite match score. Performers and duration are the
-// most reliable cross-site identifiers of the same scene; the poster hash is a
-// title-independent content signal; the title itself is only a light nudge.
+// Signal weights for the composite match score. Few scenes credit performers,
+// so runtime and title carry most matches: the runtime when both are known
+// (nearly every listing has one), the title's distinctive words always. The
+// poster hash only counts when it is close, since different sites pick
+// different frames and unrelated posters still share a coarse layout.
 const (
-	weightPerformer = 0.45
+	weightPerformer = 0.35
 	weightDuration  = 0.30
-	weightPoster    = 0.20
-	weightTitle     = 0.05
+	weightTitle     = 0.25
+	weightPoster    = 0.10
 
 	// dateBonus is added when release dates match exactly — a tiebreaker only.
 	dateBonus = 0.03
+
+	// posterSimilarityFloor is the hash similarity below which posters count
+	// as unrelated; above it the similarity is rescaled to 0..1.
+	posterSimilarityFloor = 0.8
+
+	// sameSceneScore is the floor for a candidate SameScene recognises as the
+	// target's own video (runtime and title or cast agree).
+	sameSceneScore = 0.95
 )
 
 // Target describes the scene the user is currently viewing.
@@ -44,28 +54,23 @@ type Candidate struct {
 func Score(target Target, candidate Candidate) float64 {
 	weightedSum := 0.0
 	totalWeight := 0.0
+	add := func(weight, similarity float64) {
+		weightedSum += weight * similarity
+		totalWeight += weight
+	}
 
 	if len(target.Performers) > 0 && len(candidate.Performers) > 0 {
-		overlap := jaccard(nameSet(target.Performers), nameSet(candidate.Performers))
-		weightedSum += weightPerformer * overlap
-		totalWeight += weightPerformer
+		add(weightPerformer, jaccard(nameSet(target.Performers), nameSet(candidate.Performers)))
 	}
-
-	if duration := durationScore(target.DurationSeconds, candidate.DurationSeconds); duration > 0 {
-		weightedSum += weightDuration * duration
-		totalWeight += weightDuration
+	if target.DurationSeconds > 0 && candidate.DurationSeconds > 0 {
+		add(weightDuration, durationScore(target.DurationSeconds, candidate.DurationSeconds))
 	}
-
-	if poster := HammingSimilarity(target.PosterHash, candidate.PosterHash); poster > 0 {
-		weightedSum += weightPoster * poster
-		totalWeight += weightPoster
+	if target.Title != "" && candidate.Title != "" {
+		add(weightTitle, titleSimilarity(target.Title, candidate.Title))
 	}
-
-	if title := jaccard(tokenSet(titleTokens(target.Title)), tokenSet(titleTokens(candidate.Title))); title > 0 {
-		weightedSum += weightTitle * title
-		totalWeight += weightTitle
+	if target.PosterHash != 0 && candidate.PosterHash != 0 {
+		add(weightPoster, posterSimilarity(target.PosterHash, candidate.PosterHash))
 	}
-
 	if totalWeight == 0 {
 		return 0
 	}
@@ -74,7 +79,46 @@ func Score(target Target, candidate Candidate) float64 {
 	if target.Date != "" && target.Date == candidate.Date {
 		score += dateBonus
 	}
+	if SameScene(targetAsCandidate(target), candidate) {
+		score = max(score, sameSceneScore)
+	}
 	return clamp01(score)
+}
+
+// titleSimilarity is the share of the shorter title's distinctive words the
+// other title has too, so a copy whose site appends a cast or tag list still
+// matches, but never from a single shared word.
+func titleSimilarity(first, second string) float64 {
+	firstTokens, secondTokens := tokenSet(titleTokens(first)), tokenSet(titleTokens(second))
+	smaller := min(len(firstTokens), len(secondTokens))
+	if smaller == 0 {
+		return 0
+	}
+	shared := 0
+	for token := range firstTokens {
+		if _, found := secondTokens[token]; found {
+			shared++
+		}
+	}
+	if shared < 2 {
+		return 0
+	}
+	return float64(shared) / float64(smaller)
+}
+
+// posterSimilarity rescales the hash similarity above posterSimilarityFloor
+// to 0..1; anything below is unrelated (0).
+func posterSimilarity(first, second uint64) float64 {
+	similarity := HammingSimilarity(first, second)
+	if similarity <= posterSimilarityFloor {
+		return 0
+	}
+	return (similarity - posterSimilarityFloor) / (1 - posterSimilarityFloor)
+}
+
+// targetAsCandidate views the target as a Candidate for SameScene.
+func targetAsCandidate(target Target) Candidate {
+	return Candidate{Performers: target.Performers, Title: target.Title, DurationSeconds: target.DurationSeconds, PosterHash: target.PosterHash, Date: target.Date}
 }
 
 func clamp01(value float64) float64 {
