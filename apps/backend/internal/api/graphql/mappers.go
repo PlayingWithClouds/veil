@@ -101,6 +101,7 @@ func settingsToModel(s *settings.Settings) *model.Settings {
 		MaxJobRetries:                s.MaxJobRetries,
 		DownloadSpeedLimitKBps:       s.DownloadSpeedLimitKBps,
 		AllowDownloadsWhileStreaming: s.AllowDownloadsWhileStreaming,
+		CamRecordingMaxMinutes:       s.CamRecordingMaxMinutes,
 		AutoEnrichAfterScrape:        s.AutoEnrichAfterScrape,
 		RequireVpn:                   s.RequireVpn,
 		KindLimits:                   kindLimits,

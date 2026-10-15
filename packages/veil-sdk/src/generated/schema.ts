@@ -21,6 +21,7 @@ export interface Query {
     camModel: (CamModel | null)
     followedCamModels: CamModel[]
     camStream: CamStream
+    camRecordings: CamRecording[]
     changes: Change[]
     collections: Collection[]
     collection: (Collection | null)
@@ -90,6 +91,9 @@ export interface Mutation {
     removeBlock: Scalars['Boolean']
     followCamModel: CamModel
     unfollowCamModel: CamModel
+    startCamRecording: CamRecording
+    stopCamRecording: (CamRecording | null)
+    setCamAutoRecord: CamModel
     createCollection: Collection
     renameCollection: Collection
     deleteCollection: Scalars['Boolean']
@@ -230,6 +234,7 @@ export interface CamModel {
     online: Scalars['Boolean']
     lastSeenOnlineAt: (Scalars['String'] | null)
     followed: Scalars['Boolean']
+    autoRecord: Scalars['Boolean']
     __typename: 'CamModel'
 }
 
@@ -250,6 +255,20 @@ export interface CamStream {
     url: Scalars['String']
     mimeType: Scalars['String']
     __typename: 'CamStream'
+}
+
+export interface CamRecording {
+    id: Scalars['ID']
+    camModelId: Scalars['ID']
+    displayName: Scalars['String']
+    status: Scalars['String']
+    stopReason: (Scalars['String'] | null)
+    startedAt: Scalars['String']
+    endedAt: (Scalars['String'] | null)
+    durationSeconds: Scalars['Float']
+    sizeBytes: Scalars['Float']
+    sceneId: (Scalars['ID'] | null)
+    __typename: 'CamRecording'
 }
 
 export interface Change {
@@ -664,6 +683,7 @@ export interface Settings {
     maxJobRetries: Scalars['Int']
     downloadSpeedLimitKBps: Scalars['Int']
     allowDownloadsWhileStreaming: Scalars['Boolean']
+    camRecordingMaxMinutes: Scalars['Int']
     autoEnrichAfterScrape: Scalars['Boolean']
     requireVpn: Scalars['Boolean']
     kindLimits: KindRateLimit[]
@@ -814,6 +834,7 @@ export interface QueryGenqlSelection{
     camModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     followedCamModels?: CamModelGenqlSelection
     camStream?: (CamStreamGenqlSelection & { __args: {id: Scalars['ID']} })
+    camRecordings?: (CamRecordingGenqlSelection & { __args?: {camModelId?: (Scalars['ID'] | null), activeOnly?: (Scalars['Boolean'] | null)} })
     changes?: (ChangeGenqlSelection & { __args: {targetId: Scalars['ID'], key?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     collections?: (CollectionGenqlSelection & { __args?: {search?: (Scalars['String'] | null), tagId?: (Scalars['ID'] | null), origin?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     collection?: (CollectionGenqlSelection & { __args: {id: Scalars['ID']} })
@@ -884,6 +905,9 @@ export interface MutationGenqlSelection{
     removeBlock?: { __args: {targetId: Scalars['ID']} }
     followCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     unfollowCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
+    startCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID']} })
+    stopCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID']} })
+    setCamAutoRecord?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], enabled: Scalars['Boolean']} })
     createCollection?: (CollectionGenqlSelection & { __args: {name: Scalars['String']} })
     renameCollection?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], name: Scalars['String']} })
     deleteCollection?: { __args: {collectionId: Scalars['ID']} }
@@ -1033,6 +1057,7 @@ export interface CamModelGenqlSelection{
     online?: boolean | number
     lastSeenOnlineAt?: boolean | number
     followed?: boolean | number
+    autoRecord?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1055,6 +1080,21 @@ export interface CamSourceGenqlSelection{
 export interface CamStreamGenqlSelection{
     url?: boolean | number
     mimeType?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamRecordingGenqlSelection{
+    id?: boolean | number
+    camModelId?: boolean | number
+    displayName?: boolean | number
+    status?: boolean | number
+    stopReason?: boolean | number
+    startedAt?: boolean | number
+    endedAt?: boolean | number
+    durationSeconds?: boolean | number
+    sizeBytes?: boolean | number
+    sceneId?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1508,6 +1548,7 @@ export interface SettingsGenqlSelection{
     maxJobRetries?: boolean | number
     downloadSpeedLimitKBps?: boolean | number
     allowDownloadsWhileStreaming?: boolean | number
+    camRecordingMaxMinutes?: boolean | number
     autoEnrichAfterScrape?: boolean | number
     requireVpn?: boolean | number
     kindLimits?: KindRateLimitGenqlSelection
@@ -1515,7 +1556,7 @@ export interface SettingsGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface UpdateSettingsInput {maxConcurrentJobs?: (Scalars['Int'] | null),maxJobRetries?: (Scalars['Int'] | null),downloadSpeedLimitKBps?: (Scalars['Int'] | null),allowDownloadsWhileStreaming?: (Scalars['Boolean'] | null),autoEnrichAfterScrape?: (Scalars['Boolean'] | null),requireVpn?: (Scalars['Boolean'] | null),kindLimits?: (KindRateLimitInput[] | null)}
+export interface UpdateSettingsInput {maxConcurrentJobs?: (Scalars['Int'] | null),maxJobRetries?: (Scalars['Int'] | null),downloadSpeedLimitKBps?: (Scalars['Int'] | null),allowDownloadsWhileStreaming?: (Scalars['Boolean'] | null),camRecordingMaxMinutes?: (Scalars['Int'] | null),autoEnrichAfterScrape?: (Scalars['Boolean'] | null),requireVpn?: (Scalars['Boolean'] | null),kindLimits?: (KindRateLimitInput[] | null)}
 
 export interface KindRateLimitGenqlSelection{
     kind?: boolean | number
@@ -1781,6 +1822,14 @@ export interface WatchlistItemGenqlSelection{
     export const isCamStream = (obj?: { __typename?: any } | null): obj is CamStream => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isCamStream"')
       return CamStream_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CamRecording_possibleTypes: string[] = ['CamRecording']
+    export const isCamRecording = (obj?: { __typename?: any } | null): obj is CamRecording => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamRecording"')
+      return CamRecording_possibleTypes.includes(obj.__typename)
     }
     
 

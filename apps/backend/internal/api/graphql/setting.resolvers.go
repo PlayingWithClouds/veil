@@ -27,6 +27,9 @@ func (r *mutationResolver) UpdateSettings(ctx context.Context, input model.Updat
 	if input.AllowDownloadsWhileStreaming != nil {
 		updates["allowDownloadsWhileStreaming"] = *input.AllowDownloadsWhileStreaming
 	}
+	if input.CamRecordingMaxMinutes != nil {
+		updates["camRecordingMaxMinutes"] = *input.CamRecordingMaxMinutes
+	}
 	if input.AutoEnrichAfterScrape != nil {
 		updates["autoEnrichAfterScrape"] = *input.AutoEnrichAfterScrape
 	}

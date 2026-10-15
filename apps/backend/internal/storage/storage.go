@@ -22,6 +22,10 @@ import (
 // RoutePrefix is where Handler is mounted; DirectURL builds URLs under it.
 const RoutePrefix = "/api/blob/"
 
+// RecordingPrefix is the key prefix of live cam recordings. It is outside every
+// cache prefix, so recordings are kept like user content and never evicted.
+const RecordingPrefix = "recordings/"
+
 func init() {
 	// Not every platform's mime table knows the streaming types.
 	mime.AddExtensionType(".m3u8", "application/vnd.apple.mpegurl")

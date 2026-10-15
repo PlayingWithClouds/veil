@@ -115,7 +115,19 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 		// Keep reading blobs encrypted earlier, but write new ones plain.
 		return store.WithEncryption(key)
 	}
-	return store.WithEncryption(key, "stream-cache/")
+	return store.WithEncryption(key, "stream-cache/", cams.RecordingPrefix)
+}
+
+// camRecordingMaxDuration returns the longest a cam recording may run, read
+// from the settings each time a recording starts.
+func camRecordingMaxDuration(settingsSvc *settings.Service) func() time.Duration {
+	return func() time.Duration {
+		minutes := settingsSvc.Cached().CamRecordingMaxMinutes
+		if minutes <= 0 {
+			return cams.DefaultMaxRecording
+		}
+		return time.Duration(minutes) * time.Minute
+	}
 }
 
 // performerProfileInterval is how often performers without a profile page on
@@ -326,7 +338,14 @@ func main() {
 	// HLS proxy: rewrites manifest URIs to local proxy URLs, write-through caches segments.
 	streamProxy := stream.NewProxy(streamCache, cacheClient, publicURL)
 	resolver.SetStreamProxy(streamProxy)
-	resolver.SetCams(cams.New(database, cams.NewPluginSites(registry, runner), streamProxy))
+	camService := cams.New(database, cams.NewPluginSites(registry, runner), streamProxy)
+	resolver.SetCams(camService)
+	camRecorder := cams.NewRecorder(ctx, camService, storeClient, cams.NewHTTPFetcher(), ingestSvc, camRecordingMaxDuration(settingsSvc))
+	resolver.SetCamRecorder(camRecorder)
+	go func() {
+		camRecorder.Recover(ctx)
+		cams.NewAutoRecorder(camService, camRecorder).Run(ctx)
+	}()
 
 	// Cache size limit: stream and image cache blobs beyond it are evicted,
 	// least recently used first. Downloads are pinned and don't count.

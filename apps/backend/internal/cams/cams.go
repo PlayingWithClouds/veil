@@ -336,6 +336,7 @@ type camRecord struct {
 	Online           bool     `json:"online"`
 	LastSeenOnlineAt *string  `json:"last_seen_online_at"`
 	Followed         bool     `json:"followed"`
+	AutoRecord       bool     `json:"auto_record"`
 }
 
 // toModel maps a stored row to the GraphQL model.
@@ -358,6 +359,7 @@ func (record camRecord) toModel() *model.CamModel {
 		Online:           record.Online,
 		LastSeenOnlineAt: record.LastSeenOnlineAt,
 		Followed:         record.Followed,
+		AutoRecord:       record.AutoRecord,
 	}
 }
 
@@ -501,17 +503,35 @@ func (s *Service) recordOnline(ctx context.Context, id string, online bool) {
 	}
 }
 
-// SetFollowed follows or unfollows a model and returns it.
+// SetFollowed follows or unfollows a model and returns it. Unfollowing also
+// turns auto-record off, since only followed models are watched.
 func (s *Service) SetFollowed(ctx context.Context, id string, followed bool) (*model.CamModel, error) {
 	record, err := s.load(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.database.Exec(ctx, `UPDATE cam_model SET followed = $followed WHERE id = $id`,
+	if _, err := s.database.Exec(ctx, `UPDATE cam_model SET followed = $followed, auto_record = auto_record AND $followed WHERE id = $id`,
 		db.Vars{"id": id, "followed": followed}); err != nil {
 		return nil, err
 	}
 	record.Followed = followed
+	record.AutoRecord = record.AutoRecord && followed
+	return record.toModel(), nil
+}
+
+// SetAutoRecord turns automatic recording on or off for a model. Turning it on
+// also follows the model.
+func (s *Service) SetAutoRecord(ctx context.Context, id string, enabled bool) (*model.CamModel, error) {
+	record, err := s.load(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.database.Exec(ctx, `UPDATE cam_model SET auto_record = $enabled, followed = followed OR $enabled WHERE id = $id`,
+		db.Vars{"id": id, "enabled": enabled}); err != nil {
+		return nil, err
+	}
+	record.AutoRecord = enabled
+	record.Followed = record.Followed || enabled
 	return record.toModel(), nil
 }
 

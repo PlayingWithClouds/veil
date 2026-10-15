@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/playingwithclouds/veil/internal/alike"
 	"github.com/playingwithclouds/veil/internal/db"
@@ -91,10 +92,15 @@ func rowText(row db.Row, column string) string {
 	return text
 }
 
+// RecordingSourcePrefix starts the source_url of a scene made from a live cam
+// recording. Recordings are never merged as duplicates: two sessions of one
+// model share performer and often runtime, but are different footage.
+const RecordingSourcePrefix = "veil-recording:"
+
 // mergeDuplicateScenes merges scenes that are the same video (alike.SameSceneStrict).
 func (s *Service) mergeDuplicateScenes(ctx context.Context) (int, error) {
 	rows, err := s.database.Query(ctx,
-		`SELECT id, title, performers, duration_seconds FROM scene WHERE duration_seconds > 0 ORDER BY `+keeperOrder["scene"], nil)
+		`SELECT id, title, performers, duration_seconds FROM scene WHERE duration_seconds > 0 AND source_url NOT LIKE '`+RecordingSourcePrefix+`%' ORDER BY `+keeperOrder["scene"], nil)
 	if err != nil {
 		return 0, fmt.Errorf("load scenes to deduplicate: %w", err)
 	}
@@ -250,6 +256,9 @@ func (s *Service) findExistingTwin(ctx context.Context, table, recordID string) 
 	if err != nil || row == nil {
 		return "", err
 	}
+	if strings.HasPrefix(rowText(row, "source_url"), RecordingSourcePrefix) {
+		return "", nil
+	}
 	candidate := storedCandidate(row, finder)
 	if table == "gallery" {
 		return s.findGalleryTwin(ctx, recordID, row, candidate, finder)
@@ -264,7 +273,8 @@ func (s *Service) findSceneTwin(ctx context.Context, recordID string, candidate 
 	}
 	rows, err := s.database.Query(ctx,
 		`SELECT id, title, performers, duration_seconds FROM scene
-		 WHERE id <> $id AND duration_seconds BETWEEN $low AND $high ORDER BY `+keeperOrder["scene"],
+		 WHERE id <> $id AND duration_seconds BETWEEN $low AND $high
+		   AND source_url NOT LIKE '`+RecordingSourcePrefix+`%' ORDER BY `+keeperOrder["scene"],
 		db.Vars{"id": recordID, "low": candidate.DurationSeconds * 90 / 100, "high": candidate.DurationSeconds * 112 / 100})
 	if err != nil {
 		return "", fmt.Errorf("find scene twins: %w", err)

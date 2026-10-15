@@ -44,6 +44,20 @@ type CamModel struct {
 	Online           bool     `json:"online"`
 	LastSeenOnlineAt *string  `json:"lastSeenOnlineAt,omitempty"`
 	Followed         bool     `json:"followed"`
+	AutoRecord       bool     `json:"autoRecord"`
+}
+
+type CamRecording struct {
+	ID              string  `json:"id"`
+	CamModelID      string  `json:"camModelId"`
+	DisplayName     string  `json:"displayName"`
+	Status          string  `json:"status"`
+	StopReason      *string `json:"stopReason,omitempty"`
+	StartedAt       string  `json:"startedAt"`
+	EndedAt         *string `json:"endedAt,omitempty"`
+	DurationSeconds float64 `json:"durationSeconds"`
+	SizeBytes       float64 `json:"sizeBytes"`
+	SceneID         *string `json:"sceneId,omitempty"`
 }
 
 type CamRoomPage struct {
@@ -526,6 +540,7 @@ type Settings struct {
 	MaxJobRetries                int              `json:"maxJobRetries"`
 	DownloadSpeedLimitKBps       int              `json:"downloadSpeedLimitKBps"`
 	AllowDownloadsWhileStreaming bool             `json:"allowDownloadsWhileStreaming"`
+	CamRecordingMaxMinutes       int              `json:"camRecordingMaxMinutes"`
 	AutoEnrichAfterScrape        bool             `json:"autoEnrichAfterScrape"`
 	RequireVpn                   bool             `json:"requireVpn"`
 	KindLimits                   []*KindRateLimit `json:"kindLimits"`
@@ -643,6 +658,7 @@ type UpdateSettingsInput struct {
 	MaxJobRetries                *int                  `json:"maxJobRetries,omitempty"`
 	DownloadSpeedLimitKBps       *int                  `json:"downloadSpeedLimitKBps,omitempty"`
 	AllowDownloadsWhileStreaming *bool                 `json:"allowDownloadsWhileStreaming,omitempty"`
+	CamRecordingMaxMinutes       *int                  `json:"camRecordingMaxMinutes,omitempty"`
 	AutoEnrichAfterScrape        *bool                 `json:"autoEnrichAfterScrape,omitempty"`
 	RequireVpn                   *bool                 `json:"requireVpn,omitempty"`
 	KindLimits                   []*KindRateLimitInput `json:"kindLimits,omitempty"`

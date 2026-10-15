@@ -123,6 +123,13 @@ func (s *CacheService) Lookup(ctx context.Context, originalURL string) (*plugins
 	return &plugins.ResolveResult{URL: s.storage.DirectURL(e.Key), MimeType: e.MimeType}, true
 }
 
+// IsRecording reports whether blobURL is a file of a live cam recording. Those
+// already live in the blob store for good: they are played from there directly
+// and never copied into the stream cache.
+func (s *CacheService) IsRecording(blobURL string) bool {
+	return strings.HasPrefix(blobURL, s.storage.DirectURL(storage.RecordingPrefix))
+}
+
 // StartCaching begins caching a stream in the background; no-ops if already in progress.
 func (s *CacheService) StartCaching(result *plugins.ResolveResult, headers map[string]string) {
 	if _, loaded := s.inflight.LoadOrStore(result.URL, struct{}{}); loaded {
@@ -155,6 +162,9 @@ func (s *CacheService) cache(
 	headers map[string]string,
 	progress func(float64, int64, int64),
 ) (string, error) {
+	if s.IsRecording(result.URL) {
+		return result.URL, nil
+	}
 	if cached, ok := s.Lookup(ctx, result.URL); ok {
 		return cached.URL, nil
 	}

@@ -16,6 +16,8 @@ type Settings {
   maxJobRetries: Int!
   downloadSpeedLimitKBps: Int!
   allowDownloadsWhileStreaming: Boolean!
+  # Longest a live cam recording may run before it is cut and a new one begins.
+  camRecordingMaxMinutes: Int!
   autoEnrichAfterScrape: Boolean!
   requireVpn: Boolean!
   kindLimits: [KindRateLimit!]!
@@ -26,6 +28,7 @@ input UpdateSettingsInput {
   maxJobRetries: Int
   downloadSpeedLimitKBps: Int
   allowDownloadsWhileStreaming: Boolean
+  camRecordingMaxMinutes: Int
   autoEnrichAfterScrape: Boolean
   requireVpn: Boolean
   kindLimits: [KindRateLimitInput!]

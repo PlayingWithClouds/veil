@@ -8,6 +8,7 @@ type Query {
   camModel(id: ID!): CamModel
   followedCamModels: [CamModel!]!
   camStream(id: ID!): CamStream!
+  camRecordings(camModelId: ID, activeOnly: Boolean = false): [CamRecording!]!
   changes(targetId: ID!, key: String, limit: Int, offset: Int): [Change!]!
   collections(search: String, tagId: ID, origin: String, limit: Int, offset: Int): [Collection!]!
   collection(id: ID!): Collection
@@ -82,6 +83,9 @@ type Mutation {
   removeBlock(targetId: ID!): Boolean!
   followCamModel(id: ID!): CamModel!
   unfollowCamModel(id: ID!): CamModel!
+  startCamRecording(id: ID!): CamRecording!
+  stopCamRecording(id: ID!): CamRecording
+  setCamAutoRecord(id: ID!, enabled: Boolean!): CamModel!
   createCollection(name: String!): Collection!
   renameCollection(collectionId: ID!, name: String!): Collection!
   deleteCollection(collectionId: ID!): Boolean!
@@ -215,6 +219,7 @@ type CamModel {
   online: Boolean!
   lastSeenOnlineAt: String
   followed: Boolean!
+  autoRecord: Boolean!
 }
 
 type CamRoomPage {
@@ -231,6 +236,19 @@ type CamSource {
 type CamStream {
   url: String!
   mimeType: String!
+}
+
+type CamRecording {
+  id: ID!
+  camModelId: ID!
+  displayName: String!
+  status: String!
+  stopReason: String
+  startedAt: String!
+  endedAt: String
+  durationSeconds: Float!
+  sizeBytes: Float!
+  sceneId: ID
 }
 
 type Change {
@@ -672,6 +690,7 @@ type Settings {
   maxJobRetries: Int!
   downloadSpeedLimitKBps: Int!
   allowDownloadsWhileStreaming: Boolean!
+  camRecordingMaxMinutes: Int!
   autoEnrichAfterScrape: Boolean!
   requireVpn: Boolean!
   kindLimits: [KindRateLimit!]!
@@ -682,6 +701,7 @@ input UpdateSettingsInput {
   maxJobRetries: Int
   downloadSpeedLimitKBps: Int
   allowDownloadsWhileStreaming: Boolean
+  camRecordingMaxMinutes: Int
   autoEnrichAfterScrape: Boolean
   requireVpn: Boolean
   kindLimits: [KindRateLimitInput!]

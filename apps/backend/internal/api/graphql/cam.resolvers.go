@@ -23,6 +23,21 @@ func (r *mutationResolver) UnfollowCamModel(ctx context.Context, id string) (*mo
 	return r.cams.SetFollowed(ctx, id, false)
 }
 
+// StartCamRecording is the resolver for the startCamRecording field.
+func (r *mutationResolver) StartCamRecording(ctx context.Context, id string) (*model.CamRecording, error) {
+	return r.camRecorder.Start(ctx, id)
+}
+
+// StopCamRecording is the resolver for the stopCamRecording field.
+func (r *mutationResolver) StopCamRecording(ctx context.Context, id string) (*model.CamRecording, error) {
+	return r.camRecorder.Stop(ctx, id)
+}
+
+// SetCamAutoRecord is the resolver for the setCamAutoRecord field.
+func (r *mutationResolver) SetCamAutoRecord(ctx context.Context, id string, enabled bool) (*model.CamModel, error) {
+	return r.cams.SetAutoRecord(ctx, id, enabled)
+}
+
 // CamRooms is the resolver for the camRooms field.
 func (r *queryResolver) CamRooms(ctx context.Context, sources []string, tag *string, query *string, gender *string, limit *int, offset *int) (*model.CamRoomPage, error) {
 	filter := cams.Filter{Sources: sources}
@@ -78,4 +93,13 @@ func (r *queryResolver) FollowedCamModels(ctx context.Context) ([]*model.CamMode
 // CamStream is the resolver for the camStream field.
 func (r *queryResolver) CamStream(ctx context.Context, id string) (*model.CamStream, error) {
 	return r.cams.Stream(ctx, id)
+}
+
+// CamRecordings is the resolver for the camRecordings field.
+func (r *queryResolver) CamRecordings(ctx context.Context, camModelID *string, activeOnly *bool) ([]*model.CamRecording, error) {
+	cameraID := ""
+	if camModelID != nil {
+		cameraID = *camModelID
+	}
+	return r.camRecorder.Recordings(ctx, cameraID, activeOnly != nil && *activeOnly)
 }

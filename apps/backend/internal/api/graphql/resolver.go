@@ -44,6 +44,7 @@ type Resolver struct {
 	siteSuggest  *sitesuggest.Service
 	blobStore    *storage.Client
 	cams         *cams.Service
+	camRecorder  *cams.Recorder
 	faces        *face.Service
 }
 
@@ -105,3 +106,6 @@ func (r *Resolver) SetSuggestions(service *suggest.Service) { r.suggestions = se
 
 // SetSiteSuggestions wires in the sites' own search-box suggestions.
 func (r *Resolver) SetSiteSuggestions(service *sitesuggest.Service) { r.siteSuggest = service }
+
+// SetCamRecorder wires in the live cam recorder.
+func (r *Resolver) SetCamRecorder(recorder *cams.Recorder) { r.camRecorder = recorder }
