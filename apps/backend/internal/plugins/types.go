@@ -42,8 +42,9 @@ const (
 	CapabilityCamList   Capability = "cam:list"
 	CapabilityCamStream Capability = "cam:stream"
 	// CapabilityFaceIdentify ranks the performers who look like the face in a
-	// picture (args.image_base64). Only services whose database holds
-	// professional performers or cam models may be wired in.
+	// picture (args.image_base64). Named candidates must come from databases of
+	// professional performers or cam models; videos from tube sites may be
+	// returned beside them, as links only.
 	CapabilityFaceIdentify Capability = "face:identify"
 )
 
@@ -516,9 +517,20 @@ type FaceCandidate struct {
 	ProfileURLs []string `json:"profile_urls"`
 }
 
+// FaceVideoMatch is a tube-site video whose face looks like the picture's. It
+// names no person: Title is the video's own, so it is shown as a link and
+// never credited as a performer.
+type FaceVideoMatch struct {
+	Title        string  `json:"title"`
+	Similarity   float64 `json:"similarity"`
+	URL          string  `json:"url"`
+	ThumbnailURL string  `json:"thumbnail_url,omitempty"`
+}
+
 // FaceIdentifyResult is returned by a plugin's face:identify capability, best first.
 type FaceIdentifyResult struct {
-	Candidates []FaceCandidate `json:"candidates"`
+	Candidates []FaceCandidate  `json:"candidates"`
+	Videos     []FaceVideoMatch `json:"videos,omitempty"`
 }
 
 // EnrichArgs is passed to a plugin's enrich capability.

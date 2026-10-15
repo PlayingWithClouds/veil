@@ -389,9 +389,24 @@ export interface FaceCandidate {
   profile_urls: string[];
 }
 
+/**
+ * A video on a tube site whose face looks like the picture's. It names no
+ * person: the title is the video's, so it is shown as a link and never credited.
+ */
+export interface FaceVideoMatch {
+  title: string;
+  /** 0..1 */
+  similarity: number;
+  /** The video's page. */
+  url: string;
+  thumbnail_url?: string;
+}
+
 /** Result of the face:identify capability, best first. */
 export interface FaceIdentifyResult {
   candidates: FaceCandidate[];
+  /** Similar videos, when the service searches video sites too. */
+  videos?: FaceVideoMatch[];
 }
 
 export interface EnrichArgs {

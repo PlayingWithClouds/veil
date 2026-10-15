@@ -7,7 +7,7 @@ runPlugin({
     name: "facedigger",
     display_name: "FaceDigger",
     description:
-      "Face lookalike search over live-cam models (facedigger.com, cam category only; its video, OnlyFans and general results are never used). Needs the owner to accept FaceDigger's user agreement in the plugin settings.",
+      "Face lookalike search (facedigger.com): live-cam models as named candidates, tube-site videos as plain links that are never credited as a performer. Its OnlyFans results are never used. Needs the owner to accept FaceDigger's user agreement in the plugin settings.",
     icon: "https://facedigger.com/favicon.ico",
     version: packageJson.version,
     capabilities: ["face:identify"],
