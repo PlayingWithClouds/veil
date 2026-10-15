@@ -104,6 +104,7 @@ type Gallery struct {
 	Tags       []*Tag       `json:"tags"`
 	Images     []*Image     `json:"images"`
 	TagMatch   *string      `json:"tagMatch,omitempty"`
+	Video      *Scene       `json:"video,omitempty"`
 	CreatedAt  string       `json:"createdAt"`
 	UpdatedAt  string       `json:"updatedAt"`
 }

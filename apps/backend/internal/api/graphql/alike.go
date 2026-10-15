@@ -63,18 +63,24 @@ func (r *Resolver) findAlikeSources(ctx context.Context, sceneID string, limit *
 	if scene == nil {
 		return []*model.AlikeCandidate{}, nil
 	}
+	originPlugin, originURL, _ := r.repo.SceneOrigin(ctx, sceneID)
+	originHost := hostOf(originURL)
+	return r.rankAlike(ctx, r.buildAlikeTarget(ctx, scene), limit, func(entry discoveredItemWithPlugin) bool {
+		return isSameSceneOrigin(entry, scene, originPlugin, originHost)
+	}), nil
+}
 
-	target := r.buildAlikeTarget(ctx, scene)
-
+// rankAlike finds and ranks the scenes matching target on every scene plugin:
+// gather (skipping what skip rejects), pre-rank, scrape the best, re-rank, and
+// return the top limit (alikeDefaultLimit when unset).
+func (r *Resolver) rankAlike(ctx context.Context, target alike.Target, limit *int, skip func(discoveredItemWithPlugin) bool) []*model.AlikeCandidate {
 	searchPlugins := adultPlugins(r.registry.WithCapability(plugins.CapabilitySceneList))
 	if len(searchPlugins) == 0 {
-		return []*model.AlikeCandidate{}, nil
+		return []*model.AlikeCandidate{}
 	}
-
-	originPlugin, originURL, _ := r.repo.SceneOrigin(ctx, sceneID)
-	candidates := r.gatherAlikeCandidates(ctx, searchPlugins, target, scene, originPlugin, originURL)
+	candidates := r.gatherAlikeCandidates(ctx, searchPlugins, target, skip)
 	if len(candidates) == 0 {
-		return []*model.AlikeCandidate{}, nil
+		return []*model.AlikeCandidate{}
 	}
 
 	r.rankAlikeStageOne(ctx, target, candidates)
@@ -90,7 +96,7 @@ func (r *Resolver) findAlikeSources(ctx context.Context, sceneID string, limit *
 	if limit != nil && *limit > 0 {
 		max = *limit
 	}
-	return toAlikeCandidates(candidates, max), nil
+	return toAlikeCandidates(candidates, max)
 }
 
 // buildAlikeTarget projects the current scene onto the matcher's target shape,
@@ -115,17 +121,15 @@ func (r *Resolver) buildAlikeTarget(ctx context.Context, scene *model.Scene) ali
 	return target
 }
 
-// gatherAlikeCandidates runs every performer/studio/title query, unions the
-// results up to each plugin's share, and drops the scene's own copies (same
-// source URL or same host) and candidates whose runtime rules them out.
+// gatherAlikeCandidates runs every performer/studio/title query and unions
+// the scene results up to each plugin's share, leaving out what skip rejects
+// and listings whose runtime rules them out.
 func (r *Resolver) gatherAlikeCandidates(
 	ctx context.Context,
 	searchPlugins []*plugins.Plugin,
 	target alike.Target,
-	scene *model.Scene,
-	originPlugin, originURL string,
+	skip func(discoveredItemWithPlugin) bool,
 ) []*scoredCandidate {
-	originHost := hostOf(originURL)
 	seen := make(map[string]bool)
 	perPlugin := make(map[string]int)
 	candidates := []*scoredCandidate{}
@@ -136,7 +140,7 @@ func (r *Resolver) gatherAlikeCandidates(
 			if seen[key] || perPlugin[entry.plugin] >= alikePerPluginCandidates {
 				continue
 			}
-			if isSameSceneOrigin(entry, scene, originPlugin, originHost) || alike.RuntimeRulesOut(target, entry.item.DurationSeconds) {
+			if !isSceneItem(entry.item) || skip(entry) || alike.RuntimeRulesOut(target, entry.item.DurationSeconds) {
 				continue
 			}
 			seen[key] = true
@@ -145,6 +149,12 @@ func (r *Resolver) gatherAlikeCandidates(
 		}
 	}
 	return candidates
+}
+
+// isSceneItem reports whether a listing item is a video (untyped items of a
+// scene listing count as videos).
+func isSceneItem(item plugins.DiscoveredItem) bool {
+	return item.MediaType == "" || item.MediaType == plugins.MediaTypeScene
 }
 
 // isSameSceneOrigin reports whether a candidate is just the scene's own source

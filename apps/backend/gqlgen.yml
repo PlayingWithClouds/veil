@@ -32,6 +32,11 @@ models:
     fields:
       related:
         resolver: true
+  # A gallery's linked video loads only when asked (the gallery page).
+  Gallery:
+    fields:
+      video:
+        resolver: true
   SearchSubscription:
     fields:
       scenes:

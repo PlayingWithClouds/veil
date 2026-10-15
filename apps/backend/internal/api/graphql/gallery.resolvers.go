@@ -9,9 +9,15 @@ import (
 	"context"
 	"log"
 
+	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/media"
 )
+
+// Video is the resolver for the video field.
+func (r *galleryResolver) Video(ctx context.Context, obj *model.Gallery) (*model.Scene, error) {
+	return r.galleryVideo(ctx, obj.ID)
+}
 
 // EnsureGalleryImages records a gallery visit, which fetches a stub's images
 // from its origin plugin, then returns the gallery. A failed fetch still
@@ -21,6 +27,11 @@ func (r *mutationResolver) EnsureGalleryImages(ctx context.Context, galleryID st
 		log.Printf("ensureGalleryImages %s: visit: %v", galleryID, err)
 	}
 	return r.repo.GetGallery(ctx, galleryID)
+}
+
+// LinkGalleryVideo is the resolver for the linkGalleryVideo field.
+func (r *mutationResolver) LinkGalleryVideo(ctx context.Context, galleryID string, pluginName string, url string) (*model.Scene, error) {
+	return r.linkGalleryVideo(ctx, galleryID, pluginName, url)
 }
 
 // Galleries is the resolver for the galleries field.
@@ -38,3 +49,13 @@ func (r *queryResolver) Galleries(ctx context.Context, limit *int, offset *int, 
 func (r *queryResolver) Gallery(ctx context.Context, id string) (*model.Gallery, error) {
 	return r.repo.GetGallery(ctx, id)
 }
+
+// FindGalleryVideos is the resolver for the findGalleryVideos field.
+func (r *queryResolver) FindGalleryVideos(ctx context.Context, galleryID string, limit *int) ([]*model.AlikeCandidate, error) {
+	return r.findGalleryVideos(ctx, galleryID, limit)
+}
+
+// Gallery returns generated.GalleryResolver implementation.
+func (r *Resolver) Gallery() generated.GalleryResolver { return &galleryResolver{r} }
+
+type galleryResolver struct{ *Resolver }

@@ -23,6 +23,7 @@ export interface Query {
     collectionIdsForMedia: Scalars['ID'][]
     galleries: Gallery[]
     gallery: (Gallery | null)
+    findGalleryVideos: AlikeCandidate[]
     images: Image[]
     image: (Image | null)
     jobs: Job[]
@@ -90,6 +91,7 @@ export interface Mutation {
     reorderCollection: Scalars['Boolean']
     setCollectionTags: Collection
     ensureGalleryImages: (Gallery | null)
+    linkGalleryVideo: Scene
     setImageTags: Image
     deleteJob: Scalars['Boolean']
     deleteJobsByKind: Scalars['Int']
@@ -264,6 +266,7 @@ export interface Gallery {
     tags: Tag[]
     images: Image[]
     tagMatch: (Scalars['String'] | null)
+    video: (Scene | null)
     createdAt: Scalars['String']
     updatedAt: Scalars['String']
     __typename: 'Gallery'
@@ -751,6 +754,7 @@ export interface QueryGenqlSelection{
     collectionIdsForMedia?: { __args: {mediaId: Scalars['ID']} }
     galleries?: (GalleryGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), sources?: (Scalars['String'][] | null)} })
     gallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
+    findGalleryVideos?: (AlikeCandidateGenqlSelection & { __args: {galleryId: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
     images?: (ImageGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), galleryId?: (Scalars['ID'] | null), sort?: (Scalars['String'] | null)} })
     image?: (ImageGenqlSelection & { __args: {id: Scalars['ID']} })
     jobs?: JobGenqlSelection
@@ -819,6 +823,7 @@ export interface MutationGenqlSelection{
     reorderCollection?: { __args: {collectionId: Scalars['ID'], mediaIds: Scalars['ID'][]} }
     setCollectionTags?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], tagIds: Scalars['ID'][]} })
     ensureGalleryImages?: (GalleryGenqlSelection & { __args: {galleryId: Scalars['ID']} })
+    linkGalleryVideo?: (SceneGenqlSelection & { __args: {galleryId: Scalars['ID'], pluginName: Scalars['String'], url: Scalars['String']} })
     setImageTags?: (ImageGenqlSelection & { __args: {imageId: Scalars['ID'], tagIds: Scalars['ID'][]} })
     deleteJob?: { __args: {id: Scalars['ID']} }
     deleteJobsByKind?: { __args: {kind: Scalars['String']} }
@@ -1005,6 +1010,7 @@ export interface GalleryGenqlSelection{
     tags?: TagGenqlSelection
     images?: ImageGenqlSelection
     tagMatch?: boolean | number
+    video?: SceneGenqlSelection
     createdAt?: boolean | number
     updatedAt?: boolean | number
     __typename?: boolean | number

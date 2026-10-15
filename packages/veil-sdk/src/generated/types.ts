@@ -139,6 +139,18 @@ export default {
                     ]
                 }
             ],
+            "findGalleryVideos": [
+                47,
+                {
+                    "galleryId": [
+                        2,
+                        "ID!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "images": [
                 19,
                 {
@@ -838,6 +850,23 @@ export default {
                     "galleryId": [
                         2,
                         "ID!"
+                    ]
+                }
+            ],
+            "linkGalleryVideo": [
+                41,
+                {
+                    "galleryId": [
+                        2,
+                        "ID!"
+                    ],
+                    "pluginName": [
+                        1,
+                        "String!"
+                    ],
+                    "url": [
+                        1,
+                        "String!"
                     ]
                 }
             ],
@@ -1658,6 +1687,9 @@ export default {
             ],
             "tagMatch": [
                 1
+            ],
+            "video": [
+                41
             ],
             "createdAt": [
                 1

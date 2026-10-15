@@ -28,6 +28,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	Gallery() GalleryResolver
 	Job() JobResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -120,6 +121,7 @@ type ComplexityRoot struct {
 		Tags       func(childComplexity int) int
 		Title      func(childComplexity int) int
 		UpdatedAt  func(childComplexity int) int
+		Video      func(childComplexity int) int
 	}
 
 	Image struct {
@@ -218,6 +220,7 @@ type ComplexityRoot struct {
 		ForgetSearch               func(childComplexity int, query string) int
 		IncrementOCount            func(childComplexity int, mediaID string) int
 		InstallPlugin              func(childComplexity int, packageName string) int
+		LinkGalleryVideo           func(childComplexity int, galleryID string, pluginName string, url string) int
 		MarkSearchSubscriptionSeen func(childComplexity int, id string) int
 		MergeRecords               func(childComplexity int, survivorID string, mergedID string) int
 		QueueDownload              func(childComplexity int, url string, title string, pluginName *string) int
@@ -377,6 +380,7 @@ type ComplexityRoot struct {
 		Collections           func(childComplexity int, search *string, tagID *string, origin *string, limit *int, offset *int) int
 		DownloadedScenes      func(childComplexity int) int
 		FindAlikeSources      func(childComplexity int, sceneID string, limit *int) int
+		FindGalleryVideos     func(childComplexity int, galleryID string, limit *int) int
 		Galleries             func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sources []string) int
 		Gallery               func(childComplexity int, id string) int
 		Image                 func(childComplexity int, id string) int
@@ -701,6 +705,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type GalleryResolver interface {
+	Video(ctx context.Context, obj *model.Gallery) (*model.Scene, error)
+}
 type JobResolver interface {
 	Scene(ctx context.Context, obj *model.Job) (*model.Scene, error)
 }
@@ -717,6 +724,7 @@ type MutationResolver interface {
 	ReorderCollection(ctx context.Context, collectionID string, mediaIds []string) (bool, error)
 	SetCollectionTags(ctx context.Context, collectionID string, tagIds []string) (*model.Collection, error)
 	EnsureGalleryImages(ctx context.Context, galleryID string) (*model.Gallery, error)
+	LinkGalleryVideo(ctx context.Context, galleryID string, pluginName string, url string) (*model.Scene, error)
 	SetImageTags(ctx context.Context, imageID string, tagIds []string) (*model.Image, error)
 	DeleteJob(ctx context.Context, id string) (bool, error)
 	DeleteJobsByKind(ctx context.Context, kind string) (int, error)
@@ -779,6 +787,7 @@ type QueryResolver interface {
 	CollectionIdsForMedia(ctx context.Context, mediaID string) ([]string, error)
 	Galleries(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sources []string) ([]*model.Gallery, error)
 	Gallery(ctx context.Context, id string) (*model.Gallery, error)
+	FindGalleryVideos(ctx context.Context, galleryID string, limit *int) ([]*model.AlikeCandidate, error)
 	Images(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, galleryID *string, sort *string) ([]*model.Image, error)
 	Image(ctx context.Context, id string) (*model.Image, error)
 	Jobs(ctx context.Context) ([]*model.Job, error)
@@ -1245,6 +1254,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Gallery.UpdatedAt(childComplexity), true
+	case "Gallery.video":
+		if e.ComplexityRoot.Gallery.Video == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Gallery.Video(childComplexity), true
 
 	case "Image.createdAt":
 		if e.ComplexityRoot.Image.CreatedAt == nil {
@@ -1856,6 +1871,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.InstallPlugin(childComplexity, args["packageName"].(string)), true
+	case "Mutation.linkGalleryVideo":
+		if e.ComplexityRoot.Mutation.LinkGalleryVideo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_linkGalleryVideo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.LinkGalleryVideo(childComplexity, args["galleryId"].(string), args["pluginName"].(string), args["url"].(string)), true
 	case "Mutation.markSearchSubscriptionSeen":
 		if e.ComplexityRoot.Mutation.MarkSearchSubscriptionSeen == nil {
 			break
@@ -2845,6 +2871,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.FindAlikeSources(childComplexity, args["sceneId"].(string), args["limit"].(*int)), true
+	case "Query.findGalleryVideos":
+		if e.ComplexityRoot.Query.FindGalleryVideos == nil {
+			break
+		}
+
+		args, err := ec.field_Query_findGalleryVideos_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.FindGalleryVideos(childComplexity, args["galleryId"].(string), args["limit"].(*int)), true
 	case "Query.galleries":
 		if e.ComplexityRoot.Query.Galleries == nil {
 			break
@@ -4803,6 +4840,10 @@ extend type Query {
   # sources: only galleries found through these plugins; empty = any.
   galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
   gallery(id: ID!): Gallery
+  # Videos the gallery's photo set may come from, ranked across every scene
+  # plugin: searched by its performers, studio and title, scored on title,
+  # performers, date and how close the cover is to each video's poster.
+  findGalleryVideos(galleryId: ID!, limit: Int): [AlikeCandidate!]!
 }
 
 extend type Mutation {
@@ -4810,6 +4851,9 @@ extend type Mutation {
   # images yet; this fetches its page from the origin plugin to land them.
   # Returns the gallery; a failed fetch still returns what is stored.
   ensureGalleryImages(galleryId: ID!): Gallery
+  # Scrapes a findGalleryVideos match, stores it as a scene and remembers it
+  # as the gallery's video (replacing an earlier pick). Returns the scene.
+  linkGalleryVideo(galleryId: ID!, pluginName: String!, url: String!): Scene!
 }
 
 type Gallery {
@@ -4829,6 +4873,8 @@ type Gallery {
   images: [Image!]!
   # "direct" | "inherited" — set when filtering by tagId.
   tagMatch: String
+  # The video this photo set comes from, once picked via linkGalleryVideo.
+  video: Scene
   createdAt: String!
   updatedAt: String!
 }
@@ -6073,6 +6119,8 @@ func (ec *executionContext) childFields_Gallery(ctx context.Context, field graph
 		return ec.fieldContext_Gallery_images(ctx, field)
 	case "tagMatch":
 		return ec.fieldContext_Gallery_tagMatch(ctx, field)
+	case "video":
+		return ec.fieldContext_Gallery_video(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Gallery_createdAt(ctx, field)
 	case "updatedAt":
@@ -7515,6 +7563,36 @@ func (ec *executionContext) field_Mutation_installPlugin_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_linkGalleryVideo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "galleryId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["galleryId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pluginName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pluginName"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "url",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["url"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_markSearchSubscriptionSeen_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8356,6 +8434,28 @@ func (ec *executionContext) field_Query_findAlikeSources_args(ctx context.Contex
 		return nil, err
 	}
 	args["sceneId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_findGalleryVideos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "galleryId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["galleryId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
 		func(ctx context.Context, v any) (*int, error) {
 			return ec.unmarshalOInt2ᚖint(ctx, v)
@@ -11033,6 +11133,38 @@ func (ec *executionContext) fieldContext_Gallery_tagMatch(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Gallery", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Gallery_video(ctx context.Context, field graphql.CollectedField, obj *model.Gallery) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Gallery_video(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Gallery().Video(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Scene) graphql.Marshaler {
+			return ec.marshalOScene2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐScene(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Gallery_video(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Gallery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Scene(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Gallery_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Gallery) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12879,6 +13011,50 @@ func (ec *executionContext) fieldContext_Mutation_ensureGalleryImages(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_ensureGalleryImages_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_linkGalleryVideo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_linkGalleryVideo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().LinkGalleryVideo(ctx, fc.Args["galleryId"].(string), fc.Args["pluginName"].(string), fc.Args["url"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Scene) graphql.Marshaler {
+			return ec.marshalNScene2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐScene(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_linkGalleryVideo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Scene(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_linkGalleryVideo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -17435,6 +17611,50 @@ func (ec *executionContext) fieldContext_Query_gallery(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_gallery_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_findGalleryVideos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_findGalleryVideos(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().FindGalleryVideos(ctx, fc.Args["galleryId"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.AlikeCandidate) graphql.Marshaler {
+			return ec.marshalNAlikeCandidate2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐAlikeCandidateᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_findGalleryVideos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AlikeCandidate(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_findGalleryVideos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -26260,22 +26480,22 @@ func (ec *executionContext) _Gallery(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._Gallery_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "externalId":
 			out.Values[i] = ec._Gallery_externalId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "sourceUrl":
 			out.Values[i] = ec._Gallery_sourceUrl(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "title":
 			out.Values[i] = ec._Gallery_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "details":
 			out.Values[i] = ec._Gallery_details(ctx, field, obj)
@@ -26286,43 +26506,76 @@ func (ec *executionContext) _Gallery(ctx context.Context, sel ast.SelectionSet, 
 		case "imageCount":
 			out.Values[i] = ec._Gallery_imageCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "rating":
 			out.Values[i] = ec._Gallery_rating(ctx, field, obj)
 		case "organized":
 			out.Values[i] = ec._Gallery_organized(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "studio":
 			out.Values[i] = ec._Gallery_studio(ctx, field, obj)
 		case "performers":
 			out.Values[i] = ec._Gallery_performers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tags":
 			out.Values[i] = ec._Gallery_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "images":
 			out.Values[i] = ec._Gallery_images(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tagMatch":
 			out.Values[i] = ec._Gallery_tagMatch(ctx, field, obj)
+		case "video":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Gallery_video(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._Gallery_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Gallery_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -26837,6 +27090,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_ensureGalleryImages(ctx, field)
 			})
+		case "linkGalleryVideo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_linkGalleryVideo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setImageTags":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setImageTags(ctx, field)
@@ -28063,6 +28323,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_gallery(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "findGalleryVideos":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_findGalleryVideos(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -32173,6 +32455,10 @@ func (ec *executionContext) marshalNSavedFilter2ᚖgithubᚗcomᚋplayingwithclo
 		return graphql.Null
 	}
 	return ec._SavedFilter(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNScene2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐScene(ctx context.Context, sel ast.SelectionSet, v model.Scene) graphql.Marshaler {
+	return ec._Scene(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNScene2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Scene) graphql.Marshaler {
