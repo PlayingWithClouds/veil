@@ -23,6 +23,10 @@ const (
 	// detailRetryInterval is the least time between detail fetches of a visited
 	// scene that still has no streams.
 	detailRetryInterval = 10 * time.Minute
+	// detailFetchTimeout bounds one detail fetch. It runs detached from the
+	// visit that started it (a card's hover prefetch can end before the page
+	// that waits for the same fetch), and sites behind FlareSolverr are slow.
+	detailFetchTimeout = 2 * time.Minute
 	// relatedFillTimeout bounds the background fallback searches of one visit.
 	relatedFillTimeout = 2 * time.Minute
 )
@@ -36,13 +40,14 @@ type relatedSearch struct {
 // VisitScene is called when a scene page is opened. The first visit fetches the
 // scene's detail page from its origin plugin (details, streams, and the site's
 // related list); every visit then tops up related scenes in the background.
+// A visit while that fetch runs waits for it.
 func (o *Orchestrator) VisitScene(ctx context.Context, sceneID string) error {
 	needsFetch, err := o.needsDetailFetch(ctx, sceneID)
 	if err != nil {
 		return err
 	}
-	if needsFetch {
-		if err := o.fetchSceneDetail(ctx, sceneID); err != nil {
+	if needsFetch || o.fetchingDetail(sceneID) {
+		if err := o.sharedDetailFetch(ctx, sceneID, o.fetchSceneDetail); err != nil {
 			return err
 		}
 	}
@@ -77,14 +82,35 @@ func (o *Orchestrator) mayRetryDetail(sceneID string) bool {
 	return true
 }
 
-// fetchSceneDetail runs the origin plugin's scene:find on the scene's page and
-// ingests the result. Concurrent visits of one scene fetch once.
-func (o *Orchestrator) fetchSceneDetail(ctx context.Context, sceneID string) error {
-	if _, alreadyFetching := o.detailInflight.LoadOrStore(sceneID, struct{}{}); alreadyFetching {
-		return nil
+// sharedDetailFetch runs fetch for the id unless a fetch of it is running
+// already, and waits for that one fetch either way: a visit that arrives
+// mid-fetch (the page after a card's hover prefetch) gets its result instead
+// of the scene as it was before. The fetch outlives a caller that gives up.
+func (o *Orchestrator) sharedDetailFetch(ctx context.Context, id string, fetch func(context.Context, string) error) error {
+	result := o.detailFetches.DoChan(id, func() (any, error) {
+		o.detailInflight.Store(id, struct{}{})
+		defer o.detailInflight.Delete(id)
+		fetchContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), detailFetchTimeout)
+		defer cancel()
+		return nil, fetch(fetchContext, id)
+	})
+	select {
+	case outcome := <-result:
+		return outcome.Err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-	defer o.detailInflight.Delete(sceneID)
+}
 
+// fetchingDetail reports whether a detail fetch of the id is running.
+func (o *Orchestrator) fetchingDetail(id string) bool {
+	_, fetching := o.detailInflight.Load(id)
+	return fetching
+}
+
+// fetchSceneDetail runs the origin plugin's scene:find on the scene's page and
+// ingests the result.
+func (o *Orchestrator) fetchSceneDetail(ctx context.Context, sceneID string) error {
 	plugin, sourceURL, err := o.origin(ctx, sceneID)
 	if err != nil {
 		return err

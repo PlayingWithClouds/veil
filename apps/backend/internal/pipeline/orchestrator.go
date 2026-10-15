@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
@@ -30,8 +32,11 @@ type Orchestrator struct {
 	streamCache    *stream.CacheService
 	settings       *settings.Service
 	profileCache   *cache.Client
-	// Scene ids with a detail fetch / related fill in progress (VisitScene).
-	detailInflight  sync.Map
+	// detailFetches runs one detail fetch per scene/gallery id at a time;
+	// detailInflight holds the ids it is fetching right now.
+	detailFetches  singleflight.Group
+	detailInflight sync.Map
+	// Scene ids with a related fill in progress (VisitScene).
 	relatedInflight sync.Map
 	// When a visited scene without streams was last fetched again (VisitScene).
 	detailRetried sync.Map
