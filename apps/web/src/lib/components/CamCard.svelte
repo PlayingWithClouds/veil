@@ -5,6 +5,8 @@
 -->
 <script lang="ts">
 	import EyeIcon from 'phosphor-svelte/lib/EyeIcon';
+	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
+	import { activeCamRecordings } from '$lib/stores/camRecordings';
 	import { cacheUrl } from '$lib/img';
 	import { formatViewers, type CamModel, type CamSource } from '$lib/cams';
 	import { formatRelativeTime } from '$lib/time';
@@ -27,6 +29,9 @@
 		if (!source?.iconUrl) return null;
 		return cacheUrl(source.iconUrl);
 	});
+	let isRecording = $derived(
+		$activeCamRecordings.some((entry) => entry.camModelId === camModel.id)
+	);
 	let visibleTags = $derived(camModel.tags.slice(0, VISIBLE_TAGS));
 	let lastSeenLabel = $derived.by(() => {
 		if (camModel.online || !camModel.lastSeenOnlineAt) return null;
@@ -68,6 +73,22 @@
 				class="absolute top-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white uppercase"
 			>
 				Offline
+			</span>
+		{/if}
+		{#if isRecording}
+			<span
+				class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
+			>
+				<RecordIcon size={12} weight="fill" class="text-red-500" />
+				Rec
+			</span>
+		{:else if camModel.autoRecord}
+			<span
+				class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white/80"
+				title="Recorded automatically when live"
+			>
+				<RecordIcon size={12} class="text-red-400" />
+				Auto
 			</span>
 		{/if}
 	</button>

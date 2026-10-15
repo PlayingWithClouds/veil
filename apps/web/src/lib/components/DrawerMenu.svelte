@@ -20,6 +20,7 @@
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
 	import VpnGuard from './VpnGuard.svelte';
 	import SubscriptionAvatar from './SubscriptionAvatar.svelte';
+	import ActiveRecordings from './ActiveRecordings.svelte';
 
 	interface Props {
 		// Settled open: plays the staggered entrance.
@@ -92,6 +93,10 @@
 				</a>
 			{/each}
 		</nav>
+
+		<div class="drawer-item mt-4" style:--stagger={stagger(quickLinks.length + 1)}>
+			<ActiveRecordings />
+		</div>
 
 		<a
 			href={subscriptionsUrl()}

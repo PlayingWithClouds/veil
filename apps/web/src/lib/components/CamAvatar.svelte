@@ -5,7 +5,8 @@
 	import type { CamModel } from '$lib/cams';
 
 	interface Props {
-		camModel: CamModel;
+		// A cam model, or the little of one a recording carries.
+		camModel: Pick<CamModel, 'displayName' | 'thumbnailUrl' | 'online'>;
 		size?: number;
 	}
 

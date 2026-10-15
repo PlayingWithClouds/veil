@@ -5,6 +5,7 @@ const FALLBACK = {
 	maxJobRetries: 3,
 	downloadSpeedLimitKBps: 0,
 	allowDownloadsWhileStreaming: true,
+	camRecordingMaxMinutes: 240,
 	autoEnrichAfterScrape: false,
 	requireVpn: false,
 	kindLimits: [] as Array<{
@@ -24,6 +25,7 @@ export async function load() {
 				maxJobRetries: true,
 				downloadSpeedLimitKBps: true,
 				allowDownloadsWhileStreaming: true,
+				camRecordingMaxMinutes: true,
 				autoEnrichAfterScrape: true,
 				requireVpn: true,
 				kindLimits: {
