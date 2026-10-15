@@ -1,7 +1,7 @@
 <!--
 	Phone drawer contents. Home, Subscriptions, Library, Collections and History
 	already sit in the tab bar, so the drawer carries what it doesn't: the
-	subscription list as the main content, Random and Downloads, and Plugins,
+	subscription list as the main content, Cams, Random and Downloads, and Plugins,
 	Settings and the VPN state in a footer within thumb reach. Rows fade in
 	one after another each time the drawer opens.
 -->
@@ -9,12 +9,13 @@
 	import { page } from '$app/stores';
 	import FilmReelIcon from 'phosphor-svelte/lib/FilmReelIcon';
 	import ShuffleIcon from 'phosphor-svelte/lib/ShuffleIcon';
+	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
 	import PlugsIcon from 'phosphor-svelte/lib/PlugsIcon';
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon';
 	import BellSimpleIcon from 'phosphor-svelte/lib/BellSimpleIcon';
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import type { Component } from 'svelte';
-	import { subscriptionsUrl } from '$lib/routes';
+	import { camsUrl, subscriptionsUrl } from '$lib/routes';
 	import { subscriptionName } from '$lib/searchSubscriptions';
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
 	import VpnGuard from './VpnGuard.svelte';
@@ -41,6 +42,7 @@
 	const MAX_STAGGER_INDEX = 12;
 
 	const quickLinks: NavLink[] = [
+		{ label: 'Cams', icon: VideoCameraIcon, href: camsUrl() },
 		{ label: 'Random', icon: ShuffleIcon, href: '/random' }
 	];
 

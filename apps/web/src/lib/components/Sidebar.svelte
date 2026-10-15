@@ -14,7 +14,8 @@
 	import BellIcon from 'phosphor-svelte/lib/BellIcon';
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
-	import { subscriptionsUrl } from '$lib/routes';
+	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
+	import { camsUrl, subscriptionsUrl } from '$lib/routes';
 	import { subscriptionName } from '$lib/searchSubscriptions';
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
 	import type { Component } from 'svelte';
@@ -34,6 +35,7 @@
 
 	const mainLinks: NavLink[] = [
 		{ label: 'Home', icon: HouseIcon, href: '/', exact: true },
+		{ label: 'Cams', icon: VideoCameraIcon, href: camsUrl() },
 		{ label: 'Random', icon: ShuffleIcon, href: '/random' }
 	];
 

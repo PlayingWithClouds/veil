@@ -43,9 +43,10 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 | `internal/updater/` | Scheduler that re-runs due search subscriptions |
 | `internal/media/` | Repository: all GraphQL read/write queries |
 | `internal/api/graphql/` | gqlgen resolvers; SDL in `schema/*.graphql` |
-| `internal/stream/` | HLS/MP4 proxy + write-through blob cache |
+| `internal/stream/` | HLS/MP4 proxy + write-through blob cache; live sessions (cams) bypass the cache |
 | `internal/resolve/` | Stream resolution chain (cache → domain plugin → wildcard → direct) |
 | `internal/alike/` | Cross-plugin alternate-source matching (pHash + performer/duration score) |
+| `internal/cams/` | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL |
 | `internal/recommend/` | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go` |
 
 After changing SDL: `go run github.com/99designs/gqlgen generate` in `apps/backend`, then `bun run codegen` in `packages/veil-sdk` (regenerates the genql client the frontend uses), then `bun run check` in `apps/web`.
@@ -100,7 +101,7 @@ Plugins may send the site's own `rating` (0..10) and `view_count` on `Scene` and
 
 **Type mirrors — keep in sync in one commit:** `apps/backend/internal/plugins/types.go` ⇄ `packages/veil-sdk/src/types.ts`.
 
-**Capabilities:** `meta`, `discover`, `scrape`, `search`, `enrich`, `resolve` (embed/page URL → playable mp4/HLS + headers; `meta.domains` routes, `"*"` = wildcard), `browse:categories`, `browse:actors`, `scene:list:page` (`scene:list` with a `url` arg lists a channel/performer/category page; eporner, hqporner).
+**Capabilities:** `meta`, `discover`, `scrape`, `search`, `enrich`, `resolve` (embed/page URL → playable mp4/HLS + headers; `meta.domains` routes, `"*"` = wildcard), `browse:categories`, `browse:actors`, `scene:list:page` (`scene:list` with a `url` arg lists a channel/performer/category page; eporner, hqporner), `cam:list` (rooms online now: args query/tag/gender/limit/offset, returns `CamRoom`s + total) and `cam:stream` (room username → live HLS master as a `ResolveResult`).
 
 **Protocol** (stdin/stdout JSON): `{ "capability", "args" }` in, `{ "result" } | { "error" }` out — except `scrape`, which streams NDJSON: one `ScrapeResult` per line, root entity (scene/gallery/image/collection) first, then related standalone entities (performer/studio/tag). A list may write `{ "items": [...] }` lines before its result so live search shows them while it keeps crawling (SDK `ItemSink` for page crawls, `emitItems` for site fan-outs; spankbang, kvs, aylo do); the result still carries every item and `Runner.ListStream` forwards each item once.
 
@@ -111,7 +112,17 @@ Plugins may send the site's own `rating` (0..10) and `view_count` on `Scene` and
 
 **FlareSolverr:** set `meta.requires_solver: true` when the site answers plain requests with a Cloudflare challenge, and fetch through `fetchHtmlSmart`. Without `FLARESOLVERR_URL` (e.g. embedded on a phone) the registry treats such plugins as unavailable: they drop out of search/browse, their stubs are hidden, visits skip them. Currently: missav, spankbang.
 
-**Current plugins:** aylo (pornhub, redtube, youporn, tube8), eporner (API + enrich), hqporner, kvs (37 Kernel Video Sharing sites from one config list), missav, xhamster, spankbang, tnaflix, txxx-network (scenes); pornpics (galleries).
+**Current plugins:** aylo (pornhub, redtube, youporn, tube8), eporner (API + enrich), hqporner, kvs (37 Kernel Video Sharing sites from one config list), missav, xhamster, spankbang, tnaflix, txxx-network (scenes); pornpics (galleries); chaturbate (live cams: `/api/ts/roomlist/room-list/` and `get_edge_hls_url_ajax`, both need the `X-Requested-With: XMLHttpRequest` header). Stripchat is not supported: its room list is open but its HLS playlists are gated by Mouflon and serve only an ad loop without the player's key.
+
+## Cams
+
+A cam model is a live room, not a scene: it comes and goes. Cam plugins (`cam:list`, `cam:stream`; see Plugin system) never produce scenes, so none of the scene discovery, ingest or recommendation code sees them.
+
+- `cam_model` (id `cam_model:<id>`, identity `source_url`) stores every room a listing has shown: name, thumbnail, tags, gender, subject, viewers, `online`, `last_seen_online_at`, and the `followed` flag. Rows are upserted whenever a listing page is fetched, so followed rooms stay known while offline.
+- `camRooms(sources, tag, query, gender, limit, offset)` lists live to the plugins on request (`internal/cams`): each plugin is paged in chunks of 100, chunks are cached in memory for 60 s so paging stays stable, plugins keep their own popularity order and are merged by viewers. Rooms in a private or password show are skipped. `camSources` feeds the site filter.
+- Online status of one room (`camModel`) or the Following row (`followedCamModels`, online first) is a `cam:stream` probe, reused for 45 s. `followCamModel` / `unfollowCamModel` flip the flag.
+- `camStream(id)` resolves the room and returns a proxy URL from `Proxy.LiveManifestURL`: a live session, so playlists are fetched fresh, LL-HLS tags (parts, preload hints, blocking reload) are stripped, and segments are relayed without writing the blob store or kv cache. The site's token URL expires within about a minute, so the player asks for a stream right before loading it and again on retry.
+- Web: Cams in the sidebar and phone drawer, `/cams` (live grid with `ScrollSentinel`, search, gender and site filters, tag filter via `?tag=`, Following row) and `/cams/[id]` (`CamPlayer` on hls.js, follow button, offline state). The Android app does not show cams yet.
 
 ## Frontend
 

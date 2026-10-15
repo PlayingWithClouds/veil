@@ -30,3 +30,13 @@ export function subscriptionsUrl(id?: string): string {
 	if (id === undefined) return '/subscriptions';
 	return `/subscriptions?id=${encodeURIComponent(id)}`;
 }
+
+/** The live cams grid. */
+export function camsUrl(): string {
+	return '/cams';
+}
+
+/** One live cam room. */
+export function camUrl(id: string): string {
+	return `/cams/${encodeURIComponent(id)}`;
+}
