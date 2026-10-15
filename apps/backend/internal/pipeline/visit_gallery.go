@@ -10,17 +10,18 @@ import (
 // VisitGallery is called when a gallery page is opened. Search and browse only
 // ingest gallery stubs, so a gallery without images has its page fetched from
 // its origin plugin (gallery:find), which lands the images. Concurrent visits
-// of one gallery fetch once.
+// of one gallery share one fetch.
 func (o *Orchestrator) VisitGallery(ctx context.Context, galleryID string) error {
 	hasImages, err := o.ingestSvc.GalleryHasImages(ctx, galleryID)
 	if err != nil || hasImages {
 		return err
 	}
-	if _, alreadyFetching := o.detailInflight.LoadOrStore(galleryID, struct{}{}); alreadyFetching {
-		return nil
-	}
-	defer o.detailInflight.Delete(galleryID)
+	return o.sharedDetailFetch(ctx, galleryID, o.fetchGalleryDetail)
+}
 
+// fetchGalleryDetail runs the origin plugin's gallery:find on the gallery's
+// page and ingests the result.
+func (o *Orchestrator) fetchGalleryDetail(ctx context.Context, galleryID string) error {
 	plugin, sourceURL, err := o.origin(ctx, galleryID)
 	if err != nil {
 		return err
