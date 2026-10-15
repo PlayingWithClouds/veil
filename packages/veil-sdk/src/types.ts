@@ -239,6 +239,8 @@ export interface Gallery {
   tags?: string[];
   cover_path?: string;
   images?: Image[];
+  /** photo count when the listing shows it but the images aren't scraped yet */
+  image_count?: number;
 }
 
 /**

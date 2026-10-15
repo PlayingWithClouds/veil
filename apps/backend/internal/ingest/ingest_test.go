@@ -328,6 +328,44 @@ func TestCollectionMembersAndGalleryImages(t *testing.T) {
 	}
 }
 
+func TestGalleryStubCountSurvivesRelisting(t *testing.T) {
+	service, database, ctx := openTestService(t)
+	item := plugins.DiscoveredItem{
+		Title: "Stub", MediaType: plugins.MediaTypeGallery, SourceURL: "https://example.test/g/9",
+		ExternalID: "9", PosterPath: "https://example.test/9.jpg", Count: 24,
+	}
+	galleryID, err := service.IngestDiscoveredItem(ctx, "alpha", item)
+	if err != nil {
+		t.Fatalf("ingest stub: %v", err)
+	}
+	galleryRow, err := service.GetByID(ctx, galleryID)
+	if err != nil || db.AsInt(galleryRow["image_count"]) != 24 {
+		t.Fatalf("stub image_count: %+v (err %v)", galleryRow, err)
+	}
+
+	// Visiting the gallery stores its real images and count.
+	gallery := &plugins.Gallery{
+		Type: plugins.MediaTypeGallery, SourceURL: item.SourceURL, Title: "Stub",
+		Images: []plugins.Image{{FilePath: "/g/9/1.jpg"}, {FilePath: "/g/9/2.jpg"}},
+	}
+	galleryResults := []*plugins.ScrapeResult{{Type: plugins.MediaTypeGallery, Gallery: gallery}}
+	if _, err := service.IngestScrapeResults(ctx, "alpha", gallery.SourceURL, galleryResults); err != nil {
+		t.Fatalf("ingest gallery: %v", err)
+	}
+
+	// Listing it again must not wipe what the visit stored.
+	if _, err := service.IngestDiscoveredItem(ctx, "alpha", item); err != nil {
+		t.Fatalf("relist stub: %v", err)
+	}
+	galleryRow, err = service.GetByID(ctx, galleryID)
+	if err != nil || db.AsInt(galleryRow["image_count"]) != 2 {
+		t.Fatalf("image_count after relisting: %+v (err %v)", galleryRow, err)
+	}
+	if images := countRows(t, ctx, database, `SELECT count(*) FROM image WHERE media = $media`, db.Vars{"media": galleryID}); images != 2 {
+		t.Fatalf("images after relisting = %d, want 2", images)
+	}
+}
+
 func TestListAndCountSearchIsLiteral(t *testing.T) {
 	service, _, ctx := openTestService(t)
 	for index, title := range []string{"100% Real", "Plain", "Another 100%"} {

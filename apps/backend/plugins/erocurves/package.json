@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-erocurves",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Veil plugin for erocurves",
   "private": true,
   "type": "module",

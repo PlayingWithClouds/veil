@@ -103,7 +103,10 @@ export function stubFromPost(post: WordPressPost): DiscoveredItem {
     source_url: sourceUrlOf(post),
     external_id: externalIdOf(post.id),
   };
-  if (imageUrls.length > 0) stub.poster_path = imageUrls[0];
+  if (imageUrls.length > 0) {
+    stub.poster_path = imageUrls[0];
+    stub.count = imageUrls.length;
+  }
   return stub;
 }
 

@@ -53,7 +53,7 @@ var canonicalColumns = map[string][]string{
 		"duration_seconds", "rating", "view_count", "poster_path", "preview_video", "preview_images",
 	},
 	"gallery": {
-		"external_id", "source_url", "title", "details", "date", "cover_path",
+		"external_id", "source_url", "title", "details", "date", "cover_path", "image_count",
 	},
 	"performer": {
 		"external_id", "source_url", "name", "aliases", "details", "gender",
@@ -186,7 +186,11 @@ func (s *Service) ingestGallery(ctx context.Context, pluginName, sourceURL strin
 	s.linkStudio(ctx, "gallery", result.CanonicalID, gallery.Studio, pluginName)
 	s.linkPerformers(ctx, "gallery", result.CanonicalID, gallery.Performers, pluginName)
 	s.linkTags(ctx, "gallery", result.CanonicalID, gallery.Tags, pluginName)
-	s.syncGalleryImagesLogged(ctx, result.CanonicalID, pluginName, gallery.Images)
+	// A stub (listing entry) carries no images; syncing it would delete the images
+	// of an already visited gallery and reset its count.
+	if len(gallery.Images) > 0 {
+		s.syncGalleryImagesLogged(ctx, result.CanonicalID, pluginName, gallery.Images)
+	}
 	s.mergeNewIntoTwin(ctx, "gallery", result)
 	return result, nil
 }
@@ -803,7 +807,7 @@ func (s *Service) IngestDiscoveredItem(ctx context.Context, pluginName string, i
 	case plugins.MediaTypeGallery:
 		results = []*plugins.ScrapeResult{{Type: item.MediaType, Gallery: &plugins.Gallery{
 			Type: item.MediaType, ExternalID: item.ExternalID, SourceURL: item.SourceURL,
-			Title: item.Title, Date: item.Date, CoverPath: item.PosterPath,
+			Title: item.Title, Date: item.Date, CoverPath: item.PosterPath, ImageCount: item.Count,
 		}}}
 	case plugins.MediaTypePerformer:
 		results = []*plugins.ScrapeResult{{Type: item.MediaType, Performer: &plugins.Performer{

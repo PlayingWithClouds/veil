@@ -69,6 +69,7 @@ describe("post parsing (offline)", () => {
     expect(stub.external_id).toBe(`erocurves-${listPost.id}`);
     expect(stub.source_url).toBe(`https://www.erocurves.com/${listPost.slug}/`);
     expect(stub.poster_path).toStartWith("https://cdn.erocurves.com/");
+    expect(stub.count).toBe(imageUrlsFromContent(listPost.content.rendered).length);
   });
 });
 

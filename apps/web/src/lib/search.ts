@@ -31,6 +31,8 @@ export interface PluginSearchResult {
 	// Canonical DB record id for the item, present for both DB and freshly-ingested
 	// plugin results (galleries navigate by this).
 	dbId?: string;
+	// Photos in a gallery, when the listing shows the count.
+	photoCount?: number | null;
 	// Runtime in seconds, known only for locally-stored scenes (null for fresh
 	// plugin results that haven't been scraped yet).
 	durationSeconds?: number | null;
@@ -170,6 +172,7 @@ interface StreamItem {
 	poster_path?: string;
 	preview_images?: string[];
 	preview_video?: string;
+	count?: number;
 }
 
 interface StreamResultEvent {
@@ -190,6 +193,7 @@ function streamEventToResult(event: StreamResultEvent): PluginSearchResult {
 		posterUrl: event.item.poster_path || null,
 		previewImages: event.item.preview_images ?? [],
 		previewVideo: event.item.preview_video || null,
+		photoCount: event.item.count || null,
 		// DB hits are already-ingested scenes: open by id, no scrape needed.
 		sceneId: isDbHit ? event.id : undefined,
 		dbId: event.id
