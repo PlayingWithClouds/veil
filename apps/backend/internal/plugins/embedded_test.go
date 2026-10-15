@@ -138,6 +138,11 @@ func checkBundleLive(t *testing.T, runner *Runner, dir, query string) {
 	}
 	plugin := &Plugin{Dir: dir, EntryPoint: "plugin.js", Meta: meta}
 
+	if meta.Has(CapabilityCamList) {
+		checkCamBundleLive(t, runner, plugin)
+		return
+	}
+
 	entity := MediaTypeScene
 	if !meta.Has(ListCapability(entity)) {
 		entity = MediaTypeGallery
@@ -219,4 +224,32 @@ func mustJSON(t *testing.T, value any) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+// checkCamBundleLive lists a cam plugin's online rooms and resolves the first
+// watchable one to its live stream URL.
+func checkCamBundleLive(t *testing.T, runner *Runner, plugin *Plugin) {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	listing, err := runner.CamList(ctx, plugin, CamListArgs{Limit: 5})
+	if err != nil {
+		t.Fatalf("cam:list: %v", err)
+	}
+	t.Logf("cam:list → %d rooms of %d", len(listing.Rooms), listing.Total)
+	if len(listing.Rooms) == 0 {
+		t.Fatal("no rooms")
+	}
+	for _, room := range listing.Rooms {
+		if !room.Online {
+			continue
+		}
+		stream, err := runner.CamStream(ctx, plugin, room.Username)
+		if err != nil {
+			t.Fatalf("cam:stream %s: %v", room.Username, err)
+		}
+		t.Logf("cam:stream %s → %s", room.Username, stream.URL)
+		return
+	}
+	t.Fatal("no online room to resolve")
 }

@@ -36,6 +36,11 @@ const (
 	// a partly typed query, so the search field can offer things the library
 	// doesn't hold yet.
 	CapabilitySearchSuggest Capability = "search:suggest"
+
+	// CapabilityCamList lists the live webcam rooms a site has online now;
+	// CapabilityCamStream resolves one room to its live HLS master playlist.
+	CapabilityCamList   Capability = "cam:list"
+	CapabilityCamStream Capability = "cam:stream"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -412,6 +417,44 @@ type DiscoveredItem struct {
 	// derive a source deterministically from the listing (e.g. a fixed embed URL),
 	// setting this attaches a stream to the stub immediately — no scrape needed.
 	Downloads []Download `json:"downloads,omitempty"`
+}
+
+// CamListArgs is passed to the cam:list capability.
+type CamListArgs struct {
+	Query string `json:"query,omitempty"`
+	// Tag is one tag/hashtag the room must carry.
+	Tag string `json:"tag,omitempty"`
+	// Gender is the site category: "female", "male", "couple" or "trans".
+	Gender string `json:"gender,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+	Offset int    `json:"offset,omitempty"`
+}
+
+// CamRoom is one live room as a cam site's listing shows it.
+type CamRoom struct {
+	// Username is the room's stable handle on the site; identity together with the plugin.
+	Username     string   `json:"username"`
+	DisplayName  string   `json:"display_name,omitempty"`
+	SourceURL    string   `json:"source_url"`
+	ThumbnailURL string   `json:"thumbnail_url,omitempty"`
+	Viewers      int      `json:"viewers,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	Gender       string   `json:"gender,omitempty"`
+	// Subject is the room's current title line.
+	Subject string `json:"subject,omitempty"`
+	// Online is false for rooms in a private or password show, which cannot be watched.
+	Online bool `json:"online"`
+}
+
+// CamListResult is one page of rooms and the number the site has in total.
+type CamListResult struct {
+	Rooms []CamRoom `json:"rooms"`
+	Total int       `json:"total,omitempty"`
+}
+
+// CamStreamArgs is passed to the cam:stream capability.
+type CamStreamArgs struct {
+	Username string `json:"username"`
 }
 
 // FindArgs is passed to an "<entity>:find" capability.
