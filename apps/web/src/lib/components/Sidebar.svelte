@@ -1,6 +1,6 @@
 <!--
 	YouTube-style sidebar: main destinations, the subscription list with a dot for
-	unseen videos, the personal section (library, downloads, history), then app settings. Phones get DrawerMenu instead.
+	unseen videos and the followed cam models (a dot while live), the personal section (library, downloads, history), then app settings. Phones get DrawerMenu instead.
 -->
 <script lang="ts">
 	import { page } from '$app/stores';
@@ -15,7 +15,9 @@
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
-	import { camsUrl, subscriptionsUrl } from '$lib/routes';
+	import { camsUrl, camUrl, subscriptionsUrl } from '$lib/routes';
+	import { followedCams, refreshFollowedCams } from '$lib/stores/followedCams';
+	import CamAvatar from './CamAvatar.svelte';
 	import { subscriptionName } from '$lib/searchSubscriptions';
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
 	import type { Component } from 'svelte';
@@ -62,6 +64,21 @@
 	];
 
 	let visibleSubscriptions = $derived($subscriptionList.slice(0, VISIBLE_SUBSCRIPTIONS));
+	// Live followed cams always show; offline ones fill the rows left over.
+	let visibleCams = $derived.by(() => {
+		const live = $followedCams.filter((camModel) => camModel.online);
+		const offline = $followedCams.filter((camModel) => !camModel.online);
+		const leftOver = Math.max(0, VISIBLE_SUBSCRIPTIONS - visibleSubscriptions.length - live.length);
+		return [...live, ...offline.slice(0, leftOver)];
+	});
+	let followingCount = $derived($subscriptionList.length + $followedCams.length);
+
+	// Reload on every navigation, so a follow from a room page shows up and the
+	// live dots stay current.
+	$effect(() => {
+		void $page.url.pathname;
+		refreshFollowedCams();
+	});
 
 	/** Whether the nav link points at the current page. */
 	function isActive(link: NavLink): boolean {
@@ -124,17 +141,29 @@
 					></span>
 				{/if}
 			</a>
-		{:else}
-			<p class="text-base-content/40 px-3 py-1 text-xs">
-				Subscribe to a channel, performer, tag or search to follow it here.
-			</p>
 		{/each}
-		{#if $subscriptionList.length > VISIBLE_SUBSCRIPTIONS}
+		{#each visibleCams as camModel (camModel.id)}
+			<a
+				href={camUrl(camModel.id)}
+				title={camModel.displayName}
+				class="text-base-content/80 hover:bg-base-200 hover:text-base-content sidebar-link-full flex items-center rounded-lg transition-colors"
+				class:sidebar-link-active={$page.url.pathname === camUrl(camModel.id)}
+			>
+				<CamAvatar {camModel} />
+				<span class="flex-1 truncate">{camModel.displayName}</span>
+			</a>
+		{/each}
+		{#if followingCount === 0}
+			<p class="text-base-content/40 px-3 py-1 text-xs">
+				Subscribe to a channel, performer, tag or search, or follow a cam, to see it here.
+			</p>
+		{/if}
+		{#if followingCount > visibleSubscriptions.length + visibleCams.length}
 			<a
 				href={subscriptionsUrl()}
 				class="text-base-content/60 hover:bg-base-200 sidebar-link-full flex items-center rounded-lg text-sm transition-colors"
 			>
-				Show all {$subscriptionList.length}
+				Show all {followingCount}
 			</a>
 		{/if}
 	</nav>

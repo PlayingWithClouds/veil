@@ -10,7 +10,9 @@
 	import SubscriptionStrip from '$lib/components/subscriptions/SubscriptionStrip.svelte';
 	import SubscriptionFeedGroups from '$lib/components/subscriptions/SubscriptionFeedGroups.svelte';
 	import SubscriptionSettingsSheet from '$lib/components/subscriptions/SubscriptionSettingsSheet.svelte';
-	import { subscriptionsUrl } from '$lib/routes';
+	import { camUrl, subscriptionsUrl } from '$lib/routes';
+	import CamAvatar from '$lib/components/CamAvatar.svelte';
+	import { followedCams, refreshFollowedCams } from '$lib/stores/followedCams';
 	import { notifications } from '$lib/stores/notifications';
 	import { refreshNewSubscriptionScenes } from '$lib/stores/newSubscriptionScenes';
 	import {
@@ -62,8 +64,15 @@
 		subscriptions.find((subscription) => subscription.id === selectedId)
 	);
 	let followedKinds = $derived(
-		KIND_FILTERS.filter((filter) => subscriptions.some((subscription) => subscription.kind === filter.kind))
+		KIND_FILTERS.filter((filter) =>
+			subscriptions.some((subscription) => subscription.kind === filter.kind)
+		)
 	);
+
+	// Followed cams, refreshed on every visit so live dots are current.
+	$effect(() => {
+		refreshFollowedCams();
+	});
 
 	let feedEntries = $state<SubscriptionFeedEntry[]>([]);
 	let feedLoading = $state(false);
@@ -261,6 +270,26 @@
 		{/snippet}
 	</PageHeader>
 
+	{#if $followedCams.length > 0}
+		<section class="flex flex-col gap-2">
+			<h2 class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Cams</h2>
+			<div class="no-scrollbar flex gap-4 overflow-x-auto pb-1">
+				{#each $followedCams as camModel (camModel.id)}
+					<a
+						href={camUrl(camModel.id)}
+						class="flex w-16 shrink-0 flex-col items-center gap-1 text-center"
+					>
+						<CamAvatar {camModel} size={56} />
+						<span class="w-full truncate text-xs">{camModel.displayName}</span>
+						{#if camModel.online}
+							<span class="text-error text-[10px] font-semibold uppercase">Live</span>
+						{/if}
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
 	{#if subscriptionsLoaded && subscriptions.length === 0}
 		<div class="flex flex-col items-center gap-3 py-24 text-center">
 			<BellIcon size={48} class="text-base-content/20" />
@@ -283,10 +312,17 @@
 							{subscriptionName(selectedSubscription)}
 						</a>
 					{:else}
-						<span class="truncate text-lg font-semibold">{subscriptionName(selectedSubscription)}</span>
+						<span class="truncate text-lg font-semibold"
+							>{subscriptionName(selectedSubscription)}</span
+						>
 					{/if}
-					<span class="text-base-content/50 truncate text-xs">{subscriptionSummary(selectedSubscription)}</span>
-					<span class="text-base-content/40 truncate text-xs" class:text-error={selectedSubscription.lastError}>
+					<span class="text-base-content/50 truncate text-xs"
+						>{subscriptionSummary(selectedSubscription)}</span
+					>
+					<span
+						class="text-base-content/40 truncate text-xs"
+						class:text-error={selectedSubscription.lastError}
+					>
 						{#if selectedSubscription.lastError}
 							Last check failed
 						{:else}
@@ -316,7 +352,9 @@
 			</div>
 		{/if}
 
-		<div class="no-scrollbar fade-right-edge -mx-3 flex gap-2 overflow-x-auto px-3 pr-8 md:-mx-4 md:px-4">
+		<div
+			class="no-scrollbar fade-right-edge -mx-3 flex gap-2 overflow-x-auto px-3 pr-8 md:-mx-4 md:px-4"
+		>
 			{#if !selectedId && followedKinds.length > 1}
 				{#each followedKinds as filter (filter.kind)}
 					<button
