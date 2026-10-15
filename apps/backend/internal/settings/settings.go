@@ -45,6 +45,9 @@ type Settings struct {
 	// playback bandwidth isn't starved.
 	AllowDownloadsWhileStreaming bool `json:"allowDownloadsWhileStreaming"`
 
+	// CamRecordingMaxMinutes cuts a live cam recording after this long; 0 = default (4 h).
+	CamRecordingMaxMinutes int `json:"camRecordingMaxMinutes"`
+
 	// Automation
 	AutoEnrichAfterScrape bool `json:"autoEnrichAfterScrape"`
 
@@ -76,6 +79,7 @@ var defaultValues = map[string]any{
 	"maxJobRetries":                3,
 	"downloadSpeedLimitKBps":       0,
 	"allowDownloadsWhileStreaming": true,
+	"camRecordingMaxMinutes":       240,
 	"autoEnrichAfterScrape":        false,
 	"requireVpn":                   false,
 	"disabledPlugins":              []string{},

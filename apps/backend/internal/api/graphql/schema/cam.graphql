@@ -43,6 +43,8 @@ type CamModel {
   online: Boolean!
   lastSeenOnlineAt: String
   followed: Boolean!
+  # Recorded automatically whenever the model is live.
+  autoRecord: Boolean!
 }
 
 type CamRoomPage {
@@ -59,4 +61,38 @@ type CamSource {
 type CamStream {
   url: String!
   mimeType: String!
+}
+
+extend type Query {
+  # Recordings of live rooms: the ones in progress (live duration and size),
+  # then the finished ones, newest first. Filter by model or to active only.
+  camRecordings(camModelId: ID, activeOnly: Boolean = false): [CamRecording!]!
+}
+
+extend type Mutation {
+  # Start recording a room that is live now; returns the running recording if
+  # the room is already being recorded. Recording runs in the backend until
+  # stopped, the room goes offline or the maximum duration passes, then the
+  # footage becomes a scene.
+  startCamRecording(id: ID!): CamRecording!
+  # Stop the room's recording and wait for its scene; null when none was running.
+  stopCamRecording(id: ID!): CamRecording
+  # Record this model automatically whenever she is live (also follows).
+  setCamAutoRecord(id: ID!, enabled: Boolean!): CamModel!
+}
+
+type CamRecording {
+  id: ID!
+  camModelId: ID!
+  displayName: String!
+  # recording | finished | failed
+  status: String!
+  # stopped | offline | max_duration | restart | too_short | error
+  stopReason: String
+  startedAt: String!
+  endedAt: String
+  durationSeconds: Float!
+  sizeBytes: Float!
+  # The scene created from a finished recording.
+  sceneId: ID
 }

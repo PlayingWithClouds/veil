@@ -56,7 +56,7 @@ func NewProxy(cs *CacheService, kv *cache.Client, baseURL string) *Proxy {
 func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error) {
 	// A cache hit is already a local blob. Proxying it would fetch it from
 	// ourselves and cache a second copy.
-	if strings.HasPrefix(result.URL, p.cache.storage.DirectURL(blobPrefix)) {
+	if strings.HasPrefix(result.URL, p.cache.storage.DirectURL(blobPrefix)) || p.cache.IsRecording(result.URL) {
 		return result.URL, nil
 	}
 	if !isHLS(result) {
