@@ -1,11 +1,13 @@
 <!--
 	Sticky chip row under the top bar (YouTube's filter chips): "All sites" plus
-	one chip per search plugin. The selection persists across pages.
+	one chip per search plugin that offers the selected media type (videos or
+	images). The selection persists across pages.
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import type { Snippet } from 'svelte';
-	import { fetchSearchPlugins, type SearchPlugin } from '$lib/search';
+	import { fetchSearchPlugins, supportsMediaFilter, type SearchPlugin } from '$lib/search';
+	import { mediaFilter } from '$lib/stores/mediaFilter';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 
 	interface Props {
@@ -24,6 +26,15 @@
 	}
 
 	let searchPlugins = $state<SearchPlugin[]>([]);
+
+	// Sites that don't offer the selected media type get no chip. A hidden site
+	// stays in the stored selection, so it comes back with the media type.
+	let visiblePlugins = $derived(
+		searchPlugins.filter((plugin) => supportsMediaFilter(plugin, $mediaFilter))
+	);
+	let hasVisibleSelection = $derived(
+		visiblePlugins.some((plugin) => selectedPlugins.includes(plugin.name))
+	);
 
 	/** Reads the stored selection, ignoring anything malformed. */
 	function loadSelectedPlugins(): string[] {
@@ -75,14 +86,14 @@
 		{@render leading?.()}
 		<button
 			type="button"
-			aria-pressed={selectedPlugins.length === 0}
+			aria-pressed={!hasVisibleSelection}
 			onclick={() => (selectedPlugins = [])}
 			class="site-chip"
-			class:site-chip-active={selectedPlugins.length === 0}
+			class:site-chip-active={!hasVisibleSelection}
 		>
 			All sites
 		</button>
-		{#each searchPlugins as plugin (plugin.name)}
+		{#each visiblePlugins as plugin (plugin.name)}
 			<button
 				type="button"
 				aria-pressed={selectedPlugins.includes(plugin.name)}

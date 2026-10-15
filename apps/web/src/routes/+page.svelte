@@ -20,7 +20,12 @@
 	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
 	import { sceneUrl, galleryUrl, performerUrl, studioUrl } from '$lib/routes';
 	import { cacheUrl } from '$lib/img';
-	import { fetchSearchPlugins, pluginForUrl, type SearchPlugin } from '$lib/search';
+	import {
+		fetchSearchPlugins,
+		pluginForUrl,
+		supportsMediaFilter,
+		type SearchPlugin
+	} from '$lib/search';
 	import { impression, recordClicked, resetShownImpressions } from '$lib/recommendations';
 	import {
 		searchPerformers,
@@ -103,6 +108,15 @@
 		fetchSearchPlugins().then((plugins) => (sites = plugins));
 	});
 
+	// The selected sites that offer the chosen media type; none left = all sites.
+	let activeSources = $derived.by(() => {
+		if (sites.length === 0) return selectedPlugins;
+		return selectedPlugins.filter((name) => {
+			const site = sites.find((plugin) => plugin.name === name);
+			return site !== undefined && supportsMediaFilter(site, $mediaFilter);
+		});
+	});
+
 	let requestToken = 0;
 	let seedStream: SearchStream | null = null;
 
@@ -144,17 +158,17 @@
 
 	/** Whether a recommended scene came from one of the selected sites (none selected = all). */
 	function matchesSelectedSites(scene: SceneHit): boolean {
-		if (selectedPlugins.length === 0) return true;
+		if (activeSources.length === 0) return true;
 		const site = pluginForUrl(scene.sourceUrl, sites);
 		if (!site) return false;
-		return selectedPlugins.includes(site.name);
+		return activeSources.includes(site.name);
 	}
 
 	/** Next page of scenes: search matches, or the recommendation feed when there is no query. */
 	async function nextScenePage(text: string): Promise<SceneHit[]> {
 		if (sceneFeedDone) return [];
 		if (text) {
-			const scenes = await searchScenes(text, selectedPlugins, SCENE_PAGE_SIZE, sceneOffset);
+			const scenes = await searchScenes(text, activeSources, SCENE_PAGE_SIZE, sceneOffset);
 			sceneOffset += scenes.length;
 			sceneFeedDone = scenes.length < SCENE_PAGE_SIZE;
 			return scenes;
@@ -171,7 +185,7 @@
 	/** Next page of galleries matching the query (newest first when there is none). */
 	async function nextGalleryPage(text: string): Promise<GalleryHit[]> {
 		if (galleryFeedDone) return [];
-		const galleries = await searchGalleries(text, selectedPlugins, GALLERY_PAGE_SIZE, galleryOffset);
+		const galleries = await searchGalleries(text, activeSources, GALLERY_PAGE_SIZE, galleryOffset);
 		galleryOffset += galleries.length;
 		galleryFeedDone = galleries.length < GALLERY_PAGE_SIZE;
 		return galleries;
@@ -185,7 +199,7 @@
 
 	/** Brings back a cached feed and its scroll position; false when there is none. */
 	async function restoreCachedFeed(token: number): Promise<boolean> {
-		const cached = loadHomeFeed(homeFeedKey($mediaFilter, selectedPlugins));
+		const cached = loadHomeFeed(homeFeedKey($mediaFilter, activeSources));
 		if (!cached) return false;
 		performers = [];
 		studios = [];
@@ -211,7 +225,7 @@
 	beforeNavigate(() => {
 		if (isSearching || gridItems.length === 0) return;
 		saveHomeFeed({
-			key: homeFeedKey($mediaFilter, selectedPlugins),
+			key: homeFeedKey($mediaFilter, activeSources),
 			savedAt: feedBuiltAt,
 			gridItems,
 			sceneOffset,
@@ -262,7 +276,7 @@
 		appendItems(interleave(sceneHits, galleryHits));
 		loading = false;
 
-		if (text) streamFromPlugins(text, selectedPlugins, token);
+		if (text) streamFromPlugins(text, activeSources, token);
 	}
 
 	/** Whether the media toggle lets this grid item through. */
@@ -298,7 +312,7 @@
 	$effect(() => {
 		// Referenced so the effect re-runs on any of these.
 		query;
-		selectedPlugins;
+		activeSources;
 		$mediaFilter;
 		if (debounceTimer) clearTimeout(debounceTimer);
 		if (firstRun) {
@@ -318,7 +332,10 @@
 		const token = requestToken;
 		loading = true;
 		const text = query.trim();
-		const [galleryPage, scenePage] = await Promise.all([nextGalleryPage(text), nextScenePage(text)]);
+		const [galleryPage, scenePage] = await Promise.all([
+			nextGalleryPage(text),
+			nextScenePage(text)
+		]);
 		if (token !== requestToken) return;
 		appendItems(interleave(scenePage, galleryPage));
 		loading = false;
@@ -404,7 +421,9 @@
 						class="flex w-32 shrink-0 flex-col items-center gap-2 text-center"
 						onclick={() => goto(studioUrl(studio.id))}
 					>
-						<div class="tv-card bg-base-300 flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg">
+						<div
+							class="tv-card bg-base-300 flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg"
+						>
 							{#if cacheUrl(studio.imagePath)}
 								<img
 									src={cacheUrl(studio.imagePath)}
@@ -436,7 +455,7 @@
 						</span>
 					{/if}
 				</h2>
-				<SubscribeSearchButton {query} sources={selectedPlugins} />
+				<SubscribeSearchButton {query} sources={activeSources} />
 			</div>
 		{:else if !$isCompact}
 			<!-- Phones refresh by pulling down instead. -->
@@ -471,10 +490,20 @@
 		{:else if gridItems.length === 0 && !loading && !pluginsSearching}
 			<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
 				<MagnifyingGlassIcon size={48} class="opacity-20" />
-				<p>{isSearching ? 'Nothing matches your search.' : 'Nothing here yet. Search for something to get started.'}</p>
+				<p>
+					{isSearching
+						? 'Nothing matches your search.'
+						: 'Nothing here yet. Search for something to get started.'}
+				</p>
 			</div>
 		{:else}
-			<Masonry items={gridItems} keyOf={gridItemKey} {aspectOf} captionHeight={CARD_CAPTION_HEIGHT} gap={24}>
+			<Masonry
+				items={gridItems}
+				keyOf={gridItemKey}
+				{aspectOf}
+				captionHeight={CARD_CAPTION_HEIGHT}
+				gap={24}
+			>
 				{#snippet children(item: GridItem)}
 					{#if item.kind === 'scene'}
 						<div use:impression={impressionFor(item.scene)}>

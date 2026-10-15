@@ -1,5 +1,6 @@
 import { gqlClient, getWsClient } from '$lib/veil';
 import { apiBase, pluginIconUrl } from '$lib/server';
+import type { MediaFilter } from '$lib/stores/mediaFilter';
 
 // Guards against duplicate externalIds (multiple plugins, or a source listing
 // the same item twice) which would otherwise break keyed {#each} rendering.
@@ -92,6 +93,13 @@ export async function fetchPluginIcons(): Promise<Record<string, string | null>>
 /** Whether the plugin lists scenes or galleries (i.e. is a searchable site, not a resolver). */
 function listsContent(plugin: SearchPlugin): boolean {
 	return plugin.capabilities.includes('scene:list') || plugin.capabilities.includes('gallery:list');
+}
+
+/** Whether the plugin lists the kind of media the top bar's toggle selects. */
+export function supportsMediaFilter(plugin: SearchPlugin, filter: MediaFilter): boolean {
+	if (filter === 'videos') return plugin.capabilities.includes('scene:list');
+	if (filter === 'images') return plugin.capabilities.includes('gallery:list');
+	return true;
 }
 
 export async function fetchSearchPlugins(): Promise<SearchPlugin[]> {
