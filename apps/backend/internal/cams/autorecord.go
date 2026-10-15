@@ -72,7 +72,7 @@ func (watcher *AutoRecorder) checkOne(ctx context.Context, record *camRecord) {
 	if !watcher.service.checkOnline(ctx, record) {
 		return
 	}
-	if _, err := watcher.recorder.Start(ctx, record.ID); err != nil {
+	if _, err := watcher.recorder.Start(ctx, record.ID, record.RecordQuality); err != nil {
 		log.Printf("cams: auto-record %s: %v", record.DisplayName, err)
 		return
 	}

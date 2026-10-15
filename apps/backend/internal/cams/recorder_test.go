@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -33,6 +34,8 @@ type liveServer struct {
 	validToken string
 	// down makes every request fail with 503.
 	down bool
+	// withAudio adds a separate audio rendition to the master playlist.
+	withAudio bool
 }
 
 // newLiveServer starts the origin.
@@ -58,21 +61,46 @@ func (live *liveServer) serve(writer http.ResponseWriter, request *http.Request)
 	}
 	switch {
 	case strings.HasSuffix(request.URL.Path, "/master.m3u8"):
-		fmt.Fprint(writer, "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000\nlow.m3u8?token="+live.validToken+
-			"\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\nhigh.m3u8?token="+live.validToken+"\n")
+		audioGroup := ""
+		if live.withAudio {
+			fmt.Fprint(writer, "#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"a\",NAME=\"Audio\",DEFAULT=YES,URI=\"audio.m3u8?token="+live.validToken+"\"\n")
+			audioGroup = ",AUDIO=\"a\""
+		} else {
+			fmt.Fprint(writer, "#EXTM3U\n")
+		}
+		token := "?token=" + live.validToken
+		fmt.Fprint(writer,
+			"#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360"+audioGroup+"\nlow.m3u8"+token+
+				"\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480"+audioGroup+"\nmid.m3u8"+token+
+				"\n#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720"+audioGroup+"\nhigh.m3u8"+token+"\n")
+	case strings.HasSuffix(request.URL.Path, "/audio.m3u8"):
+		live.writeAudio(writer)
 	case strings.HasSuffix(request.URL.Path, "/high.m3u8"):
-		live.writeMedia(writer)
+		live.writeMedia(writer, "seg")
+	case strings.HasSuffix(request.URL.Path, "/mid.m3u8"):
+		live.writeMedia(writer, "segmid")
 	case strings.HasSuffix(request.URL.Path, "/low.m3u8"):
-		http.Error(writer, "the low variant must not be recorded", http.StatusTeapot)
+		live.writeMedia(writer, "seglow")
 	case strings.HasSuffix(request.URL.Path, ".ts"):
-		fmt.Fprint(writer, "data-"+strings.TrimSuffix(request.URL.Path[strings.LastIndex(request.URL.Path, "/")+1:], ".ts"))
+		number := strings.TrimSuffix(path.Base(request.URL.Path), ".ts")
+		switch {
+		case strings.HasPrefix(request.URL.Path, "/live/aseg/"):
+			fmt.Fprint(writer, "audio-"+number)
+		case strings.HasPrefix(request.URL.Path, "/live/segmid/"):
+			fmt.Fprint(writer, "mid-"+number)
+		case strings.HasPrefix(request.URL.Path, "/live/seglow/"):
+			fmt.Fprint(writer, "low-"+number)
+		default:
+			fmt.Fprint(writer, "data-"+number)
+		}
 	default:
 		http.NotFound(writer, request)
 	}
 }
 
-// writeMedia writes the media playlist for the current request.
-func (live *liveServer) writeMedia(writer io.Writer) {
+// writeMedia writes the media playlist for the current request, with segments
+// under the directory.
+func (live *liveServer) writeMedia(writer io.Writer, directory string) {
 	step := live.requests
 	if step >= len(live.windows) {
 		step = len(live.windows) - 1
@@ -84,7 +112,24 @@ func (live *liveServer) writeMedia(writer io.Writer) {
 		if live.discontinuityAt[sequence] {
 			fmt.Fprint(writer, "#EXT-X-DISCONTINUITY\n")
 		}
-		fmt.Fprintf(writer, "#EXTINF:2.000,\nseg/%d.ts?token=%s\n", sequence, live.validToken)
+		fmt.Fprintf(writer, "#EXTINF:2.000,\n%s/%d.ts?token=%s\n", directory, sequence, live.validToken)
+	}
+}
+
+// writeAudio writes the audio playlist: the segments of the window the video
+// playlist showed last, named a<sequence>.
+func (live *liveServer) writeAudio(writer io.Writer) {
+	step := live.requests - 1
+	if step < 0 {
+		step = 0
+	}
+	if step >= len(live.windows) {
+		step = len(live.windows) - 1
+	}
+	window := live.windows[step]
+	fmt.Fprintf(writer, "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:%d\n", window[0])
+	for _, sequence := range window {
+		fmt.Fprintf(writer, "#EXTINF:2.000,\naseg/%d.ts?token=%s\n", sequence, live.validToken)
 	}
 }
 
@@ -215,7 +260,7 @@ func TestRecorderStoresEachSegmentOnceAndFilesAScene(t *testing.T) {
 	fixture.live.discontinuityAt[3] = true
 	ctx := context.Background()
 
-	started, err := fixture.recorder.Start(ctx, fixture.roomID)
+	started, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +333,7 @@ func (fixture *recorderFixture) assertSceneFiled(t *testing.T, sceneID *string, 
 func TestRecorderReconnectsWithAFreshStreamURL(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0, 1}, {0, 1, 2}, {2, 3}, {2, 3, 4}})
 	ctx := context.Background()
-	if _, err := fixture.recorder.Start(ctx, fixture.roomID); err != nil {
+	if _, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "first segments", func() bool { return fixture.recordedSeconds() >= 6 })
@@ -315,7 +360,7 @@ func TestRecorderReconnectsWithAFreshStreamURL(t *testing.T) {
 func TestRecorderEndsAtTheMaximumDuration(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0, 1, 2}})
 	fixture.recorder.maxDuration = func() time.Duration { return 150 * time.Millisecond }
-	if _, err := fixture.recorder.Start(context.Background(), fixture.roomID); err != nil {
+	if _, err := fixture.recorder.Start(context.Background(), fixture.roomID, QualitySource); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "the recording to end by itself", func() bool { return !fixture.recorder.IsRecording(fixture.roomID) })
@@ -331,7 +376,7 @@ func TestRecorderEndsAtTheMaximumDuration(t *testing.T) {
 
 func TestRecorderEndsWhenTheRoomStaysOffline(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0, 1, 2}})
-	if _, err := fixture.recorder.Start(context.Background(), fixture.roomID); err != nil {
+	if _, err := fixture.recorder.Start(context.Background(), fixture.roomID, QualitySource); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "three segments", func() bool { return fixture.recordedSeconds() >= 6 })
@@ -348,11 +393,11 @@ func TestRecorderEndsWhenTheRoomStaysOffline(t *testing.T) {
 func TestRecorderStartsOneRecordingPerRoomAndRefusesOfflineRooms(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0, 1, 2}})
 	ctx := context.Background()
-	first, err := fixture.recorder.Start(ctx, fixture.roomID)
+	first, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := fixture.recorder.Start(ctx, fixture.roomID)
+	second, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource)
 	if err != nil || second.ID != first.ID || len(fixture.recorder.Active()) != 1 {
 		t.Fatalf("a second recording started: %+v %v", second, err)
 	}
@@ -361,7 +406,7 @@ func TestRecorderStartsOneRecordingPerRoomAndRefusesOfflineRooms(t *testing.T) {
 	}
 
 	fixture.sites.refuseStreams.Store(true)
-	if _, err := fixture.recorder.Start(ctx, fixture.roomID); err == nil {
+	if _, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource); err == nil {
 		t.Fatal("an offline room started recording")
 	}
 	if fixture.recorder.IsRecording(fixture.roomID) {
@@ -372,7 +417,7 @@ func TestRecorderStartsOneRecordingPerRoomAndRefusesOfflineRooms(t *testing.T) {
 func TestRecorderDropsARecordingTooShortToKeep(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0}})
 	ctx := context.Background()
-	started, err := fixture.recorder.Start(ctx, fixture.roomID)
+	started, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +439,7 @@ func TestRecorderDropsARecordingTooShortToKeep(t *testing.T) {
 func TestRecoverFilesAnInterruptedRecording(t *testing.T) {
 	fixture := newRecorderFixture(t, [][]int{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}})
 	ctx := context.Background()
-	if _, err := fixture.recorder.Start(ctx, fixture.roomID); err != nil {
+	if _, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource); err != nil {
 		t.Fatal(err)
 	}
 	// Twelve segments cross the flush threshold, so a playlist exists on disk.
@@ -417,5 +462,124 @@ func TestRecoverFilesAnInterruptedRecording(t *testing.T) {
 	recordings, err := fixture.recorder.Recordings(ctx, fixture.roomID, false)
 	if err != nil || len(recordings) != 1 || recordings[0].SceneID == nil || recordings[0].Status != statusFinished {
 		t.Fatalf("recording not recovered: %+v %v", recordings, err)
+	}
+}
+
+func TestRecorderKeepsASeparateAudioRenditionInSync(t *testing.T) {
+	fixture := newRecorderFixture(t, [][]int{{0, 1, 2}, {1, 2, 3}, {2, 3, 4}})
+	fixture.live.withAudio = true
+	ctx := context.Background()
+	if _, err := fixture.recorder.Start(ctx, fixture.roomID, QualitySource); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "five segments", func() bool { return fixture.recordedSeconds() >= 10 })
+	finished, err := fixture.recorder.Stop(ctx, fixture.roomID)
+	if err != nil || finished == nil || finished.SceneID == nil {
+		t.Fatalf("stop: %v %v", finished, err)
+	}
+
+	master := fixture.playlistOf(t, finished.ID)
+	if !strings.Contains(master, `#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio"`) || !strings.Contains(master, "video.m3u8") {
+		t.Fatalf("index is not a master joining audio and video:\n%s", master)
+	}
+	_, identifier, _ := strings.Cut(finished.ID, ":")
+	read := func(name string) string {
+		reader, err := fixture.blobs.Get(ctx, RecordingPrefix+identifier+"/"+name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		defer reader.Close()
+		data, _ := io.ReadAll(reader)
+		return string(data)
+	}
+	if got := strings.Count(read("audio.m3u8"), "#EXTINF"); got < 5 {
+		t.Fatalf("audio playlist has %d segments, want at least 5", got)
+	}
+	if got := read("aseg-00002.ts"); got != "audio-2" {
+		t.Fatalf("audio segment holds %q", got)
+	}
+	if got := read("seg-00002.ts"); got != "data-2" {
+		t.Fatalf("video segment holds %q", got)
+	}
+}
+
+// recordAt records a few segments at a quality and returns the stored video segment names to contents.
+func (fixture *recorderFixture) recordAt(t *testing.T, quality string) string {
+	t.Helper()
+	ctx := context.Background()
+	started, err := fixture.recorder.Start(ctx, fixture.roomID, quality)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "three segments", func() bool { return fixture.recordedSeconds() >= 6 })
+	if active := fixture.recorder.Active(); len(active) != 1 || active[0].Quality == nil {
+		t.Fatalf("the running recording does not say its quality: %+v", active)
+	}
+	finished, err := fixture.recorder.Stop(ctx, fixture.roomID)
+	if err != nil || finished == nil || finished.Quality == nil {
+		t.Fatalf("stop: %+v %v", finished, err)
+	}
+	_, identifier, _ := strings.Cut(started.ID, ":")
+	reader, err := fixture.blobs.Get(ctx, RecordingPrefix+identifier+"/seg-00000.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	data, _ := io.ReadAll(reader)
+	return string(data) + "@" + *finished.Quality
+}
+
+func TestRecorderRecordsOnlyTheChosenRendition(t *testing.T) {
+	cases := []struct {
+		quality string
+		want    string
+	}{
+		{QualitySource, "data-0@720p"},
+		{"480", "mid-0@480p"},
+		{"480p", "mid-0@480p"},
+		{"600", "mid-0@480p"},
+		{"240", "low-0@360p"},
+		{"1080", "data-0@720p"},
+	}
+	for _, testCase := range cases {
+		fixture := newRecorderFixture(t, [][]int{{0, 1, 2}})
+		if got := fixture.recordAt(t, testCase.quality); got != testCase.want {
+			t.Errorf("quality %q recorded %q, want %q", testCase.quality, got, testCase.want)
+		}
+	}
+}
+
+func TestRecorderRepicksTheRenditionAfterAReconnect(t *testing.T) {
+	fixture := newRecorderFixture(t, [][]int{{0, 1}, {0, 1, 2}, {2, 3}, {2, 3, 4}})
+	ctx := context.Background()
+	if _, err := fixture.recorder.Start(ctx, fixture.roomID, "480"); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "first segments", func() bool { return fixture.recordedSeconds() >= 6 })
+	fixture.live.expireToken("2")
+	waitFor(t, "segments after the reconnect", func() bool { return fixture.recordedSeconds() >= 10 })
+	finished, err := fixture.recorder.Stop(ctx, fixture.roomID)
+	if err != nil || finished == nil || finished.Quality == nil || *finished.Quality != "480p" {
+		t.Fatalf("stop: %+v %v", finished, err)
+	}
+	_, identifier, _ := strings.Cut(finished.ID, ":")
+	reader, err := fixture.blobs.Get(ctx, RecordingPrefix+identifier+"/seg-00004.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := io.ReadAll(reader)
+	reader.Close()
+	if string(data) != "mid-4" {
+		t.Fatalf("the segment after the reconnect came from %q", data)
+	}
+}
+
+func TestStartRejectsAnInvalidQuality(t *testing.T) {
+	fixture := newRecorderFixture(t, [][]int{{0}})
+	if _, err := fixture.recorder.Start(context.Background(), fixture.roomID, "huge"); err == nil {
+		t.Fatal("accepted quality huge")
+	}
+	if fixture.recorder.IsRecording(fixture.roomID) {
+		t.Fatal("a rejected start left the room reserved")
 	}
 }

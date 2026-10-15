@@ -235,6 +235,7 @@ export interface CamModel {
     lastSeenOnlineAt: (Scalars['String'] | null)
     followed: Scalars['Boolean']
     autoRecord: Scalars['Boolean']
+    recordQuality: Scalars['String']
     __typename: 'CamModel'
 }
 
@@ -261,6 +262,8 @@ export interface CamRecording {
     id: Scalars['ID']
     camModelId: Scalars['ID']
     displayName: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    quality: (Scalars['String'] | null)
     status: Scalars['String']
     stopReason: (Scalars['String'] | null)
     startedAt: Scalars['String']
@@ -318,6 +321,7 @@ export interface FaceIdentification {
     candidates: FaceCandidate[]
     sources: Scalars['String'][]
     failures: Scalars['String'][]
+    pictureUrl: Scalars['String']
     __typename: 'FaceIdentification'
 }
 
@@ -905,9 +909,9 @@ export interface MutationGenqlSelection{
     removeBlock?: { __args: {targetId: Scalars['ID']} }
     followCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     unfollowCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
-    startCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID']} })
+    startCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID'], quality?: (Scalars['String'] | null)} })
     stopCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID']} })
-    setCamAutoRecord?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], enabled: Scalars['Boolean']} })
+    setCamAutoRecord?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], enabled: Scalars['Boolean'], quality?: (Scalars['String'] | null)} })
     createCollection?: (CollectionGenqlSelection & { __args: {name: Scalars['String']} })
     renameCollection?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], name: Scalars['String']} })
     deleteCollection?: { __args: {collectionId: Scalars['ID']} }
@@ -1058,6 +1062,7 @@ export interface CamModelGenqlSelection{
     lastSeenOnlineAt?: boolean | number
     followed?: boolean | number
     autoRecord?: boolean | number
+    recordQuality?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1088,6 +1093,8 @@ export interface CamRecordingGenqlSelection{
     id?: boolean | number
     camModelId?: boolean | number
     displayName?: boolean | number
+    thumbnailUrl?: boolean | number
+    quality?: boolean | number
     status?: boolean | number
     stopReason?: boolean | number
     startedAt?: boolean | number
@@ -1149,6 +1156,7 @@ export interface FaceIdentificationGenqlSelection{
     candidates?: FaceCandidateGenqlSelection
     sources?: boolean | number
     failures?: boolean | number
+    pictureUrl?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

@@ -24,8 +24,12 @@ func (r *mutationResolver) UnfollowCamModel(ctx context.Context, id string) (*mo
 }
 
 // StartCamRecording is the resolver for the startCamRecording field.
-func (r *mutationResolver) StartCamRecording(ctx context.Context, id string) (*model.CamRecording, error) {
-	return r.camRecorder.Start(ctx, id)
+func (r *mutationResolver) StartCamRecording(ctx context.Context, id string, quality *string) (*model.CamRecording, error) {
+	requested := cams.QualitySource
+	if quality != nil {
+		requested = *quality
+	}
+	return r.camRecorder.Start(ctx, id, requested)
 }
 
 // StopCamRecording is the resolver for the stopCamRecording field.
@@ -34,8 +38,8 @@ func (r *mutationResolver) StopCamRecording(ctx context.Context, id string) (*mo
 }
 
 // SetCamAutoRecord is the resolver for the setCamAutoRecord field.
-func (r *mutationResolver) SetCamAutoRecord(ctx context.Context, id string, enabled bool) (*model.CamModel, error) {
-	return r.cams.SetAutoRecord(ctx, id, enabled)
+func (r *mutationResolver) SetCamAutoRecord(ctx context.Context, id string, enabled bool, quality *string) (*model.CamModel, error) {
+	return r.cams.SetAutoRecord(ctx, id, enabled, quality)
 }
 
 // CamRooms is the resolver for the camRooms field.

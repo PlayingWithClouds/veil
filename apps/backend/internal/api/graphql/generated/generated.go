@@ -72,6 +72,7 @@ type ComplexityRoot struct {
 		LastSeenOnlineAt func(childComplexity int) int
 		Online           func(childComplexity int) int
 		PluginName       func(childComplexity int) int
+		RecordQuality    func(childComplexity int) int
 		SourceURL        func(childComplexity int) int
 		Subject          func(childComplexity int) int
 		Tags             func(childComplexity int) int
@@ -86,11 +87,13 @@ type ComplexityRoot struct {
 		DurationSeconds func(childComplexity int) int
 		EndedAt         func(childComplexity int) int
 		ID              func(childComplexity int) int
+		Quality         func(childComplexity int) int
 		SceneID         func(childComplexity int) int
 		SizeBytes       func(childComplexity int) int
 		StartedAt       func(childComplexity int) int
 		Status          func(childComplexity int) int
 		StopReason      func(childComplexity int) int
+		ThumbnailURL    func(childComplexity int) int
 	}
 
 	CamRoomPage struct {
@@ -161,6 +164,7 @@ type ComplexityRoot struct {
 	FaceIdentification struct {
 		Candidates func(childComplexity int) int
 		Failures   func(childComplexity int) int
+		PictureURL func(childComplexity int) int
 		Sources    func(childComplexity int) int
 	}
 
@@ -302,13 +306,13 @@ type ComplexityRoot struct {
 		RetryJob                   func(childComplexity int, id string) int
 		RunSearchSubscription      func(childComplexity int, id string) int
 		Scrape                     func(childComplexity int, pluginName string, url string) int
-		SetCamAutoRecord           func(childComplexity int, id string, enabled bool) int
+		SetCamAutoRecord           func(childComplexity int, id string, enabled bool, quality *string) int
 		SetCollectionTags          func(childComplexity int, collectionID string, tagIds []string) int
 		SetImageTags               func(childComplexity int, imageID string, tagIds []string) int
 		SetPerformerFavorite       func(childComplexity int, id string, favorite bool) int
 		SetSceneThumbnail          func(childComplexity int, sceneID string, atSeconds float64, jpegBase64 string) int
 		SetStudioTags              func(childComplexity int, studioID string, tagIds []string) int
-		StartCamRecording          func(childComplexity int, id string) int
+		StartCamRecording          func(childComplexity int, id string, quality *string) int
 		StopCamRecording           func(childComplexity int, id string) int
 		Subscribe                  func(childComplexity int, kind model.SubscriptionKind, targetID string, intervalHours *int) int
 		SubscribeSearch            func(childComplexity int, query string, sources []string, intervalHours *int) int
@@ -793,9 +797,9 @@ type MutationResolver interface {
 	RemoveBlock(ctx context.Context, targetID string) (bool, error)
 	FollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
 	UnfollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
-	StartCamRecording(ctx context.Context, id string) (*model.CamRecording, error)
+	StartCamRecording(ctx context.Context, id string, quality *string) (*model.CamRecording, error)
 	StopCamRecording(ctx context.Context, id string) (*model.CamRecording, error)
-	SetCamAutoRecord(ctx context.Context, id string, enabled bool) (*model.CamModel, error)
+	SetCamAutoRecord(ctx context.Context, id string, enabled bool, quality *string) (*model.CamModel, error)
 	CreateCollection(ctx context.Context, name string) (*model.Collection, error)
 	RenameCollection(ctx context.Context, collectionID string, name string) (*model.Collection, error)
 	DeleteCollection(ctx context.Context, collectionID string) (bool, error)
@@ -1099,6 +1103,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CamModel.PluginName(childComplexity), true
+	case "CamModel.recordQuality":
+		if e.ComplexityRoot.CamModel.RecordQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.RecordQuality(childComplexity), true
 	case "CamModel.sourceUrl":
 		if e.ComplexityRoot.CamModel.SourceURL == nil {
 			break
@@ -1166,6 +1176,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CamRecording.ID(childComplexity), true
+	case "CamRecording.quality":
+		if e.ComplexityRoot.CamRecording.Quality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamRecording.Quality(childComplexity), true
 	case "CamRecording.sceneId":
 		if e.ComplexityRoot.CamRecording.SceneID == nil {
 			break
@@ -1196,6 +1212,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CamRecording.StopReason(childComplexity), true
+	case "CamRecording.thumbnailUrl":
+		if e.ComplexityRoot.CamRecording.ThumbnailURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamRecording.ThumbnailURL(childComplexity), true
 
 	case "CamRoomPage.rooms":
 		if e.ComplexityRoot.CamRoomPage.Rooms == nil {
@@ -1480,6 +1502,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceIdentification.Failures(childComplexity), true
+	case "FaceIdentification.pictureUrl":
+		if e.ComplexityRoot.FaceIdentification.PictureURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceIdentification.PictureURL(childComplexity), true
 	case "FaceIdentification.sources":
 		if e.ComplexityRoot.FaceIdentification.Sources == nil {
 			break
@@ -2447,7 +2475,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.SetCamAutoRecord(childComplexity, args["id"].(string), args["enabled"].(bool)), true
+		return e.ComplexityRoot.Mutation.SetCamAutoRecord(childComplexity, args["id"].(string), args["enabled"].(bool), args["quality"].(*string)), true
 	case "Mutation.setCollectionTags":
 		if e.ComplexityRoot.Mutation.SetCollectionTags == nil {
 			break
@@ -2513,7 +2541,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.StartCamRecording(childComplexity, args["id"].(string)), true
+		return e.ComplexityRoot.Mutation.StartCamRecording(childComplexity, args["id"].(string), args["quality"].(*string)), true
 	case "Mutation.stopCamRecording":
 		if e.ComplexityRoot.Mutation.StopCamRecording == nil {
 			break
@@ -5269,6 +5297,9 @@ type CamModel {
   followed: Boolean!
   # Recorded automatically whenever the model is live.
   autoRecord: Boolean!
+  # What auto-record captures: source (the best rendition) or a height like 480;
+  # the closest rendition at or below it, else the lowest above.
+  recordQuality: String!
 }
 
 type CamRoomPage {
@@ -5298,17 +5329,23 @@ extend type Mutation {
   # the room is already being recorded. Recording runs in the backend until
   # stopped, the room goes offline or the maximum duration passes, then the
   # footage becomes a scene.
-  startCamRecording(id: ID!): CamRecording!
+  # quality: source (default, the best rendition) or a target height like 480.
+  startCamRecording(id: ID!, quality: String): CamRecording!
   # Stop the room's recording and wait for its scene; null when none was running.
   stopCamRecording(id: ID!): CamRecording
   # Record this model automatically whenever she is live (also follows).
-  setCamAutoRecord(id: ID!, enabled: Boolean!): CamModel!
+  # quality: source or a target height; unchanged when omitted.
+  setCamAutoRecord(id: ID!, enabled: Boolean!, quality: String): CamModel!
 }
 
 type CamRecording {
   id: ID!
   camModelId: ID!
   displayName: String!
+  # The room's thumbnail, for avatars.
+  thumbnailUrl: String
+  # The rendition captured, like 720p.
+  quality: String
   # recording | finished | failed
   status: String!
   # stopped | offline | max_duration | restart | too_short | error
@@ -5428,6 +5465,8 @@ type FaceIdentification {
   sources: [String!]!
   # One line per plugin that failed or timed out.
   failures: [String!]!
+  # The stored picture that was sent (scene thumbnail or poster, gallery image).
+  pictureUrl: String!
 }
 
 type FaceCandidate {
@@ -6650,6 +6689,8 @@ func (ec *executionContext) childFields_CamModel(ctx context.Context, field grap
 		return ec.fieldContext_CamModel_followed(ctx, field)
 	case "autoRecord":
 		return ec.fieldContext_CamModel_autoRecord(ctx, field)
+	case "recordQuality":
+		return ec.fieldContext_CamModel_recordQuality(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CamModel", field.Name)
 }
@@ -6662,6 +6703,10 @@ func (ec *executionContext) childFields_CamRecording(ctx context.Context, field 
 		return ec.fieldContext_CamRecording_camModelId(ctx, field)
 	case "displayName":
 		return ec.fieldContext_CamRecording_displayName(ctx, field)
+	case "thumbnailUrl":
+		return ec.fieldContext_CamRecording_thumbnailUrl(ctx, field)
+	case "quality":
+		return ec.fieldContext_CamRecording_quality(ctx, field)
 	case "status":
 		return ec.fieldContext_CamRecording_status(ctx, field)
 	case "stopReason":
@@ -6818,6 +6863,8 @@ func (ec *executionContext) childFields_FaceIdentification(ctx context.Context, 
 		return ec.fieldContext_FaceIdentification_sources(ctx, field)
 	case "failures":
 		return ec.fieldContext_FaceIdentification_failures(ctx, field)
+	case "pictureUrl":
+		return ec.fieldContext_FaceIdentification_pictureUrl(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceIdentification", field.Name)
 }
@@ -8725,6 +8772,14 @@ func (ec *executionContext) field_Mutation_setCamAutoRecord_args(ctx context.Con
 		return nil, err
 	}
 	args["enabled"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "quality",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["quality"] = arg2
 	return args, nil
 }
 
@@ -8857,6 +8912,14 @@ func (ec *executionContext) field_Mutation_startCamRecording_args(ctx context.Co
 		return nil, err
 	}
 	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "quality",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["quality"] = arg1
 	return args, nil
 }
 
@@ -11315,6 +11378,29 @@ func (ec *executionContext) fieldContext_CamModel_autoRecord(_ context.Context, 
 	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _CamModel_recordQuality(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_recordQuality(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RecordQuality, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_recordQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _CamRecording_id(ctx context.Context, field graphql.CollectedField, obj *model.CamRecording) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11381,6 +11467,52 @@ func (ec *executionContext) _CamRecording_displayName(ctx context.Context, field
 	)
 }
 func (ec *executionContext) fieldContext_CamRecording_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamRecording", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamRecording_thumbnailUrl(ctx context.Context, field graphql.CollectedField, obj *model.CamRecording) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamRecording_thumbnailUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamRecording_thumbnailUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamRecording", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamRecording_quality(ctx context.Context, field graphql.CollectedField, obj *model.CamRecording) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamRecording_quality(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Quality, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamRecording_quality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CamRecording", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -12650,6 +12782,29 @@ func (ec *executionContext) _FaceIdentification_failures(ctx context.Context, fi
 	)
 }
 func (ec *executionContext) fieldContext_FaceIdentification_failures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceIdentification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceIdentification_pictureUrl(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceIdentification_pictureUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PictureURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceIdentification_pictureUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceIdentification", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -14664,7 +14819,7 @@ func (ec *executionContext) _Mutation_startCamRecording(ctx context.Context, fie
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().StartCamRecording(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Mutation().StartCamRecording(ctx, fc.Args["id"].(string), fc.Args["quality"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.CamRecording) graphql.Marshaler {
@@ -14752,7 +14907,7 @@ func (ec *executionContext) _Mutation_setCamAutoRecord(ctx context.Context, fiel
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetCamAutoRecord(ctx, fc.Args["id"].(string), fc.Args["enabled"].(bool))
+			return ec.Resolvers.Mutation().SetCamAutoRecord(ctx, fc.Args["id"].(string), fc.Args["enabled"].(bool), fc.Args["quality"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
@@ -28787,6 +28942,11 @@ func (ec *executionContext) _CamModel(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "recordQuality":
+			out.Values[i] = ec._CamModel_recordQuality(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -28836,6 +28996,10 @@ func (ec *executionContext) _CamRecording(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "thumbnailUrl":
+			out.Values[i] = ec._CamRecording_thumbnailUrl(ctx, field, obj)
+		case "quality":
+			out.Values[i] = ec._CamRecording_quality(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._CamRecording_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -29327,6 +29491,11 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			}
 		case "failures":
 			out.Values[i] = ec._FaceIdentification_failures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pictureUrl":
+			out.Values[i] = ec._FaceIdentification_pictureUrl(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

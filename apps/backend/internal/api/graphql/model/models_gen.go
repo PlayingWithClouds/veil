@@ -45,12 +45,15 @@ type CamModel struct {
 	LastSeenOnlineAt *string  `json:"lastSeenOnlineAt,omitempty"`
 	Followed         bool     `json:"followed"`
 	AutoRecord       bool     `json:"autoRecord"`
+	RecordQuality    string   `json:"recordQuality"`
 }
 
 type CamRecording struct {
 	ID              string  `json:"id"`
 	CamModelID      string  `json:"camModelId"`
 	DisplayName     string  `json:"displayName"`
+	ThumbnailURL    *string `json:"thumbnailUrl,omitempty"`
+	Quality         *string `json:"quality,omitempty"`
 	Status          string  `json:"status"`
 	StopReason      *string `json:"stopReason,omitempty"`
 	StartedAt       string  `json:"startedAt"`
@@ -147,6 +150,7 @@ type FaceIdentification struct {
 	Candidates []*FaceCandidate `json:"candidates"`
 	Sources    []string         `json:"sources"`
 	Failures   []string         `json:"failures"`
+	PictureURL string           `json:"pictureUrl"`
 }
 
 type Gallery struct {

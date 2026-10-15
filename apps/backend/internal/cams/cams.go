@@ -337,6 +337,7 @@ type camRecord struct {
 	LastSeenOnlineAt *string  `json:"last_seen_online_at"`
 	Followed         bool     `json:"followed"`
 	AutoRecord       bool     `json:"auto_record"`
+	RecordQuality    string   `json:"record_quality"`
 }
 
 // toModel maps a stored row to the GraphQL model.
@@ -360,6 +361,7 @@ func (record camRecord) toModel() *model.CamModel {
 		LastSeenOnlineAt: record.LastSeenOnlineAt,
 		Followed:         record.Followed,
 		AutoRecord:       record.AutoRecord,
+		RecordQuality:    record.RecordQuality,
 	}
 }
 
@@ -519,15 +521,23 @@ func (s *Service) SetFollowed(ctx context.Context, id string, followed bool) (*m
 	return record.toModel(), nil
 }
 
-// SetAutoRecord turns automatic recording on or off for a model. Turning it on
-// also follows the model.
-func (s *Service) SetAutoRecord(ctx context.Context, id string, enabled bool) (*model.CamModel, error) {
+// SetAutoRecord turns automatic recording on or off for a model and, when
+// quality is given, sets the quality it records at (see ParseQuality). Turning
+// it on also follows the model.
+func (s *Service) SetAutoRecord(ctx context.Context, id string, enabled bool, quality *string) (*model.CamModel, error) {
 	record, err := s.load(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.database.Exec(ctx, `UPDATE cam_model SET auto_record = $enabled, followed = followed OR $enabled WHERE id = $id`,
-		db.Vars{"id": id, "enabled": enabled}); err != nil {
+	if quality != nil {
+		normalized, err := NormalizeQuality(*quality)
+		if err != nil {
+			return nil, err
+		}
+		record.RecordQuality = normalized
+	}
+	if _, err := s.database.Exec(ctx, `UPDATE cam_model SET auto_record = $enabled, followed = followed OR $enabled, record_quality = $quality WHERE id = $id`,
+		db.Vars{"id": id, "enabled": enabled, "quality": record.RecordQuality}); err != nil {
 		return nil, err
 	}
 	record.AutoRecord = enabled
