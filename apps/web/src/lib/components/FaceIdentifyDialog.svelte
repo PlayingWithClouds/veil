@@ -163,6 +163,12 @@
 				</div>
 			{/if}
 
+			{#if !loading && identification}
+				{#each identification.failures as failure (failure)}
+					<p class="text-warning text-center text-sm">{failure}</p>
+				{/each}
+			{/if}
+
 			{#if loading}
 				<div class="flex flex-col items-center gap-3 py-10">
 					<span class="loading loading-spinner text-base-content/40"></span>
