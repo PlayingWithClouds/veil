@@ -22,12 +22,12 @@ import (
 const (
 	// alikeSearchLimit caps results pulled per query per plugin.
 	alikeSearchLimit = 20
-	// alikeMaxCandidates bounds how many unique candidates get a poster fetched
-	// and scored in stage 1, keeping the on-demand action responsive.
-	alikeMaxCandidates = 40
+	// alikePerPluginCandidates is each plugin's share of the candidates, so
+	// the fastest sites can't fill the pool before the others answered.
+	alikePerPluginCandidates = 10
 	// alikeScrapeTopK is how many best stage-1 candidates get scraped in stage 2
 	// to read their performers and duration.
-	alikeScrapeTopK = 8
+	alikeScrapeTopK = 12
 	// alikeDefaultLimit is the number of ranked matches returned when the caller
 	// does not specify a limit.
 	alikeDefaultLimit = 12
@@ -115,8 +115,9 @@ func (r *Resolver) buildAlikeTarget(ctx context.Context, scene *model.Scene) ali
 	return target
 }
 
-// gatherAlikeCandidates runs every performer/studio-driven query, unions the
-// results, and drops the scene's own copies (same source URL or same host).
+// gatherAlikeCandidates runs every performer/studio/title query, unions the
+// results up to each plugin's share, and drops the scene's own copies (same
+// source URL or same host) and candidates whose runtime rules them out.
 func (r *Resolver) gatherAlikeCandidates(
 	ctx context.Context,
 	searchPlugins []*plugins.Plugin,
@@ -126,20 +127,20 @@ func (r *Resolver) gatherAlikeCandidates(
 ) []*scoredCandidate {
 	originHost := hostOf(originURL)
 	seen := make(map[string]bool)
-	candidates := make([]*scoredCandidate, 0, alikeMaxCandidates)
+	perPlugin := make(map[string]int)
+	candidates := []*scoredCandidate{}
 
 	for _, query := range alike.BuildQueries(target) {
 		for _, entry := range r.fanOutSearch(ctx, searchPlugins, query, alikeSearchLimit) {
-			if len(candidates) >= alikeMaxCandidates {
-				return candidates
-			}
-			if seen[entry.item.ExternalID] {
+			key := entry.plugin + "|" + entry.item.ExternalID
+			if seen[key] || perPlugin[entry.plugin] >= alikePerPluginCandidates {
 				continue
 			}
-			if isSameSceneOrigin(entry, scene, originPlugin, originHost) {
+			if isSameSceneOrigin(entry, scene, originPlugin, originHost) || alike.RuntimeRulesOut(target, entry.item.DurationSeconds) {
 				continue
 			}
-			seen[entry.item.ExternalID] = true
+			seen[key] = true
+			perPlugin[entry.plugin]++
 			candidates = append(candidates, &scoredCandidate{entry: entry})
 		}
 	}
