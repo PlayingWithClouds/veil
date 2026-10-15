@@ -9,8 +9,8 @@
 	import { page } from '$app/stores';
 	import FilmReelIcon from 'phosphor-svelte/lib/FilmReelIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
-	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import { searchQuery } from '$lib/stores/searchQuery';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { searchOverlayOpen } from '$lib/stores/searchOverlay';
@@ -129,12 +129,12 @@
 
 		<div class="flex w-56 shrink-0 items-center justify-end gap-1">
 			<a
-				href="/library"
-				title="Library and downloads"
-				aria-label="Library and downloads"
-				class="hover:bg-base-300 flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+				href="/settings"
+				title="Account"
+				aria-label="Account"
+				class="bg-base-300 hover:bg-base-content/20 text-base-content/70 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
 			>
-				<DownloadSimpleIcon size={21} />
+				<UserIcon size={20} weight="fill" />
 			</a>
 		</div>
 	</header>

@@ -1,6 +1,6 @@
 <!--
 	YouTube-style sidebar: main destinations, the subscription list with a dot for
-	unseen videos, the personal section, then app settings. Phones get DrawerMenu instead.
+	unseen videos, the personal section (library, downloads, history), then app settings. Phones get DrawerMenu instead.
 -->
 <script lang="ts">
 	import { page } from '$app/stores';
@@ -13,6 +13,7 @@
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon';
 	import BellIcon from 'phosphor-svelte/lib/BellIcon';
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
+	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import { subscriptionsUrl } from '$lib/routes';
 	import { subscriptionName } from '$lib/searchSubscriptions';
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
@@ -36,7 +37,7 @@
 		{ label: 'Random', icon: ShuffleIcon, href: '/random' }
 	];
 
-	// The "Subscriptions" section header links here.
+	// The "Subscriptions" row links here.
 	const subscriptionsLink: NavLink = {
 		label: 'Subscriptions',
 		icon: BellIcon,
@@ -46,6 +47,9 @@
 
 	const personalLinks: NavLink[] = [
 		{ label: 'Library', icon: FilmStripIcon, href: '/library' },
+		// The download queue sits at the top of the library page, so only Library
+		// reads as the current page there.
+		{ label: 'Downloads', icon: DownloadSimpleIcon, href: '/library#downloads' },
 		{ label: 'History', icon: ClockCounterClockwiseIcon, href: '/history' },
 		{ label: 'Collections', icon: FolderSimpleIcon, href: '/collections' }
 	];
@@ -94,11 +98,12 @@
 	<hr class="border-base-300 my-3" />
 	<a
 		href={subscriptionsUrl()}
-		class="hover:bg-base-200 flex items-center gap-1 rounded-lg px-3 py-2 text-[15px] font-semibold transition-colors"
+		class="text-base-content hover:bg-base-200 sidebar-link-full flex items-center rounded-lg font-semibold transition-colors"
 		class:sidebar-link-active={isActive(subscriptionsLink)}
 	>
-		Subscriptions
-		<CaretRightIcon size={14} weight="bold" />
+		<BellIcon size={20} weight={isActive(subscriptionsLink) ? 'fill' : 'regular'} />
+		<span class="flex-1">Subscriptions</span>
+		<CaretRightIcon size={14} weight="bold" class="text-base-content/50" />
 	</a>
 	<nav class="flex flex-col gap-0.5">
 		{#each visibleSubscriptions as subscription (subscription.id)}
@@ -132,7 +137,7 @@
 		{/if}
 	</nav>
 	<hr class="border-base-300 my-3" />
-	<p class="px-3 pb-1 text-[15px] font-semibold">You</p>
+	<p class="text-base-content/40 px-3 pb-1 text-xs font-semibold tracking-wide uppercase">You</p>
 
 	<nav class="flex flex-col gap-0.5">
 		{#each personalLinks as link (link.href)}
@@ -148,7 +153,7 @@
 	</nav>
 
 	<div class="mt-auto flex items-center justify-between px-3 pt-4">
-		<VpnGuard />
+		<VpnGuard showLabel />
 		<span class="text-base-content/20 text-[9px] font-medium">v0.1.0</span>
 	</div>
 </aside>

@@ -228,7 +228,7 @@
 	<PageHeader title="Library" description={librarySummary()} />
 
 	{#if queue.length > 0}
-		<section class="bg-base-200 flex flex-col gap-4 rounded-2xl p-4" aria-label="Downloads">
+		<section id="downloads" class="bg-base-200 flex scroll-mt-4 flex-col gap-4 rounded-2xl p-4" aria-label="Downloads">
 			<div class="flex items-end justify-between gap-4">
 				<div class="flex flex-col">
 					<h2 class="text-base font-semibold">

@@ -38,6 +38,8 @@
 		pluginSearchStream,
 		streamResultToGridItem,
 		gridItemKey,
+		gridItemSiteKey,
+		mixBySite,
 		type SearchStream,
 		type PerformerHit,
 		type StudioHit,
@@ -47,6 +49,8 @@
 	} from '$lib/explore';
 
 	const SEARCH_DEBOUNCE_MS = 300;
+	// How often live site results are added to the grid, mixed across sites.
+	const LIVE_FLUSH_INTERVAL_MS = 800;
 	const SCENE_PAGE_SIZE = 40;
 	const GALLERY_PAGE_SIZE = 30;
 	const SCENE_ASPECT = 16 / 9;
@@ -120,9 +124,15 @@
 	let requestToken = 0;
 	let seedStream: SearchStream | null = null;
 
+	/** Whether a card has something to show: galleries without a cover would be empty boxes. */
+	function hasPoster(item: GridItem): boolean {
+		if (item.kind === 'gallery') return Boolean(item.gallery.coverUrl);
+		return true;
+	}
+
 	/** Appends items that aren't shown yet; shown items never move or disappear. */
 	function appendItems(items: GridItem[]) {
-		const fresh = items.filter((item) => !shownKeys.has(gridItemKey(item)));
+		const fresh = items.filter((item) => hasPoster(item) && !shownKeys.has(gridItemKey(item)));
 		if (fresh.length === 0) return;
 		for (const item of fresh) shownKeys.add(gridItemKey(item));
 		gridItems = [...gridItems, ...fresh];
@@ -135,6 +145,7 @@
 			seedStream = null;
 		}
 		pluginsSearching = false;
+		discardPendingLiveItems();
 		gridItems = [];
 		shownKeys = new Set();
 		recommendationSources = new Map();
@@ -145,8 +156,15 @@
 		galleryFeedDone = $mediaFilter === 'videos';
 	}
 
-	/** Interleaves scenes and galleries so neither clumps together. */
+	/**
+	 * Interleaves scenes and galleries so neither clumps together, and mixes each
+	 * list's sites. The recommended scenes keep their ranking, which already caps
+	 * how often a site repeats.
+	 */
 	function interleave(scenes: SceneHit[], galleries: GalleryHit[]): GridItem[] {
+		if (isSearching)
+			scenes = mixBySite(scenes, (scene) => gridItemSiteKey({ kind: 'scene', scene }));
+		galleries = mixBySite(galleries, (gallery) => gridItemSiteKey({ kind: 'gallery', gallery }));
 		const merged: GridItem[] = [];
 		const longest = Math.max(scenes.length, galleries.length);
 		for (let index = 0; index < longest; index++) {
@@ -285,9 +303,34 @@
 		return $mediaFilter !== 'videos';
 	}
 
-	/** Appends each live plugin result as it arrives. */
+	// Live results wait here and are added in batches, mixed across sites: one
+	// site answering first would otherwise fill the grid before the others.
+	let pendingLiveItems: GridItem[] = [];
+	let liveFlushTimer: ReturnType<typeof setInterval> | null = null;
+
+	/** Adds the waiting live results, one site after another in turn. */
+	function flushPendingLiveItems() {
+		if (pendingLiveItems.length === 0) return;
+		const items = pendingLiveItems;
+		pendingLiveItems = [];
+		appendItems(mixBySite(items, gridItemSiteKey));
+	}
+
+	/** Drops the waiting live results and stops the batching timer. */
+	function discardPendingLiveItems() {
+		pendingLiveItems = [];
+		if (liveFlushTimer === null) return;
+		clearInterval(liveFlushTimer);
+		liveFlushTimer = null;
+	}
+
+	/** Collects each live plugin result as it arrives and adds them in mixed batches. */
 	function streamFromPlugins(text: string, sources: string[], token: number) {
 		pluginsSearching = true;
+		liveFlushTimer = setInterval(() => {
+			if (token !== requestToken) return;
+			flushPendingLiveItems();
+		}, LIVE_FLUSH_INTERVAL_MS);
 		seedStream = pluginSearchStream(
 			text,
 			sources,
@@ -295,10 +338,12 @@
 				// DB hits are already covered by the source-filtered listing above.
 				if (token !== requestToken || !result.plugin) return;
 				const item = streamResultToGridItem(result);
-				if (item && allowedByMediaFilter(item)) appendItems([item]);
+				if (item && allowedByMediaFilter(item)) pendingLiveItems.push(item);
 			},
 			() => {
 				if (token !== requestToken) return;
+				flushPendingLiveItems();
+				discardPendingLiveItems();
 				seedStream = null;
 				pluginsSearching = false;
 			}
