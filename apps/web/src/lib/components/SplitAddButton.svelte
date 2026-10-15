@@ -21,7 +21,7 @@
 	function add(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
-		void openInSplit(kind, mediaId, title);
+		openInSplit(kind, mediaId, title);
 	}
 </script>
 

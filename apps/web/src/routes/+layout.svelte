@@ -12,6 +12,10 @@
 	import CollectionDialog from '$lib/components/CollectionDialog.svelte';
 	import MergeDialog from '$lib/components/MergeDialog.svelte';
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
+	import SplitView from '$lib/components/SplitView.svelte';
+	import { splitState } from '$lib/stores/split';
+	import { page } from '$app/state';
+	import { splitUrl } from '$lib/routes';
 	import { afterNavigate } from '$app/navigation';
 	import { loadWatchProgress } from '$lib/stores/watchProgress';
 	import { refreshNewSubscriptionScenes } from '$lib/stores/newSubscriptionScenes';
@@ -29,6 +33,8 @@
 	import { listenForSwipes } from '$lib/swipeGestures';
 
 	let { children } = $props();
+
+	let onSplitPage = $derived(page.url.pathname === splitUrl());
 
 	/**
 	 * Pushes the page back as the phone drawer opens: it shrinks a little, slides
@@ -135,6 +141,11 @@
 				<div class="shrink-0" style:height={topSpacerHeight($immersiveTop)} aria-hidden="true"></div>
 			{/if}
 			{@render children()}
+			<!-- Mounted here rather than by /split so its players survive navigation;
+			     away from /split it is a floating dock. -->
+			{#if onSplitPage || $splitState.panes.length > 0}
+				<SplitView docked={!onSplitPage} />
+			{/if}
 		</main>
 	</div>
 	{#if $isCompact}
