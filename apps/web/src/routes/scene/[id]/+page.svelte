@@ -88,6 +88,8 @@
 		pendingSeek = null;
 		alikeOpen = false;
 		identifyOpen = false;
+		identifyFrame = null;
+		pickingFrame = false;
 		alikeCandidates = [];
 		alikeFetchedId = null;
 		alikeLoading = false;
@@ -187,6 +189,10 @@
 
 	// "Who is this?" dialog.
 	let identifyOpen = $state(false);
+	// The paused frame "Who is this?" searches (JPEG data URL); null searches the poster.
+	let identifyFrame = $state<string | null>(null);
+	// Set while the user scrubs to another moment before searching again.
+	let pickingFrame = $state(false);
 
 	/** Shows a performer credited through "Who is this?" among the scene's performer chips. */
 	function addCreditedPerformer(performer: PerformerRef) {
@@ -256,6 +262,20 @@
 		}
 	}
 
+	/** "Who is this?": pauses the player and searches the frame on screen, else the poster. */
+	function identifyCurrentFrame() {
+		pickingFrame = false;
+		identifyFrame = null;
+		if (playerRef) identifyFrame = playerRef.captureFrame();
+		identifyOpen = true;
+	}
+
+	/** Closes the dialog so the user can scrub to a better frame and search again. */
+	function pickAnotherFrame() {
+		identifyOpen = false;
+		pickingFrame = true;
+	}
+
 	/** Opens the find-sources dialog and starts its search. */
 	function openAlike() {
 		alikeOpen = true;
@@ -305,6 +325,7 @@
 		| {
 				seekTo: (seconds: number) => void;
 				playback: () => { position: number; playing: boolean; muted: boolean };
+				captureFrame: () => string | null;
 		  }
 		| undefined
 	>();
@@ -630,7 +651,7 @@
 					performers={scene.performers}
 					ondownload={download}
 					onfindsources={openAlike}
-					onidentify={() => (identifyOpen = true)}
+					onidentify={identifyCurrentFrame}
 					onblock={blockEntity}
 					onedge={onActionsEdge}
 				/>
@@ -680,7 +701,9 @@
 		open={identifyOpen}
 		subtitle={scene.title}
 		mediaId={scene.id}
+		frameUrl={identifyFrame}
 		onClose={() => (identifyOpen = false)}
+		onPickAnother={pickAnotherFrame}
 		onCredited={addCreditedPerformer}
 	/>
 {/if}
@@ -713,6 +736,25 @@
 				shared
 				onclose={() => (activeStream = null)}
 			/>
+			{#if pickingFrame}
+				<div class="flex items-center gap-3 bg-black/80 px-4 py-2 text-sm text-white">
+					<span class="flex-1">Pause on a clear view of the face, then search.</span>
+					<button
+						type="button"
+						class="rounded-full bg-white px-4 py-1.5 font-semibold text-black hover:bg-white/80"
+						onclick={identifyCurrentFrame}
+					>
+						Search this frame
+					</button>
+					<button
+						type="button"
+						class="text-white/60 hover:text-white"
+						onclick={() => (pickingFrame = false)}
+					>
+						Cancel
+					</button>
+				</div>
+			{/if}
 		{:else}
 			<PlayerPoster
 				imageUrl={previewFrame}

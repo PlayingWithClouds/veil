@@ -22,11 +22,16 @@
 		mediaId: string;
 		/** The gallery image on screen; absent for scenes. */
 		imageId?: string | null;
+		/** A paused video frame (JPEG data URL), searched instead of the stored picture. */
+		frameUrl?: string | null;
 		onClose: () => void;
+		/** Offered with a frame: closes the dialog so the user can scrub to another moment. */
+		onPickAnother?: () => void;
 		onCredited?: (performer: PerformerRef) => void;
 	}
 
-	let { open, subtitle, mediaId, imageId, onClose, onCredited }: Props = $props();
+	let { open, subtitle, mediaId, imageId, frameUrl, onClose, onPickAnother, onCredited }: Props =
+		$props();
 
 	let loading = $state(false);
 	let identification = $state<FaceIdentification | null>(null);
@@ -34,25 +39,42 @@
 	// The candidate being credited, so its row shows a spinner.
 	let crediting = $state<string | null>(null);
 
+	// The picture being searched: the frame right away, a stored one once the backend names it.
+	let searchedPictureUrl = $derived.by(() => {
+		if (frameUrl) return frameUrl;
+		if (identification && identification.pictureUrl) return cacheUrl(identification.pictureUrl);
+		return null;
+	});
+
 	// Identify each time the dialog opens, or when another picture is asked about.
 	$effect(() => {
 		if (!open) return;
-		search(mediaId, imageId);
+		search(mediaId, imageId, frameUrl);
 	});
 
 	/** Runs the identification for one picture. */
-	async function search(forMediaId: string, forImageId: string | null | undefined) {
+	async function search(
+		forMediaId: string,
+		forImageId: string | null | undefined,
+		forFrameUrl: string | null | undefined
+	) {
 		loading = true;
 		identification = null;
 		errorText = null;
 		try {
-			identification = await identifyFace(forMediaId, forImageId);
+			identification = await identifyFace(forMediaId, forImageId, frameBase64(forFrameUrl));
 		} catch (error) {
 			console.error('identifyFace failed', forMediaId, error);
 			errorText = error instanceof Error ? error.message : 'Could not identify this picture.';
 		} finally {
 			loading = false;
 		}
+	}
+
+	/** The base64 payload of a data URL, or null without one. */
+	function frameBase64(dataUrl: string | null | undefined): string | null {
+		if (!dataUrl) return null;
+		return dataUrl.slice(dataUrl.indexOf(',') + 1);
 	}
 
 	/** Similarity as a whole percentage. */
@@ -119,6 +141,25 @@
 					<XIcon size={20} />
 				</button>
 			</div>
+
+			{#if searchedPictureUrl}
+				<div class="flex flex-col items-center gap-2">
+					<img
+						src={searchedPictureUrl}
+						alt="Searched frame"
+						class="max-h-48 rounded-lg object-contain"
+					/>
+					{#if frameUrl && onPickAnother}
+						<button
+							type="button"
+							class="text-base-content/60 hover:text-base-content text-sm underline"
+							onclick={onPickAnother}
+						>
+							Pick another moment
+						</button>
+					{/if}
+				</div>
+			{/if}
 
 			{#if loading}
 				<div class="flex flex-col items-center gap-3 py-10">

@@ -285,7 +285,7 @@ type ComplexityRoot struct {
 		EnsureSceneStreams         func(childComplexity int, sceneID string) int
 		FollowCamModel             func(childComplexity int, id string) int
 		ForgetSearch               func(childComplexity int, query string) int
-		IdentifyFace               func(childComplexity int, mediaID string, imageID *string) int
+		IdentifyFace               func(childComplexity int, mediaID string, imageID *string, frameBase64 *string) int
 		IncrementOCount            func(childComplexity int, mediaID string) int
 		InstallPlugin              func(childComplexity int, packageName string) int
 		LinkGalleryVideo           func(childComplexity int, galleryID string, pluginName string, url string) int
@@ -807,7 +807,7 @@ type MutationResolver interface {
 	RemoveFromCollection(ctx context.Context, collectionID string, mediaID string) (bool, error)
 	ReorderCollection(ctx context.Context, collectionID string, mediaIds []string) (bool, error)
 	SetCollectionTags(ctx context.Context, collectionID string, tagIds []string) (*model.Collection, error)
-	IdentifyFace(ctx context.Context, mediaID string, imageID *string) (*model.FaceIdentification, error)
+	IdentifyFace(ctx context.Context, mediaID string, imageID *string, frameBase64 *string) (*model.FaceIdentification, error)
 	CreditPerformerByName(ctx context.Context, mediaID string, name string) (*model.Performer, error)
 	EnsureGalleryImages(ctx context.Context, galleryID string) (*model.Gallery, error)
 	LinkGalleryVideo(ctx context.Context, galleryID string, pluginName string, url string) (*model.Scene, error)
@@ -2244,7 +2244,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.IdentifyFace(childComplexity, args["mediaId"].(string), args["imageId"].(*string)), true
+		return e.ComplexityRoot.Mutation.IdentifyFace(childComplexity, args["mediaId"].(string), args["imageId"].(*string), args["frameBase64"].(*string)), true
 	case "Mutation.incrementOCount":
 		if e.ComplexityRoot.Mutation.IncrementOCount == nil {
 			break
@@ -5451,8 +5451,10 @@ type CollectionMember {
 extend type Mutation {
   # Sends the picture of a scene (its thumbnail or poster), of an image, or of a
   # gallery (imageId, else its first image) to every face-recognition plugin and
-  # returns the merged candidates, best first.
-  identifyFace(mediaId: ID!, imageId: ID): FaceIdentification!
+  # returns the merged candidates, best first. frameBase64 (a JPEG or PNG, e.g.
+  # the video frame the user paused on) is sent instead when given; mediaId is
+  # then only the media the pick gets credited to.
+  identifyFace(mediaId: ID!, imageId: ID, frameBase64: String): FaceIdentification!
   # Credits the performer called name to a scene or gallery (an image counts for
   # its gallery), creating the performer when the library has none. The name is
   # matched like ingest does (spelling-insensitive, aliases).
@@ -5465,8 +5467,9 @@ type FaceIdentification {
   sources: [String!]!
   # One line per plugin that failed or timed out.
   failures: [String!]!
-  # The stored picture that was sent (scene thumbnail or poster, gallery image).
-  pictureUrl: String!
+  # The stored picture that was sent (scene thumbnail or poster, gallery image);
+  # null when frameBase64 was.
+  pictureUrl: String
 }
 
 type FaceCandidate {
@@ -8374,6 +8377,14 @@ func (ec *executionContext) field_Mutation_identifyFace_args(ctx context.Context
 		return nil, err
 	}
 	args["imageId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "frameBase64",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["frameBase64"] = arg2
 	return args, nil
 }
 
@@ -12797,11 +12808,11 @@ func (ec *executionContext) _FaceIdentification_pictureUrl(ctx context.Context, 
 			return obj.PictureURL, nil
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
 		},
 		true,
-		true,
+		false,
 	)
 }
 func (ec *executionContext) fieldContext_FaceIdentification_pictureUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15259,7 +15270,7 @@ func (ec *executionContext) _Mutation_identifyFace(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().IdentifyFace(ctx, fc.Args["mediaId"].(string), fc.Args["imageId"].(*string))
+			return ec.Resolvers.Mutation().IdentifyFace(ctx, fc.Args["mediaId"].(string), fc.Args["imageId"].(*string), fc.Args["frameBase64"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.FaceIdentification) graphql.Marshaler {
@@ -29496,9 +29507,6 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			}
 		case "pictureUrl":
 			out.Values[i] = ec._FaceIdentification_pictureUrl(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

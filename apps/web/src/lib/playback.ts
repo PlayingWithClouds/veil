@@ -55,6 +55,9 @@ export class Playback {
 
 	constructor() {
 		this.video = document.createElement('video');
+		// Streams come through the backend (CORS *); anonymous mode keeps frames
+		// readable for "Who is this?" frame captures.
+		this.video.crossOrigin = 'anonymous';
 		this.video.playsInline = true;
 		this.video.preload = 'auto';
 	}

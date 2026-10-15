@@ -13,9 +13,12 @@ import (
 )
 
 // IdentifyFace is the resolver for the identifyFace field.
-func (r *mutationResolver) IdentifyFace(ctx context.Context, mediaID string, imageID *string) (*model.FaceIdentification, error) {
+func (r *mutationResolver) IdentifyFace(ctx context.Context, mediaID string, imageID *string, frameBase64 *string) (*model.FaceIdentification, error) {
 	if r.faces == nil {
 		return nil, fmt.Errorf("face identification is not available")
+	}
+	if frameBase64 != nil && *frameBase64 != "" {
+		return r.identifyFrame(ctx, *frameBase64)
 	}
 	selectedImage := ""
 	if imageID != nil {

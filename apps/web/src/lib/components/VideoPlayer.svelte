@@ -453,6 +453,27 @@
 		};
 	}
 
+	/**
+	 * Pauses playback and returns the frame on screen as a JPEG data URL, or null
+	 * when no frame can be read (nothing loaded yet, or a source the browser keeps opaque).
+	 */
+	export function captureFrame(): string | null {
+		if (!videoEl || videoEl.videoWidth === 0) return null;
+		videoEl.pause();
+		const canvas = document.createElement('canvas');
+		canvas.width = videoEl.videoWidth;
+		canvas.height = videoEl.videoHeight;
+		const context = canvas.getContext('2d');
+		if (!context) return null;
+		context.drawImage(videoEl, 0, 0);
+		try {
+			return canvas.toDataURL('image/jpeg', 0.92);
+		} catch (error) {
+			console.error('captureFrame: frame not readable', error);
+			return null;
+		}
+	}
+
 	function addMarkerHere() {
 		if (!onaddmarker || !videoEl) return;
 		onaddmarker(videoEl.currentTime);

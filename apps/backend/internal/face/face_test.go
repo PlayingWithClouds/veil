@@ -2,6 +2,7 @@ package face
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -163,5 +164,39 @@ func TestIdentifyWithoutPlugins(t *testing.T) {
 	service, _, _, _ := testService(t, map[string]*plugins.FaceIdentifyResult{}, nil)
 	if _, err := service.Identify(context.Background(), "scene:x", ""); err == nil {
 		t.Error("expected an error without face plugins")
+	}
+}
+
+// TestIdentifyPictureSendsSuppliedFrame checks a picked video frame is sent as
+// is, nothing stored is loaded, and no picture URL is reported; a stored-picture
+// run reports the URL it sent.
+func TestIdentifyPictureSendsSuppliedFrame(t *testing.T) {
+	service, _, library, loaded := testService(t, map[string]*plugins.FaceIdentifyResult{"only": {}}, nil)
+	ctx := context.Background()
+	var sent plugins.FaceIdentifyArgs
+	service.identify = func(ctx context.Context, plugin *plugins.Plugin, args plugins.FaceIdentifyArgs) (*plugins.FaceIdentifyResult, error) {
+		sent = args
+		return &plugins.FaceIdentifyResult{}, nil
+	}
+	frame := []byte("\xff\xd8\xff\xe0 frame bytes")
+
+	result, err := service.IdentifyPicture(ctx, frame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sent.ImageBase64 != base64.StdEncoding.EncodeToString(frame) || sent.MimeType != "image/jpeg" {
+		t.Errorf("sent %q as %q", sent.ImageBase64, sent.MimeType)
+	}
+	if len(*loaded) != 0 || result.PictureURL != "" {
+		t.Errorf("loaded %v, picture URL %q", *loaded, result.PictureURL)
+	}
+
+	sceneID := ingestSceneWithPoster(t, library, "https://cdn.test/poster.jpg")
+	stored, err := service.Identify(ctx, sceneID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.PictureURL != "https://cdn.test/poster.jpg" {
+		t.Errorf("picture URL = %q", stored.PictureURL)
 	}
 }
