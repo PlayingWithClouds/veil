@@ -18,6 +18,7 @@ import {
   postUrl,
   resolveUrl,
 } from "./http.ts";
+import { hostedSourcePath } from "./resolve.ts";
 import { isoDurationSeconds, viewsFromText } from "./values.ts";
 
 /** Fetches a post page and returns its scene as the scrape stream's root record. */
@@ -29,8 +30,9 @@ export async function scrapeScene(url: string): Promise<ScrapeResult[]> {
 }
 
 /**
- * The scene record of a post page. The playable link is not part of it: it
- * carries a token that expires, so the resolve capability builds it when the video plays.
+ * The scene record of a post page. A post with a hosted copy lists its post URL
+ * as the download: the playable link carries a token that expires, so the
+ * resolve capability builds it from the post page when the video plays.
  */
 export function sceneFromPostPage(root: HTMLElement, postId: string): Scene {
   const mainPost = root.querySelector("div.post_el_post");
@@ -53,6 +55,9 @@ export function sceneFromPostPage(root: HTMLElement, postId: string): Scene {
   if (duration > 0) scene.duration_seconds = duration;
   const views = viewsOf(root, postId);
   if (views !== undefined) scene.view_count = views;
+  if (hostedSourcePath(root, postId) !== "") {
+    scene.downloads = [{ label: "sxyprn", url: postUrl(postId), format: "mp4" }];
+  }
   const poster = metaContent(root, "thumbnailUrl");
   if (poster !== "") scene.poster_path = resolveUrl(poster);
   return scene;

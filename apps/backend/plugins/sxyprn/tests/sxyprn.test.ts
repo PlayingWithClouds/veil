@@ -170,8 +170,15 @@ describe("post page (offline)", () => {
     }
   });
 
-  test("the playable link is left out of the record: it expires", () => {
-    expect(scene.downloads).toBeUndefined();
+  test("the download is the post page, resolved when it plays: the playable link expires", () => {
+    expect(scene.downloads).toEqual([
+      { label: "sxyprn", url: "https://sxyprn.com/post/6ac9cd21eb1d5.html", format: "mp4" },
+    ]);
+  });
+
+  test("a post that only links to other hosts has no download", () => {
+    const withoutPlayer = loadFixture("post-hosted.html").replace(/data-vnfo=/g, "data-removed=");
+    expect(sceneFromPostPage(parse(withoutPlayer), HOSTED_POST_ID).downloads).toBeUndefined();
   });
 });
 

@@ -98,6 +98,21 @@ func TestEmbeddedRunnerTimeout(t *testing.T) {
 	}
 }
 
+// TestFindReportsPluginError checks a find that answers {"error": ...} fails
+// with that message instead of yielding an empty record.
+func TestFindReportsPluginError(t *testing.T) {
+	plugin := writeBundle(t, `
+const { writeSync } = require("fs");
+writeSync(1, JSON.stringify({ error: "post was removed" }) + "\n");
+process.exit(0);
+`)
+	plugin.Meta.Capabilities = []Capability{FindCapability(MediaTypeScene)}
+	_, err := NewEmbeddedRunner().Find(context.Background(), plugin, MediaTypeScene, "https://example.test/post/1")
+	if err == nil || !strings.Contains(err.Error(), "post was removed") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 // TestEmbeddedRunnerMultipartUpload posts a FormData with a text field and a
 // binary Blob, and a raw Uint8Array body, checking the server receives the bytes intact.
 func TestEmbeddedRunnerMultipartUpload(t *testing.T) {
