@@ -1,0 +1,110 @@
+package updater
+
+import (
+	"context"
+	"path/filepath"
+	"testing"
+
+	"github.com/playingwithclouds/veil/internal/db"
+	"github.com/playingwithclouds/veil/internal/media"
+	"github.com/playingwithclouds/veil/internal/recommend"
+)
+
+// fixedTaste is a TasteSource answering with one profile.
+type fixedTaste struct{ profile *recommend.Profile }
+
+// Profile returns the fixed profile.
+func (taste fixedTaste) Profile(ctx context.Context) (*recommend.Profile, error) {
+	return taste.profile, nil
+}
+
+// emptyProfile is a cold-start profile.
+func emptyProfile() *recommend.Profile {
+	return &recommend.Profile{Tags: map[string]float64{}, Performers: map[string]float64{}, Studios: map[string]float64{}}
+}
+
+// newTestFeeder opens a scratch database with a studio that has an eporner
+// channel page, and returns a feeder over it plus a counter of onFed calls.
+func newTestFeeder(t *testing.T, fake *fakeDiscovery, profile *recommend.Profile) (*Feeder, *db.DB, memoryMarks, *int) {
+	t.Helper()
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	studio := map[string]any{"id": "studio:vixen", "name": "Vixen", "source_url": "https://www.eporner.com/channel/vixen/"}
+	if _, err := database.Insert(ctx, "studio", studio); err != nil {
+		t.Fatalf("insert studio: %v", err)
+	}
+	marks := memoryMarks{}
+	fedCount := 0
+	scheduler := NewScheduler(media.NewRepository(database), fake)
+	feeder := NewFeeder(scheduler, database, fixedTaste{profile}, marks, func() { fedCount++ })
+	return feeder, database, marks, &fedCount
+}
+
+// finds lists feed_discovery rows as "source/entity/scene#rank", ordered.
+func finds(t *testing.T, database *db.DB) []string {
+	t.Helper()
+	rows, err := database.Strings(context.Background(),
+		`SELECT source || '/' || entity || '/' || scene || '#' || rank FROM feed_discovery ORDER BY source, entity, rank`, nil)
+	if err != nil {
+		t.Fatalf("finds: %v", err)
+	}
+	return rows
+}
+
+func TestFeederRecordsCatalogScenesPerPlugin(t *testing.T) {
+	fake := &fakeDiscovery{plugins: testPlugins(), searchHits: map[string][]string{
+		"eporner":  {"scene:a", "gallery:skip", "scene:b", "scene:a"},
+		"xhamster": {"scene:c"},
+	}}
+	feeder, database, marks, fedCount := newTestFeeder(t, fake, emptyProfile())
+
+	stored, err := feeder.Run(context.Background())
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if stored != 3 {
+		t.Errorf("stored %d, want 3", stored)
+	}
+	assertStrings(t, "finds", finds(t, database), []string{
+		"catalog/eporner/scene:a#0", "catalog/eporner/scene:b#1", "catalog/xhamster/scene:c#0",
+	})
+	assertStrings(t, "catalog searches", fake.searches, []string{"@eporner", "@xhamster"})
+	if _, ran := marks[feedLastRunKey]; !ran || *fedCount != 1 {
+		t.Errorf("a run that stored scenes is the interval's run: marks %v, fed %d", marks, *fedCount)
+	}
+	if marks[feedCatalogPageKey] != "1" {
+		t.Errorf("next catalog page = %q, want 1", marks[feedCatalogPageKey])
+	}
+}
+
+func TestFeederPullsTopEntityPages(t *testing.T) {
+	fake := &fakeDiscovery{plugins: testPlugins(), pageHits: map[string][]string{"eporner": {"scene:page"}}}
+	profile := emptyProfile()
+	profile.Studios["studio:vixen"] = 1
+	profile.Studios["studio:disliked"] = -1
+	feeder, database, _, _ := newTestFeeder(t, fake, profile)
+
+	if _, err := feeder.Run(context.Background()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	assertStrings(t, "finds", finds(t, database), []string{"taste/studio:vixen/scene:page#0"})
+	assertStrings(t, "pages", fake.pages, []string{"eporner@https://www.eporner.com/channel/vixen/"})
+}
+
+func TestFeederRetriesARunThatFoundNothing(t *testing.T) {
+	feeder, _, marks, fedCount := newTestFeeder(t, &fakeDiscovery{plugins: testPlugins()}, emptyProfile())
+
+	if _, err := feeder.Run(context.Background()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if _, ran := marks[feedLastRunKey]; ran || *fedCount != 0 {
+		t.Errorf("an empty run must stay due: marks %v, fed %d", marks, *fedCount)
+	}
+	if !feeder.due(context.Background()) {
+		t.Error("feeder is not due after an empty run")
+	}
+}

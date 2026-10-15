@@ -68,7 +68,9 @@ func (e *Engine) generateCandidates(ctx context.Context, state *snapshot) (*cand
 		e.relatedCandidates,
 		e.subscriptionCandidates,
 		e.affinityCandidates,
+		e.tasteCandidates,
 		e.adjacentTagCandidates,
+		e.catalogCandidates,
 		e.randomCandidates,
 		e.searchCandidates,
 		e.newestCandidates,
@@ -288,6 +290,58 @@ func (e *Engine) searchResultIDs(ctx context.Context, searchedAt time.Time) ([]s
 			"to":    db.FormatTime(searchedAt.Add(searchResultsAfter)),
 			"limit": scenesPerSearch,
 		})
+}
+
+// tasteCandidates proposes what the feeder found on the site pages of
+// top-affinity performers, studios and tags, each entity's prior scaled by its
+// current affinity (an entity that has since lost favour drops out).
+func (e *Engine) tasteCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+	rows, err := e.database.Query(ctx,
+		`SELECT scene, entity, rank FROM feed_discovery
+		 WHERE source = 'taste' AND found_at >= $since
+		 ORDER BY found_at DESC, rank LIMIT $limit`,
+		db.Vars{"since": db.FormatTime(state.now.Add(-feedDiscoveryWindow)), "limit": tasteCandidateLimit})
+	if err != nil {
+		return nil, fmt.Errorf("taste candidates: %w", err)
+	}
+	out := make([]candidate, 0, len(rows))
+	for _, row := range rows {
+		kind, affinity := state.profile.entityAffinity(rowString(row, "entity"))
+		if affinity <= 0 {
+			continue
+		}
+		out = append(out, candidate{
+			sceneID: rowString(row, "scene"),
+			source:  SourceTaste,
+			prior:   rankedPrior(sourcePriors[SourceTaste]*affinity, rowInt(row, "rank")),
+			reason:  Reason{Kind: kind, EntityID: rowString(row, "entity")},
+		})
+	}
+	return out, nil
+}
+
+// catalogCandidates proposes the scenes the feeder listed from each plugin's
+// catalog, in the site's own order: the feed's material before any search or
+// signal exists.
+func (e *Engine) catalogCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+	rows, err := e.database.Query(ctx,
+		`SELECT scene, entity, rank FROM feed_discovery
+		 WHERE source = 'catalog' AND found_at >= $since AND rank < $perPlugin
+		 ORDER BY found_at DESC, rank`,
+		db.Vars{"since": db.FormatTime(state.now.Add(-feedDiscoveryWindow)), "perPlugin": catalogPerPluginLimit})
+	if err != nil {
+		return nil, fmt.Errorf("catalog candidates: %w", err)
+	}
+	out := make([]candidate, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, candidate{
+			sceneID: rowString(row, "scene"),
+			source:  SourceCatalog,
+			prior:   rankedPrior(sourcePriors[SourceCatalog], rowInt(row, "rank")),
+			reason:  Reason{Kind: ReasonCatalog, EntityName: rowString(row, "entity")},
+		})
+	}
+	return out, nil
 }
 
 // newestCandidates proposes the most recently stored scenes: the cold-start

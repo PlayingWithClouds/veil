@@ -17,6 +17,11 @@ const (
 	SourceRandom           = "explore:random"
 	SourceSearch           = "search"
 	SourceNewest           = "newest"
+	// SourceTaste and SourceCatalog are scenes the background feeder pulled
+	// from the sites (table feed_discovery): the pages of top-affinity
+	// entities, and the plugins' catalog listings.
+	SourceTaste   = "discover:taste"
+	SourceCatalog = "discover:catalog"
 )
 
 // Reason kinds: why an item was recommended, and what Reason.EntityID points at.
@@ -30,6 +35,7 @@ const (
 	ReasonSubscription = "subscription" // search subscription id
 	ReasonSearch       = "search"       // none; EntityName is the query
 	ReasonNewest       = "newest"       // none
+	ReasonCatalog      = "catalog"      // none; EntityName is the plugin
 )
 
 // Reason explains one recommendation, e.g. "Because you watched X".
@@ -110,6 +116,8 @@ func (reason *Reason) describe() {
 		reason.Text = "New for “" + reason.EntityName + "”"
 	case ReasonSearch:
 		reason.Text = "From your search “" + reason.EntityName + "”"
+	case ReasonCatalog:
+		reason.Text = "Fresh on " + reason.EntityName
 	default:
 		reason.Text = "Newly added"
 	}

@@ -32,6 +32,9 @@ type Engine struct {
 
 	mutex sync.Mutex
 	cache *rankedFeed
+	// lowPool, when set, is called (in its own goroutine) after a ranking
+	// that found fewer than lowPoolThreshold fresh candidates.
+	lowPool func()
 }
 
 // rankedFeed is one full ranking pass.
@@ -54,6 +57,20 @@ type rankedFeed struct {
 // listing exclusions shared with the rest of the app.
 func New(database *db.DB, repo *media.Repository) *Engine {
 	return &Engine{database: database, repo: repo, now: time.Now}
+}
+
+// OnLowPool registers what to call when a ranking runs short of fresh
+// candidates: the feeder's top-up. Call before serving requests.
+func (e *Engine) OnLowPool(callback func()) {
+	e.lowPool = callback
+}
+
+// Invalidate drops the memoized ranking so the next request re-ranks, e.g.
+// once the feeder stored new scenes.
+func (e *Engine) Invalidate() {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	e.cache = nil
 }
 
 // Feed returns one page of the ranked feed. Offset 0 re-ranks once the
@@ -282,6 +299,9 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 	if err != nil {
 		return nil, err
 	}
+	if e.lowPool != nil && freshCount(state, scored) < lowPoolThreshold {
+		go e.lowPool()
+	}
 	if err := e.describeReasons(ctx, scored); err != nil {
 		return nil, err
 	}
@@ -294,6 +314,19 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 		return nil, err
 	}
 	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored), observingPlugins: observingPlugins, durations: durations}, nil
+}
+
+// freshCount counts the scored scenes the user has neither watched nor been
+// shown without clicking.
+func freshCount(state *snapshot, scored []scoredItem) int {
+	count := 0
+	for _, item := range scored {
+		_, shown := state.ignored[item.SceneID]
+		if !shown && state.watched[item.SceneID] == watchNone {
+			count++
+		}
+	}
+	return count
 }
 
 // loadDurations reads the runtime in seconds of each scene that has one.

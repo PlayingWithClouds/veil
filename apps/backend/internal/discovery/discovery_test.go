@@ -120,3 +120,14 @@ func TestRunFailsPluginOnlyWhenNothingCameBack(t *testing.T) {
 		t.Fatalf("error = %q, want only the broken plugin's first error", err)
 	}
 }
+
+func TestListJobsKeepOnlyTheWantedEntity(t *testing.T) {
+	both := &plugins.Plugin{Meta: plugins.PluginMeta{Name: "both", Capabilities: []plugins.Capability{plugins.CapabilitySceneList, plugins.CapabilityGalleryList}}}
+	if jobs := listJobs([]*plugins.Plugin{both}, ""); len(jobs) != 2 {
+		t.Errorf("unrestricted jobs = %d, want 2", len(jobs))
+	}
+	jobs := listJobs([]*plugins.Plugin{both}, plugins.MediaTypeScene)
+	if len(jobs) != 1 || jobs[0].entity != plugins.MediaTypeScene {
+		t.Errorf("scene-only jobs = %+v", jobs)
+	}
+}

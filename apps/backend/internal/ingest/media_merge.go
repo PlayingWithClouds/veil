@@ -148,6 +148,8 @@ func specificMediaStatements(table string) []string {
 			`UPDATE OR IGNORE scene_related SET scene = $survivor WHERE scene = $merged`,
 			`UPDATE OR IGNORE scene_related SET related = $survivor WHERE related = $merged`,
 			`DELETE FROM scene_related WHERE scene = $merged OR related = $merged OR scene = related`,
+			`UPDATE OR IGNORE feed_discovery SET scene = $survivor WHERE scene = $merged`,
+			`DELETE FROM feed_discovery WHERE scene = $merged`,
 			`UPDATE preference_event SET chosen = $survivor WHERE chosen = $merged`,
 			`UPDATE preference_event SET rejected = $survivor WHERE rejected = $merged`,
 		}
