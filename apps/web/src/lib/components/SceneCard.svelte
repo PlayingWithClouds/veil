@@ -27,6 +27,8 @@
 		inheritedTag?: boolean;
 		// True for feed entries that arrived since the last visit; shows a "New" badge.
 		isNew?: boolean;
+		// Short label in the top-left corner, like "Live 720p" on a recorded stream.
+		badge?: string | null;
 	}
 
 	// Formats a duration as a clock: "9:05", "12:34", "1:02:03".
@@ -170,6 +172,14 @@
 					title="Matched via studio or performer tag"
 				>
 					via studio/performer
+				</span>
+			{/if}
+
+			{#if item.badge}
+				<span
+					class="absolute top-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+				>
+					{item.badge}
 				</span>
 			{/if}
 

@@ -36,6 +36,7 @@
 							maxJobRetries: s.maxJobRetries,
 							downloadSpeedLimitKBps: s.downloadSpeedLimitKBps,
 							allowDownloadsWhileStreaming: s.allowDownloadsWhileStreaming,
+							camRecordingMaxMinutes: s.camRecordingMaxMinutes,
 							autoEnrichAfterScrape: s.autoEnrichAfterScrape,
 							requireVpn: s.requireVpn,
 							kindLimits: s.kindLimits.map((l) => ({
@@ -94,13 +95,27 @@
 
 		<div class="flex flex-col gap-1.5">
 			<label class={labelClass} for="max-jobs">Max concurrent jobs (global)</label>
-			<input id="max-jobs" type="number" min="1" max="16" class="{inputClass} max-w-[8rem]" bind:value={s.maxConcurrentJobs} />
+			<input
+				id="max-jobs"
+				type="number"
+				min="1"
+				max="16"
+				class="{inputClass} max-w-[8rem]"
+				bind:value={s.maxConcurrentJobs}
+			/>
 			<p class="text-base-content/40 text-xs">Overridden per-kind below.</p>
 		</div>
 
 		<div class="flex flex-col gap-1.5">
 			<label class={labelClass} for="max-retries">Max job retries</label>
-			<input id="max-retries" type="number" min="0" max="10" class="{inputClass} max-w-[8rem]" bind:value={s.maxJobRetries} />
+			<input
+				id="max-retries"
+				type="number"
+				min="0"
+				max="10"
+				class="{inputClass} max-w-[8rem]"
+				bind:value={s.maxJobRetries}
+			/>
 		</div>
 
 		<label class="flex items-center justify-between gap-4 py-1">
@@ -115,20 +130,47 @@
 
 		<div class="flex flex-col gap-1.5">
 			<label class={labelClass} for="speed-limit">Download speed limit (KB/s)</label>
-			<input id="speed-limit" type="number" min="0" class="{inputClass} max-w-[8rem]" bind:value={s.downloadSpeedLimitKBps} />
+			<input
+				id="speed-limit"
+				type="number"
+				min="0"
+				class="{inputClass} max-w-[8rem]"
+				bind:value={s.downloadSpeedLimitKBps}
+			/>
 			<p class="text-base-content/40 text-xs">0 = unlimited</p>
 		</div>
 
 		<label class="flex items-center justify-between gap-4 py-1">
 			<span class="flex flex-col">
 				<span class={labelClass}>Allow downloads while streaming</span>
-				<span class="text-base-content/40 text-xs">When off, downloads pause while a video is playing.</span>
+				<span class="text-base-content/40 text-xs"
+					>When off, downloads pause while a video is playing.</span
+				>
 			</span>
 			<Toggle
 				checked={s.allowDownloadsWhileStreaming}
 				onchange={(v) => (s.allowDownloadsWhileStreaming = v)}
 			/>
 		</label>
+	</section>
+
+	<!-- Live cams -->
+	<section class="border-base-300 bg-base-200 flex flex-col gap-4 rounded-xl border p-5">
+		<h2 class="text-sm font-semibold">Live cam recordings</h2>
+
+		<div class="flex flex-col gap-1.5">
+			<label class={labelClass} for="cam-recording-max">Longest recording (minutes)</label>
+			<input
+				id="cam-recording-max"
+				type="number"
+				min="1"
+				class="{inputClass} max-w-[8rem]"
+				bind:value={s.camRecordingMaxMinutes}
+			/>
+			<p class="text-base-content/40 text-xs">
+				A longer session is cut here and a new recording starts when auto-record is on. Default 240.
+			</p>
+		</div>
 	</section>
 
 	<!-- Blocklist -->
@@ -145,7 +187,7 @@
 		{:else}
 			<div class="flex flex-wrap gap-2">
 				{#each blocklist as entry (entry.id)}
-					<span class="bg-base-300 flex items-center gap-2 rounded-full py-1 pl-3 pr-1.5 text-sm">
+					<span class="bg-base-300 flex items-center gap-2 rounded-full py-1 pr-1.5 pl-3 text-sm">
 						<ProhibitIcon size={13} class="text-base-content/40" />
 						<span>{entry.label ?? entry.targetId}</span>
 						<span class="text-base-content/30 text-xs">{entry.kind}</span>
@@ -169,8 +211,8 @@
 			<div>
 				<h2 class="text-sm font-semibold">Rate limiting</h2>
 				<p class="text-base-content/40 mt-1 text-xs">
-					Per-kind concurrency and exponential retry backoff. Max concurrent 0 falls back to the global
-					setting. Backoff: delay = InitialMs × Multiplier^(attempt−1), capped at MaxMs.
+					Per-kind concurrency and exponential retry backoff. Max concurrent 0 falls back to the
+					global setting. Backoff: delay = InitialMs × Multiplier^(attempt−1), capped at MaxMs.
 				</p>
 			</div>
 
@@ -189,15 +231,28 @@
 						{#each s.kindLimits as limit (limit.kind)}
 							<tr class="border-base-300/50 border-b last:border-0">
 								<td class="py-2 pr-4">
-									<span class="bg-base-300 text-base-content/70 rounded px-2 py-0.5 font-mono text-xs"
+									<span
+										class="bg-base-300 text-base-content/70 rounded px-2 py-0.5 font-mono text-xs"
 										>{limit.kind}</span
 									>
 								</td>
 								<td class="px-2 py-2">
-									<input type="number" min="0" max="32" class="{inputClass} w-20" bind:value={limit.maxConcurrent} />
+									<input
+										type="number"
+										min="0"
+										max="32"
+										class="{inputClass} w-20"
+										bind:value={limit.maxConcurrent}
+									/>
 								</td>
 								<td class="px-2 py-2">
-									<input type="number" min="0" step="100" class="{inputClass} w-28" bind:value={limit.retryInitialMs} />
+									<input
+										type="number"
+										min="0"
+										step="100"
+										class="{inputClass} w-28"
+										bind:value={limit.retryInitialMs}
+									/>
 								</td>
 								<td class="px-2 py-2">
 									<input
@@ -210,7 +265,13 @@
 									/>
 								</td>
 								<td class="px-2 py-2">
-									<input type="number" min="0" step="1000" class="{inputClass} w-28" bind:value={limit.retryMaxMs} />
+									<input
+										type="number"
+										min="0"
+										step="1000"
+										class="{inputClass} w-28"
+										bind:value={limit.retryMaxMs}
+									/>
 								</td>
 							</tr>
 						{/each}
@@ -221,7 +282,9 @@
 	{/if}
 
 	{#if error}
-		<div class="rounded-lg border border-[#f87171]/30 bg-[#f87171]/10 px-4 py-2.5 text-sm text-[#f87171]">
+		<div
+			class="rounded-lg border border-[#f87171]/30 bg-[#f87171]/10 px-4 py-2.5 text-sm text-[#f87171]"
+		>
 			{error}
 		</div>
 	{/if}

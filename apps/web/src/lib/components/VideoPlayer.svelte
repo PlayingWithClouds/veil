@@ -20,9 +20,15 @@
 	import { recordProgress } from '$lib/discovery';
 	import { sites, siteDisplayName } from '$lib/stores/sites';
 	import { miniPlayer } from '$lib/stores/miniPlayer';
-	import { isHlsSource, mainPlayback, Playback } from '$lib/playback';
+	import {
+		isHlsSource,
+		mainPlayback,
+		pickLevel,
+		Playback,
+		type PlaybackLevel
+	} from '$lib/playback';
 	import { matchOrientationToVideo } from '$lib/native';
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import { get } from 'svelte/store';
 
 	// Lightweight recommendation card shown in the fullscreen up-next sheet.
@@ -97,6 +103,21 @@
 		// Play through the main playback, which the mini player takes over when
 		// the user leaves the page.
 		shared?: boolean;
+		// A live broadcast: no seek bar, duration, speed, markers or progress
+		// saving; a LIVE badge with a way back to the live edge instead.
+		live?: boolean;
+		// Live only: the quality to start at, as a video height (0 = automatic).
+		// The tallest level at or below it plays, else the shortest above.
+		levelHeight?: number;
+		// Live only: the stream's qualities, once its playlist is read.
+		onlevels?: (levels: PlaybackLevel[]) => void;
+		// Live only: the user picked a quality (its height, 0 = automatic).
+		onlevelchange?: (height: number) => void;
+		// Live only: the stream failed for good (the broadcast ended or the
+		// connection was lost).
+		onstreamerror?: () => void;
+		// Extra buttons placed in the control row, before the volume.
+		controls?: Snippet;
 		onclose: () => void;
 	}
 
@@ -122,6 +143,12 @@
 		markers = [],
 		onaddmarker,
 		shared = false,
+		live = false,
+		levelHeight = 0,
+		onlevels,
+		onlevelchange,
+		onstreamerror,
+		controls,
 		onclose
 	}: Props = $props();
 
@@ -643,7 +670,7 @@
 
 	/** Plays at HOLD_SPEED while the finger stays down. */
 	function startHoldSpeed() {
-		if (!videoEl) return;
+		if (!videoEl || live) return;
 		holdingFast = true;
 		hideControls();
 		videoEl.playbackRate = HOLD_SPEED;
@@ -683,7 +710,7 @@
 		const isRepeat = now - lastTapAt < DOUBLE_TAP_MS && zone === lastTapZone;
 		lastTapAt = now;
 		lastTapZone = zone;
-		if (isRepeat && zone !== 'middle') {
+		if (isRepeat && zone !== 'middle' && !live) {
 			clearTimeout(singleTapTimer);
 			skipFromTap(zone);
 			return;
@@ -694,6 +721,10 @@
 			return;
 		}
 		clearTimeout(singleTapTimer);
+		if (live) {
+			toggleControls();
+			return;
+		}
 		if (zone === 'middle') {
 			toggleControls();
 			return;
@@ -712,13 +743,14 @@
 
 	/** Skips 10 s for a double tap and shows the ripple on that side. */
 	function skipFromTap(zone: TapZone) {
-		if (!videoEl) return;
+		if (!videoEl || live) return;
 		let step = DOUBLE_TAP_SKIP_SECONDS;
 		if (zone === 'back') step = -DOUBLE_TAP_SKIP_SECONDS;
 		const total = duration || videoEl.duration || 0;
 		videoEl.currentTime = clamp(videoEl.currentTime + step, 0, total);
 		let seconds = DOUBLE_TAP_SKIP_SECONDS;
-		if (skipFeedback && skipFeedback.zone === zone) seconds = skipFeedback.seconds + DOUBLE_TAP_SKIP_SECONDS;
+		if (skipFeedback && skipFeedback.zone === zone)
+			seconds = skipFeedback.seconds + DOUBLE_TAP_SKIP_SECONDS;
 		skipFeedback = { zone, seconds, key: performance.now() };
 		clearTimeout(skipFeedbackTimer);
 		skipFeedbackTimer = setTimeout(() => (skipFeedback = null), 650);
@@ -753,6 +785,11 @@
 	/** The ⚙ sheet's subtitle: what is playing and how. */
 	function qualitySummary(): string {
 		const parts: string[] = [];
+		if (live) {
+			const chosen = liveLevels.find((level) => level.index === liveLevel);
+			if (chosen) return chosen.label;
+			return 'Auto';
+		}
 		if (autoAdapt) parts.push('Auto');
 		if (activeSource) parts.push(activeSource.quality);
 		if (playbackRate !== 1) parts.push(`${playbackRate}×`);
@@ -869,10 +906,12 @@
 				close();
 				return;
 			case 'ArrowLeft':
+				if (live) break;
 				e.preventDefault();
 				if (videoEl) videoEl.currentTime = Math.max(0, videoEl.currentTime - SEEK_STEP_SECONDS);
 				break;
 			case 'ArrowRight':
+				if (live) break;
 				e.preventDefault();
 				if (videoEl)
 					videoEl.currentTime = Math.min(duration, videoEl.currentTime + SEEK_STEP_SECONDS);
@@ -987,7 +1026,11 @@
 	$effect(() => {
 		if (!activePlayback) return;
 		const alreadyLoaded = activePlayback.src === src;
-		activePlayback.load(src, mimeType, headers, (message) => (error = message));
+		activePlayback.load(src, mimeType, headers, onPlaybackError, {
+			live,
+			onLevels: onStreamLevels,
+			onMutedFallback: () => (mutedByBrowser = true)
+		});
 		if (alreadyLoaded || !seamlessArmed || isHlsSource(src, mimeType)) return;
 		// Seamless upgrade: once this new source can play, crossfade off the
 		// overlay that is masking this reload.
@@ -999,6 +1042,78 @@
 		};
 		element.addEventListener('canplay', onReady);
 	});
+
+	/** Shows a playback error; a live stream that fails hands over to the page. */
+	function onPlaybackError(message: string) {
+		if (live && onstreamerror) {
+			onstreamerror();
+			return;
+		}
+		error = message;
+	}
+
+	// --- Live -------------------------------------------------------------------
+	// Further behind the live edge than this shows "Go live".
+	const LIVE_EDGE_TOLERANCE_SECONDS = 20;
+	// How often the distance to the live edge is re-measured (it grows while paused).
+	const LIVE_LAG_INTERVAL_MS = 1000;
+
+	// The browser refused autoplay with sound, so a live stream runs muted until
+	// the user taps "Tap to unmute".
+	let mutedByBrowser = $state(false);
+	let showUnmutePrompt = $derived(live && mutedByBrowser && muted);
+
+	/** Turns the sound on after the browser held it back. */
+	function unmuteFromPrompt() {
+		mutedByBrowser = false;
+		if (!videoEl) return;
+		videoEl.muted = false;
+	}
+
+	// Seconds behind the live edge.
+	let liveLag = $state(0);
+	let behindLive = $derived(liveLag > LIVE_EDGE_TOLERANCE_SECONDS);
+	// The stream's qualities, best first; the menu shows them when there are several.
+	let liveLevels = $state<PlaybackLevel[]>([]);
+	// The chosen level index, -1 = automatic.
+	let liveLevel = $state(-1);
+
+	$effect(() => {
+		if (!live || !activePlayback) return;
+		const playback = activePlayback;
+		const timer = setInterval(() => (liveLag = playback.liveLag()), LIVE_LAG_INTERVAL_MS);
+		return () => clearInterval(timer);
+	});
+
+	/** Jumps back to the live edge. */
+	function goLive() {
+		activePlayback?.seekToLiveEdge();
+		liveLag = 0;
+		showControls();
+	}
+
+	/** The stream's qualities are known: show them and start at the preferred one. */
+	function onStreamLevels(levels: PlaybackLevel[]) {
+		liveLevels = levels;
+		onlevels?.(levels);
+		const preferred = pickLevel(levels, levelHeight);
+		if (!preferred) return;
+		liveLevel = preferred.index;
+		activePlayback?.setLevel(preferred.index);
+	}
+
+	/** Picks the stream's quality from the ⚙ menu. */
+	function chooseLiveLevel(index: number) {
+		liveLevel = index;
+		activePlayback?.setLevel(index);
+		settingsOpen = false;
+		const chosen = liveLevels.find((level) => level.index === index);
+		if (chosen) {
+			onlevelchange?.(chosen.height);
+			return;
+		}
+		onlevelchange?.(0);
+	}
 
 	// Lowest-quality copy of the active provider (ladder is best-first), used for
 	// the cheap hover-scrub thumbnails regardless of the playing quality.
@@ -1258,8 +1373,8 @@
 		bind:this={videoSlot}
 		class="parallax-video h-full w-full select-none"
 		class:parallax-dragging={revealDragging}
-		style="transform: translateY({exitPull * 0.5}px) scale({1 - revealProgress * 0.04}); filter: brightness({1 -
-			revealProgress * 0.5});"
+		style="transform: translateY({exitPull * 0.5}px) scale({1 -
+			revealProgress * 0.04}); filter: brightness({1 - revealProgress * 0.5});"
 		onpointerdown={onVideoPointerDown}
 		onpointermove={onVideoPointerMove}
 		onpointerup={onVideoPointerUp}
@@ -1296,6 +1411,19 @@
 		</div>
 	{/if}
 
+	<!-- Live autoplay with sound was refused: say so, and unmute on a tap. -->
+	{#if showUnmutePrompt}
+		<button
+			type="button"
+			class="glass-round absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white"
+			onclick={unmuteFromPrompt}
+			transition:fade={{ duration: 150 }}
+		>
+			<SpeakerXIcon size={16} weight="fill" />
+			Tap to unmute
+		</button>
+	{/if}
+
 	<!-- Back, for pages that hide their top bar over the player. -->
 	{#if onback && !isFullscreen && (controlsVisible || !hasPlayed) && revealProgress <= 0.05}
 		<button
@@ -1328,7 +1456,7 @@
 	{/if}
 
 	<!-- Thin progress line while the controls are hidden. -->
-	{#if hasPlayed && duration > 0}
+	{#if hasPlayed && duration > 0 && !live}
 		<div
 			class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3px] bg-white/20 transition-opacity duration-300"
 			class:opacity-0={controlsVisible || revealProgress > 0.05}
@@ -1386,100 +1514,103 @@
 	>
 		{@render controlRow()}
 
-		<!-- Seek bar + hover-scrub thumbnail -->
-		<div
-			bind:this={seekWrapEl}
-			class="pointer-events-auto relative"
-			class:seek-scrubbing={scrubbing}
-			role="presentation"
-			onmousemove={onSeekHover}
-			onmouseleave={onSeekLeave}
-		>
-			<input
-				type="range"
-				min="0"
-				max={duration || 0}
-				value={currentTime}
-				step="0.5"
-				class="player-range w-full"
-				style="--fill:{seekPercent}%"
-				oninput={seek}
-				onkeydown={onSeekKeydown}
-				onpointerdown={onSeekPointerDown}
-				onpointerup={onSeekPointerUp}
-				onpointercancel={onSeekPointerUp}
-				onchange={onSeekPointerUp}
-				aria-label="Seek"
-			/>
-			<!-- Markers: point markers are ticks, span markers translucent bands.
-			     Personal markers are amber, global (plugin) annotations white. -->
-			{#if duration > 0}
-				{#each markers as marker (marker.id)}
-					{@const spanEnd = marker.endSeconds ?? null}
-					{#if spanEnd !== null && spanEnd > marker.seconds}
-						<button
-							type="button"
-							class="group absolute top-1/2 z-10 h-2 -translate-y-1/2 rounded-sm {marker.personal
-								? 'bg-amber-400/40 hover:bg-amber-400/60'
-								: 'bg-white/25 hover:bg-white/40'}"
-							style="left:{(marker.seconds / duration) * 100}%; width:{((spanEnd - marker.seconds) /
-								duration) *
-								100}%"
-							onclick={() => jumpToMarker(marker.seconds)}
-							aria-label="Jump to {marker.label}"
-						>
-							<span
-								class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-white group-hover:block"
-							>
-								{marker.label}
-							</span>
-						</button>
-					{:else}
-						<button
-							type="button"
-							class="group absolute top-1/2 z-10 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-black/30 transition-transform hover:scale-y-150 {marker.personal
-								? 'bg-amber-400'
-								: 'bg-white/70'}"
-							style="left:{(marker.seconds / duration) * 100}%"
-							onclick={() => jumpToMarker(marker.seconds)}
-							aria-label="Jump to {marker.label}"
-						>
-							<span
-								class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-white group-hover:block"
-							>
-								{marker.label}
-							</span>
-						</button>
-					{/if}
-				{/each}
-			{/if}
+		<!-- Seek bar + hover-scrub thumbnail; a live stream has no timeline. -->
+		{#if !live}
 			<div
-				class="pointer-events-none absolute bottom-full mb-3 flex -translate-x-1/2 flex-col items-center gap-1 {hoverActive &&
-				duration > 0
-					? ''
-					: 'hidden'}"
-				style="left:{hoverX}px"
+				bind:this={seekWrapEl}
+				class="pointer-events-auto relative"
+				class:seek-scrubbing={scrubbing}
+				role="presentation"
+				onmousemove={onSeekHover}
+				onmouseleave={onSeekLeave}
 			>
+				<input
+					type="range"
+					min="0"
+					max={duration || 0}
+					value={currentTime}
+					step="0.5"
+					class="player-range w-full"
+					style="--fill:{seekPercent}%"
+					oninput={seek}
+					onkeydown={onSeekKeydown}
+					onpointerdown={onSeekPointerDown}
+					onpointerup={onSeekPointerUp}
+					onpointercancel={onSeekPointerUp}
+					onchange={onSeekPointerUp}
+					aria-label="Seek"
+				/>
+				<!-- Markers: point markers are ticks, span markers translucent bands.
+			     Personal markers are amber, global (plugin) annotations white. -->
+				{#if duration > 0}
+					{#each markers as marker (marker.id)}
+						{@const spanEnd = marker.endSeconds ?? null}
+						{#if spanEnd !== null && spanEnd > marker.seconds}
+							<button
+								type="button"
+								class="group absolute top-1/2 z-10 h-2 -translate-y-1/2 rounded-sm {marker.personal
+									? 'bg-amber-400/40 hover:bg-amber-400/60'
+									: 'bg-white/25 hover:bg-white/40'}"
+								style="left:{(marker.seconds / duration) * 100}%; width:{((spanEnd -
+									marker.seconds) /
+									duration) *
+									100}%"
+								onclick={() => jumpToMarker(marker.seconds)}
+								aria-label="Jump to {marker.label}"
+							>
+								<span
+									class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-white group-hover:block"
+								>
+									{marker.label}
+								</span>
+							</button>
+						{:else}
+							<button
+								type="button"
+								class="group absolute top-1/2 z-10 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-black/30 transition-transform hover:scale-y-150 {marker.personal
+									? 'bg-amber-400'
+									: 'bg-white/70'}"
+								style="left:{(marker.seconds / duration) * 100}%"
+								onclick={() => jumpToMarker(marker.seconds)}
+								aria-label="Jump to {marker.label}"
+							>
+								<span
+									class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-white group-hover:block"
+								>
+									{marker.label}
+								</span>
+							</button>
+						{/if}
+					{/each}
+				{/if}
 				<div
-					class="shadow-overlay overflow-hidden rounded-md ring-1 ring-white/15"
-					style="width:160px;height:90px;"
+					class="pointer-events-none absolute bottom-full mb-3 flex -translate-x-1/2 flex-col items-center gap-1 {hoverActive &&
+					duration > 0
+						? ''
+						: 'hidden'}"
+					style="left:{hoverX}px"
 				>
-					<!-- svelte-ignore a11y_media_has_caption -->
-					<video
-						bind:this={previewVideoEl}
-						class="h-full w-full object-cover"
-						muted
-						playsinline
-						preload="auto"
-					></video>
+					<div
+						class="shadow-overlay overflow-hidden rounded-md ring-1 ring-white/15"
+						style="width:160px;height:90px;"
+					>
+						<!-- svelte-ignore a11y_media_has_caption -->
+						<video
+							bind:this={previewVideoEl}
+							class="h-full w-full object-cover"
+							muted
+							playsinline
+							preload="auto"
+						></video>
+					</div>
+					<span
+						class="text-2xs rounded bg-black/70 px-1.5 py-0.5 font-mono text-white/90 tabular-nums"
+					>
+						{fmtTime(hoverTime)}
+					</span>
 				</div>
-				<span
-					class="text-2xs rounded bg-black/70 px-1.5 py-0.5 font-mono text-white/90 tabular-nums"
-				>
-					{fmtTime(hoverTime)}
-				</span>
 			</div>
-		</div>
+		{/if}
 
 		<!-- Fullscreen: the grab bar that pulls up the up-next sheet. -->
 		{#if isFullscreen && hasRecs}
@@ -1519,7 +1650,7 @@
 			<div
 				bind:this={recoRowEl}
 				onscroll={onRecoScroll}
-				class="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4"
+				class="no-scrollbar flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4"
 			>
 				{#each recommendations as rec (rec.id)}
 					{@render recCard(rec)}
@@ -1532,7 +1663,11 @@
 	     into the player while fullscreen, where only its subtree is drawn. -->
 	{#if settingsOpen && $isCompact}
 		<div use:portal={fullscreenHost(isFullscreen)}>
-			<ActionSheet title="Playback" subtitle={qualitySummary()} onclose={() => (settingsOpen = false)}>
+			<ActionSheet
+				title="Playback"
+				subtitle={qualitySummary()}
+				onclose={() => (settingsOpen = false)}
+			>
 				{@render settingsMenu()}
 			</ActionSheet>
 		</div>
@@ -1557,11 +1692,17 @@
 			</button>
 		{/if}
 
-		<span class="px-1 font-mono text-xs whitespace-nowrap text-white/75 tabular-nums">
-			{fmtTime(currentTime)} / {fmtTime(duration)}
-		</span>
+		{#if live}
+			{@render liveBadge()}
+		{:else}
+			<span class="px-1 font-mono text-xs whitespace-nowrap text-white/75 tabular-nums">
+				{fmtTime(currentTime)} / {fmtTime(duration)}
+			</span>
+		{/if}
 
 		<div class="flex-1"></div>
+
+		{@render controls?.()}
 
 		{#if onaddmarker && !$isCompact}
 			<button
@@ -1604,16 +1745,18 @@
 			</div>
 		{/if}
 
-		<button
-			type="button"
-			class="flex h-9 w-9 flex-none items-center justify-center text-white/80 transition-transform hover:text-white"
-			class:rotate-45={settingsOpen}
-			onclick={() => (settingsOpen = !settingsOpen)}
-			aria-label="Playback settings"
-			title="Quality, speed and source"
-		>
-			<GearSixIcon size={18} weight="bold" />
-		</button>
+		{#if !live || liveLevels.length > 1}
+			<button
+				type="button"
+				class="flex h-9 w-9 flex-none items-center justify-center text-white/80 transition-transform hover:text-white"
+				class:rotate-45={settingsOpen}
+				onclick={() => (settingsOpen = !settingsOpen)}
+				aria-label="Playback settings"
+				title="Quality, speed and source"
+			>
+				<GearSixIcon size={18} weight="bold" />
+			</button>
+		{/if}
 
 		<button
 			type="button"
@@ -1626,9 +1769,47 @@
 	</div>
 {/snippet}
 
+{#snippet liveBadge()}
+	<div class="flex items-center gap-2 px-1">
+		<span
+			class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
+			class:bg-red-600={!behindLive}
+			class:bg-zinc-600={behindLive}
+		>
+			<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
+			Live
+		</span>
+		{#if behindLive}
+			<button
+				type="button"
+				class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/25"
+				onclick={goLive}
+			>
+				Go live
+			</button>
+		{/if}
+	</div>
+{/snippet}
+
 {#snippet settingsMenu()}
 	<div class="flex flex-col gap-1 pb-1">
-		{#if sources.length > 0}
+		{#if live}
+			<p class="menu-heading">Quality</p>
+			<button type="button" class="menu-row" onclick={() => chooseLiveLevel(-1)}>
+				<span>Auto</span>
+				{#if liveLevel === -1}
+					<CheckIcon size={16} weight="bold" class="text-primary" />
+				{/if}
+			</button>
+			{#each liveLevels as level (level.index)}
+				<button type="button" class="menu-row" onclick={() => chooseLiveLevel(level.index)}>
+					<span>{level.label}</span>
+					{#if liveLevel === level.index}
+						<CheckIcon size={16} weight="bold" class="text-primary" />
+					{/if}
+				</button>
+			{/each}
+		{:else if sources.length > 0}
 			<p class="menu-heading">Quality</p>
 			<button type="button" class="menu-row" onclick={chooseAutoQuality}>
 				<span>Auto</span>
@@ -1649,19 +1830,21 @@
 			{/each}
 		{/if}
 
-		<p class="menu-heading">Speed</p>
-		<div class="flex flex-wrap gap-1.5 px-2 pb-1">
-			{#each SPEEDS as speed (speed)}
-				<button
-					type="button"
-					class="speed-chip rounded-full px-3 py-1.5 text-sm font-medium tabular-nums"
-					class:speed-chip-active={playbackRate === speed}
-					onclick={() => setSpeed(speed)}
-				>
-					{speed}×
-				</button>
-			{/each}
-		</div>
+		{#if !live}
+			<p class="menu-heading">Speed</p>
+			<div class="flex flex-wrap gap-1.5 px-2 pb-1">
+				{#each SPEEDS as speed (speed)}
+					<button
+						type="button"
+						class="speed-chip rounded-full px-3 py-1.5 text-sm font-medium tabular-nums"
+						class:speed-chip-active={playbackRate === speed}
+						onclick={() => setSpeed(speed)}
+					>
+						{speed}×
+					</button>
+				{/each}
+			</div>
+		{/if}
 
 		{#if onaddmarker && $isCompact}
 			<button type="button" class="menu-row" onclick={addMarkerFromMenu}>

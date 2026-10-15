@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
+	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
+	import { activeCamRecordings } from '$lib/stores/camRecordings';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import CamCard from '$lib/components/CamCard.svelte';
@@ -140,6 +142,21 @@
 		title="Cams"
 		description={totalCount > 0 ? `${totalCount.toLocaleString()} rooms live now` : 'Live rooms'}
 	/>
+
+	{#if $activeCamRecordings.length > 0}
+		<div class="flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
+			<RecordIcon size={16} weight="fill" class="text-red-500" />
+			<span class="font-medium">Recording</span>
+			{#each $activeCamRecordings as active (active.id)}
+				<a
+					href={camUrl(active.camModelId)}
+					class="bg-base-200 hover:bg-base-300 rounded-full px-3 py-1 transition-colors"
+				>
+					{active.displayName}
+				</a>
+			{/each}
+		</div>
+	{/if}
 
 	{#if followed.length > 0}
 		<section class="flex flex-col gap-3">

@@ -18,6 +18,7 @@
 	import { camsUrl, camUrl, subscriptionsUrl } from '$lib/routes';
 	import { followedCams, refreshFollowedCams } from '$lib/stores/followedCams';
 	import CamAvatar from './CamAvatar.svelte';
+	import ActiveRecordings from './ActiveRecordings.svelte';
 	import { subscriptionName } from '$lib/searchSubscriptions';
 	import { subscriptionList } from '$lib/stores/newSubscriptionScenes';
 	import type { Component } from 'svelte';
@@ -115,6 +116,7 @@
 	</nav>
 
 	<hr class="border-base-300 my-3" />
+	<ActiveRecordings />
 	<a
 		href={subscriptionsUrl()}
 		class="text-base-content hover:bg-base-200 sidebar-link-full flex items-center rounded-lg font-semibold transition-colors"
