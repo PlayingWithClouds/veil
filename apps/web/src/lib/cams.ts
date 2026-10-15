@@ -199,10 +199,19 @@ export async function fetchCamModelRecordings(camModelId: string): Promise<CamRe
 	}
 }
 
-/** Starts recording a live room in the backend at a quality ("source" or a height like "480"); throws when it is not live. */
-export async function startCamRecording(id: string, quality: string): Promise<CamRecording> {
+/**
+ * Starts recording a live room in the backend at a quality ("source" or a height
+ * like "480"); throws when it is not live. With fromSecondsAgo the recording
+ * begins that far in the past, from the room's live buffer (the backend caps it
+ * to what is buffered and keeps the buffered rendition).
+ */
+export async function startCamRecording(
+	id: string,
+	quality: string,
+	fromSecondsAgo?: number
+): Promise<CamRecording> {
 	const data = await gqlClient.mutation({
-		startCamRecording: { __args: { id, quality }, ...CAM_RECORDING_FIELDS }
+		startCamRecording: { __args: { id, quality, fromSecondsAgo }, ...CAM_RECORDING_FIELDS }
 	});
 	return data.startCamRecording as unknown as CamRecording;
 }

@@ -57,6 +57,24 @@
 	// The stream's qualities, tallest first, for the Record menu.
 	let streamLevels = $state<PlaybackLevel[]>([]);
 	let recordMenuOpen = $state(false);
+	// How much of the stream can be rewound to, and how far behind its newest
+	// media the playhead is (seconds); the Record menu offers starts in the past.
+	let rewindBufferedSeconds = $state(0);
+	let rewindLagSeconds = $state(0);
+
+	// A start in the past is offered for these distances when that much is buffered.
+	const RECORD_FROM_PAST_OPTIONS = [
+		{ label: 'From 1 min ago', seconds: 60 },
+		{ label: 'From 3 min ago', seconds: 180 }
+	];
+	// "Record from here" appears once the playhead is this far behind the newest media.
+	const RECORD_FROM_HERE_MINIMUM_SECONDS = 10;
+	// A buffer this close to the requested distance still counts as holding it.
+	const RECORD_FROM_PAST_SLACK_SECONDS = 10;
+	let canRecordFromPast = $derived(
+		rewindLagSeconds >= RECORD_FROM_HERE_MINIMUM_SECONDS ||
+			rewindBufferedSeconds + RECORD_FROM_PAST_SLACK_SECONDS >= RECORD_FROM_PAST_OPTIONS[0].seconds
+	);
 
 	// Recording qualities auto-record can be set to.
 	const AUTO_RECORD_QUALITIES = ['source', '1080', '720', '480', '360', '240'];
@@ -193,7 +211,7 @@
 	 * Stops the running recording, or starts one at quality ("source" or a
 	 * height); without one it records what is being watched (the source on Auto).
 	 */
-	async function toggleRecording(quality?: string) {
+	async function toggleRecording(quality?: string, fromSecondsAgo?: number) {
 		if (!camModel || recordBusy) return;
 		recordMenuOpen = false;
 		recordBusy = true;
@@ -203,7 +221,11 @@
 				if (finished && !finished.sceneId)
 					notifications.push('The recording was too short to keep', 'error');
 			} else {
-				await startCamRecording(camModel.id, quality ?? recordQualityFor(watchHeight));
+				await startCamRecording(
+					camModel.id,
+					quality ?? recordQualityFor(watchHeight),
+					fromSecondsAgo
+				);
 				now = Date.now();
 			}
 		} catch {
@@ -277,6 +299,10 @@
 						onlevelchange={onWatchQualityChange}
 						controls={recordControl}
 						onstreamerror={onStreamError}
+						onrewindwindow={(bufferedSeconds, lagSeconds) => {
+							rewindBufferedSeconds = bufferedSeconds;
+							rewindLagSeconds = lagSeconds;
+						}}
 						onclose={() => {}}
 					/>
 				{/key}
@@ -410,6 +436,7 @@
 							{#each pastRecordings as past (past.recording.id)}
 								<SceneCard
 									item={past.card}
+									instantHover
 									onclick={() => past.card.id && goto(sceneUrl(past.card.id))}
 								/>
 							{/each}
@@ -457,6 +484,37 @@
 				class="player-record-menu absolute right-0 bottom-full mb-2 w-52 rounded-2xl p-1.5"
 				role="menu"
 			>
+				{#if canRecordFromPast}
+					<p
+						class="px-3 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
+					>
+						Start in the past
+					</p>
+				{/if}
+				{#if rewindLagSeconds >= RECORD_FROM_HERE_MINIMUM_SECONDS}
+					<button
+						type="button"
+						role="menuitem"
+						class="flex min-h-10 w-full items-center justify-between rounded-xl px-3 text-left text-sm text-white hover:bg-white/10"
+						onclick={() => toggleRecording(undefined, Math.round(rewindLagSeconds))}
+					>
+						From here
+						<span class="text-white/50 tabular-nums">-{formatRecordingClock(rewindLagSeconds)}</span
+						>
+					</button>
+				{/if}
+				{#each RECORD_FROM_PAST_OPTIONS as option (option.seconds)}
+					{#if rewindBufferedSeconds + RECORD_FROM_PAST_SLACK_SECONDS >= option.seconds}
+						<button
+							type="button"
+							role="menuitem"
+							class="flex min-h-10 w-full items-center justify-between rounded-xl px-3 text-left text-sm text-white hover:bg-white/10"
+							onclick={() => toggleRecording(undefined, option.seconds)}
+						>
+							{option.label}
+						</button>
+					{/if}
+				{/each}
 				<p
 					class="px-3 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
 				>
