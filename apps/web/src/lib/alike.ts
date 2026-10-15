@@ -38,24 +38,26 @@ const STREAM_FIELDS = {
 	pluginName: true
 } as const;
 
+// Fields of a ranked match.
+const CANDIDATE_FIELDS = {
+	externalId: true,
+	title: true,
+	plugin: true,
+	sourceUrl: true,
+	posterUrl: true,
+	date: true,
+	previewImages: true,
+	previewVideo: true,
+	durationSeconds: true,
+	matchScore: true
+} as const;
+
 // Ranked alternate sources for a scene. Fans out live across every search
 // plugin, so this can take a few seconds.
 export async function findAlikeSources(sceneId: string, limit = 12): Promise<AlikeCandidate[]> {
 	try {
 		const data = await gqlClient.query({
-			findAlikeSources: {
-				__args: { sceneId, limit },
-				externalId: true,
-				title: true,
-				plugin: true,
-				sourceUrl: true,
-				posterUrl: true,
-				date: true,
-				previewImages: true,
-				previewVideo: true,
-				durationSeconds: true,
-				matchScore: true
-			}
+			findAlikeSources: { __args: { sceneId, limit }, ...CANDIDATE_FIELDS }
 		});
 		return (data.findAlikeSources ?? []) as unknown as AlikeCandidate[];
 	} catch (err) {
@@ -75,4 +77,29 @@ export async function attachAlikeSource(
 		attachAlikeSource: { __args: { sceneId, pluginName, url }, ...STREAM_FIELDS }
 	});
 	return (data.attachAlikeSource ?? []) as unknown as SceneStream[];
+}
+
+/** Videos a gallery's photo set may come from, ranked live across every site. */
+export async function findGalleryVideos(galleryId: string, limit = 12): Promise<AlikeCandidate[]> {
+	try {
+		const data = await gqlClient.query({
+			findGalleryVideos: { __args: { galleryId, limit }, ...CANDIDATE_FIELDS }
+		});
+		return (data.findGalleryVideos ?? []) as unknown as AlikeCandidate[];
+	} catch (err) {
+		console.error('findGalleryVideos failed', galleryId, err);
+		return [];
+	}
+}
+
+/** Stores a picked match as the gallery's video and returns that scene's id. */
+export async function linkGalleryVideo(
+	galleryId: string,
+	pluginName: string,
+	url: string
+): Promise<string> {
+	const data = await gqlClient.mutation({
+		linkGalleryVideo: { __args: { galleryId, pluginName, url }, id: true }
+	});
+	return data.linkGalleryVideo.id;
 }

@@ -10,6 +10,7 @@ type Query {
   collectionIdsForMedia(mediaId: ID!): [ID!]!
   galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
   gallery(id: ID!): Gallery
+  findGalleryVideos(galleryId: ID!, limit: Int): [AlikeCandidate!]!
   images(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, galleryId: ID, sort: String): [Image!]!
   image(id: ID!): Image
   jobs: [Job!]!
@@ -82,6 +83,7 @@ type Mutation {
   reorderCollection(collectionId: ID!, mediaIds: [ID!]!): Boolean!
   setCollectionTags(collectionId: ID!, tagIds: [ID!]!): Collection!
   ensureGalleryImages(galleryId: ID!): Gallery
+  linkGalleryVideo(galleryId: ID!, pluginName: String!, url: String!): Scene!
   setImageTags(imageId: ID!, tagIds: [ID!]!): Image!
   deleteJob(id: ID!): Boolean!
   deleteJobsByKind(kind: String!): Int!
@@ -246,6 +248,7 @@ type Gallery {
   tags: [Tag!]!
   images: [Image!]!
   tagMatch: String
+  video: Scene
   createdAt: String!
   updatedAt: String!
 }

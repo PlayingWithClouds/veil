@@ -38,6 +38,8 @@ export interface GalleryDetail {
 	imageCount: number;
 	tags: TagRef[];
 	images: Image[];
+	// The video the set comes from, once picked from findGalleryVideos.
+	video: { id: string; title: string } | null;
 }
 
 export async function fetchGalleries(limit: number, offset: number): Promise<GallerySummary[]> {
@@ -61,6 +63,7 @@ const GALLERY_DETAIL_SELECT = {
 	coverPath: true,
 	imageCount: true,
 	tags: { id: true, name: true },
+	video: { id: true, title: true },
 	images: {
 		id: true,
 		filePath: true,

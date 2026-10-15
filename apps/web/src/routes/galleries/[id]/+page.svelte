@@ -2,13 +2,20 @@
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
 	import ListPlusIcon from 'phosphor-svelte/lib/ListPlusIcon';
+	import FilmStripIcon from 'phosphor-svelte/lib/FilmStripIcon';
+	import PlayIcon from 'phosphor-svelte/lib/PlayIcon';
+	import { goto } from '$app/navigation';
 	import { cacheUrl } from '$lib/img';
 	import TagChips from '$lib/components/TagChips.svelte';
 	import RatingButtons from '$lib/components/RatingButtons.svelte';
 	import OCounterButton from '$lib/components/OCounterButton.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import GalleryViewer from '$lib/components/GalleryViewer.svelte';
+	import AlikeMatchesDialog from '$lib/components/AlikeMatchesDialog.svelte';
 	import { openMoveDialog } from '$lib/stores/moveDialog';
+	import { notifications } from '$lib/stores/notifications';
+	import { findGalleryVideos, linkGalleryVideo, type AlikeCandidate } from '$lib/alike';
+	import { sceneUrl } from '$lib/routes';
 	import { ensureGalleryImages, type GalleryDetail } from '$lib/galleries';
 
 	let { data } = $props();
@@ -38,6 +45,34 @@
 
 	// Viewer: index of the open image, or null when closed.
 	let viewerIndex = $state<number | null>(null);
+
+	// "Find the video": matches searched live across the sites.
+	let videoSearchOpen = $state(false);
+	let videoMatches = $state<AlikeCandidate[]>([]);
+	let videoSearching = $state(false);
+
+	/** Opens the matches dialog and searches the sites for the set's video. */
+	async function findVideo() {
+		if (!gallery) return;
+		videoSearchOpen = true;
+		videoSearching = true;
+		videoMatches = await findGalleryVideos(gallery.id);
+		videoSearching = false;
+	}
+
+	/** Links the picked match as the gallery's video and opens it. */
+	async function pickVideo(candidate: AlikeCandidate) {
+		if (!gallery) return;
+		try {
+			const sceneId = await linkGalleryVideo(gallery.id, candidate.plugin, candidate.sourceUrl);
+			gallery = { ...gallery, video: { id: sceneId, title: candidate.title } };
+			videoSearchOpen = false;
+			await goto(sceneUrl(sceneId));
+		} catch (error) {
+			console.error('linkGalleryVideo failed', error);
+			notifications.push('Could not open that video', 'error');
+		}
+	}
 </script>
 
 {#if !gallery}
@@ -84,6 +119,24 @@
 				<ListPlusIcon size={18} />
 				Save
 			</button>
+			{#if gallery.video}
+				<a
+					href={sceneUrl(gallery.video.id)}
+					class="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-white/80"
+					title={gallery.video.title}
+				>
+					<PlayIcon size={18} weight="fill" />
+					Watch the video
+				</a>
+			{/if}
+			<button
+				type="button"
+				class="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+				onclick={findVideo}
+			>
+				<FilmStripIcon size={18} />
+				Find the video
+			</button>
 		</div>
 
 		{#if images.length === 0}
@@ -117,6 +170,18 @@
 			</div>
 		{/if}
 	</div>
+
+	<AlikeMatchesDialog
+		open={videoSearchOpen}
+		heading="Find the video"
+		subtitle={gallery.title}
+		searchingText="Searching every site for this set's video…"
+		emptyText="No matching videos found."
+		candidates={videoMatches}
+		loading={videoSearching}
+		onClose={() => (videoSearchOpen = false)}
+		pick={pickVideo}
+	/>
 
 	{#if viewerIndex !== null}
 		<GalleryViewer

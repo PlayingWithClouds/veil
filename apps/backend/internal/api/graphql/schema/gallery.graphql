@@ -4,6 +4,10 @@ extend type Query {
   # sources: only galleries found through these plugins; empty = any.
   galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
   gallery(id: ID!): Gallery
+  # Videos the gallery's photo set may come from, ranked across every scene
+  # plugin: searched by its performers, studio and title, scored on title,
+  # performers, date and how close the cover is to each video's poster.
+  findGalleryVideos(galleryId: ID!, limit: Int): [AlikeCandidate!]!
 }
 
 extend type Mutation {
@@ -11,6 +15,9 @@ extend type Mutation {
   # images yet; this fetches its page from the origin plugin to land them.
   # Returns the gallery; a failed fetch still returns what is stored.
   ensureGalleryImages(galleryId: ID!): Gallery
+  # Scrapes a findGalleryVideos match, stores it as a scene and remembers it
+  # as the gallery's video (replacing an earlier pick). Returns the scene.
+  linkGalleryVideo(galleryId: ID!, pluginName: String!, url: String!): Scene!
 }
 
 type Gallery {
@@ -30,6 +37,8 @@ type Gallery {
   images: [Image!]!
   # "direct" | "inherited" — set when filtering by tagId.
   tagMatch: String
+  # The video this photo set comes from, once picked via linkGalleryVideo.
+  video: Scene
   createdAt: String!
   updatedAt: String!
 }
