@@ -9,9 +9,9 @@
  *   --release  build what npm and the phone app ship (the backend updates
  *              these from npm) into an emptied --out; default is local builds
  */
-import { watch } from 'node:fs';
+import { existsSync, watch } from 'node:fs';
 import { rm } from 'node:fs/promises';
-import { resolve, sep } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
 	BACKEND_DIR,
 	type BuildKind,
@@ -46,11 +46,18 @@ async function bundleAndReport(name: string, outDir: string, kind: BuildKind): P
 	}
 }
 
-/** The plugin a changed source path belongs to, or undefined for shared code (the SDK). */
-function pluginOfPath(path: string): string | undefined {
-	const [name, ...rest] = path.split(sep);
-	if (rest.includes('node_modules') || rest.includes('tests') || rest.includes('test')) return undefined;
-	return name;
+/**
+ * Calls onChange when one of a plugin's sources changes: its root .ts files
+ * and src/. node_modules is left out, so a broken link there (a dangling
+ * symlink of a removed package) can't take watch mode down.
+ */
+function watchPlugin(plugin: string, onChange: () => void): void {
+	const pluginDir = join(PLUGINS_DIR, plugin);
+	watch(pluginDir, (_event, file) => {
+		if (file && file.endsWith('.ts')) onChange();
+	});
+	const sourceDir = join(pluginDir, 'src');
+	if (existsSync(sourceDir)) watch(sourceDir, { recursive: true }, onChange);
 }
 
 /** Rebuilds plugins as their sources change; an SDK change rebuilds them all. */
@@ -67,11 +74,7 @@ function watchSources(names: string[], outDir: string): void {
 		}, WATCH_DEBOUNCE_MS);
 	};
 
-	watch(PLUGINS_DIR, { recursive: true }, (_event, file) => {
-		if (!file || !file.endsWith('.ts')) return;
-		const plugin = pluginOfPath(file);
-		if (plugin && names.includes(plugin)) schedule([plugin]);
-	});
+	for (const plugin of names) watchPlugin(plugin, () => schedule([plugin]));
 	watch(SDK_DIR, { recursive: true }, () => schedule(names));
 	console.log(`watching ${names.length} plugins`);
 }
