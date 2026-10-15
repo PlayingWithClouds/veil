@@ -78,7 +78,11 @@ extend type Mutation {
   # stopped, the room goes offline or the maximum duration passes, then the
   # footage becomes a scene.
   # quality: source (default, the best rendition) or a target height like 480.
-  startCamRecording(id: ID!, quality: String): CamRecording!
+  # fromSecondsAgo: begin that many seconds in the past, from the room's live
+  # buffer (the last 3 minutes while it is watched), capped to what is
+  # buffered; the recording then goes on live. It continues in the buffered
+  # rendition, whatever quality says. Ignored when the room is already recorded.
+  startCamRecording(id: ID!, quality: String, fromSecondsAgo: Int): CamRecording!
   # Stop the room's recording and wait for its scene; null when none was running.
   stopCamRecording(id: ID!): CamRecording
   # Record this model automatically whenever she is live (also follows).

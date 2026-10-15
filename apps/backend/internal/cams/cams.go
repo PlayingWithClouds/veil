@@ -48,7 +48,7 @@ type Sites interface {
 
 // LiveProxy turns a resolved live stream into a playable local URL.
 type LiveProxy interface {
-	LiveManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error)
+	LiveManifestURL(ctx context.Context, result *plugins.ResolveResult, roomID string) (string, error)
 }
 
 // Filter narrows a room listing.
@@ -562,7 +562,7 @@ func (s *Service) Stream(ctx context.Context, id string) (*model.CamStream, erro
 		return nil, fmt.Errorf("%s is offline: %w", record.DisplayName, err)
 	}
 	s.recordOnline(ctx, id, true)
-	playableURL, err := s.proxy.LiveManifestURL(ctx, result)
+	playableURL, err := s.proxy.LiveManifestURL(ctx, result, id)
 	if err != nil {
 		return nil, err
 	}

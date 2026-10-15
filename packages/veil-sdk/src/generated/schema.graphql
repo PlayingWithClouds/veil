@@ -83,7 +83,7 @@ type Mutation {
   removeBlock(targetId: ID!): Boolean!
   followCamModel(id: ID!): CamModel!
   unfollowCamModel(id: ID!): CamModel!
-  startCamRecording(id: ID!, quality: String): CamRecording!
+  startCamRecording(id: ID!, quality: String, fromSecondsAgo: Int): CamRecording!
   stopCamRecording(id: ID!): CamRecording
   setCamAutoRecord(id: ID!, enabled: Boolean!, quality: String): CamModel!
   createCollection(name: String!): Collection!

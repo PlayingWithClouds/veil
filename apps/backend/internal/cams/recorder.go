@@ -17,6 +17,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/ingest"
+	"github.com/playingwithclouds/veil/internal/livebuffer"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/storage"
 )
@@ -95,8 +96,17 @@ type Recorder struct {
 	pollMinimum time.Duration
 	pollMaximum time.Duration
 
+	// buffer holds the last minutes of watched rooms; recordings read their
+	// past from it and feed it. Nil disables both.
+	buffer *livebuffer.Manager
+
 	mutex  sync.Mutex
 	active map[string]*capture
+}
+
+// SetLiveBuffer lets recordings start from the buffered past of a room.
+func (r *Recorder) SetLiveBuffer(buffer *livebuffer.Manager) {
+	r.buffer = buffer
 }
 
 // NewRecorder returns a Recorder; ctx is the server's lifetime.
@@ -135,6 +145,9 @@ type track struct {
 	initNames       map[string]string
 	seen            map[string]bool
 	pendingBreak    bool
+	// continuesAfter is the last seeded segment: when the first live playlist
+	// no longer lists it, footage is missing and the next segment starts a break.
+	continuesAfter  string
 	flushedSegments int
 }
 
@@ -159,6 +172,8 @@ type capture struct {
 	// targetHeight is the rendition asked for (0 = source), picked again on every
 	// reconnect because a stream's renditions can change.
 	targetHeight int
+	// seed is the buffered past the recording starts from, nil for a live start.
+	seed *livebuffer.Seed
 
 	// mutex guards the tracks, their counters and qualityLabel.
 	mutex sync.Mutex
@@ -225,6 +240,15 @@ type streamSession struct {
 // recording. A room that is already being recorded returns the running
 // recording. A room that is not live fails with ErrOffline.
 func (r *Recorder) Start(ctx context.Context, cameraID, quality string) (*model.CamRecording, error) {
+	return r.StartFrom(ctx, cameraID, quality, 0)
+}
+
+// StartFrom is Start with the recording beginning secondsAgo seconds in the
+// past: it is seeded with that much of the room's live buffer (all there is
+// when less is buffered, nothing when the room is not buffered) and goes on
+// live. The seeded rendition wins over quality, so the recording continues in
+// the rendition that was buffered.
+func (r *Recorder) StartFrom(ctx context.Context, cameraID, quality string, secondsAgo int) (*model.CamRecording, error) {
 	targetHeight, err := ParseQuality(quality)
 	if err != nil {
 		return nil, err
@@ -237,6 +261,7 @@ func (r *Recorder) Start(ctx context.Context, cameraID, quality string) (*model.
 	if existing {
 		return recording.snapshot(), nil
 	}
+	recording.seed = r.seedFor(cameraID, secondsAgo)
 	session, err := r.openSession(ctx, recording)
 	if err != nil {
 		r.release(cameraID)
@@ -249,6 +274,15 @@ func (r *Recorder) Start(ctx context.Context, cameraID, quality string) (*model.
 	r.service.recordOnline(ctx, cameraID, true)
 	go r.run(recording, session)
 	return recording.snapshot(), nil
+}
+
+// seedFor returns the buffered footage a recording starting secondsAgo in the
+// past begins with, nil when it starts live.
+func (r *Recorder) seedFor(cameraID string, secondsAgo int) *livebuffer.Seed {
+	if r.buffer == nil || secondsAgo <= 0 {
+		return nil
+	}
+	return r.buffer.SeedFrom(cameraID, float64(secondsAgo))
 }
 
 // reserve registers a capture for the room unless one is running, so two
@@ -324,6 +358,7 @@ func (r *Recorder) Active() []*model.CamRecording {
 // run captures the room until it ends, then files the result.
 func (r *Recorder) run(recording *capture, session *streamSession) {
 	defer close(recording.finished)
+	r.copySeed(recording)
 	reason := r.captureLoop(recording, session)
 	finishContext, cancel := context.WithTimeout(context.WithoutCancel(r.baseContext), finishTimeout)
 	defer cancel()
@@ -406,7 +441,8 @@ func (r *Recorder) followPlaylist(recording *capture, session *streamSession, de
 		}
 		failures = 0
 		*lastActivity = time.Now()
-		r.storeNewSegments(recording, session, recording.video, playlist)
+		window := r.observeBuffer(recording, session.mediaURL, livebuffer.KindVideo, session, playlist)
+		r.storeNewSegments(recording, session, recording.video, playlist, window)
 		r.followAudio(recording, session)
 		if playlist.Ended {
 			return reasonOffline
@@ -432,7 +468,19 @@ func (r *Recorder) followAudio(recording *capture, session *streamSession) {
 	}
 	audio := recording.audio
 	recording.mutex.Unlock()
-	r.storeNewSegments(recording, session, audio, playlist)
+	window := r.observeBuffer(recording, session.audioURL, livebuffer.KindAudio, session, playlist)
+	r.storeNewSegments(recording, session, audio, playlist, window)
+}
+
+// observeBuffer shows a fresh playlist to the room's live buffer, so a viewer
+// can still rewind while the room is recorded, and returns the buffered window
+// (nil when the room is not buffered).
+func (r *Recorder) observeBuffer(recording *capture, playlistURL, kind string, session *streamSession, playlist *mediaPlaylist) *livebuffer.Window {
+	if r.buffer == nil {
+		return nil
+	}
+	source := livebuffer.Source{PlaylistURL: playlistURL, Kind: kind, Fetch: r.fetcher.Fetch, Headers: session.headers}
+	return r.buffer.Observe(recording.camera.ID, source, playlist, false)
 }
 
 // pollInterval is half the target segment length, within the poll bounds.
@@ -470,12 +518,25 @@ func (r *Recorder) openSession(ctx context.Context, recording *capture) (*stream
 		return nil, err
 	}
 	variants := parseVariants(text, base)
-	if chosen := chooseVariant(variants, recording.targetHeight); chosen != nil {
+	if chosen := recording.pickVariant(variants); chosen != nil {
 		session.mediaURL = chosen.URL
 		session.audioURL = chosen.AudioURL
 		recording.setQualityLabel(chosen.Label())
 	}
 	return session, nil
+}
+
+// pickVariant chooses the rendition to record: the one the seed was buffered
+// in when the stream still offers it, else the one the requested quality names.
+func (recording *capture) pickVariant(variants []streamVariant) *streamVariant {
+	if recording.seed != nil {
+		for _, variant := range variants {
+			if livebuffer.TrackKey(variant.URL) == recording.seed.Video.TrackKey {
+				return &variant
+			}
+		}
+	}
+	return chooseVariant(variants, recording.targetHeight)
 }
 
 // setQualityLabel notes which rendition is being captured.
@@ -515,7 +576,10 @@ func (r *Recorder) fetchBytes(ctx context.Context, rawURL string, headers map[st
 }
 
 // storeNewSegments stores every segment of the playlist the track does not hold yet.
-func (r *Recorder) storeNewSegments(recording *capture, session *streamSession, stored *track, playlist *mediaPlaylist) {
+// window, when not nil, lets segments the live buffer already downloaded be
+// read from disk instead of fetched again.
+func (r *Recorder) storeNewSegments(recording *capture, session *streamSession, stored *track, playlist *mediaPlaylist, window *livebuffer.Window) {
+	recording.checkContinuation(stored, playlist)
 	for _, segment := range playlist.Segments {
 		if recording.hasSeen(stored, segment.Identity) {
 			continue
@@ -523,7 +587,7 @@ func (r *Recorder) storeNewSegments(recording *capture, session *streamSession, 
 		if segment.Duration <= 0 {
 			segment.Duration = playlist.TargetDuration
 		}
-		if err := r.storeSegment(recording, session, stored, segment); err != nil {
+		if err := r.storeSegment(recording, session, stored, segment, window); err != nil {
 			if recording.context.Err() != nil {
 				return
 			}
@@ -537,6 +601,22 @@ func (r *Recorder) storeNewSegments(recording *capture, session *streamSession, 
 	if due {
 		r.flushPlaylist(recording)
 	}
+}
+
+// checkContinuation marks a break when the first live playlist after a seed no
+// longer lists the seed's last segment: the footage in between is lost.
+func (recording *capture) checkContinuation(stored *track, playlist *mediaPlaylist) {
+	recording.mutex.Lock()
+	defer recording.mutex.Unlock()
+	if stored.continuesAfter == "" {
+		return
+	}
+	listed := false
+	for _, segment := range playlist.Segments {
+		listed = listed || segment.Identity == stored.continuesAfter
+	}
+	stored.pendingBreak = stored.pendingBreak || !listed
+	stored.continuesAfter = ""
 }
 
 // hasSeen reports whether the track handled the segment before, and remembers it.
@@ -564,15 +644,33 @@ func (recording *capture) markBreak(stored *track) {
 
 // storeSegment downloads one segment (and its init section when new) into the
 // recording's blob directory.
-func (r *Recorder) storeSegment(recording *capture, session *streamSession, stored *track, segment playlistSegment) error {
+func (r *Recorder) storeSegment(recording *capture, session *streamSession, stored *track, segment playlistSegment, window *livebuffer.Window) error {
 	initName, err := r.storeInitSection(recording, session, stored, segment.InitURL)
 	if err != nil {
 		return err
 	}
-	data, err := r.fetchBytes(recording.context, segment.URL, session.headers)
+	data, err := r.segmentBytes(recording, session, segment, window)
 	if err != nil {
 		return err
 	}
+	return r.appendSegment(recording, stored, segment, data, initName)
+}
+
+// segmentBytes returns a segment's bytes, from the live buffer when it holds
+// the segment and from the origin otherwise.
+func (r *Recorder) segmentBytes(recording *capture, session *streamSession, segment playlistSegment, window *livebuffer.Window) ([]byte, error) {
+	if window != nil {
+		if name, buffered := window.NameOf(segment.Identity); buffered {
+			if data, err := r.buffer.Read(recording.context, recording.camera.ID, name); err == nil {
+				return data, nil
+			}
+		}
+	}
+	return r.fetchBytes(recording.context, segment.URL, session.headers)
+}
+
+// appendSegment writes a segment's bytes to the recording and adds it to the track.
+func (r *Recorder) appendSegment(recording *capture, stored *track, segment playlistSegment, data []byte, initName string) error {
 	recording.mutex.Lock()
 	name := fmt.Sprintf("%s-%05d%s", stored.segmentPrefix, len(stored.segments), segmentExtension(segment.Identity))
 	recording.mutex.Unlock()
@@ -598,18 +696,28 @@ func (r *Recorder) storeInitSection(recording *capture, session *streamSession, 
 		return "", nil
 	}
 	identity := urlIdentity(initURL)
-	recording.mutex.Lock()
-	name, known := stored.initNames[identity]
-	recording.mutex.Unlock()
-	if known {
+	if name, known := recording.initName(stored, identity); known {
 		return name, nil
 	}
 	data, err := r.fetchBytes(recording.context, initURL, session.headers)
 	if err != nil {
 		return "", err
 	}
+	return r.saveInitSection(recording, stored, identity, data)
+}
+
+// initName returns the file an init section was stored as.
+func (recording *capture) initName(stored *track, identity string) (string, bool) {
 	recording.mutex.Lock()
-	name = fmt.Sprintf("%s-%d.mp4", stored.initPrefix, len(stored.initNames))
+	defer recording.mutex.Unlock()
+	name, known := stored.initNames[identity]
+	return name, known
+}
+
+// saveInitSection writes an init section to the recording under identity.
+func (r *Recorder) saveInitSection(recording *capture, stored *track, identity string, data []byte) (string, error) {
+	recording.mutex.Lock()
+	name := fmt.Sprintf("%s-%d.mp4", stored.initPrefix, len(stored.initNames))
 	recording.mutex.Unlock()
 	if err := r.blobs.Put(recording.context, recording.blobDirectory()+name, bytes.NewReader(data), int64(len(data)), "video/mp4"); err != nil {
 		return "", err

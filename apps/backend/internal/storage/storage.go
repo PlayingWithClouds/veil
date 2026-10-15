@@ -307,6 +307,16 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
+// DeletePrefix removes every blob under prefix (a key prefix ending in "/"),
+// directories included; a missing prefix is not an error.
+func (c *Client) DeletePrefix(ctx context.Context, prefix string) error {
+	directory, err := c.path(prefix)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(directory)
+}
+
 // Handler serves blobs at RoutePrefix + key, with range support for seeking.
 func (c *Client) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
