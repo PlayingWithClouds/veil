@@ -40,7 +40,7 @@ func (pool *candidatePool) add(proposed candidate) {
 		pool.order = append(pool.order, proposed.sceneID)
 		return
 	}
-	if existing.source != proposed.source {
+	if corroborates(existing.source, proposed.source) {
 		existing.sourceCount++
 	}
 	if proposed.prior > existing.prior {
@@ -48,6 +48,16 @@ func (pool *candidatePool) add(proposed candidate) {
 		existing.source = proposed.source
 		existing.reason = proposed.reason
 	}
+}
+
+// corroborates reports whether a second source proposing a scene is
+// independent evidence for it: a different source, and neither is newest,
+// which lists whatever was stored last (the other source's own finds).
+func corroborates(existingSource, proposedSource string) bool {
+	if existingSource == SourceNewest || proposedSource == SourceNewest {
+		return false
+	}
+	return existingSource != proposedSource
 }
 
 // list returns the pooled candidates in first-seen order.

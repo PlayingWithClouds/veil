@@ -16,12 +16,13 @@ type scoredItem struct {
 // best first.
 func scoreCandidates(candidates []*candidate, features map[string]*sceneFeatures, state *snapshot) []scoredItem {
 	out := make([]scoredItem, 0, len(candidates))
+	undated := undatedFreshness(features, state.now)
 	for _, proposed := range candidates {
 		scene, found := features[proposed.sceneID]
 		if !found {
 			continue
 		}
-		item := Item{SceneID: proposed.sceneID, Source: proposed.source, Reason: proposed.reason, Score: score(proposed, scene, state)}
+		item := Item{SceneID: proposed.sceneID, Source: proposed.source, Reason: proposed.reason, Score: score(proposed, scene, state, undated)}
 		out = append(out, scoredItem{Item: item, features: scene})
 	}
 	sortByScore(out)
@@ -39,12 +40,13 @@ func sortByScore(items []scoredItem) {
 }
 
 // score is the transparent ranking formula: affinity match, source prior and
-// freshness, minus the penalties.
-func score(proposed *candidate, scene *sceneFeatures, state *snapshot) float64 {
+// freshness, minus the penalties. undated is the freshness a scene without a
+// release date gets.
+func score(proposed *candidate, scene *sceneFeatures, state *snapshot, undated float64) float64 {
 	prior := proposed.prior + multiSourceBonus*float64(proposed.sourceCount-1)
 	total := rankWeightAffinity * affinityMatch(scene, state.profile)
 	total += rankWeightSourcePrior * prior
-	total += rankWeightFreshness * freshness(scene.publishedAt, state.now)
+	total += rankWeightFreshness * sceneFreshness(scene, state.now, undated)
 	return total - penalties(proposed.sceneID, state)
 }
 
@@ -110,6 +112,35 @@ func watchedPenalty(state watchState) float64 {
 // fatiguePenalty grows with every ignored showing past the free ones.
 func fatiguePenalty(ignoredShows int) float64 {
 	return penaltyFatiguePerShow * float64(max(0, ignoredShows-fatigueFreeShows))
+}
+
+// sceneFreshness is the scene's freshness, or undated when it has no release date.
+func sceneFreshness(scene *sceneFeatures, now time.Time, undated float64) float64 {
+	if scene.publishedAt.IsZero() {
+		return undated
+	}
+	return freshness(scene.publishedAt, now)
+}
+
+// undatedFreshness is the median freshness of the dated scenes being ranked,
+// so a scene without a date is neither favoured nor held back against the
+// scenes it competes with; undatedFreshnessDefault when none is dated.
+func undatedFreshness(features map[string]*sceneFeatures, now time.Time) float64 {
+	dated := []float64{}
+	for _, scene := range features {
+		if !scene.publishedAt.IsZero() {
+			dated = append(dated, freshness(scene.publishedAt, now))
+		}
+	}
+	if len(dated) == 0 {
+		return undatedFreshnessDefault
+	}
+	sort.Float64s(dated)
+	middle := len(dated) / 2
+	if len(dated)%2 == 1 {
+		return dated[middle]
+	}
+	return (dated[middle-1] + dated[middle]) / 2
 }
 
 // freshness is 1 for a scene published now, halving every freshnessHalfLife.

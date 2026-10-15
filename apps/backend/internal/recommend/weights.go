@@ -120,7 +120,8 @@ const (
 	// its related scenes (0 = not at all, 1 = fully proportional).
 	seedWeightInfluence = 0.5
 	// multiSourceBonus is added to the prior per extra source that found the
-	// same scene.
+	// same scene; newest proposes whatever was stored last and corroborates
+	// nothing.
 	multiSourceBonus = 0.1
 )
 
@@ -131,6 +132,9 @@ const (
 	rankWeightFreshness   = 0.2
 	// freshnessHalfLife is the age at which a scene's freshness halves.
 	freshnessHalfLife = 30 * 24 * time.Hour
+	// undatedFreshnessDefault is an undated scene's freshness when no ranked
+	// scene has a date to compare with (one half-life old).
+	undatedFreshnessDefault = 0.5
 
 	penaltyWatchedCompleted = 1.5
 	penaltyWatchedPartial   = 0.4
