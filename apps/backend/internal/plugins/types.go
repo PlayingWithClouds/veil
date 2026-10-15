@@ -41,6 +41,10 @@ const (
 	// CapabilityCamStream resolves one room to its live HLS master playlist.
 	CapabilityCamList   Capability = "cam:list"
 	CapabilityCamStream Capability = "cam:stream"
+	// CapabilityFaceIdentify ranks the performers who look like the face in a
+	// picture (args.image_base64). Only services whose database holds
+	// professional performers or cam models may be wired in.
+	CapabilityFaceIdentify Capability = "face:identify"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -493,6 +497,28 @@ type SiteSuggestion struct {
 // SuggestResult is returned by a plugin's search:suggest capability, best first.
 type SuggestResult struct {
 	Suggestions []SiteSuggestion `json:"suggestions"`
+}
+
+// FaceIdentifyArgs is passed to a plugin's face:identify capability. The
+// backend downloads the picture itself, so plugins need no access to blob URLs.
+type FaceIdentifyArgs struct {
+	ImageBase64 string `json:"image_base64"`
+	MimeType    string `json:"mime_type"`
+}
+
+// FaceCandidate is one performer a face-recognition service ranks as a match.
+// Similarity runs 0..1. Services behind this capability must only know
+// professional performers and cam models (stage personas).
+type FaceCandidate struct {
+	Name        string   `json:"name"`
+	Similarity  float64  `json:"similarity"`
+	ImageURL    string   `json:"image_url,omitempty"`
+	ProfileURLs []string `json:"profile_urls"`
+}
+
+// FaceIdentifyResult is returned by a plugin's face:identify capability, best first.
+type FaceIdentifyResult struct {
+	Candidates []FaceCandidate `json:"candidates"`
 }
 
 // EnrichArgs is passed to a plugin's enrich capability.

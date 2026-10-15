@@ -217,7 +217,7 @@ func (s *session) installGlobals() error {
 			return fmt.Errorf("set %s: %w", name, err)
 		}
 	}
-	return nil
+	return s.installBinaryShims()
 }
 
 // require serves the modules bundles leave external: fs (the SDK writes its

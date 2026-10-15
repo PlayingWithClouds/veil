@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -45,7 +46,8 @@ type fetchRequest struct {
 	url      string
 	method   string
 	headers  map[string]string
-	body     string
+	body     []byte
+	bodyType string // Content-Type the body dictates (multipart boundary)
 	timeout  time.Duration
 	redirect string
 }
@@ -95,7 +97,12 @@ func (s *session) readFetchRequest(input goja.Value, init goja.Value) (fetchRequ
 		request.method = strings.ToUpper(method.String())
 	}
 	if body := options.Get("body"); isSet(body) {
-		request.body = body.String()
+		parsed, err := s.readBody(body)
+		if err != nil {
+			return request, err
+		}
+		request.body = parsed.data
+		request.bodyType = parsed.contentType
 	}
 	if redirect := options.Get("redirect"); isSet(redirect) {
 		request.redirect = redirect.String()
@@ -127,8 +134,8 @@ func (f *fetcher) do(ctx context.Context, request fetchRequest) (*fetchResponse,
 		defer cancel()
 	}
 	var body io.Reader
-	if request.body != "" {
-		body = strings.NewReader(request.body)
+	if len(request.body) > 0 {
+		body = bytes.NewReader(request.body)
 	}
 	httpRequest, err := http.NewRequestWithContext(ctx, request.method, request.url, body)
 	if err != nil {
@@ -140,6 +147,9 @@ func (f *fetcher) do(ctx context.Context, request fetchRequest) (*fetchResponse,
 			continue
 		}
 		httpRequest.Header.Set(name, value)
+	}
+	if request.bodyType != "" {
+		httpRequest.Header.Set("Content-Type", request.bodyType)
 	}
 
 	client := f.following
