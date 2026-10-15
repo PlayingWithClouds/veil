@@ -332,6 +332,7 @@ export interface FaceVideoMatch {
     url: Scalars['String']
     thumbnailUrl: (Scalars['String'] | null)
     sources: Scalars['String'][]
+    scenePlugin: (Scalars['String'] | null)
     __typename: 'FaceVideoMatch'
 }
 
@@ -1178,6 +1179,7 @@ export interface FaceVideoMatchGenqlSelection{
     url?: boolean | number
     thumbnailUrl?: boolean | number
     sources?: boolean | number
+    scenePlugin?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

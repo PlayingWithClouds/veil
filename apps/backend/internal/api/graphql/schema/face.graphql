@@ -39,6 +39,9 @@ type FaceVideoMatch {
   thumbnailUrl: String
   # Plugins that found this video.
   sources: [String!]!
+  # The scene plugin that serves the page: pass it with url to
+  # resolvePluginResult to open the video as a scene. Null when none does.
+  scenePlugin: String
 }
 
 type FaceCandidate {

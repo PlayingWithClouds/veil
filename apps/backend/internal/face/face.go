@@ -56,6 +56,9 @@ type VideoMatch struct {
 	ThumbnailURL string
 	// Sources are the plugins that found the video.
 	Sources []string
+	// ScenePlugin is the active scene plugin that serves the page, so the app
+	// can open it as a scene; empty when no plugin does.
+	ScenePlugin string
 }
 
 // Identification is the outcome of one identify run.
@@ -83,6 +86,8 @@ type Service struct {
 	// services lists the active plugins that offer face:identify.
 	services func() []*plugins.Plugin
 	identify func(ctx context.Context, plugin *plugins.Plugin, args plugins.FaceIdentifyArgs) (*plugins.FaceIdentifyResult, error)
+	// scenePluginFor names the active scene plugin serving a page URL, or "".
+	scenePluginFor func(pageURL string) string
 	// loadPicture returns the bytes behind a stored image URL.
 	loadPicture func(ctx context.Context, pictureURL string) ([]byte, error)
 }
@@ -95,6 +100,14 @@ func New(database *db.DB, library Library, registry *plugins.Registry, runner *p
 		library:  library,
 		services: func() []*plugins.Plugin {
 			return registry.WithCapability(plugins.CapabilityFaceIdentify)
+		},
+		scenePluginFor: func(pageURL string) string {
+			for _, plugin := range registry.WithCapability(plugins.FindCapability(plugins.MediaTypeScene)) {
+				if plugin.ServesURL(pageURL) {
+					return plugin.Meta.Name
+				}
+			}
+			return ""
 		},
 		identify:    runner.IdentifyFace,
 		loadPicture: loadPicture,
@@ -212,6 +225,7 @@ func (s *Service) rank(ctx context.Context, answers []answer) *Identification {
 		}
 		identification.Sources = append(identification.Sources, reply.plugin)
 	}
+	s.markScenePlugins(identification.Videos)
 	for index := range identification.Candidates {
 		candidate := &identification.Candidates[index]
 		performerID, err := s.library.FindPerformer(ctx, candidate.Name)
@@ -222,6 +236,16 @@ func (s *Service) rank(ctx context.Context, answers []answer) *Identification {
 		candidate.PerformerID = performerID
 	}
 	return identification
+}
+
+// markScenePlugins records, per video, the scene plugin that can open its page.
+func (s *Service) markScenePlugins(videos []VideoMatch) {
+	if s.scenePluginFor == nil {
+		return
+	}
+	for index := range videos {
+		videos[index].ScenePlugin = s.scenePluginFor(videos[index].URL)
+	}
 }
 
 // mergeAnswers joins candidates of the same name_key across services: the best

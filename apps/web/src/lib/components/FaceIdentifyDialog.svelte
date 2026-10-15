@@ -3,17 +3,21 @@
 	// of a scene or gallery image shows, best first, with their similarity.
 	// Picking one credits that performer (created if the library has none yet)
 	// to the media. The services only know professional performers and cam models.
-	// Videos with a similar face are listed below as plain links: they name nobody
-	// and cannot be credited.
+	// Videos with a similar face are listed below: they name nobody and cannot be
+	// credited. One a scene plugin serves opens as a scene in the app, others as a link.
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
+	import { goto } from '$app/navigation';
 	import { cacheUrl } from '$lib/img';
+	import { sceneUrl } from '$lib/routes';
+	import { ingestPluginResult } from '$lib/search';
 	import { notifications } from '$lib/stores/notifications';
 	import {
 		creditPerformerByName,
 		identifyFace,
 		type FaceCandidate,
-		type FaceIdentification
+		type FaceIdentification,
+		type FaceVideoMatch
 	} from '$lib/faceIdentify';
 	import type { PerformerRef } from '$lib/sceneDetail';
 
@@ -40,6 +44,8 @@
 	let errorText = $state<string | null>(null);
 	// The candidate being credited, so its row shows a spinner.
 	let crediting = $state<string | null>(null);
+	// The similar video being scraped to open, so its row shows a spinner.
+	let openingVideoUrl = $state<string | null>(null);
 
 	// The picture being searched: the frame right away, a stored one once the backend names it.
 	let searchedPictureUrl = $derived.by(() => {
@@ -93,6 +99,22 @@
 		}
 	}
 
+	/** Scrapes a similar video through its plugin and opens it as a scene. */
+	async function openVideo(video: FaceVideoMatch) {
+		if (!video.scenePlugin || openingVideoUrl) return;
+		openingVideoUrl = video.url;
+		try {
+			const sceneId = await ingestPluginResult(video.scenePlugin, video.url, video.thumbnailUrl);
+			onClose();
+			await goto(sceneUrl(sceneId));
+		} catch (error) {
+			console.error('open similar video failed', video.url, error);
+			notifications.push('Could not open this video', 'error');
+		} finally {
+			openingVideoUrl = null;
+		}
+	}
+
 	/** Credits the chosen performer to the media, one at a time. */
 	async function choose(candidate: FaceCandidate) {
 		if (crediting) return;
@@ -110,6 +132,31 @@
 		}
 	}
 </script>
+
+{#snippet videoRow(video: FaceVideoMatch, opening: boolean)}
+	{#if video.thumbnailUrl}
+		<img
+			src={cacheUrl(video.thumbnailUrl)}
+			alt=""
+			loading="lazy"
+			class="h-16 w-28 shrink-0 rounded-lg object-cover"
+		/>
+	{:else}
+		<span class="h-16 w-28 shrink-0 rounded-lg bg-white/5"></span>
+	{/if}
+	<div class="flex min-w-0 flex-1 flex-col gap-1">
+		<span class="line-clamp-2 text-sm font-semibold">{video.title}</span>
+		<div class="flex items-center gap-2 text-xs">
+			<span class="bg-primary rounded px-1.5 py-0.5 font-bold text-black">
+				{percent(video.similarity)}%
+			</span>
+			<span class="text-base-content/50">{siteOf(video.url)}</span>
+			{#if opening}
+				<span class="loading loading-xs loading-spinner"></span>
+			{/if}
+		</div>
+	</div>
+{/snippet}
 
 {#if open}
 	<!-- Backdrop -->
@@ -248,32 +295,25 @@
 							<ul class="flex flex-col gap-2">
 								{#each identification.videos as video (video.url)}
 									<li>
-										<a
-											href={video.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="flex items-center gap-3 rounded-xl bg-white/5 p-2 hover:bg-white/10"
-										>
-											{#if video.thumbnailUrl}
-												<img
-													src={cacheUrl(video.thumbnailUrl)}
-													alt=""
-													loading="lazy"
-													class="h-16 w-28 shrink-0 rounded-lg object-cover"
-												/>
-											{:else}
-												<span class="h-16 w-28 shrink-0 rounded-lg bg-white/5"></span>
-											{/if}
-											<div class="flex min-w-0 flex-1 flex-col gap-1">
-												<span class="line-clamp-2 text-sm font-semibold">{video.title}</span>
-												<div class="flex items-center gap-2 text-xs">
-													<span class="bg-primary rounded px-1.5 py-0.5 font-bold text-black">
-														{percent(video.similarity)}%
-													</span>
-													<span class="text-base-content/50">{siteOf(video.url)}</span>
-												</div>
-											</div>
-										</a>
+										{#if video.scenePlugin}
+											<button
+												type="button"
+												class="flex w-full items-center gap-3 rounded-xl bg-white/5 p-2 text-left hover:bg-white/10 disabled:opacity-50"
+												disabled={openingVideoUrl !== null}
+												onclick={() => openVideo(video)}
+											>
+												{@render videoRow(video, openingVideoUrl === video.url)}
+											</button>
+										{:else}
+											<a
+												href={video.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="flex items-center gap-3 rounded-xl bg-white/5 p-2 hover:bg-white/10"
+											>
+												{@render videoRow(video, false)}
+											</a>
+										{/if}
 									</li>
 								{/each}
 							</ul>

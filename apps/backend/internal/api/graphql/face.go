@@ -72,6 +72,9 @@ func faceVideoModel(video face.VideoMatch) *model.FaceVideoMatch {
 	if video.ThumbnailURL != "" {
 		converted.ThumbnailURL = &video.ThumbnailURL
 	}
+	if video.ScenePlugin != "" {
+		converted.ScenePlugin = &video.ScenePlugin
+	}
 	return converted
 }
 

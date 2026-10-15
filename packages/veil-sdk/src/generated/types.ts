@@ -1950,6 +1950,9 @@ export default {
             "sources": [
                 1
             ],
+            "scenePlugin": [
+                1
+            ],
             "__typename": [
                 1
             ]
