@@ -27,6 +27,9 @@ type Segment struct {
 type Playlist struct {
 	Segments       []Segment
 	TargetDuration float64
+	// MediaSequence is the sequence number of the first segment; the origin
+	// numbers a stream's renditions alike, which players rely on to switch between them.
+	MediaSequence int
 	// Ended is set once the broadcaster closed the stream (EXT-X-ENDLIST).
 	Ended bool
 }
@@ -52,6 +55,8 @@ func ParsePlaylist(text string, base *url.URL) (*Playlist, error) {
 			initURL = ResolveReference(base, AttributeValue(line, "URI"))
 		case strings.HasPrefix(line, "#EXT-X-TARGETDURATION:"):
 			playlist.TargetDuration, _ = strconv.ParseFloat(strings.TrimPrefix(line, "#EXT-X-TARGETDURATION:"), 64)
+		case strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:"):
+			playlist.MediaSequence, _ = strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "#EXT-X-MEDIA-SEQUENCE:")))
 		case strings.HasPrefix(line, "#EXT-X-DISCONTINUITY-SEQUENCE"):
 		case strings.HasPrefix(line, "#EXT-X-DISCONTINUITY"):
 			pendingDiscontinuity = true

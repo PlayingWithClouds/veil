@@ -32,8 +32,8 @@ const (
 	sweepInterval = 30 * time.Second
 	// downloadTimeout bounds fetching one segment.
 	downloadTimeout = 30 * time.Second
-	// maxParallelDownloads bounds segment downloads across all rooms.
-	maxParallelDownloads = 8
+	// downloadWorkers bounds segment downloads across all rooms.
+	downloadWorkers = 8
 
 	// KindVideo and KindAudio tell a rendition's playlist apart: a stream may
 	// carry its audio in a separate playlist.
@@ -61,18 +61,33 @@ type Manager struct {
 	now         func() time.Time
 	window      float64
 	idleTimeout time.Duration
-	slots       chan struct{}
 
 	mutex sync.Mutex
 	rooms map[string]*room
+
+	// queue holds the downloads waiting for a worker, the newest last: workers
+	// take from the end, so the live edge a player is waiting for comes before
+	// the backlog of older segments. queueChanged wakes idle workers.
+	queueMutex   sync.Mutex
+	queueChanged *sync.Cond
+	queue        []queuedDownload
+	workersBegun bool
+}
+
+// queuedDownload is a download waiting for a worker.
+type queuedDownload struct {
+	room *room
+	pendingDownload
 }
 
 // New returns a Manager; ctx is the server's lifetime and ends downloads.
 func New(ctx context.Context, store Store) *Manager {
-	return &Manager{
+	manager := &Manager{
 		store: store, baseContext: ctx, now: time.Now, window: WindowSeconds, idleTimeout: IdleTimeout,
-		slots: make(chan struct{}, maxParallelDownloads), rooms: map[string]*room{},
+		rooms: map[string]*room{},
 	}
+	manager.queueChanged = sync.NewCond(&manager.queueMutex)
+	return manager
 }
 
 // room is the buffer of one cam room.
@@ -93,12 +108,13 @@ type track struct {
 	retired                map[string]bool
 	inits                  map[string]*file
 	initCounter            int
-	nextSequence           int
 	discontinuitiesDropped int
-	lastIdentity           string
-	targetDuration         float64
-	ended                  bool
-	lastObserved           time.Time
+	// lastSequence is the sequence number of the newest segment, -1 when empty.
+	lastSequence   int
+	lastIdentity   string
+	targetDuration float64
+	ended          bool
+	lastObserved   time.Time
 }
 
 // entry is a buffered segment.
@@ -280,9 +296,7 @@ func (m *Manager) Observe(roomID string, source Source, playlist *Playlist, crea
 	m.mutex.Unlock()
 
 	m.deleteFiles(removedFiles)
-	for _, download := range downloads {
-		go m.download(buffered, download)
-	}
+	m.enqueue(buffered, downloads)
 	return window
 }
 
@@ -292,7 +306,7 @@ func (buffered *room) renditionFor(source Source, now time.Time) *track {
 	rendition := buffered.tracks[key]
 	if rendition == nil {
 		rendition = &track{
-			key: key, known: map[string]*entry{}, retired: map[string]bool{}, inits: map[string]*file{},
+			key: key, known: map[string]*entry{}, retired: map[string]bool{}, inits: map[string]*file{}, lastSequence: -1,
 		}
 		buffered.tracks[key] = rendition
 	}
@@ -319,14 +333,14 @@ func (m *Manager) addNewSegments(buffered *room, rendition *track, source Source
 	rendition.pruneRetired(playlist)
 	missedSegments := rendition.lastIdentity != "" && !playlistHas(playlist, rendition.lastIdentity)
 	var downloads []pendingDownload
-	for _, segment := range playlist.Segments {
+	for index, segment := range playlist.Segments {
 		if rendition.known[segment.Identity] != nil || rendition.retired[segment.Identity] {
 			continue
 		}
 		if segment.Duration <= 0 {
 			segment.Duration = playlist.TargetDuration
 		}
-		added, initDownload := buffered.addSegment(rendition, source, segment, missedSegments)
+		added, initDownload := buffered.addSegment(rendition, segment, playlist.MediaSequence+index, missedSegments)
 		missedSegments = false
 		downloads = append(downloads, pendingDownload{target: added.file, url: segment.URL, headers: source.Headers, fetch: source.Fetch})
 		if initDownload != nil {
@@ -365,13 +379,19 @@ func playlistHas(playlist *Playlist, identity string) bool {
 }
 
 // addSegment appends a segment to the rendition, creating its init section
-// file when new. The caller holds the lock.
-func (buffered *room) addSegment(rendition *track, source Source, segment Segment, missedSegments bool) (*entry, *pendingDownload) {
+// file when new. upstreamSequence is the number the origin gave the segment; one
+// that does not move forward (the origin restarted its numbering) continues
+// after the newest. The caller holds the lock.
+func (buffered *room) addSegment(rendition *track, segment Segment, upstreamSequence int, missedSegments bool) (*entry, *pendingDownload) {
+	sequence := upstreamSequence
+	if sequence <= rendition.lastSequence {
+		sequence = rendition.lastSequence + 1
+	}
+	rendition.lastSequence = sequence
 	added := &entry{
-		sequence: rendition.nextSequence, identity: segment.Identity, sourceURL: segment.URL,
+		sequence: sequence, identity: segment.Identity, sourceURL: segment.URL,
 		duration: segment.Duration, discontinuity: segment.Discontinuity || missedSegments,
 	}
-	rendition.nextSequence++
 	extension := segmentExtension(segment.Identity)
 	added.file = buffered.newFile(fmt.Sprintf("%s-%06d%s", rendition.key, added.sequence, extension), segmentContentType(extension))
 	rendition.entries = append(rendition.entries, added)
@@ -458,18 +478,75 @@ func (buffered *room) dropUnusedInits(rendition *track) []removedFile {
 	return removed
 }
 
-// download fetches one file into the room's directory and marks it done.
-func (m *Manager) download(buffered *room, pending pendingDownload) {
-	select {
-	case m.slots <- struct{}{}:
-		defer func() { <-m.slots }()
-	case <-m.baseContext.Done():
-		m.finishDownload(buffered, pending.target, fmt.Errorf("shutting down"))
+// enqueue schedules downloads, oldest first, and starts the workers on first use.
+func (m *Manager) enqueue(buffered *room, downloads []pendingDownload) {
+	if len(downloads) == 0 {
 		return
 	}
-	ctx, cancel := context.WithTimeout(m.baseContext, downloadTimeout)
-	defer cancel()
-	m.finishDownload(buffered, pending.target, m.fetchInto(ctx, buffered, pending))
+	m.queueMutex.Lock()
+	defer m.queueMutex.Unlock()
+	for _, pending := range downloads {
+		m.queue = append(m.queue, queuedDownload{room: buffered, pendingDownload: pending})
+	}
+	if !m.workersBegun {
+		m.workersBegun = true
+		for worker := 0; worker < downloadWorkers; worker++ {
+			go m.work()
+		}
+		go func() {
+			<-m.baseContext.Done()
+			m.queueChanged.Broadcast()
+		}()
+	}
+	m.queueChanged.Broadcast()
+}
+
+// work downloads queued files, newest first, until the server shuts down.
+func (m *Manager) work() {
+	for {
+		next, ok := m.take()
+		if !ok {
+			return
+		}
+		ctx, cancel := context.WithTimeout(m.baseContext, downloadTimeout)
+		m.finishDownload(next.room, next.target, m.fetchInto(ctx, next.room, next.pendingDownload))
+		cancel()
+	}
+}
+
+// take blocks until a download is queued and removes the newest one. It reports
+// false once the server shuts down; downloads still queued then fail.
+func (m *Manager) take() (queuedDownload, bool) {
+	m.queueMutex.Lock()
+	defer m.queueMutex.Unlock()
+	for len(m.queue) == 0 && m.baseContext.Err() == nil {
+		m.queueChanged.Wait()
+	}
+	if m.baseContext.Err() != nil {
+		for _, abandoned := range m.queue {
+			m.finishDownload(abandoned.room, abandoned.target, fmt.Errorf("shutting down"))
+		}
+		m.queue = nil
+		return queuedDownload{}, false
+	}
+	last := len(m.queue) - 1
+	next := m.queue[last]
+	m.queue = m.queue[:last]
+	return next, true
+}
+
+// promote moves a queued download to the front of the line, because a player
+// is waiting for it.
+func (m *Manager) promote(wanted *file) {
+	m.queueMutex.Lock()
+	defer m.queueMutex.Unlock()
+	for index, queued := range m.queue {
+		if queued.target != wanted {
+			continue
+		}
+		m.queue = append(append(m.queue[:index:index], m.queue[index+1:]...), queued)
+		return
+	}
 }
 
 // fetchInto downloads the file and stores it.
@@ -512,6 +589,7 @@ func (m *Manager) Open(ctx context.Context, roomID, name string) (io.ReadCloser,
 	if wanted == nil {
 		return nil, "", fmt.Errorf("%s is not buffered", name)
 	}
+	m.promote(wanted)
 	select {
 	case <-wanted.done:
 	case <-ctx.Done():
