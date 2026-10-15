@@ -19,7 +19,8 @@ export function tagLabel(name: string): string {
 	return name
 		.split(' ')
 		.map((word) => {
-			const isAcronym = word.length >= 2 && word.length <= 5 && word === word.toUpperCase() && /[A-Z]/.test(word);
+			const isAcronym =
+				word.length >= 2 && word.length <= 5 && word === word.toUpperCase() && /[A-Z]/.test(word);
 			if (isAcronym) return word;
 			return word.toLowerCase();
 		})
@@ -69,6 +70,9 @@ export async function fetchTag(id: string): Promise<TagDetail | null> {
 export interface TaggedScenes {
 	direct: SceneCardData[];
 	inherited: SceneCardData[];
+	// How many scenes the page held before the split, so callers can tell a
+	// short (last) page.
+	fetched: number;
 }
 
 export interface TaggedPerformer {
@@ -173,11 +177,15 @@ export async function fetchCollectionsForTag(
 // Scenes matching a tag, split into direct matches and ones inherited from the
 // scene's studio or performers. The backend ranks direct first and reports the
 // split via tagMatch.
-export async function fetchScenesForTag(tagId: string, limit = 60): Promise<TaggedScenes> {
+export async function fetchScenesForTag(
+	tagId: string,
+	limit = 60,
+	offset = 0
+): Promise<TaggedScenes> {
 	try {
 		const data = await gqlClient.query({
 			scenes: {
-				__args: { tagId, limit },
+				__args: { tagId, limit, offset },
 				...SCENE_ROW_FIELDS
 			}
 		});
@@ -191,8 +199,8 @@ export async function fetchScenesForTag(tagId: string, limit = 60): Promise<Tagg
 				direct.push(sceneToCard(row));
 			}
 		}
-		return { direct, inherited };
+		return { direct, inherited, fetched: rows.length };
 	} catch {
-		return { direct: [], inherited: [] };
+		return { direct: [], inherited: [], fetched: 0 };
 	}
 }

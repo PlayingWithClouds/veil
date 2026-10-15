@@ -5,6 +5,7 @@
 	import GitMergeIcon from 'phosphor-svelte/lib/GitMergeIcon';
 	import { openMergeDialog } from '$lib/stores/mergeDialog';
 	import SceneCard from '$lib/components/SceneCard.svelte';
+	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import SubscribeButton from '$lib/components/SubscribeButton.svelte';
 	import { cacheUrl } from '$lib/img';
@@ -26,7 +27,13 @@
 	let { data } = $props();
 	let tag = $derived(data.tag);
 
-	let scenes = $state<TaggedScenes>({ direct: [], inherited: [] });
+	// Scenes come last on the page and load as you scroll, direct matches
+	// first (the backend ranks them ahead of inherited ones).
+	const SCENE_PAGE_SIZE = 60;
+
+	let scenes = $state<TaggedScenes>({ direct: [], inherited: [], fetched: 0 });
+	let loadingMoreScenes = $state(false);
+	let scenesDone = $state(false);
 	let galleries = $state<TaggedGallery[]>([]);
 	let images = $state<Image[]>([]);
 	let performers = $state<TaggedPerformer[]>([]);
@@ -45,14 +52,31 @@
 	async function load(tagId: string) {
 		loading = true;
 		[scenes, galleries, images, performers, studios, collections] = await Promise.all([
-			fetchScenesForTag(tagId),
+			fetchScenesForTag(tagId, SCENE_PAGE_SIZE),
 			fetchGalleriesForTag(tagId),
 			fetchImages({ tagId }, 30),
 			fetchPerformersForTag(tagId),
 			fetchStudiosForTag(tagId),
 			fetchCollectionsForTag(tagId)
 		]);
+		scenesDone = scenes.fetched < SCENE_PAGE_SIZE;
 		loading = false;
+	}
+
+	/** Appends the next page of the tag's scenes to the direct and inherited lists. */
+	async function loadMoreScenes() {
+		if (loading || loadingMoreScenes || scenesDone) return;
+		const tagId = data.id;
+		loadingMoreScenes = true;
+		const next = await fetchScenesForTag(tagId, SCENE_PAGE_SIZE, scenes.fetched);
+		loadingMoreScenes = false;
+		if (data.id !== tagId) return;
+		scenes = {
+			direct: [...scenes.direct, ...next.direct],
+			inherited: [...scenes.inherited, ...next.inherited],
+			fetched: scenes.fetched + next.fetched
+		};
+		scenesDone = next.fetched < SCENE_PAGE_SIZE;
 	}
 
 	let empty = $derived(
@@ -67,7 +91,9 @@
 	);
 </script>
 
-{#snippet tileGrid(entries: { id: string; label: string; image: string | null; caption: string; href: string }[])}
+{#snippet tileGrid(
+	entries: { id: string; label: string; image: string | null; caption: string; href: string }[]
+)}
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
 		{#each entries as entry (entry.id)}
 			<button type="button" class="flex flex-col gap-2 text-left" onclick={() => goto(entry.href)}>
@@ -139,31 +165,6 @@
 			<p class="text-base-content/40">Nothing carries this tag yet.</p>
 		</div>
 	{:else}
-		{#if scenes.direct.length > 0}
-			<section class="flex flex-col gap-3">
-				<h2 class="text-lg font-semibold">Scenes</h2>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{#each scenes.direct as scene (scene.id)}
-						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		{#if scenes.inherited.length > 0}
-			<section class="flex flex-col gap-3">
-				<div class="flex items-baseline gap-2">
-					<h2 class="text-lg font-semibold">Scenes via studio / performer</h2>
-					<span class="text-base-content/40 text-xs">tag carried by the studio or a performer</span>
-				</div>
-				<div class="grid grid-cols-1 gap-4 opacity-90 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{#each scenes.inherited as scene (scene.id)}
-						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
-					{/each}
-				</div>
-			</section>
-		{/if}
-
 		{#if galleries.length > 0}
 			<section class="flex flex-col gap-3">
 				<h2 class="text-lg font-semibold">Galleries</h2>
@@ -247,6 +248,33 @@
 				)}
 			</section>
 		{/if}
+
+		{#if scenes.direct.length > 0}
+			<section class="flex flex-col gap-3">
+				<h2 class="text-lg font-semibold">Scenes</h2>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each scenes.direct as scene (scene.id)}
+						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if scenes.inherited.length > 0}
+			<section class="flex flex-col gap-3">
+				<div class="flex items-baseline gap-2">
+					<h2 class="text-lg font-semibold">Scenes via studio / performer</h2>
+					<span class="text-base-content/40 text-xs">tag carried by the studio or a performer</span>
+				</div>
+				<div class="grid grid-cols-1 gap-4 opacity-90 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each scenes.inherited as scene (scene.id)}
+						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		<ScrollSentinel onvisible={loadMoreScenes} loading={loadingMoreScenes} done={scenesDone} />
 	{/if}
 </div>
 
