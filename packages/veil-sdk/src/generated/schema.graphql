@@ -89,6 +89,8 @@ type Mutation {
   removeFromCollection(collectionId: ID!, mediaId: ID!): Boolean!
   reorderCollection(collectionId: ID!, mediaIds: [ID!]!): Boolean!
   setCollectionTags(collectionId: ID!, tagIds: [ID!]!): Collection!
+  identifyFace(mediaId: ID!, imageId: ID): FaceIdentification!
+  creditPerformerByName(mediaId: ID!, name: String!): Performer!
   ensureGalleryImages(galleryId: ID!): Gallery
   linkGalleryVideo(galleryId: ID!, pluginName: String!, url: String!): Scene!
   setImageTags(imageId: ID!, tagIds: [ID!]!): Image!
@@ -269,6 +271,21 @@ type CollectionMember {
   position: Int!
   title: String!
   posterPath: String
+}
+
+type FaceIdentification {
+  candidates: [FaceCandidate!]!
+  sources: [String!]!
+  failures: [String!]!
+}
+
+type FaceCandidate {
+  name: String!
+  similarity: Float!
+  imageUrl: String
+  profileUrls: [String!]!
+  sources: [String!]!
+  performerId: ID
 }
 
 type Gallery {

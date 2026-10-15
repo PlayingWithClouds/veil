@@ -5,6 +5,7 @@
 	import { untrack } from 'svelte';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
 	import AlikeSourcesDialog from '$lib/components/AlikeSourcesDialog.svelte';
+	import FaceIdentifyDialog from '$lib/components/FaceIdentifyDialog.svelte';
 	import { activateFocusZone } from '$lib/components/FocusList.svelte';
 	import { formatClock } from '$lib/components/SceneCard.svelte';
 	import ChannelRow from '$lib/components/scene/ChannelRow.svelte';
@@ -54,6 +55,7 @@
 		qualityLabel,
 		streamHeight,
 		streamLabel,
+		type PerformerRef,
 		type SceneDetail,
 		type SceneSite,
 		type SceneStream
@@ -85,6 +87,7 @@
 		queueing = null;
 		pendingSeek = null;
 		alikeOpen = false;
+		identifyOpen = false;
 		alikeCandidates = [];
 		alikeFetchedId = null;
 		alikeLoading = false;
@@ -181,6 +184,16 @@
 				ensuredId = id;
 			});
 	});
+
+	// "Who is this?" dialog.
+	let identifyOpen = $state(false);
+
+	/** Shows a performer credited through "Who is this?" among the scene's performer chips. */
+	function addCreditedPerformer(performer: PerformerRef) {
+		if (!scene) return;
+		if (scene.performers.some((existing) => existing.id === performer.id)) return;
+		refreshedScene = { ...scene, performers: [...scene.performers, performer] };
+	}
 
 	/** Refetches the scene after its details were fetched, unless the user navigated away. */
 	async function reloadScene(id: string) {
@@ -617,6 +630,7 @@
 					performers={scene.performers}
 					ondownload={download}
 					onfindsources={openAlike}
+					onidentify={() => (identifyOpen = true)}
 					onblock={blockEntity}
 					onedge={onActionsEdge}
 				/>
@@ -661,6 +675,13 @@
 		loading={alikeLoading}
 		onClose={() => (alikeOpen = false)}
 		onAttached={onAlikeAttached}
+	/>
+	<FaceIdentifyDialog
+		open={identifyOpen}
+		subtitle={scene.title}
+		mediaId={scene.id}
+		onClose={() => (identifyOpen = false)}
+		onCredited={addCreditedPerformer}
 	/>
 {/if}
 

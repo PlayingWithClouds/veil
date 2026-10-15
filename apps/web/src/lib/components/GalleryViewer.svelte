@@ -6,6 +6,7 @@
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import CornersOutIcon from 'phosphor-svelte/lib/CornersOutIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
+	import UserFocusIcon from 'phosphor-svelte/lib/UserFocusIcon';
 	import { cacheUrl } from '$lib/img';
 	import type { Image } from '$lib/images';
 
@@ -14,9 +15,11 @@
 		index: number;
 		title: string;
 		onclose: () => void;
+		/** Asks who is in the image on screen. */
+		onidentify: (image: Image) => void;
 	}
 
-	let { images, index = $bindable(), title, onclose }: Props = $props();
+	let { images, index = $bindable(), title, onclose, onidentify }: Props = $props();
 
 	// A click zooms to CLICK_ZOOM; the wheel moves between 1 and MAX_ZOOM.
 	const CLICK_ZOOM = 2.5;
@@ -121,6 +124,19 @@
 	{/if}
 
 	<div class="absolute top-4 right-4 flex gap-2">
+		{#if image}
+			<button
+				type="button"
+				class="flex h-10 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20"
+				onclick={(event) => {
+					event.stopPropagation();
+					onidentify(image);
+				}}
+			>
+				<UserFocusIcon size={18} />
+				Who is this?
+			</button>
+		{/if}
 		<button
 			type="button"
 			class="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"

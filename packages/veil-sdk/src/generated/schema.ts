@@ -97,6 +97,8 @@ export interface Mutation {
     removeFromCollection: Scalars['Boolean']
     reorderCollection: Scalars['Boolean']
     setCollectionTags: Collection
+    identifyFace: FaceIdentification
+    creditPerformerByName: Performer
     ensureGalleryImages: (Gallery | null)
     linkGalleryVideo: Scene
     setImageTags: Image
@@ -291,6 +293,23 @@ export interface CollectionMember {
     title: Scalars['String']
     posterPath: (Scalars['String'] | null)
     __typename: 'CollectionMember'
+}
+
+export interface FaceIdentification {
+    candidates: FaceCandidate[]
+    sources: Scalars['String'][]
+    failures: Scalars['String'][]
+    __typename: 'FaceIdentification'
+}
+
+export interface FaceCandidate {
+    name: Scalars['String']
+    similarity: Scalars['Float']
+    imageUrl: (Scalars['String'] | null)
+    profileUrls: Scalars['String'][]
+    sources: Scalars['String'][]
+    performerId: (Scalars['ID'] | null)
+    __typename: 'FaceCandidate'
 }
 
 export interface Gallery {
@@ -872,6 +891,8 @@ export interface MutationGenqlSelection{
     removeFromCollection?: { __args: {collectionId: Scalars['ID'], mediaId: Scalars['ID']} }
     reorderCollection?: { __args: {collectionId: Scalars['ID'], mediaIds: Scalars['ID'][]} }
     setCollectionTags?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], tagIds: Scalars['ID'][]} })
+    identifyFace?: (FaceIdentificationGenqlSelection & { __args: {mediaId: Scalars['ID'], imageId?: (Scalars['ID'] | null)} })
+    creditPerformerByName?: (PerformerGenqlSelection & { __args: {mediaId: Scalars['ID'], name: Scalars['String']} })
     ensureGalleryImages?: (GalleryGenqlSelection & { __args: {galleryId: Scalars['ID']} })
     linkGalleryVideo?: (SceneGenqlSelection & { __args: {galleryId: Scalars['ID'], pluginName: Scalars['String'], url: Scalars['String']} })
     setImageTags?: (ImageGenqlSelection & { __args: {imageId: Scalars['ID'], tagIds: Scalars['ID'][]} })
@@ -1080,6 +1101,25 @@ export interface CollectionMemberGenqlSelection{
     position?: boolean | number
     title?: boolean | number
     posterPath?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceIdentificationGenqlSelection{
+    candidates?: FaceCandidateGenqlSelection
+    sources?: boolean | number
+    failures?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceCandidateGenqlSelection{
+    name?: boolean | number
+    similarity?: boolean | number
+    imageUrl?: boolean | number
+    profileUrls?: boolean | number
+    sources?: boolean | number
+    performerId?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1765,6 +1805,22 @@ export interface WatchlistItemGenqlSelection{
     export const isCollectionMember = (obj?: { __typename?: any } | null): obj is CollectionMember => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isCollectionMember"')
       return CollectionMember_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceIdentification_possibleTypes: string[] = ['FaceIdentification']
+    export const isFaceIdentification = (obj?: { __typename?: any } | null): obj is FaceIdentification => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceIdentification"')
+      return FaceIdentification_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceCandidate_possibleTypes: string[] = ['FaceCandidate']
+    export const isFaceCandidate = (obj?: { __typename?: any } | null): obj is FaceCandidate => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceCandidate"')
+      return FaceCandidate_possibleTypes.includes(obj.__typename)
     }
     
 

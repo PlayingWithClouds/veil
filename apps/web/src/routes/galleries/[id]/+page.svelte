@@ -11,6 +11,7 @@
 	import OCounterButton from '$lib/components/OCounterButton.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import GalleryViewer from '$lib/components/GalleryViewer.svelte';
+	import FaceIdentifyDialog from '$lib/components/FaceIdentifyDialog.svelte';
 	import AlikeMatchesDialog from '$lib/components/AlikeMatchesDialog.svelte';
 	import { openMoveDialog } from '$lib/stores/moveDialog';
 	import { notifications } from '$lib/stores/notifications';
@@ -45,6 +46,9 @@
 
 	// Viewer: index of the open image, or null when closed.
 	let viewerIndex = $state<number | null>(null);
+
+	// The gallery image "Who is this?" is asked about, or null when closed.
+	let identifyImageId = $state<string | null>(null);
 
 	// "Find the video": matches searched live across the sites.
 	let videoSearchOpen = $state(false);
@@ -189,6 +193,15 @@
 			bind:index={viewerIndex}
 			title={gallery.title}
 			onclose={() => (viewerIndex = null)}
+			onidentify={(image) => (identifyImageId = image.id)}
 		/>
 	{/if}
+
+	<FaceIdentifyDialog
+		open={identifyImageId !== null}
+		subtitle={gallery.title}
+		mediaId={gallery.id}
+		imageId={identifyImageId}
+		onClose={() => (identifyImageId = null)}
+	/>
 {/if}
