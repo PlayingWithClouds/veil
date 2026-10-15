@@ -23,7 +23,7 @@ func newBunExecutor() (*bunExecutor, error) {
 }
 
 // run starts the plugin's entry point with stdin as its input and returns its stdout.
-func (b *bunExecutor) run(ctx context.Context, p *Plugin, stdin []byte, env []string) ([]byte, error) {
+func (b *bunExecutor) run(ctx context.Context, p *Plugin, stdin []byte, env []string, onLine func([]byte)) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, b.bunPath, "run", p.EntryPoint)
 	cmd.Dir = p.Dir
 	cmd.Stdin = bytes.NewReader(stdin)
@@ -39,7 +39,20 @@ func (b *bunExecutor) run(ctx context.Context, p *Plugin, stdin []byte, env []st
 	if s := stderr.String(); s != "" {
 		log.Printf("plugin %q: %s", p.Meta.Name, s)
 	}
+	replayLines(stdout.Bytes(), onLine)
 	return stdout.Bytes(), nil
+}
+
+// replayLines hands each line of a finished run's output to onLine.
+func replayLines(stdout []byte, onLine func([]byte)) {
+	if onLine == nil {
+		return
+	}
+	for _, line := range bytes.Split(stdout, []byte("\n")) {
+		if len(bytes.TrimSpace(line)) > 0 {
+			onLine(line)
+		}
+	}
 }
 
 // install runs `bun install` inside the plugin directory.

@@ -1,4 +1,4 @@
-import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
+import { emitItems, type DiscoveredItem, type ItemsResult, type ListArgs } from "@playingwithclouds/veil-sdk";
 import type { SiteConfig } from "./sites.ts";
 
 /** Lists one site's entries, collecting at least `target` when it can (0 = one page). */
@@ -8,7 +8,9 @@ export type SiteLister = (site: SiteConfig, target: number) => Promise<Discovere
  * Runs a listing on every site in parallel and interleaves the results
  * round-robin, so no single site floods the first page. Each site collects
  * its share of offset+limit; a failing site is left out, and only when every
- * site fails does the listing fail.
+ * site fails does the listing fail. On the first page each site's share is
+ * emitted as soon as that site answers; later pages depend on every site's
+ * count, so they arrive whole.
  */
 export async function listAcrossSites(sites: SiteConfig[], args: ListArgs, lister: SiteLister): Promise<ItemsResult> {
   if (sites.length === 0) throw new Error("kvs: no sites enabled");
@@ -17,7 +19,9 @@ export async function listAcrossSites(sites: SiteConfig[], args: ListArgs, liste
   let perSiteTarget = 0;
   if (limit > 0) perSiteTarget = Math.ceil((offset + limit) / sites.length);
 
-  const outcomes = await Promise.all(sites.map((site) => settle(lister(site, perSiteTarget))));
+  const outcomes = await Promise.all(
+    sites.map((site) => settle(lister(site, perSiteTarget).then((items) => emitFirstPageShare(items, offset, perSiteTarget))))
+  );
   const lists: DiscoveredItem[][] = [];
   let firstError: unknown;
   for (const outcome of outcomes) {
@@ -30,6 +34,14 @@ export async function listAcrossSites(sites: SiteConfig[], args: ListArgs, liste
   if (lists.length === 0) throw firstError;
 
   return { items: slice(interleave(lists), offset, limit) };
+}
+
+/** Emits a site's share of the first page right away and passes its items on. */
+function emitFirstPageShare(items: DiscoveredItem[], offset: number, perSiteTarget: number): DiscoveredItem[] {
+  if (offset > 0) return items;
+  if (perSiteTarget > 0) emitItems(items.slice(0, perSiteTarget));
+  else emitItems(items);
+  return items;
 }
 
 /** A listing's items or its error, never rejecting. */

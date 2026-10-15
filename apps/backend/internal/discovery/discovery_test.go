@@ -12,15 +12,31 @@ import (
 	"github.com/playingwithclouds/veil/internal/plugins"
 )
 
+// resultListFunc answers a list call with its whole result at once.
+type resultListFunc func(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, args plugins.ListArgs) (*plugins.ItemsResult, error)
+
 // newTestService creates a discovery service on a temporary database whose
-// list calls are answered by list.
-func newTestService(t *testing.T, list listFunc) *Service {
+// list calls are answered by list, each result delivered as one batch.
+func newTestService(t *testing.T, list resultListFunc) *Service {
 	t.Helper()
 	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
+	return newStreamingTestService(t, database, func(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, args plugins.ListArgs, onItems func([]plugins.DiscoveredItem)) (*plugins.ItemsResult, error) {
+		result, err := list(ctx, plugin, entity, args)
+		if err == nil {
+			onItems(result.Items)
+		}
+		return result, err
+	})
+}
+
+// newStreamingTestService creates a discovery service whose list calls are
+// answered by list, batches and all.
+func newStreamingTestService(t *testing.T, database *db.DB, list listFunc) *Service {
+	t.Helper()
 	return &Service{ingestSvc: ingest.New(database), list: list}
 }
 
@@ -129,5 +145,41 @@ func TestListJobsKeepOnlyTheWantedEntity(t *testing.T) {
 	jobs := listJobs([]*plugins.Plugin{both}, plugins.MediaTypeScene)
 	if len(jobs) != 1 || jobs[0].entity != plugins.MediaTypeScene {
 		t.Errorf("scene-only jobs = %+v", jobs)
+	}
+}
+
+// TestRunHandsOnEachBatchWhileThePluginCrawls checks that a plugin's first
+// page reaches onHit before its second page is listed.
+func TestRunHandsOnEachBatchWhileThePluginCrawls(t *testing.T) {
+	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	firstPageShown := make(chan struct{})
+	pages := testItems("crawler", plugins.MediaTypeScene, 4)
+	service := newStreamingTestService(t, database, func(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, args plugins.ListArgs, onItems func([]plugins.DiscoveredItem)) (*plugins.ItemsResult, error) {
+		onItems(pages[:2])
+		select {
+		case <-firstPageShown:
+		case <-time.After(time.Second):
+			return nil, errors.New("first page was not handed on while crawling")
+		}
+		onItems(pages[2:])
+		return &plugins.ItemsResult{Items: pages}, nil
+	})
+
+	var hits []string
+	err = service.Run(context.Background(), Options{Query: "q"}, []*plugins.Plugin{newTestPlugin("crawler", plugins.MediaTypeScene)}, func(hit Hit) {
+		hits = append(hits, hit.Item.ExternalID)
+		if len(hits) == 2 {
+			close(firstPageShown)
+		}
+	})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(hits) != 4 {
+		t.Errorf("hits = %v, want 4", hits)
 	}
 }

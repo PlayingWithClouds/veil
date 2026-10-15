@@ -1,4 +1,4 @@
-import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
+import { emitItems, type DiscoveredItem, type ItemsResult, type ListArgs } from "@playingwithclouds/veil-sdk";
 import { fetchDocument, listingUrl, withPageParam } from "./http.ts";
 import { parseCards } from "./listing.ts";
 import { enabledSites, requireSite, type Site } from "./sites.ts";
@@ -11,6 +11,7 @@ const DEFAULT_TARGET = 30;
  * site; a `query` searches every enabled site and a bare call browses their
  * newest feeds. Results from several sites are interleaved round-robin so each
  * contributes evenly, and offset/limit slice the merged list for pagination.
+ * On the first page each site's share is emitted as soon as that site answers.
  */
 export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   const limit = args.limit || 0;
@@ -22,7 +23,7 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   if (args.url) {
     items = await listPage(args.url, target);
   } else {
-    items = await listAcrossSites(args.query ? args.query.trim() : "", target);
+    items = await listAcrossSites(args.query ? args.query.trim() : "", target, offset === 0);
   }
 
   if (limit > 0) return { items: items.slice(offset, offset + limit) };
@@ -36,8 +37,11 @@ async function listPage(url: string, target: number): Promise<DiscoveredItem[]> 
   return crawlPages(site, (page) => withPageParam(firstPage, page), target);
 }
 
-/** Searches (or browses newest) on each enabled site in parallel and interleaves the results. */
-async function listAcrossSites(query: string, target: number): Promise<DiscoveredItem[]> {
+/**
+ * Searches (or browses newest) on each enabled site in parallel and interleaves
+ * the results; emitEarly emits each site's share as soon as it is in.
+ */
+async function listAcrossSites(query: string, target: number, emitEarly: boolean): Promise<DiscoveredItem[]> {
   const sites = enabledSites();
   const perSiteTarget = Math.ceil(target / sites.length);
 
@@ -45,7 +49,10 @@ async function listAcrossSites(query: string, target: number): Promise<Discovere
     sites.map((site) => {
       let firstPage = site.newestUrl();
       if (query) firstPage = site.searchUrl(query);
-      return crawlPages(site, (page) => withPageParam(firstPage, page), perSiteTarget);
+      return crawlPages(site, (page) => withPageParam(firstPage, page), perSiteTarget).then((items) => {
+        if (emitEarly) emitItems(items.slice(0, perSiteTarget));
+        return items;
+      });
     }),
   );
 
