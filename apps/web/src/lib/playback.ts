@@ -128,6 +128,45 @@ export class Playback {
 		return Math.max(0, edge - this.video.currentTime);
 	}
 
+	/**
+	 * The playable stretch of a live stream, in media time: its playlist's first
+	 * moment (hls.js keeps seekable starting at 0 however far the playlist has
+	 * slid) to its newest, or the element's seekable range without hls.js.
+	 */
+	private liveRange(): { start: number; end: number } | null {
+		const ranges = this.video.seekable;
+		if (ranges.length === 0) return null;
+		const seekableStart = ranges.start(0);
+		const seekableEnd = ranges.end(ranges.length - 1);
+		const details = this.hls?.latestLevelDetails;
+		if (!details || details.fragments.length === 0) {
+			return { start: seekableStart, end: seekableEnd };
+		}
+		// A level with a longer history than the one first played starts before 0.
+		return { start: Math.max(details.fragmentStart, seekableStart), end: details.edge };
+	}
+
+	/**
+	 * The rewindable stretch of a live stream: how many seconds it holds (the
+	 * backend keeps the last few minutes) and how far behind its newest media
+	 * the playhead is. Both 0 until the playlist is read.
+	 */
+	liveRewind(): { bufferedSeconds: number; lagSeconds: number } {
+		const range = this.liveRange();
+		if (!range) return { bufferedSeconds: 0, lagSeconds: 0 };
+		return {
+			bufferedSeconds: Math.max(0, range.end - range.start),
+			lagSeconds: Math.max(0, range.end - this.video.currentTime)
+		};
+	}
+
+	/** Moves the playhead of a live stream to a point secondsBehind its newest media. */
+	seekBehindLive(secondsBehind: number) {
+		const range = this.liveRange();
+		if (!range) return;
+		this.video.currentTime = Math.min(range.end, Math.max(range.start, range.end - secondsBehind));
+	}
+
 	/** Jumps to the live edge and plays. */
 	seekToLiveEdge() {
 		const edge = this.hls?.liveSyncPosition;

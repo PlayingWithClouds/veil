@@ -116,6 +116,9 @@
 		// Live only: the stream failed for good (the broadcast ended or the
 		// connection was lost).
 		onstreamerror?: () => void;
+		// Live only: how much of the stream can be rewound to (seconds) and how
+		// far behind its newest media the playhead is, once a second.
+		onrewindwindow?: (bufferedSeconds: number, lagSeconds: number) => void;
 		// Extra buttons placed in the control row, before the volume.
 		controls?: Snippet;
 		// Split-view pane: the owner decides whether this player makes sound
@@ -156,6 +159,7 @@
 		onlevels,
 		onlevelchange,
 		onstreamerror,
+		onrewindwindow,
 		controls,
 		silenced,
 		keyboard = true,
@@ -1098,6 +1102,8 @@
 	const LIVE_EDGE_TOLERANCE_SECONDS = 20;
 	// How often the distance to the live edge is re-measured (it grows while paused).
 	const LIVE_LAG_INTERVAL_MS = 1000;
+	// The rewind bar appears once this much of the stream can be rewound to.
+	const LIVE_REWIND_BAR_MINIMUM_SECONDS = 10;
 
 	// The browser refused autoplay with sound, so a live stream runs muted until
 	// the user taps "Tap to unmute".
@@ -1113,6 +1119,9 @@
 
 	// Seconds behind the live edge.
 	let liveLag = $state(0);
+	// How much of the stream can be rewound to, and the playhead's distance to its newest media.
+	let rewindBufferedSeconds = $state(0);
+	let rewindLagSeconds = $state(0);
 	let behindLive = $derived(liveLag > LIVE_EDGE_TOLERANCE_SECONDS);
 	// The stream's qualities, best first; the menu shows them when there are several.
 	let liveLevels = $state<PlaybackLevel[]>([]);
@@ -1122,9 +1131,25 @@
 	$effect(() => {
 		if (!live || !activePlayback) return;
 		const playback = activePlayback;
-		const timer = setInterval(() => (liveLag = playback.liveLag()), LIVE_LAG_INTERVAL_MS);
+		const timer = setInterval(() => measureLive(playback), LIVE_LAG_INTERVAL_MS);
 		return () => clearInterval(timer);
 	});
+
+	/** Re-measures the distance to the live edge and the rewindable stretch. */
+	function measureLive(playback: Playback) {
+		liveLag = playback.liveLag();
+		const rewind = playback.liveRewind();
+		rewindBufferedSeconds = rewind.bufferedSeconds;
+		rewindLagSeconds = rewind.lagSeconds;
+		onrewindwindow?.(rewind.bufferedSeconds, rewind.lagSeconds);
+	}
+
+	/** The rewind bar was moved: play from that far behind the newest media. */
+	function seekRewindBar(event: Event) {
+		const position = Number((event.target as HTMLInputElement).value);
+		activePlayback?.seekBehindLive(rewindBufferedSeconds - position);
+		showControls();
+	}
 
 	/** Jumps back to the live edge. */
 	function goLive() {
@@ -1557,6 +1582,22 @@
 	>
 		{@render controlRow()}
 
+		<!-- A live stream rewinds within what the backend buffered: a bar from the
+		     oldest buffered moment to the newest. -->
+		{#if live && rewindBufferedSeconds >= LIVE_REWIND_BAR_MINIMUM_SECONDS}
+			<input
+				type="range"
+				min="0"
+				max={rewindBufferedSeconds}
+				value={rewindBufferedSeconds - rewindLagSeconds}
+				step="1"
+				class="player-range pointer-events-auto w-full"
+				style="--fill:{((rewindBufferedSeconds - rewindLagSeconds) / rewindBufferedSeconds) * 100}%"
+				oninput={seekRewindBar}
+				aria-label="Rewind"
+			/>
+		{/if}
+
 		<!-- Seek bar + hover-scrub thumbnail; a live stream has no timeline. -->
 		{#if !live}
 			<div
@@ -1822,6 +1863,11 @@
 			<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
 			Live
 		</span>
+		{#if rewindLagSeconds >= LIVE_REWIND_BAR_MINIMUM_SECONDS && rewindBufferedSeconds >= LIVE_REWIND_BAR_MINIMUM_SECONDS}
+			<span class="font-mono text-xs whitespace-nowrap text-white/75 tabular-nums">
+				-{fmtTime(rewindLagSeconds)}
+			</span>
+		{/if}
 		{#if behindLive}
 			<button
 				type="button"
