@@ -40,3 +40,8 @@ export function camsUrl(): string {
 export function camUrl(id: string): string {
 	return `/cams/${encodeURIComponent(id)}`;
 }
+
+/** The split view that plays several cams and videos side by side. */
+export function splitUrl(): string {
+	return '/split';
+}

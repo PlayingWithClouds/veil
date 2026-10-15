@@ -4,6 +4,7 @@
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import SpinnerGapIcon from 'phosphor-svelte/lib/SpinnerGapIcon';
 	import CardCaption from '$lib/components/CardCaption.svelte';
+	import SplitAddButton from '$lib/components/SplitAddButton.svelte';
 	import CardHoverPlayer from '$lib/components/CardHoverPlayer.svelte';
 	import { centerPreview } from '$lib/centerPreview';
 	import { formatClock } from '$lib/components/SceneCard.svelte';
@@ -229,6 +230,7 @@
 			class="absolute top-1.5 right-1.5 z-20 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
 			class:hidden={!actionable}
 		>
+			<SplitAddButton kind="scene" mediaId={scene.id} title={scene.title} />
 			<button
 				type="button"
 				onclick={save}
