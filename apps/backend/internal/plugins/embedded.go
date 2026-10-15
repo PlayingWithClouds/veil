@@ -50,12 +50,13 @@ func (e *embeddedExecutor) install(ctx context.Context, dir string) error {
 }
 
 // run executes the plugin bundle in a fresh runtime and returns what it wrote to stdout.
-func (e *embeddedExecutor) run(ctx context.Context, p *Plugin, stdin []byte, env []string) ([]byte, error) {
+func (e *embeddedExecutor) run(ctx context.Context, p *Plugin, stdin []byte, env []string, onLine func([]byte)) ([]byte, error) {
 	program, err := e.bundle(filepath.Join(p.Dir, p.EntryPoint))
 	if err != nil {
 		return nil, fmt.Errorf("plugin %q: %w", p.Meta.Name, err)
 	}
 	session := newSession(ctx, p.Meta.Name, e.fetcher, string(stdin), env)
+	session.onLine = onLine
 	stdout, err := session.run(program)
 	if err != nil {
 		return nil, fmt.Errorf("plugin %q: %w", p.Meta.Name, err)
@@ -103,9 +104,13 @@ type session struct {
 	env        []string
 	vm         *goja.Runtime
 
-	stdout   bytes.Buffer
-	exited   bool
-	exitCode int
+	stdout bytes.Buffer
+	// onLine, when set, receives each complete stdout line as it is written;
+	// lineStart is where the current, unfinished line begins in stdout.
+	onLine    func([]byte)
+	lineStart int
+	exited    bool
+	exitCode  int
 
 	// Callbacks from goroutines, run on the runtime's goroutine.
 	jobs chan func() error
@@ -239,10 +244,31 @@ func (s *session) writeSync(fd int, data string) int {
 	}
 	if fd == 1 {
 		s.stdout.WriteString(data)
+		s.passCompleteLines()
 		return len(data)
 	}
 	log.Printf("plugin %q: %s", s.pluginName, strings.TrimRight(data, "\n"))
 	return len(data)
+}
+
+// passCompleteLines hands the stdout lines finished since the last call to
+// onLine, each as its own copy.
+func (s *session) passCompleteLines() {
+	if s.onLine == nil {
+		return
+	}
+	written := s.stdout.Bytes()
+	for {
+		end := bytes.IndexByte(written[s.lineStart:], '\n')
+		if end < 0 {
+			return
+		}
+		line := written[s.lineStart : s.lineStart+end]
+		s.lineStart += end + 1
+		if len(bytes.TrimSpace(line)) > 0 {
+			s.onLine(bytes.Clone(line))
+		}
+	}
 }
 
 // console logs every level to the backend log.

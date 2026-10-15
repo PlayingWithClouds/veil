@@ -102,7 +102,7 @@ Plugins may send the site's own `rating` (0..10) and `view_count` on `Scene` and
 
 **Capabilities:** `meta`, `discover`, `scrape`, `search`, `enrich`, `resolve` (embed/page URL → playable mp4/HLS + headers; `meta.domains` routes, `"*"` = wildcard), `browse:categories`, `browse:actors`, `scene:list:page` (`scene:list` with a `url` arg lists a channel/performer/category page; eporner, hqporner).
 
-**Protocol** (stdin/stdout JSON): `{ "capability", "args" }` in, `{ "result" } | { "error" }` out — except `scrape`, which streams NDJSON: one `ScrapeResult` per line, root entity (scene/gallery/image/collection) first, then related standalone entities (performer/studio/tag).
+**Protocol** (stdin/stdout JSON): `{ "capability", "args" }` in, `{ "result" } | { "error" }` out — except `scrape`, which streams NDJSON: one `ScrapeResult` per line, root entity (scene/gallery/image/collection) first, then related standalone entities (performer/studio/tag). A list may write `{ "items": [...] }` lines before its result so live search shows them while it keeps crawling (SDK `ItemSink` for page crawls, `emitItems` for site fan-outs; spankbang, kvs, aylo do); the result still carries every item and `Runner.ListStream` forwards each item once.
 
 - `Scene.studio` is a structured `StudioRef { name, external_id?, source_url? }`.
 - Plugins may emit `Collection` with ordered `member_urls`; unresolved members are auto-queued for scraping.

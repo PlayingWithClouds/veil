@@ -17,7 +17,10 @@ type PluginSettingsProvider interface {
 // executor runs one plugin invocation in some JS runtime: the JSON request is
 // the plugin's stdin, and whatever the plugin writes to stdout comes back.
 type executor interface {
-	run(ctx context.Context, p *Plugin, stdin []byte, env []string) ([]byte, error)
+	// run returns everything the plugin wrote to stdout. onLine, when set,
+	// is called with each complete stdout line as it is written (the
+	// embedded runtime) or once the plugin ended (Bun).
+	run(ctx context.Context, p *Plugin, stdin []byte, env []string, onLine func([]byte)) ([]byte, error)
 	// install fetches the plugin's dependencies, where the runtime needs that.
 	install(ctx context.Context, dir string) error
 }
@@ -66,13 +69,19 @@ type pluginResponse struct {
 }
 
 func (r *Runner) invoke(ctx context.Context, p *Plugin, cap Capability, args interface{}) (json.RawMessage, error) {
-	stdout, err := r.execute(ctx, p, invocation{Capability: string(cap), Args: args})
+	return r.invokeStreaming(ctx, p, cap, args, nil)
+}
+
+// invokeStreaming is invoke with a callback for the lines a plugin writes
+// before its response (partial list items). The response is the last line.
+func (r *Runner) invokeStreaming(ctx context.Context, p *Plugin, cap Capability, args any, onLine func([]byte)) (json.RawMessage, error) {
+	stdout, err := r.execute(ctx, p, invocation{Capability: string(cap), Args: args}, onLine)
 	if err != nil {
 		return nil, err
 	}
 
 	var resp pluginResponse
-	if err := json.Unmarshal(stdout, &resp); err != nil {
+	if err := json.Unmarshal(lastLine(stdout), &resp); err != nil {
 		return nil, fmt.Errorf("plugin %q bad response: %w\nraw: %s", p.Meta.Name, err, stdout)
 	}
 	if resp.Error != "" {
@@ -94,7 +103,7 @@ func (r *Runner) loadMeta(ctx context.Context, dir, entryPoint string) (PluginMe
 
 // execute runs one invocation of the plugin with the global and per-plugin
 // env vars, returning its raw stdout.
-func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation) ([]byte, error) {
+func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation, onLine func([]byte)) ([]byte, error) {
 	payload, err := json.Marshal(call)
 	if err != nil {
 		return nil, err
@@ -104,7 +113,16 @@ func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation) ([]byt
 	if r.settingsProvider != nil {
 		env = append(env, r.settingsProvider.PluginEnv(p.Meta.Name)...)
 	}
-	return r.executor.run(ctx, p, payload, env)
+	return r.executor.run(ctx, p, payload, env, onLine)
+}
+
+// lastLine returns the last non-blank line of a plugin's output.
+func lastLine(stdout []byte) []byte {
+	trimmed := bytes.TrimSpace(stdout)
+	if index := bytes.LastIndexByte(trimmed, '\n'); index >= 0 {
+		return bytes.TrimSpace(trimmed[index+1:])
+	}
+	return trimmed
 }
 
 // install fetches the plugin's dependencies inside its directory.
@@ -118,11 +136,34 @@ func (r *Runner) List(ctx context.Context, p *Plugin, entity MediaType, args Lis
 	return r.items(ctx, p, ListCapability(entity), args)
 }
 
+// ListStream is List for a caller that shows results as they come: onItems
+// gets each batch of items the plugin emits while it is still crawling
+// (SDK emitItems), then the final result's items it hadn't sent, each item
+// once. Calls to onItems never overlap. Returns the full result.
+func (r *Runner) ListStream(ctx context.Context, p *Plugin, entity MediaType, args ListArgs, onItems func([]DiscoveredItem)) (*ItemsResult, error) {
+	capability := ListCapability(entity)
+	if !p.Meta.Has(capability) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, capability)
+	}
+	stream := newItemStream(onItems)
+	raw, err := r.invokeStreaming(ctx, p, capability, args, stream.line)
+	stream.close()
+	if err != nil {
+		return nil, err
+	}
+	var result ItemsResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	stream.deliver(result.Items)
+	return &result, nil
+}
+
 func (r *Runner) items(ctx context.Context, p *Plugin, cap Capability, args any) (*ItemsResult, error) {
 	if !p.Meta.Has(cap) {
 		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, cap)
 	}
-	raw, err := r.invoke(ctx, p, cap, args)
+	raw, err := r.invokeStreaming(ctx, p, cap, args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +194,7 @@ func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url stri
 		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, cap)
 	}
 
-	stdout, err := r.execute(ctx, p, invocation{Capability: string(cap), Args: FindArgs{URL: url}})
+	stdout, err := r.execute(ctx, p, invocation{Capability: string(cap), Args: FindArgs{URL: url}}, nil)
 	if err != nil {
 		return nil, err
 	}
