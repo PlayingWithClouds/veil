@@ -85,6 +85,23 @@ func (s *session) fetch(input goja.Value, init goja.Value) *goja.Promise {
 	return promise
 }
 
+// setTimeout implements the global setTimeout(callback, milliseconds), for
+// plugins that poll a job. It keeps the session alive until the callback ran.
+func (s *session) setTimeout(callback goja.Callable, milliseconds int64) {
+	s.pending++
+	go func() {
+		select {
+		case <-time.After(time.Duration(milliseconds) * time.Millisecond):
+		case <-s.done:
+			return
+		}
+		s.post(func() error {
+			_, err := callback(goja.Undefined())
+			return err
+		})
+	}()
+}
+
 // readFetchRequest reads fetch(input, init) into a request: input is a URL
 // string or URL object; init may set method, headers, body, signal, redirect.
 func (s *session) readFetchRequest(input goja.Value, init goja.Value) (fetchRequest, error) {

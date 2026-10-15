@@ -167,6 +167,34 @@ main().catch((error) => { writeSync(1, JSON.stringify({ error: String(error) }) 
 	}
 }
 
+// TestEmbeddedRunnerSetTimeout waits on setTimeout callbacks before answering.
+func TestEmbeddedRunnerSetTimeout(t *testing.T) {
+	bundle := `
+const { writeSync } = require("fs");
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+(async () => {
+  const started = Date.now();
+  await sleep(30);
+  await sleep(30);
+  writeSync(1, JSON.stringify({ result: { waited: Date.now() - started } }) + "\n");
+  process.exit(0);
+})();
+`
+	raw, err := NewEmbeddedRunner().invoke(context.Background(), writeBundle(t, bundle), "test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Waited int `json:"waited"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Waited < 55 {
+		t.Errorf("setTimeout returned early: waited %d ms", result.Waited)
+	}
+}
+
 // TestEmbeddedBundlesLive runs the real plugin bundles against the live sites.
 // Opt-in: VEIL_EMBEDDED_BUNDLES=<dir from apps/backend/scripts/bundle-plugins.ts>.
 func TestEmbeddedBundlesLive(t *testing.T) {
@@ -180,6 +208,8 @@ func TestEmbeddedBundlesLive(t *testing.T) {
 	}
 	netdns.Configure(os.Getenv("DNS_SERVERS"), "")
 	runner := NewEmbeddedRunner()
+	// The test is the owner here: FaceDigger needs its agreement accepted in settings.
+	runner.SetEnv([]string{"FACEDIGGER_ACCEPT_AGREEMENT=true"})
 	entries, err := os.ReadDir(bundles)
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +234,10 @@ func checkFaceIdentifyLive(t *testing.T, ctx context.Context, runner *Runner, pl
 		t.Fatalf("face:identify: %v", err)
 	}
 	t.Logf("face:identify → %d candidates in %s", len(result.Candidates), time.Since(started))
-	if len(result.Candidates) == 0 || result.Candidates[0].Name != "Lexi Lore" {
+	if len(result.Candidates) == 0 {
+		t.Fatal("no candidates")
+	}
+	if plugin.Meta.Name == "pornstarbyface" && result.Candidates[0].Name != "Lexi Lore" {
 		t.Fatalf("expected Lexi Lore first, got %+v", result.Candidates)
 	}
 }

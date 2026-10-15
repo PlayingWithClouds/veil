@@ -210,6 +210,7 @@ func (s *session) installGlobals() error {
 		"process":     s.process(),
 		"Bun":         s.bun(),
 		"fetch":       s.fetch,
+		"setTimeout":  s.setTimeout,
 		"AbortSignal": s.abortSignal(),
 	}
 	for name, value := range globals {
