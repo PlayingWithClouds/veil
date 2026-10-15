@@ -1,7 +1,8 @@
 <!--
 	Global top bar, YouTube style: logo on the left, the search and the
-	videos/images toggle in the middle, the library and downloads link on the
-	right. Phones get a slim bar floating over the page: logo plus a search button that opens the full-screen SearchOverlay. It slides
+	videos/images toggle in the middle, the account avatar with its dropdown (a
+	guest until login exists) on the right. Phones get a slim bar floating over
+	the page: logo plus a search button that opens the full-screen SearchOverlay. It slides
 	away while scrolling down (chromeHidden); the drawer opens by swiping, and
 	the media toggle moves into Home's chip row.
 -->
@@ -9,7 +10,6 @@
 	import { page } from '$app/stores';
 	import FilmReelIcon from 'phosphor-svelte/lib/FilmReelIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
-	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import { searchQuery } from '$lib/stores/searchQuery';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
@@ -20,6 +20,7 @@
 	import { fly } from 'svelte/transition';
 	import DesktopSearchBox from './DesktopSearchBox.svelte';
 	import MediaFilterToggle from './MediaFilterToggle.svelte';
+	import ProfileMenu from './ProfileMenu.svelte';
 
 	// Phones show the running search in the bar while Home shows its results.
 	let showingSearch = $derived($page.url.pathname === '/' && $searchQuery.trim().length > 0);
@@ -128,14 +129,7 @@
 		</div>
 
 		<div class="flex w-56 shrink-0 items-center justify-end gap-1">
-			<a
-				href="/settings"
-				title="Account"
-				aria-label="Account"
-				class="bg-base-300 hover:bg-base-content/20 text-base-content/70 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-			>
-				<UserIcon size={20} weight="fill" />
-			</a>
+			<ProfileMenu />
 		</div>
 	</header>
 {/if}
