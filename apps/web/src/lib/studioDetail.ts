@@ -35,11 +35,11 @@ export interface StudioCard {
 }
 
 // Lists studios for the index grid (ordered by name server-side).
-export async function loadStudios(limit = 120): Promise<StudioCard[]> {
+export async function loadStudios(limit = 100, offset = 0): Promise<StudioCard[]> {
 	try {
 		const data = await gqlClient.query({
 			studios: {
-				__args: { limit },
+				__args: { limit, offset },
 				id: true,
 				name: true,
 				imagePath: true,

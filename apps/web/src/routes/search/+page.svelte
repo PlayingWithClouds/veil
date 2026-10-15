@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import SpinnerGapIcon from 'phosphor-svelte/lib/SpinnerGapIcon';
 	import { goto } from '$app/navigation';
@@ -50,9 +51,20 @@
 		runSearch(query);
 	}
 
+	// Each plugin's share of one page of live results, and the size of one
+	// page of filtered (stored) results.
+	const PER_PLUGIN = 20;
+	const DB_PAGE_SIZE = 60;
+
 	let query = $state('');
 	let results = $state<PluginSearchResult[]>([]);
 	let loading = $state(false);
+	// Paging of the live search: the next page's offset, the keys shown so
+	// far, and whether a page came back with nothing new.
+	let liveOffset = 0;
+	let seen = new Set<string>();
+	let liveDone = $state(false);
+	let dbDone = $state(false);
 
 	// Advanced DB filters. When a structured dimension is set, the page switches
 	// from live plugin search to DB-backed filtered results.
@@ -63,9 +75,26 @@
 	async function runDbFilter(text: string) {
 		const token = ++requestToken;
 		loading = true;
-		const rows = await fetchFilteredScenes({ ...filter, search: text || null }, 60, 0);
+		const rows = await fetchFilteredScenes({ ...filter, search: text || null }, DB_PAGE_SIZE, 0);
 		if (token !== requestToken) return;
 		dbResults = rows;
+		dbDone = rows.length < DB_PAGE_SIZE;
+		loading = false;
+	}
+
+	/** Appends the next page of filtered results. */
+	async function loadMoreDb() {
+		if (loading || dbDone) return;
+		const token = requestToken;
+		loading = true;
+		const rows = await fetchFilteredScenes(
+			{ ...filter, search: query || null },
+			DB_PAGE_SIZE,
+			dbResults.length
+		);
+		if (token !== requestToken) return;
+		dbResults = [...dbResults, ...rows];
+		dbDone = rows.length < DB_PAGE_SIZE;
 		loading = false;
 	}
 
@@ -100,8 +129,16 @@
 			return;
 		}
 		results = [];
+		seen = new Set();
+		liveOffset = 0;
+		liveDone = false;
+		streamNextPage(text, token);
+	}
+
+	/** Streams the sites' next page of results; a page adding nothing ends the list. */
+	function streamNextPage(text: string, token: number) {
 		loading = true;
-		const seen = new Set<string>();
+		let added = 0;
 		currentStream = pluginSearchStream(
 			text,
 			activePluginNames,
@@ -109,13 +146,24 @@
 				if (token !== requestToken) return;
 				if (seen.has(result.externalId)) return;
 				seen.add(result.externalId);
+				added++;
 				results = [...results, result];
 			},
 			() => {
 				if (token !== requestToken) return;
 				loading = false;
-			}
+				currentStream = null;
+				if (added === 0) liveDone = true;
+			},
+			{ offset: liveOffset, limit: PER_PLUGIN }
 		);
+		liveOffset += PER_PLUGIN;
+	}
+
+	/** Loads the next page of live results when the end of the grid comes near. */
+	function loadMoreLive() {
+		if (loading || liveDone || !query.trim()) return;
+		streamNextPage(query, requestToken);
 	}
 
 	function scheduleSearch() {
@@ -242,6 +290,7 @@
 							<SceneCard item={sceneToCard(scene)} onclick={() => goto(`/scene/${scene.id}`)} />
 						{/each}
 					</div>
+					<ScrollSentinel onvisible={loadMoreDb} {loading} done={dbDone} />
 				{/if}
 			{:else if !query.trim()}
 				<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
@@ -252,10 +301,13 @@
 				<NsfwGrid
 					bind:this={grid}
 					items={results}
-					{loading}
+					loading={loading && results.length === 0}
 					ariaLabel="Search results"
 					onleftedge={() => keyboard?.focus()}
 				/>
+				{#if results.length > 0}
+					<ScrollSentinel onvisible={loadMoreLive} {loading} done={liveDone} />
+				{/if}
 			{/if}
 		</div>
 	</div>

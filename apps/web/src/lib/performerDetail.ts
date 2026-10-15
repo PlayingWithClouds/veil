@@ -47,11 +47,11 @@ export interface PerformerCard {
 }
 
 // Lists performers for the index grid (ordered by name server-side).
-export async function loadPerformers(limit = 120): Promise<PerformerCard[]> {
+export async function loadPerformers(limit = 100, offset = 0): Promise<PerformerCard[]> {
 	try {
 		const data = await gqlClient.query({
 			performers: {
-				__args: { limit },
+				__args: { limit, offset },
 				id: true,
 				name: true,
 				imagePath: true,
