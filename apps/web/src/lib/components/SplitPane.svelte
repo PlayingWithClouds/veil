@@ -1,7 +1,7 @@
 <!--
 	One pane of the split view: resolves the pane's stream (a cam's live HLS, or
 	a scene's best source) and plays it in its own VideoPlayer. Only the focused
-	pane has sound; the player is silenced otherwise.
+	pane has sound, unless the view plays every pane's; the player is silenced otherwise.
 -->
 <script lang="ts">
 	import ArrowClockwiseIcon from 'phosphor-svelte/lib/ArrowClockwiseIcon';
@@ -14,10 +14,13 @@
 
 	interface Props {
 		pane: SplitPane;
+		/** Gets the keyboard shortcuts (the pane last clicked). */
 		focused: boolean;
+		/** Plays its sound. */
+		audible: boolean;
 	}
 
-	let { pane, focused }: Props = $props();
+	let { pane, focused, audible }: Props = $props();
 
 	// A dropped cam stream is retried with a fresh URL (the site's tokens expire
 	// within about a minute) this many times before the room counts as offline.
@@ -125,7 +128,7 @@
 				live={pane.kind === 'cam'}
 				levelHeight={watchHeight}
 				onstreamerror={onStreamError}
-				silenced={!focused}
+				silenced={!audible}
 				keyboard={focused}
 				inline
 				fill

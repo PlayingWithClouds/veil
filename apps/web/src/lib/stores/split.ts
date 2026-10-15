@@ -22,6 +22,8 @@ export interface SplitPane {
 export interface SplitState {
 	panes: SplitPane[];
 	focusedIndex: number;
+	// Every pane plays its sound, not only the focused one.
+	allAudio: boolean;
 }
 
 /** What adding a pane did, so the caller can tell the user. */
@@ -37,7 +39,7 @@ export function splitPaneKey(pane: Pick<SplitPane, 'kind' | 'mediaId'>): string 
 
 /** Reads the saved state, dropping anything malformed. */
 function loadState(): SplitState {
-	const empty: SplitState = { panes: [], focusedIndex: 0 };
+	const empty: SplitState = { panes: [], focusedIndex: 0, allAudio: false };
 	if (!browser) return empty;
 	try {
 		const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
@@ -50,11 +52,12 @@ function loadState(): SplitState {
 					typeof pane.title === 'string'
 			)
 			.slice(0, MAX_SPLIT_PANES);
+		const allAudio = saved.allAudio === true;
 		const focusedIndex = Number(saved.focusedIndex);
 		if (!Number.isInteger(focusedIndex) || focusedIndex < 0 || focusedIndex >= panes.length) {
-			return { panes, focusedIndex: 0 };
+			return { panes, focusedIndex: 0, allAudio };
 		}
-		return { panes, focusedIndex };
+		return { panes, focusedIndex, allAudio };
 	} catch {
 		return empty;
 	}
@@ -87,12 +90,12 @@ export function addSplitPane(pane: SplitPane): SplitAddResult {
 			return { ...current, focusedIndex: existingIndex };
 		}
 		if (current.panes.length < MAX_SPLIT_PANES) {
-			return { panes: [...current.panes, pane], focusedIndex: current.panes.length };
+			return { ...current, panes: [...current.panes, pane], focusedIndex: current.panes.length };
 		}
 		result = { outcome: 'replaced', replacedTitle: current.panes[current.focusedIndex].title };
 		const panes = [...current.panes];
 		panes[current.focusedIndex] = pane;
-		return { panes, focusedIndex: current.focusedIndex };
+		return { ...current, panes };
 	});
 	return result;
 }
@@ -106,7 +109,7 @@ export function closeSplitPane(key: string) {
 		let focusedIndex = current.focusedIndex;
 		if (index < focusedIndex) focusedIndex -= 1;
 		focusedIndex = Math.max(0, Math.min(focusedIndex, panes.length - 1));
-		return { panes, focusedIndex };
+		return { ...current, panes, focusedIndex };
 	});
 }
 
@@ -129,11 +132,16 @@ export function moveSplitPane(fromIndex: number, toIndex: number) {
 		const panes = [...current.panes];
 		const [moved] = panes.splice(fromIndex, 1);
 		panes.splice(toIndex, 0, moved);
-		return { panes, focusedIndex: indexOfKey(panes, focusedKey) };
+		return { ...current, panes, focusedIndex: indexOfKey(panes, focusedKey) };
 	});
 }
 
-/** Closes every pane. */
+/** Closes every pane; the audio choice stays. */
 export function clearSplitPanes() {
-	state.set({ panes: [], focusedIndex: 0 });
+	state.update((current) => ({ ...current, panes: [], focusedIndex: 0 }));
+}
+
+/** Switches between sound from every pane and sound from the focused pane only. */
+export function toggleSplitAllAudio() {
+	state.update((current) => ({ ...current, allAudio: !current.allAudio }));
 }

@@ -10,6 +10,7 @@
 	import ArrowsInIcon from 'phosphor-svelte/lib/ArrowsInIcon';
 	import ArrowsOutIcon from 'phosphor-svelte/lib/ArrowsOutIcon';
 	import SpeakerHighIcon from 'phosphor-svelte/lib/SpeakerHighIcon';
+	import SpeakerSimpleHighIcon from 'phosphor-svelte/lib/SpeakerSimpleHighIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import { goto } from '$app/navigation';
 	import SplitPaneView from './SplitPane.svelte';
@@ -20,7 +21,8 @@
 		focusSplitPane,
 		moveSplitPane,
 		splitPaneKey,
-		splitState
+		splitState,
+		toggleSplitAllAudio
 	} from '$lib/stores/split';
 
 	interface Props {
@@ -37,6 +39,29 @@
 	let dropIndex = $state<number | null>(null);
 
 	let paneCount = $derived($splitState.panes.length);
+	// The pane a press just selected: that click only selects, it doesn't reach the player.
+	let selectingKey: string | null = null;
+
+	/** Selects a pane on press; remembers it when it wasn't selected yet. */
+	function onPanePointerDown(key: string, index: number) {
+		selectingKey = null;
+		if (index !== $splitState.focusedIndex) selectingKey = key;
+		focusSplitPane(key);
+	}
+
+	/** Keeps the click that selected a pane from also pausing or playing it. */
+	function onPaneClick(event: MouseEvent, key: string) {
+		if (selectingKey !== key) return;
+		selectingKey = null;
+		event.stopPropagation();
+	}
+
+	/** Whether the pane at index plays its sound: never in the dock, else every pane or only the focused one. */
+	function isAudible(index: number): boolean {
+		if (docked) return false;
+		if ($splitState.allAudio) return true;
+		return index === $splitState.focusedIndex;
+	}
 
 	// Panes keep one DOM position for as long as they are open and are placed by
 	// CSS order: moving a player's element within the page would stall its stream.
@@ -144,7 +169,7 @@
 					onclick={() => focusSplitPane(splitPaneKey(pane))}
 					onkeydown={(event) => event.key === 'Enter' && focusSplitPane(splitPaneKey(pane))}
 				>
-					{#if index === $splitState.focusedIndex}
+					{#if isAudible(index)}
 						<SpeakerHighIcon size={14} weight="fill" class="shrink-0" />
 					{/if}
 					<span class="truncate">{pane.title}</span>
@@ -163,6 +188,17 @@
 			{/each}
 		</div>
 		{#if paneCount > 0}
+			<button
+				type="button"
+				class="btn btn-sm"
+				class:btn-active={$splitState.allAudio}
+				aria-pressed={$splitState.allAudio}
+				onclick={toggleSplitAllAudio}
+				title="Play the sound of every pane, not only the selected one"
+			>
+				<SpeakerSimpleHighIcon size={16} weight={$splitState.allAudio ? 'fill' : 'regular'} />
+				All audio
+			</button>
 			<button type="button" class="btn btn-sm" onclick={clearSplitPanes}>Close all</button>
 			<button
 				type="button"
@@ -201,11 +237,13 @@
 						class="focus-ring relative min-h-0 min-w-0 overflow-hidden"
 						class:focus-ring-on={index === $splitState.focusedIndex && paneCount > 1}
 						style:order={index}
-						onpointerdowncapture={() => focusSplitPane(key)}
+						onpointerdowncapture={() => onPanePointerDown(key, index)}
+						onclickcapture={(event) => onPaneClick(event, key)}
 					>
 						<SplitPaneView
 							pane={$splitState.panes[index]}
 							focused={!docked && index === $splitState.focusedIndex}
+							audible={isAudible(index)}
 						/>
 					</div>
 				{/if}
