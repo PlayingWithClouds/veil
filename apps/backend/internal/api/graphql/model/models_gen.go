@@ -150,7 +150,7 @@ type FaceIdentification struct {
 	Candidates []*FaceCandidate `json:"candidates"`
 	Sources    []string         `json:"sources"`
 	Failures   []string         `json:"failures"`
-	PictureURL string           `json:"pictureUrl"`
+	PictureURL *string          `json:"pictureUrl,omitempty"`
 }
 
 type Gallery struct {

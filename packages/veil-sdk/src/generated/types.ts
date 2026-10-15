@@ -967,6 +967,9 @@ export default {
                     ],
                     "imageId": [
                         2
+                    ],
+                    "frameBase64": [
+                        1
                     ]
                 }
             ],

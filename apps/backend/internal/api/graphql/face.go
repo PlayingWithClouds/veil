@@ -1,12 +1,29 @@
 package graphql
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
+
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/face"
 )
 
 // SetFaceIdentifier wires in the "Who is this?" service.
 func (r *Resolver) SetFaceIdentifier(service *face.Service) { r.faces = service }
+
+// identifyFrame identifies the face in a video frame the user picked, sent as base64.
+func (r *Resolver) identifyFrame(ctx context.Context, frameBase64 string) (*model.FaceIdentification, error) {
+	frame, err := base64.StdEncoding.DecodeString(frameBase64)
+	if err != nil {
+		return nil, fmt.Errorf("frame is not base64: %w", err)
+	}
+	identification, err := r.faces.IdentifyPicture(ctx, frame)
+	if err != nil {
+		return nil, err
+	}
+	return faceIdentificationModel(identification), nil
+}
 
 // faceIdentificationModel converts an identification run for the API.
 func faceIdentificationModel(identification *face.Identification) *model.FaceIdentification {
@@ -18,6 +35,7 @@ func faceIdentificationModel(identification *face.Identification) *model.FaceIde
 		Candidates: candidates,
 		Sources:    nonNilStrings(identification.Sources),
 		Failures:   nonNilStrings(identification.Failures),
+		PictureURL: strPtrIfSet(identification.PictureURL),
 	}
 }
 

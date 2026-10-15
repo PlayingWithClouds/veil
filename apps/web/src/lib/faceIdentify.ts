@@ -19,20 +19,24 @@ export interface FaceCandidate {
 export interface FaceIdentification {
 	candidates: FaceCandidate[];
 	failures: string[];
+	/** The stored picture that was sent; null when a frame was. */
+	pictureUrl: string | null;
 }
 
 /**
  * Asks the face-recognition plugins who is in the picture of a scene (its
- * thumbnail), a gallery (imageId, else its first image) or an image. Takes a
- * few seconds: the sites are queried live.
+ * thumbnail), a gallery (imageId, else its first image) or an image, or in a
+ * video frame (base64 JPEG) when one is given. Takes a few seconds: the sites
+ * are queried live.
  */
 export async function identifyFace(
 	mediaId: string,
-	imageId?: string | null
+	imageId?: string | null,
+	frameBase64?: string | null
 ): Promise<FaceIdentification> {
 	const data = await gqlClient.mutation({
 		identifyFace: {
-			__args: { mediaId, imageId: imageId || null },
+			__args: { mediaId, imageId: imageId || null, frameBase64: frameBase64 || null },
 			candidates: {
 				name: true,
 				similarity: true,
@@ -41,7 +45,8 @@ export async function identifyFace(
 				sources: true,
 				performerId: true
 			},
-			failures: true
+			failures: true,
+			pictureUrl: true
 		}
 	});
 	return data.identifyFace as unknown as FaceIdentification;

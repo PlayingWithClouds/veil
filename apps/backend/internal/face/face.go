@@ -50,6 +50,8 @@ type Identification struct {
 	// Sources are the plugins that answered; Failures describe those that did not.
 	Sources  []string
 	Failures []string
+	// PictureURL is the stored picture that was sent; empty for a supplied one.
+	PictureURL string
 }
 
 // Library is the performer store: lookups and crediting (ingest.Service).
@@ -87,10 +89,6 @@ func New(database *db.DB, library Library, registry *plugins.Registry, runner *p
 // thumbnail, an image, or a gallery's image imageID or first image) and
 // returns the merged candidates, best first.
 func (s *Service) Identify(ctx context.Context, mediaID, imageID string) (*Identification, error) {
-	services := s.services()
-	if len(services) == 0 {
-		return nil, fmt.Errorf("no face recognition plugin is installed")
-	}
 	pictureURL, err := s.pictureURL(ctx, mediaID, imageID)
 	if err != nil {
 		return nil, err
@@ -98,6 +96,21 @@ func (s *Service) Identify(ctx context.Context, mediaID, imageID string) (*Ident
 	picture, err := s.loadPicture(ctx, pictureURL)
 	if err != nil {
 		return nil, fmt.Errorf("load picture: %w", err)
+	}
+	identification, err := s.IdentifyPicture(ctx, picture)
+	if err != nil {
+		return nil, err
+	}
+	identification.PictureURL = pictureURL
+	return identification, nil
+}
+
+// IdentifyPicture runs the face services on a picture the caller supplies,
+// such as a video frame the user picked, and returns the merged candidates, best first.
+func (s *Service) IdentifyPicture(ctx context.Context, picture []byte) (*Identification, error) {
+	services := s.services()
+	if len(services) == 0 {
+		return nil, fmt.Errorf("no face recognition plugin is installed")
 	}
 	if len(picture) == 0 || len(picture) > maxPictureBytes {
 		return nil, fmt.Errorf("picture is empty or larger than %d MB", maxPictureBytes>>20)

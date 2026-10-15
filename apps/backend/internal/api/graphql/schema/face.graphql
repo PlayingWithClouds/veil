@@ -5,8 +5,10 @@
 extend type Mutation {
   # Sends the picture of a scene (its thumbnail or poster), of an image, or of a
   # gallery (imageId, else its first image) to every face-recognition plugin and
-  # returns the merged candidates, best first.
-  identifyFace(mediaId: ID!, imageId: ID): FaceIdentification!
+  # returns the merged candidates, best first. frameBase64 (a JPEG or PNG, e.g.
+  # the video frame the user paused on) is sent instead when given; mediaId is
+  # then only the media the pick gets credited to.
+  identifyFace(mediaId: ID!, imageId: ID, frameBase64: String): FaceIdentification!
   # Credits the performer called name to a scene or gallery (an image counts for
   # its gallery), creating the performer when the library has none. The name is
   # matched like ingest does (spelling-insensitive, aliases).
@@ -19,6 +21,9 @@ type FaceIdentification {
   sources: [String!]!
   # One line per plugin that failed or timed out.
   failures: [String!]!
+  # The stored picture that was sent (scene thumbnail or poster, gallery image);
+  # null when frameBase64 was.
+  pictureUrl: String
 }
 
 type FaceCandidate {
