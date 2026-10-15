@@ -224,16 +224,23 @@ export interface RecommendedSceneHit {
 /**
  * One page of the ranked recommendation feed, for Home. Offset 0 keeps the
  * ranking for 10 minutes (so a reload shows the same feed) unless refresh is
- * set; later offsets continue that ranking so pages don't overlap.
+ * set; later offsets continue that ranking so pages don't overlap. Non-empty
+ * sources page through those sites' share of the ranking; when its first
+ * page comes up short the backend pulls fresh scenes from them first.
  */
 export async function fetchRecommendedSceneHits(
 	limit: number,
 	offset: number,
-	refresh = false
+	refresh = false,
+	sources: string[] = []
 ): Promise<RecommendedSceneHit[]> {
 	try {
 		const data = await gqlClient.query({
-			recommendations: { __args: { limit, offset, refresh }, scene: SCENE_HIT_FIELDS, source: true }
+			recommendations: {
+				__args: { limit, offset, refresh, sources },
+				scene: SCENE_HIT_FIELDS,
+				source: true
+			}
 		});
 		const rows = (data.recommendations ?? []) as unknown as { scene: SceneRow; source: string }[];
 		return rows.map((row) => ({ scene: sceneRowToHit(row.scene), source: row.source }));

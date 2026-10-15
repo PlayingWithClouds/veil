@@ -36,6 +36,7 @@ type Resolver struct {
 	searchRuns   *updater.Scheduler
 	entityScenes *updater.EntityScenes
 	recommender  *recommend.Engine
+	feeder       *updater.Feeder
 	pluginStore  *pluginstore.Store
 	suggestions  *suggest.Service
 	siteSuggest  *sitesuggest.Service
@@ -85,6 +86,9 @@ func (r *Resolver) SetEntityScenes(fetcher *updater.EntityScenes) { r.entityScen
 
 // SetRecommender wires in the recommendation engine.
 func (r *Resolver) SetRecommender(engine *recommend.Engine) { r.recommender = engine }
+
+// SetFeeder wires in the feeder that pulls a short site-filtered feed's sites.
+func (r *Resolver) SetFeeder(feeder *updater.Feeder) { r.feeder = feeder }
 
 // SetPluginStore wires in the npm plugin store (install, update, uninstall).
 func (r *Resolver) SetPluginStore(store *pluginstore.Store) { r.pluginStore = store }

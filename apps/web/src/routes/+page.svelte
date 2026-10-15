@@ -68,14 +68,16 @@
 	let isSearching = $derived(query.trim().length > 0);
 
 	// Mirror the query into the URL (shallow, no navigation) so it survives a
-	// round-trip through a scene page.
+	// round-trip through a scene page. Compared with window.location, not
+	// $page.url: shallow replaceState leaves page.url as it was, and reading
+	// $page here would re-run this effect on every replaceState.
 	$effect(() => {
 		if (!browser) return;
-		const url = new URL($page.url);
+		const url = new URL(window.location.href);
 		const trimmed = query.trim();
 		if (trimmed) url.searchParams.set('q', trimmed);
 		else url.searchParams.delete('q');
-		if (url.href !== $page.url.href) replaceState(url, {});
+		if (url.href !== window.location.href) replaceState(url, {});
 	});
 
 	let performers = $state<PerformerHit[]>([]);
@@ -174,14 +176,6 @@
 		return merged;
 	}
 
-	/** Whether a recommended scene came from one of the selected sites (none selected = all). */
-	function matchesSelectedSites(scene: SceneHit): boolean {
-		if (activeSources.length === 0) return true;
-		const site = pluginForUrl(scene.sourceUrl, sites);
-		if (!site) return false;
-		return activeSources.includes(site.name);
-	}
-
 	/** Next page of scenes: search matches, or the recommendation feed when there is no query. */
 	async function nextScenePage(text: string): Promise<SceneHit[]> {
 		if (sceneFeedDone) return [];
@@ -193,11 +187,16 @@
 		}
 		const refresh = refreshRequested && sceneOffset === 0;
 		refreshRequested = false;
-		const recommended = await fetchRecommendedSceneHits(SCENE_PAGE_SIZE, sceneOffset, refresh);
+		const recommended = await fetchRecommendedSceneHits(
+			SCENE_PAGE_SIZE,
+			sceneOffset,
+			refresh,
+			activeSources
+		);
 		sceneOffset += recommended.length;
 		sceneFeedDone = recommended.length < SCENE_PAGE_SIZE;
 		for (const entry of recommended) recommendationSources.set(entry.scene.id, entry.source);
-		return recommended.map((entry) => entry.scene).filter(matchesSelectedSites);
+		return recommended.map((entry) => entry.scene);
 	}
 
 	/** Next page of galleries matching the query (newest first when there is none). */
