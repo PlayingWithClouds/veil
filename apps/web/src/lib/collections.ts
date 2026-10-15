@@ -12,6 +12,8 @@ export interface Collection {
 	itemCount: number;
 	coverPath: string | null;
 	origin: 'user' | 'scraped';
+	// The built-in Favorites collection: no rename, no delete.
+	builtIn: boolean;
 	tags: TagRef[];
 	createdAt: string;
 	updatedAt: string;
@@ -32,6 +34,7 @@ const COLLECTION_FIELDS = {
 	itemCount: true,
 	coverPath: true,
 	origin: true,
+	builtIn: true,
 	tags: { id: true, name: true },
 	createdAt: true,
 	updatedAt: true
@@ -77,6 +80,9 @@ export async function fetchCollectionMembers(collectionId: string): Promise<Coll
 		return [];
 	}
 }
+
+// Id of the built-in Favorites collection the favorite buttons fill.
+export const FAVORITES_COLLECTION_ID = 'collection:favorites';
 
 // Ids of the user's own collections that already contain the given record.
 export async function collectionIdsForEntity(mediaId: string): Promise<string[]> {

@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,13 @@ type collectionRecord struct {
 	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
+// FavoritesCollectionID is the built-in Favorites collection (migration 025),
+// which can be neither renamed nor deleted.
+const FavoritesCollectionID = "collection:favorites"
+
+// ErrBuiltInCollection is returned when renaming or deleting Favorites.
+var ErrBuiltInCollection = errors.New("the Favorites collection cannot be renamed or deleted")
+
 func (r *Repository) collectionToModel(ctx context.Context, c collectionRecord) *model.Collection {
 	origin := "scraped"
 	if c.UserCreated {
@@ -50,6 +58,7 @@ func (r *Repository) collectionToModel(ctx context.Context, c collectionRecord) 
 		CoverPath:  coverPath,
 		ItemCount:  itemCount,
 		Origin:     origin,
+		BuiltIn:    recordIDString(c.ID) == FavoritesCollectionID,
 		SourceURL:  c.SourceURL,
 		ExternalID: c.ExternalID,
 		Tags:       r.tagsByIDs(ctx, c.Tags),
@@ -69,6 +78,9 @@ func (r *Repository) CreateCollection(ctx context.Context, name string) (*model.
 
 // RenameCollection changes a collection's name.
 func (r *Repository) RenameCollection(ctx context.Context, collectionID, name string) (*model.Collection, error) {
+	if collectionID == FavoritesCollectionID {
+		return nil, ErrBuiltInCollection
+	}
 	id, err := db.ParseRecordID(collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid collection id: %w", err)
@@ -93,6 +105,9 @@ func (r *Repository) requireCollection(ctx context.Context, id db.RecordID, oper
 
 // DeleteCollection removes a collection and all its membership rows.
 func (r *Repository) DeleteCollection(ctx context.Context, collectionID string) (bool, error) {
+	if collectionID == FavoritesCollectionID {
+		return false, ErrBuiltInCollection
+	}
 	id, err := db.ParseRecordID(collectionID)
 	if err != nil {
 		return false, fmt.Errorf("invalid collection id: %w", err)
@@ -223,7 +238,7 @@ func (r *Repository) ListCollections(ctx context.Context, search, tagID, origin 
 	}
 
 	query := fmt.Sprintf(
-		"SELECT * FROM collection %s ORDER BY created_at DESC LIMIT $limit OFFSET $offset", where)
+		"SELECT * FROM collection %s ORDER BY id = 'collection:favorites' DESC, created_at DESC LIMIT $limit OFFSET $offset", where)
 	rows, err := db.QueryAs[collectionRecord](ctx, r.database, query, vars)
 	if err != nil {
 		return nil, fmt.Errorf("list collections: %w", err)

@@ -23,6 +23,8 @@
 	let members = $state<CollectionMember[]>(data.members);
 	// Scraper-created collections render read-only: no rename, reorder, or remove.
 	let editable = $derived(data.collection?.origin !== 'scraped');
+	// Favorites keeps its name and can't be deleted; its members still can be edited.
+	let renamable = $derived(editable && !data.collection?.builtIn);
 	let tags = $derived(data.collection?.tags ?? []);
 
 	let editingName = $state(false);
@@ -88,7 +90,7 @@
 		>
 			<ArrowLeftIcon size={18} />
 		</button>
-		{#if editingName && editable}
+		{#if editingName && renamable}
 			<input
 				type="text"
 				bind:value={name}
@@ -99,7 +101,7 @@
 			/>
 		{:else}
 			<h1 class="text-3xl font-bold">{name}</h1>
-			{#if editable}
+			{#if renamable}
 				<button
 					type="button"
 					class="text-base-content/40 hover:text-base-content"
@@ -108,14 +110,14 @@
 				>
 					<PencilSimpleIcon size={18} />
 				</button>
-			{:else}
+			{:else if !editable}
 				<span class="text-base-content/40 flex items-center gap-1 text-xs" title="Created by a source plugin">
 					<RobotIcon size={14} /> from source
 				</span>
 			{/if}
 		{/if}
 		<span class="text-base-content/40 text-sm">{members.length} items</span>
-		{#if editable}
+		{#if renamable}
 			<button
 				type="button"
 				class="text-base-content/40 hover:text-error ml-auto"

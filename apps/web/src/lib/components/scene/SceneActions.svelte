@@ -1,5 +1,5 @@
 <script lang="ts">
-	// The watch page's action pill group: rating, o-counter, save, watchlist,
+	// The watch page's action pill group: rating, o-counter, favorite, save, watchlist,
 	// download (quality menu), find sources, and an overflow menu for blocking.
 	// Left/Right arrows move between the pills for D-pad navigation.
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
@@ -12,6 +12,7 @@
 	import RatingButtons from '$lib/components/RatingButtons.svelte';
 	import OCounterButton from '$lib/components/OCounterButton.svelte';
 	import WatchlistButton from '$lib/components/WatchlistButton.svelte';
+	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import { openMoveDialog } from '$lib/stores/moveDialog';
 	import { formatSpeed } from '$lib/tmdb';
 	import {
@@ -119,6 +120,7 @@
 <div class="flex flex-wrap items-center gap-2" bind:this={group} onkeydown={onKeydown}>
 	<RatingButtons mediaId={sceneId} />
 	<OCounterButton mediaId={sceneId} />
+	<FavoriteButton mediaId={sceneId} />
 	<button
 		type="button"
 		class={PILL_CLASS}
