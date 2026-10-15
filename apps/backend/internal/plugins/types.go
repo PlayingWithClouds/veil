@@ -332,6 +332,9 @@ type Gallery struct {
 	Tags       []string         `json:"tags,omitempty"`
 	CoverPath  string           `json:"cover_path,omitempty"`
 	Images     []Image          `json:"images,omitempty"`
+	// ImageCount is the photo count a listing shows for a gallery whose images
+	// aren't scraped yet; the stored count is replaced by the real one on a visit.
+	ImageCount int `json:"image_count,omitempty"`
 }
 
 // ImageContent is a standalone content image (not an asset like a poster or

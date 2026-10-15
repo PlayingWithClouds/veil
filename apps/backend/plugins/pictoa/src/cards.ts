@@ -47,7 +47,20 @@ function stubFromTitleLink(titleLink: Element): DiscoveredItem | undefined {
   };
   const cover = coverOfCard(titleLink);
   if (cover !== "") item.poster_path = cover;
+  const photoCount = photoCountOfCard(titleLink);
+  if (photoCount > 0) item.count = photoCount;
   return item;
+}
+
+/** The number of photos the album card shows, or 0 when it shows none. */
+function photoCountOfCard(titleLink: Element): number {
+  const card = titleLink.parentNode;
+  if (card === null) return 0;
+  const badge = card.querySelector(".photo-count");
+  if (badge === null) return 0;
+  const photoCount = parseInt(badge.text.trim(), 10);
+  if (Number.isNaN(photoCount)) return 0;
+  return photoCount;
 }
 
 /** The thumbnail URL of the album card that holds a title link, or "" when the card has none. */

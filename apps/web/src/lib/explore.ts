@@ -415,7 +415,7 @@ export function streamResultToGridItem(result: PluginSearchResult): GridItem | n
 			id: result.dbId,
 			title: result.title,
 			coverUrl: cacheUrl(result.posterUrl),
-			imageCount: 0,
+			imageCount: result.photoCount || 0,
 			tags: [],
 			sourceUrl: result.sourceUrl
 		}

@@ -24,9 +24,9 @@
 
 	let { gallery, preferredTag = null, site = null, onclick }: Props = $props();
 
-	let imageCountLabel = $derived.by(() => {
-		if (gallery.imageCount <= 0) return null;
-		return `${gallery.imageCount} images`;
+	let photoCountLabel = $derived.by(() => {
+		if (gallery.imageCount === 1) return '1 photo';
+		return `${gallery.imageCount} photos`;
 	});
 
 	let saved = $state(false);
@@ -72,7 +72,7 @@
 					class="absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white"
 				>
 					<ImagesIcon size={12} />
-					{gallery.imageCount}
+					{photoCountLabel}
 				</span>
 			{/if}
 		</button>
@@ -98,5 +98,5 @@
 		</div>
 	</div>
 
-	<CardCaption title={gallery.title} {site} detail={imageCountLabel} {onclick} />
+	<CardCaption title={gallery.title} {site} {onclick} />
 </div>

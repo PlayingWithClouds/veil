@@ -49,6 +49,12 @@ describe("listing pages (offline)", () => {
     );
   });
 
+  test("album cards carry their photo count", () => {
+    const items = albumsFromRoot(parse(loadFixture("search.html")));
+    const zoe = items.find((item) => item.title.startsWith("Amatuer brunette Zoe Wood"));
+    expect(zoe?.count).toBe(15);
+  });
+
   test("a search page lists its albums too", () => {
     const items = albumsFromRoot(parse(loadFixture("search.html")));
     expect(items.length).toBe(72);
