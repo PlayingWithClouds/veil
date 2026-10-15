@@ -39,25 +39,36 @@ type recordingRow struct {
 	DurationSeconds float64 `json:"duration_seconds"`
 	SizeBytes       int64   `json:"size_bytes"`
 	DisplayName     string  `json:"display_name"`
+	ThumbnailURL    *string `json:"thumbnail_url"`
+	Quality         *string `json:"quality"`
 }
 
 // toModel maps a stored recording to the GraphQL model.
 func (row recordingRow) toModel() *model.CamRecording {
 	return &model.CamRecording{
-		ID: row.ID, CamModelID: row.CamModel, DisplayName: row.DisplayName, Status: row.Status,
+		ID: row.ID, CamModelID: row.CamModel, DisplayName: row.DisplayName, ThumbnailURL: row.ThumbnailURL, Quality: row.Quality, Status: row.Status,
 		StopReason: row.StopReason, StartedAt: row.StartedAt, EndedAt: row.EndedAt,
 		DurationSeconds: row.DurationSeconds, SizeBytes: float64(row.SizeBytes), SceneID: row.Scene,
 	}
 }
 
-const recordingSelect = `SELECT r.*, m.display_name FROM cam_recording r JOIN cam_model m ON m.id = r.cam_model`
+const recordingSelect = `SELECT r.*, m.display_name, m.thumbnail_url FROM cam_recording r JOIN cam_model m ON m.id = r.cam_model`
 
 // insertRow stores the row of a capture that has just started.
 func (r *Recorder) insertRow(ctx context.Context, recording *capture) error {
 	_, err := r.service.database.Exec(ctx,
-		`INSERT INTO cam_recording (id, cam_model, status, started_at) VALUES ($id, $model, $status, $startedAt)`,
-		db.Vars{"id": recording.recordID, "model": recording.camera.ID, "status": statusRecording, "startedAt": formatTime(recording.startedAt)})
+		`INSERT INTO cam_recording (id, cam_model, status, started_at, quality) VALUES ($id, $model, $status, $startedAt, $quality)`,
+		db.Vars{"id": recording.recordID, "model": recording.camera.ID, "status": statusRecording,
+			"startedAt": formatTime(recording.startedAt), "quality": derefOrNil(recording.quality())})
 	return err
+}
+
+// derefOrNil binds an absent string as NULL.
+func derefOrNil(value *string) any {
+	if value == nil {
+		return nil
+	}
+	return *value
 }
 
 // loadRecording returns one stored recording.
@@ -104,10 +115,9 @@ func sortRecordings(recordings []*model.CamRecording) {
 // finish writes the final playlist and files the capture as a scene. A capture
 // without enough footage is deleted instead.
 func (r *Recorder) finish(ctx context.Context, recording *capture, reason string) {
+	duration, size := recording.totals()
 	recording.mutex.Lock()
-	duration := recording.durationSeconds
-	size := recording.sizeBytes
-	segmentCount := len(recording.segments)
+	segmentCount := len(recording.video.segments)
 	recording.mutex.Unlock()
 
 	if segmentCount == 0 || duration < minimumRecordingSeconds {
@@ -142,9 +152,9 @@ func (r *Recorder) updateRow(ctx context.Context, recording *capture, status, re
 	}
 	_, err := r.service.database.Exec(ctx,
 		`UPDATE cam_recording SET status = $status, stop_reason = $reason, scene = $scene, ended_at = $endedAt,
-		 duration_seconds = $duration, size_bytes = $size WHERE id = $id`,
+		 duration_seconds = $duration, size_bytes = $size, quality = COALESCE($quality, quality) WHERE id = $id`,
 		db.Vars{"id": recording.recordID, "status": status, "reason": reason, "scene": scene,
-			"endedAt": formatTime(time.Now()), "duration": duration, "size": size})
+			"endedAt": formatTime(time.Now()), "duration": duration, "size": size, "quality": derefOrNil(recording.quality())})
 	if err != nil {
 		log.Printf("cams: update recording %s: %v", recording.recordID, err)
 	}
@@ -159,23 +169,55 @@ func (r *Recorder) publish(ctx context.Context, recording *capture) (string, err
 	return r.createScene(ctx, recording, posterURL)
 }
 
-// flushPlaylist writes the playlist so far, so a crash keeps the footage.
+// flushPlaylist writes the playlists so far, so a crash keeps the footage.
 func (r *Recorder) flushPlaylist(recording *capture) {
 	if err := r.writePlaylist(recording.context, recording, false); err != nil {
 		log.Printf("cams: record %s: write playlist: %v", recording.camera.Username, err)
 		return
 	}
 	recording.mutex.Lock()
-	recording.flushedSegments = len(recording.segments)
+	recording.video.flushedSegments = len(recording.video.segments)
+	if recording.audio != nil {
+		recording.audio.flushedSegments = len(recording.audio.segments)
+	}
 	recording.mutex.Unlock()
 }
 
-// writePlaylist stores the recording's VOD playlist; ended closes it.
+// writePlaylist stores the recording's VOD playlists; ended closes them. A
+// stream with a separate audio rendition gets one playlist per track and a
+// master (index.m3u8) joining them; otherwise index.m3u8 is the one playlist.
 func (r *Recorder) writePlaylist(ctx context.Context, recording *capture, ended bool) error {
 	recording.mutex.Lock()
-	text := renderPlaylist(recording.segments, ended)
+	videoText := renderPlaylist(recording.video.segments, ended)
+	audioText := ""
+	if recording.audio != nil && len(recording.audio.segments) > 0 {
+		audioText = renderPlaylist(recording.audio.segments, ended)
+	}
 	recording.mutex.Unlock()
-	return r.blobs.Put(ctx, recording.blobDirectory()+playlistName, strings.NewReader(text), int64(len(text)), "application/x-mpegURL")
+
+	directory := recording.blobDirectory()
+	if audioText == "" {
+		return r.putText(ctx, directory+playlistName, videoText)
+	}
+	if err := r.putText(ctx, directory+recording.video.playlistName, videoText); err != nil {
+		return err
+	}
+	if err := r.putText(ctx, directory+recording.audio.playlistName, audioText); err != nil {
+		return err
+	}
+	return r.putText(ctx, directory+playlistName, renderMaster(recording.video.playlistName, recording.audio.playlistName))
+}
+
+// putText stores a text blob.
+func (r *Recorder) putText(ctx context.Context, key, text string) error {
+	return r.blobs.Put(ctx, key, strings.NewReader(text), int64(len(text)), "application/x-mpegURL")
+}
+
+// renderMaster builds the master playlist joining a video and an audio playlist.
+func renderMaster(videoPlaylist, audioPlaylist string) string {
+	return "#EXTM3U\n#EXT-X-VERSION:7\n" +
+		fmt.Sprintf("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Audio\",DEFAULT=YES,AUTOSELECT=YES,URI=%q\n", audioPlaylist) +
+		"#EXT-X-STREAM-INF:BANDWIDTH=5000000,AUDIO=\"audio\"\n" + videoPlaylist + "\n"
 }
 
 // renderPlaylist builds an HLS playlist over stored segments with relative URIs.
@@ -231,10 +273,7 @@ func (r *Recorder) storePoster(ctx context.Context, recording *capture) string {
 // createScene files the recording as a scene credited to the model's
 // performer, with the recording as its one stream. It returns the scene id.
 func (r *Recorder) createScene(ctx context.Context, recording *capture, posterURL string) (string, error) {
-	recording.mutex.Lock()
-	duration := recording.durationSeconds
-	size := recording.sizeBytes
-	recording.mutex.Unlock()
+	duration, size := recording.totals()
 
 	camera := recording.camera
 	sourceURL := ingest.RecordingSourcePrefix + recording.recordID
@@ -243,7 +282,7 @@ func (r *Recorder) createScene(ctx context.Context, recording *capture, posterUR
 		ExternalID: recording.recordID,
 		SourceURL:  sourceURL,
 		Title:      fmt.Sprintf("%s — live %s", camera.DisplayName, recording.startedAt.Local().Format("2006-01-02 15:04")),
-		Date:       recording.startedAt.UTC().Format("2006-01-02"),
+		Date:       recording.startedAt.UTC().Format(time.RFC3339),
 		Duration:   int(math.Round(duration)),
 		Studio:     r.siteStudio(camera),
 		Performers: []plugins.ScenePerformer{{Name: camera.DisplayName}},
@@ -311,45 +350,73 @@ func (r *Recorder) recoverOne(ctx context.Context, row recordingRow) {
 		return
 	}
 	startedAt, _ := time.Parse(time.RFC3339, row.StartedAt)
-	recording := &capture{recordID: row.ID, camera: *camera, startedAt: startedAt, context: ctx}
+	recording := &capture{recordID: row.ID, camera: *camera, startedAt: startedAt, context: ctx, video: newTrack("seg", "init", "video.m3u8")}
 	if err := r.restoreSegments(ctx, recording); err != nil {
 		log.Printf("cams: recover %s: %v", row.ID, err)
 	}
 	r.finish(ctx, recording, reasonRestart)
 }
 
-// restoreSegments reads the flushed playlist back into the capture.
+// restoreSegments reads the flushed playlists back into the capture.
 func (r *Recorder) restoreSegments(ctx context.Context, recording *capture) error {
-	reader, err := r.blobs.Get(ctx, recording.blobDirectory()+playlistName)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	base, _ := url.Parse("http://recording.invalid/")
-	playlist, err := parseMediaPlaylist(string(data), base)
+	directory := recording.blobDirectory()
+	indexText, err := r.readText(ctx, directory+playlistName)
 	if err != nil {
 		return err
 	}
 	sizes := map[string]int64{}
-	files, _ := r.blobs.List(ctx, recording.blobDirectory())
+	files, _ := r.blobs.List(ctx, directory)
 	for _, file := range files {
-		sizes[strings.TrimPrefix(file.Key, recording.blobDirectory())] = file.Size
+		sizes[strings.TrimPrefix(file.Key, directory)] = file.Size
+	}
+	recording.video = newTrack("seg", "init", "video.m3u8")
+	if !strings.Contains(indexText, "#EXT-X-STREAM-INF") {
+		return restoreTrack(recording.video, indexText, sizes)
+	}
+	videoText, err := r.readText(ctx, directory+recording.video.playlistName)
+	if err != nil {
+		return err
+	}
+	if err := restoreTrack(recording.video, videoText, sizes); err != nil {
+		return err
+	}
+	audioText, err := r.readText(ctx, directory+"audio.m3u8")
+	if err != nil {
+		return nil
+	}
+	recording.audio = newTrack("aseg", "ainit", "audio.m3u8")
+	return restoreTrack(recording.audio, audioText, sizes)
+}
+
+// readText reads a stored text blob.
+func (r *Recorder) readText(ctx context.Context, key string) (string, error) {
+	reader, err := r.blobs.Get(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+	data, err := io.ReadAll(reader)
+	return string(data), err
+}
+
+// restoreTrack fills a track from the text of its flushed playlist.
+func restoreTrack(restored *track, playlistText string, sizes map[string]int64) error {
+	base, _ := url.Parse("http://recording.invalid/")
+	playlist, err := parseMediaPlaylist(playlistText, base)
+	if err != nil {
+		return err
 	}
 	for _, segment := range playlist.Segments {
 		name := strings.TrimPrefix(segment.Identity, "/")
-		initName := strings.TrimPrefix(urlIdentity(segment.InitURL), "/")
-		if segment.InitURL == "" {
-			initName = ""
+		initName := ""
+		if segment.InitURL != "" {
+			initName = strings.TrimPrefix(urlIdentity(segment.InitURL), "/")
 		}
-		recording.segments = append(recording.segments, storedSegment{
+		restored.segments = append(restored.segments, storedSegment{
 			name: name, duration: segment.Duration, initName: initName, discontinuity: segment.Discontinuity,
 		})
-		recording.durationSeconds += segment.Duration
-		recording.sizeBytes += sizes[name]
+		restored.durationSeconds += segment.Duration
+		restored.sizeBytes += sizes[name]
 	}
 	return nil
 }

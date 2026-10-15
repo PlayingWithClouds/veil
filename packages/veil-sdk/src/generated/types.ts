@@ -844,6 +844,9 @@ export default {
                     "id": [
                         2,
                         "ID!"
+                    ],
+                    "quality": [
+                        1
                     ]
                 }
             ],
@@ -866,6 +869,9 @@ export default {
                     "enabled": [
                         4,
                         "Boolean!"
+                    ],
+                    "quality": [
+                        1
                     ]
                 }
             ],
@@ -1710,6 +1716,9 @@ export default {
             "autoRecord": [
                 4
             ],
+            "recordQuality": [
+                1
+            ],
             "__typename": [
                 1
             ]
@@ -1758,6 +1767,12 @@ export default {
                 2
             ],
             "displayName": [
+                1
+            ],
+            "thumbnailUrl": [
+                1
+            ],
+            "quality": [
                 1
             ],
             "status": [
@@ -1901,6 +1916,9 @@ export default {
                 1
             ],
             "failures": [
+                1
+            ],
+            "pictureUrl": [
                 1
             ],
             "__typename": [

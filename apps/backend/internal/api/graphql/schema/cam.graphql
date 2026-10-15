@@ -45,6 +45,9 @@ type CamModel {
   followed: Boolean!
   # Recorded automatically whenever the model is live.
   autoRecord: Boolean!
+  # What auto-record captures: source (the best rendition) or a height like 480;
+  # the closest rendition at or below it, else the lowest above.
+  recordQuality: String!
 }
 
 type CamRoomPage {
@@ -74,17 +77,23 @@ extend type Mutation {
   # the room is already being recorded. Recording runs in the backend until
   # stopped, the room goes offline or the maximum duration passes, then the
   # footage becomes a scene.
-  startCamRecording(id: ID!): CamRecording!
+  # quality: source (default, the best rendition) or a target height like 480.
+  startCamRecording(id: ID!, quality: String): CamRecording!
   # Stop the room's recording and wait for its scene; null when none was running.
   stopCamRecording(id: ID!): CamRecording
   # Record this model automatically whenever she is live (also follows).
-  setCamAutoRecord(id: ID!, enabled: Boolean!): CamModel!
+  # quality: source or a target height; unchanged when omitted.
+  setCamAutoRecord(id: ID!, enabled: Boolean!, quality: String): CamModel!
 }
 
 type CamRecording {
   id: ID!
   camModelId: ID!
   displayName: String!
+  # The room's thumbnail, for avatars.
+  thumbnailUrl: String
+  # The rendition captured, like 720p.
+  quality: String
   # recording | finished | failed
   status: String!
   # stopped | offline | max_duration | restart | too_short | error
