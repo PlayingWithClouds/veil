@@ -422,6 +422,44 @@ export function streamResultToGridItem(result: PluginSearchResult): GridItem | n
 	};
 }
 
+/** The site a page URL belongs to (its host without "www."), or empty for an unparsable URL. */
+function siteKeyOfUrl(sourceUrl: string): string {
+	try {
+		return new URL(sourceUrl).hostname.replace(/^www\./, '');
+	} catch {
+		return '';
+	}
+}
+
+/** The site a grid item came from. */
+export function gridItemSiteKey(item: GridItem): string {
+	if (item.kind === 'scene') return siteKeyOfUrl(item.scene.sourceUrl);
+	return siteKeyOfUrl(item.gallery.sourceUrl);
+}
+
+/**
+ * Reorders items round-robin across sites, so a site that answered with thirty
+ * results in a row doesn't fill the page before the others show up. The order
+ * within each site is kept.
+ */
+export function mixBySite<T>(items: T[], siteKeyOf: (item: T) => string): T[] {
+	const queues = new Map<string, T[]>();
+	for (const item of items) {
+		const siteKey = siteKeyOf(item);
+		const queue = queues.get(siteKey);
+		if (queue) queue.push(item);
+		else queues.set(siteKey, [item]);
+	}
+	const mixed: T[] = [];
+	const rounds = Math.max(0, ...[...queues.values()].map((queue) => queue.length));
+	for (let round = 0; round < rounds; round++) {
+		for (const queue of queues.values()) {
+			if (round < queue.length) mixed.push(queue[round]);
+		}
+	}
+	return mixed;
+}
+
 /** Stable key for a grid item, unique across scenes and galleries. */
 export function gridItemKey(item: GridItem): string {
 	if (item.kind === 'scene') return `scene:${item.scene.id}`;
