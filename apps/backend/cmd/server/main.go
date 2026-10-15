@@ -21,6 +21,7 @@ import (
 	sseapi "github.com/playingwithclouds/veil/internal/api/sse"
 	"github.com/playingwithclouds/veil/internal/blobcache"
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/discovery"
 	"github.com/playingwithclouds/veil/internal/ingest"
@@ -324,6 +325,7 @@ func main() {
 	// HLS proxy: rewrites manifest URIs to local proxy URLs, write-through caches segments.
 	streamProxy := stream.NewProxy(streamCache, cacheClient, publicURL)
 	resolver.SetStreamProxy(streamProxy)
+	resolver.SetCams(cams.New(database, cams.NewPluginSites(registry, runner), streamProxy))
 
 	// Cache size limit: stream and image cache blobs beyond it are evicted,
 	// least recently used first. Downloads are pinned and don't count.

@@ -16,6 +16,11 @@ export interface Query {
     stream: (StreamResult | null)
     checkProviderSpeeds: ProviderSpeed[]
     blocklist: BlocklistEntry[]
+    camRooms: CamRoomPage
+    camSources: CamSource[]
+    camModel: (CamModel | null)
+    followedCamModels: CamModel[]
+    camStream: CamStream
     changes: Change[]
     collections: Collection[]
     collection: (Collection | null)
@@ -83,6 +88,8 @@ export interface Mutation {
     queueDownload: Scalars['ID']
     addBlock: BlocklistEntry
     removeBlock: Scalars['Boolean']
+    followCamModel: CamModel
+    unfollowCamModel: CamModel
     createCollection: Collection
     renameCollection: Collection
     deleteCollection: Scalars['Boolean']
@@ -205,6 +212,42 @@ export interface BlocklistEntry {
     label: (Scalars['String'] | null)
     createdAt: Scalars['String']
     __typename: 'BlocklistEntry'
+}
+
+export interface CamModel {
+    id: Scalars['ID']
+    pluginName: Scalars['String']
+    username: Scalars['String']
+    displayName: Scalars['String']
+    sourceUrl: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    tags: Scalars['String'][]
+    gender: (Scalars['String'] | null)
+    subject: (Scalars['String'] | null)
+    viewers: Scalars['Int']
+    online: Scalars['Boolean']
+    lastSeenOnlineAt: (Scalars['String'] | null)
+    followed: Scalars['Boolean']
+    __typename: 'CamModel'
+}
+
+export interface CamRoomPage {
+    rooms: CamModel[]
+    totalCount: Scalars['Int']
+    __typename: 'CamRoomPage'
+}
+
+export interface CamSource {
+    name: Scalars['String']
+    displayName: Scalars['String']
+    iconUrl: (Scalars['String'] | null)
+    __typename: 'CamSource'
+}
+
+export interface CamStream {
+    url: Scalars['String']
+    mimeType: Scalars['String']
+    __typename: 'CamStream'
 }
 
 export interface Change {
@@ -747,6 +790,11 @@ export interface QueryGenqlSelection{
     stream?: (StreamResultGenqlSelection & { __args: {url: Scalars['String'], pluginName?: (Scalars['String'] | null)} })
     checkProviderSpeeds?: (ProviderSpeedGenqlSelection & { __args: {id: Scalars['ID']} })
     blocklist?: BlocklistEntryGenqlSelection
+    camRooms?: (CamRoomPageGenqlSelection & { __args?: {sources?: (Scalars['String'][] | null), tag?: (Scalars['String'] | null), query?: (Scalars['String'] | null), gender?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    camSources?: CamSourceGenqlSelection
+    camModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
+    followedCamModels?: CamModelGenqlSelection
+    camStream?: (CamStreamGenqlSelection & { __args: {id: Scalars['ID']} })
     changes?: (ChangeGenqlSelection & { __args: {targetId: Scalars['ID'], key?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     collections?: (CollectionGenqlSelection & { __args?: {search?: (Scalars['String'] | null), tagId?: (Scalars['ID'] | null), origin?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     collection?: (CollectionGenqlSelection & { __args: {id: Scalars['ID']} })
@@ -815,6 +863,8 @@ export interface MutationGenqlSelection{
     queueDownload?: { __args: {url: Scalars['String'], title: Scalars['String'], pluginName?: (Scalars['String'] | null)} }
     addBlock?: (BlocklistEntryGenqlSelection & { __args: {kind: Scalars['String'], targetId: Scalars['ID'], label?: (Scalars['String'] | null)} })
     removeBlock?: { __args: {targetId: Scalars['ID']} }
+    followCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
+    unfollowCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     createCollection?: (CollectionGenqlSelection & { __args: {name: Scalars['String']} })
     renameCollection?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], name: Scalars['String']} })
     deleteCollection?: { __args: {collectionId: Scalars['ID']} }
@@ -944,6 +994,46 @@ export interface BlocklistEntryGenqlSelection{
     targetId?: boolean | number
     label?: boolean | number
     createdAt?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamModelGenqlSelection{
+    id?: boolean | number
+    pluginName?: boolean | number
+    username?: boolean | number
+    displayName?: boolean | number
+    sourceUrl?: boolean | number
+    thumbnailUrl?: boolean | number
+    tags?: boolean | number
+    gender?: boolean | number
+    subject?: boolean | number
+    viewers?: boolean | number
+    online?: boolean | number
+    lastSeenOnlineAt?: boolean | number
+    followed?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamRoomPageGenqlSelection{
+    rooms?: CamModelGenqlSelection
+    totalCount?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamSourceGenqlSelection{
+    name?: boolean | number
+    displayName?: boolean | number
+    iconUrl?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamStreamGenqlSelection{
+    url?: boolean | number
+    mimeType?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1619,6 +1709,38 @@ export interface WatchlistItemGenqlSelection{
     export const isBlocklistEntry = (obj?: { __typename?: any } | null): obj is BlocklistEntry => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isBlocklistEntry"')
       return BlocklistEntry_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CamModel_possibleTypes: string[] = ['CamModel']
+    export const isCamModel = (obj?: { __typename?: any } | null): obj is CamModel => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamModel"')
+      return CamModel_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CamRoomPage_possibleTypes: string[] = ['CamRoomPage']
+    export const isCamRoomPage = (obj?: { __typename?: any } | null): obj is CamRoomPage => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamRoomPage"')
+      return CamRoomPage_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CamSource_possibleTypes: string[] = ['CamSource']
+    export const isCamSource = (obj?: { __typename?: any } | null): obj is CamSource => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamSource"')
+      return CamSource_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CamStream_possibleTypes: string[] = ['CamStream']
+    export const isCamStream = (obj?: { __typename?: any } | null): obj is CamStream => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamStream"')
+      return CamStream_possibleTypes.includes(obj.__typename)
     }
     
 

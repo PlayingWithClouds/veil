@@ -63,6 +63,38 @@ type ComplexityRoot struct {
 		TargetID  func(childComplexity int) int
 	}
 
+	CamModel struct {
+		DisplayName      func(childComplexity int) int
+		Followed         func(childComplexity int) int
+		Gender           func(childComplexity int) int
+		ID               func(childComplexity int) int
+		LastSeenOnlineAt func(childComplexity int) int
+		Online           func(childComplexity int) int
+		PluginName       func(childComplexity int) int
+		SourceURL        func(childComplexity int) int
+		Subject          func(childComplexity int) int
+		Tags             func(childComplexity int) int
+		ThumbnailURL     func(childComplexity int) int
+		Username         func(childComplexity int) int
+		Viewers          func(childComplexity int) int
+	}
+
+	CamRoomPage struct {
+		Rooms      func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	CamSource struct {
+		DisplayName func(childComplexity int) int
+		IconURL     func(childComplexity int) int
+		Name        func(childComplexity int) int
+	}
+
+	CamStream struct {
+		MimeType func(childComplexity int) int
+		URL      func(childComplexity int) int
+	}
+
 	Change struct {
 		Action        func(childComplexity int) int
 		Canonical     func(childComplexity int) int
@@ -217,6 +249,7 @@ type ComplexityRoot struct {
 		EnsureEntityScenes         func(childComplexity int, entityID string) int
 		EnsureGalleryImages        func(childComplexity int, galleryID string) int
 		EnsureSceneStreams         func(childComplexity int, sceneID string) int
+		FollowCamModel             func(childComplexity int, id string) int
 		ForgetSearch               func(childComplexity int, query string) int
 		IncrementOCount            func(childComplexity int, mediaID string) int
 		InstallPlugin              func(childComplexity int, packageName string) int
@@ -246,6 +279,7 @@ type ComplexityRoot struct {
 		Subscribe                  func(childComplexity int, kind model.SubscriptionKind, targetID string, intervalHours *int) int
 		SubscribeSearch            func(childComplexity int, query string, sources []string, intervalHours *int) int
 		TogglePlugin               func(childComplexity int, name string, enabled bool) int
+		UnfollowCamModel           func(childComplexity int, id string) int
 		UninstallPlugin            func(childComplexity int, name string) int
 		UnsubscribeSearch          func(childComplexity int, id string) int
 		UpdateObservationStatus    func(childComplexity int, id string, status model.ObservationStatus) int
@@ -372,6 +406,10 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Blocklist             func(childComplexity int) int
+		CamModel              func(childComplexity int, id string) int
+		CamRooms              func(childComplexity int, sources []string, tag *string, query *string, gender *string, limit *int, offset *int) int
+		CamSources            func(childComplexity int) int
+		CamStream             func(childComplexity int, id string) int
 		Changes               func(childComplexity int, targetID string, key *string, limit *int, offset *int) int
 		CheckProviderSpeeds   func(childComplexity int, id string) int
 		Collection            func(childComplexity int, id string) int
@@ -381,6 +419,7 @@ type ComplexityRoot struct {
 		DownloadedScenes      func(childComplexity int) int
 		FindAlikeSources      func(childComplexity int, sceneID string, limit *int) int
 		FindGalleryVideos     func(childComplexity int, galleryID string, limit *int) int
+		FollowedCamModels     func(childComplexity int) int
 		Galleries             func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sources []string) int
 		Gallery               func(childComplexity int, id string) int
 		Image                 func(childComplexity int, id string) int
@@ -716,6 +755,8 @@ type MutationResolver interface {
 	QueueDownload(ctx context.Context, url string, title string, pluginName *string) (string, error)
 	AddBlock(ctx context.Context, kind string, targetID string, label *string) (*model.BlocklistEntry, error)
 	RemoveBlock(ctx context.Context, targetID string) (bool, error)
+	FollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
+	UnfollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
 	CreateCollection(ctx context.Context, name string) (*model.Collection, error)
 	RenameCollection(ctx context.Context, collectionID string, name string) (*model.Collection, error)
 	DeleteCollection(ctx context.Context, collectionID string) (bool, error)
@@ -780,6 +821,11 @@ type QueryResolver interface {
 	Stream(ctx context.Context, url string, pluginName *string) (*model.StreamResult, error)
 	CheckProviderSpeeds(ctx context.Context, id string) ([]*model.ProviderSpeed, error)
 	Blocklist(ctx context.Context) ([]*model.BlocklistEntry, error)
+	CamRooms(ctx context.Context, sources []string, tag *string, query *string, gender *string, limit *int, offset *int) (*model.CamRoomPage, error)
+	CamSources(ctx context.Context) ([]*model.CamSource, error)
+	CamModel(ctx context.Context, id string) (*model.CamModel, error)
+	FollowedCamModels(ctx context.Context) ([]*model.CamModel, error)
+	CamStream(ctx context.Context, id string) (*model.CamStream, error)
 	Changes(ctx context.Context, targetID string, key *string, limit *int, offset *int) ([]*model.Change, error)
 	Collections(ctx context.Context, search *string, tagID *string, origin *string, limit *int, offset *int) ([]*model.Collection, error)
 	Collection(ctx context.Context, id string) (*model.Collection, error)
@@ -962,6 +1008,130 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BlocklistEntry.TargetID(childComplexity), true
+
+	case "CamModel.displayName":
+		if e.ComplexityRoot.CamModel.DisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.DisplayName(childComplexity), true
+	case "CamModel.followed":
+		if e.ComplexityRoot.CamModel.Followed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Followed(childComplexity), true
+	case "CamModel.gender":
+		if e.ComplexityRoot.CamModel.Gender == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Gender(childComplexity), true
+	case "CamModel.id":
+		if e.ComplexityRoot.CamModel.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.ID(childComplexity), true
+	case "CamModel.lastSeenOnlineAt":
+		if e.ComplexityRoot.CamModel.LastSeenOnlineAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.LastSeenOnlineAt(childComplexity), true
+	case "CamModel.online":
+		if e.ComplexityRoot.CamModel.Online == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Online(childComplexity), true
+	case "CamModel.pluginName":
+		if e.ComplexityRoot.CamModel.PluginName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.PluginName(childComplexity), true
+	case "CamModel.sourceUrl":
+		if e.ComplexityRoot.CamModel.SourceURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.SourceURL(childComplexity), true
+	case "CamModel.subject":
+		if e.ComplexityRoot.CamModel.Subject == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Subject(childComplexity), true
+	case "CamModel.tags":
+		if e.ComplexityRoot.CamModel.Tags == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Tags(childComplexity), true
+	case "CamModel.thumbnailUrl":
+		if e.ComplexityRoot.CamModel.ThumbnailURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.ThumbnailURL(childComplexity), true
+	case "CamModel.username":
+		if e.ComplexityRoot.CamModel.Username == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Username(childComplexity), true
+	case "CamModel.viewers":
+		if e.ComplexityRoot.CamModel.Viewers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Viewers(childComplexity), true
+
+	case "CamRoomPage.rooms":
+		if e.ComplexityRoot.CamRoomPage.Rooms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamRoomPage.Rooms(childComplexity), true
+	case "CamRoomPage.totalCount":
+		if e.ComplexityRoot.CamRoomPage.TotalCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamRoomPage.TotalCount(childComplexity), true
+
+	case "CamSource.displayName":
+		if e.ComplexityRoot.CamSource.DisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamSource.DisplayName(childComplexity), true
+	case "CamSource.iconUrl":
+		if e.ComplexityRoot.CamSource.IconURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamSource.IconURL(childComplexity), true
+	case "CamSource.name":
+		if e.ComplexityRoot.CamSource.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamSource.Name(childComplexity), true
+
+	case "CamStream.mimeType":
+		if e.ComplexityRoot.CamStream.MimeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamStream.MimeType(childComplexity), true
+	case "CamStream.url":
+		if e.ComplexityRoot.CamStream.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamStream.URL(childComplexity), true
 
 	case "Change.action":
 		if e.ComplexityRoot.Change.Action == nil {
@@ -1838,6 +2008,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.EnsureSceneStreams(childComplexity, args["sceneId"].(string)), true
+	case "Mutation.followCamModel":
+		if e.ComplexityRoot.Mutation.FollowCamModel == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_followCamModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.FollowCamModel(childComplexity, args["id"].(string)), true
 	case "Mutation.forgetSearch":
 		if e.ComplexityRoot.Mutation.ForgetSearch == nil {
 			break
@@ -2157,6 +2338,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TogglePlugin(childComplexity, args["name"].(string), args["enabled"].(bool)), true
+	case "Mutation.unfollowCamModel":
+		if e.ComplexityRoot.Mutation.UnfollowCamModel == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unfollowCamModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UnfollowCamModel(childComplexity, args["id"].(string)), true
 	case "Mutation.uninstallPlugin":
 		if e.ComplexityRoot.Mutation.UninstallPlugin == nil {
 			break
@@ -2788,6 +2980,45 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Blocklist(childComplexity), true
+	case "Query.camModel":
+		if e.ComplexityRoot.Query.CamModel == nil {
+			break
+		}
+
+		args, err := ec.field_Query_camModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CamModel(childComplexity, args["id"].(string)), true
+	case "Query.camRooms":
+		if e.ComplexityRoot.Query.CamRooms == nil {
+			break
+		}
+
+		args, err := ec.field_Query_camRooms_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CamRooms(childComplexity, args["sources"].([]string), args["tag"].(*string), args["query"].(*string), args["gender"].(*string), args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.camSources":
+		if e.ComplexityRoot.Query.CamSources == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.CamSources(childComplexity), true
+	case "Query.camStream":
+		if e.ComplexityRoot.Query.CamStream == nil {
+			break
+		}
+
+		args, err := ec.field_Query_camStream_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CamStream(childComplexity, args["id"].(string)), true
 	case "Query.changes":
 		if e.ComplexityRoot.Query.Changes == nil {
 			break
@@ -2882,6 +3113,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.FindGalleryVideos(childComplexity, args["galleryId"].(string), args["limit"].(*int)), true
+	case "Query.followedCamModels":
+		if e.ComplexityRoot.Query.FollowedCamModels == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.FollowedCamModels(childComplexity), true
 	case "Query.galleries":
 		if e.ComplexityRoot.Query.Galleries == nil {
 			break
@@ -4748,6 +4985,69 @@ type BlocklistEntry {
   createdAt: String!
 }
 `, BuiltIn: false},
+	{Name: "../schema/cam.graphql", Input: `# Live webcam rooms. A room is not a scene: it comes and goes, so a cam model
+# keeps what its site's listing last said and can be followed and shown offline.
+
+extend type Query {
+  # Rooms online right now across the cam plugins, in each site's popularity
+  # order (sites merged by viewers). Listings go live to the plugins and are
+  # cached for a minute so paging stays stable.
+  camRooms(
+    # Plugin names to list; all cam plugins when empty.
+    sources: [String!]
+    tag: String
+    query: String
+    # female | male | couple | trans
+    gender: String
+    limit: Int = 48
+    offset: Int = 0
+  ): CamRoomPage!
+  camSources: [CamSource!]!
+  # One cam model with its online status checked against the site.
+  camModel(id: ID!): CamModel
+  # Followed models, online ones first.
+  followedCamModels: [CamModel!]!
+  # The room's live HLS stream through the backend proxy (never cached on disk).
+  camStream(id: ID!): CamStream!
+}
+
+extend type Mutation {
+  followCamModel(id: ID!): CamModel!
+  unfollowCamModel(id: ID!): CamModel!
+}
+
+type CamModel {
+  id: ID!
+  pluginName: String!
+  username: String!
+  displayName: String!
+  sourceUrl: String!
+  thumbnailUrl: String
+  tags: [String!]!
+  gender: String
+  subject: String
+  viewers: Int!
+  online: Boolean!
+  lastSeenOnlineAt: String
+  followed: Boolean!
+}
+
+type CamRoomPage {
+  rooms: [CamModel!]!
+  totalCount: Int!
+}
+
+type CamSource {
+  name: String!
+  displayName: String!
+  iconUrl: String
+}
+
+type CamStream {
+  url: String!
+  mimeType: String!
+}
+`, BuiltIn: false},
 	{Name: "../schema/changes.graphql", Input: `# Per-field change log, modelled after the TMDB /changes endpoint.
 
 extend type Query {
@@ -6005,6 +6305,70 @@ func (ec *executionContext) childFields_BlocklistEntry(ctx context.Context, fiel
 		return ec.fieldContext_BlocklistEntry_createdAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type BlocklistEntry", field.Name)
+}
+
+func (ec *executionContext) childFields_CamModel(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_CamModel_id(ctx, field)
+	case "pluginName":
+		return ec.fieldContext_CamModel_pluginName(ctx, field)
+	case "username":
+		return ec.fieldContext_CamModel_username(ctx, field)
+	case "displayName":
+		return ec.fieldContext_CamModel_displayName(ctx, field)
+	case "sourceUrl":
+		return ec.fieldContext_CamModel_sourceUrl(ctx, field)
+	case "thumbnailUrl":
+		return ec.fieldContext_CamModel_thumbnailUrl(ctx, field)
+	case "tags":
+		return ec.fieldContext_CamModel_tags(ctx, field)
+	case "gender":
+		return ec.fieldContext_CamModel_gender(ctx, field)
+	case "subject":
+		return ec.fieldContext_CamModel_subject(ctx, field)
+	case "viewers":
+		return ec.fieldContext_CamModel_viewers(ctx, field)
+	case "online":
+		return ec.fieldContext_CamModel_online(ctx, field)
+	case "lastSeenOnlineAt":
+		return ec.fieldContext_CamModel_lastSeenOnlineAt(ctx, field)
+	case "followed":
+		return ec.fieldContext_CamModel_followed(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CamModel", field.Name)
+}
+
+func (ec *executionContext) childFields_CamRoomPage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "rooms":
+		return ec.fieldContext_CamRoomPage_rooms(ctx, field)
+	case "totalCount":
+		return ec.fieldContext_CamRoomPage_totalCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CamRoomPage", field.Name)
+}
+
+func (ec *executionContext) childFields_CamSource(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_CamSource_name(ctx, field)
+	case "displayName":
+		return ec.fieldContext_CamSource_displayName(ctx, field)
+	case "iconUrl":
+		return ec.fieldContext_CamSource_iconUrl(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CamSource", field.Name)
+}
+
+func (ec *executionContext) childFields_CamStream(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "url":
+		return ec.fieldContext_CamStream_url(ctx, field)
+	case "mimeType":
+		return ec.fieldContext_CamStream_mimeType(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CamStream", field.Name)
 }
 
 func (ec *executionContext) childFields_Change(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -7521,6 +7885,20 @@ func (ec *executionContext) field_Mutation_ensureSceneStreams_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_followCamModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_forgetSearch_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8111,6 +8489,20 @@ func (ec *executionContext) field_Mutation_togglePlugin_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_unfollowCamModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_uninstallPlugin_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8280,6 +8672,88 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_camModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_camRooms_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sources",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sources"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "tag",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["tag"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "gender",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["gender"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_camStream_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -10028,6 +10502,475 @@ func (ec *executionContext) _BlocklistEntry_createdAt(ctx context.Context, field
 }
 func (ec *executionContext) fieldContext_BlocklistEntry_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BlocklistEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_id(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_pluginName(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_pluginName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PluginName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_pluginName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_username(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_username(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Username, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_displayName(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_displayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_sourceUrl(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_sourceUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SourceURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_sourceUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_thumbnailUrl(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_thumbnailUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_thumbnailUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_tags(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_tags(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_gender(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_gender(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Gender, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_gender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_subject(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_subject(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Subject, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_subject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_viewers(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_viewers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Viewers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_viewers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_online(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_online(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Online, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_online(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_lastSeenOnlineAt(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_lastSeenOnlineAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastSeenOnlineAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_lastSeenOnlineAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamModel_followed(ctx context.Context, field graphql.CollectedField, obj *model.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_followed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Followed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_followed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamModel", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _CamRoomPage_rooms(ctx context.Context, field graphql.CollectedField, obj *model.CamRoomPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamRoomPage_rooms(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rooms, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModelᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamRoomPage_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CamRoomPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CamRoomPage_totalCount(ctx context.Context, field graphql.CollectedField, obj *model.CamRoomPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamRoomPage_totalCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamRoomPage_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamRoomPage", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CamSource_name(ctx context.Context, field graphql.CollectedField, obj *model.CamSource) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamSource_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamSource_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamSource", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamSource_displayName(ctx context.Context, field graphql.CollectedField, obj *model.CamSource) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamSource_displayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamSource_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamSource", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamSource_iconUrl(ctx context.Context, field graphql.CollectedField, obj *model.CamSource) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamSource_iconUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IconURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CamSource_iconUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamSource", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamStream_url(ctx context.Context, field graphql.CollectedField, obj *model.CamStream) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamStream_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamStream_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamStream", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamStream_mimeType(ctx context.Context, field graphql.CollectedField, obj *model.CamStream) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamStream_mimeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MimeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamStream_mimeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamStream", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Change_id(ctx context.Context, field graphql.CollectedField, obj *model.Change) (ret graphql.Marshaler) {
@@ -12659,6 +13602,94 @@ func (ec *executionContext) fieldContext_Mutation_removeBlock(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeBlock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_followCamModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_followCamModel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().FollowCamModel(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_followCamModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_followCamModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unfollowCamModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_unfollowCamModel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UnfollowCamModel(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_unfollowCamModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unfollowCamModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -17305,6 +18336,202 @@ func (ec *executionContext) fieldContext_Query_blocklist(_ context.Context, fiel
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_BlocklistEntry(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_camRooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_camRooms(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CamRooms(ctx, fc.Args["sources"].([]string), fc.Args["tag"].(*string), fc.Args["query"].(*string), fc.Args["gender"].(*string), fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamRoomPage) graphql.Marshaler {
+			return ec.marshalNCamRoomPage2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamRoomPage(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_camRooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamRoomPage(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_camRooms_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_camSources(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_camSources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().CamSources(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.CamSource) graphql.Marshaler {
+			return ec.marshalNCamSource2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSourceᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_camSources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamSource(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_camModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_camModel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CamModel(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
+			return ec.marshalOCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_camModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_camModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_followedCamModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_followedCamModels(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().FollowedCamModels(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModelᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_followedCamModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_camStream(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_camStream(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CamStream(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamStream) graphql.Marshaler {
+			return ec.marshalNCamStream2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamStream(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_camStream(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamStream(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_camStream_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -26239,6 +27466,227 @@ func (ec *executionContext) _BlocklistEntry(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var camModelImplementors = []string{"CamModel"}
+
+func (ec *executionContext) _CamModel(ctx context.Context, sel ast.SelectionSet, obj *model.CamModel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, camModelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CamModel")
+		case "id":
+			out.Values[i] = ec._CamModel_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pluginName":
+			out.Values[i] = ec._CamModel_pluginName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "username":
+			out.Values[i] = ec._CamModel_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._CamModel_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceUrl":
+			out.Values[i] = ec._CamModel_sourceUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "thumbnailUrl":
+			out.Values[i] = ec._CamModel_thumbnailUrl(ctx, field, obj)
+		case "tags":
+			out.Values[i] = ec._CamModel_tags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "gender":
+			out.Values[i] = ec._CamModel_gender(ctx, field, obj)
+		case "subject":
+			out.Values[i] = ec._CamModel_subject(ctx, field, obj)
+		case "viewers":
+			out.Values[i] = ec._CamModel_viewers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "online":
+			out.Values[i] = ec._CamModel_online(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSeenOnlineAt":
+			out.Values[i] = ec._CamModel_lastSeenOnlineAt(ctx, field, obj)
+		case "followed":
+			out.Values[i] = ec._CamModel_followed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var camRoomPageImplementors = []string{"CamRoomPage"}
+
+func (ec *executionContext) _CamRoomPage(ctx context.Context, sel ast.SelectionSet, obj *model.CamRoomPage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, camRoomPageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CamRoomPage")
+		case "rooms":
+			out.Values[i] = ec._CamRoomPage_rooms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._CamRoomPage_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var camSourceImplementors = []string{"CamSource"}
+
+func (ec *executionContext) _CamSource(ctx context.Context, sel ast.SelectionSet, obj *model.CamSource) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, camSourceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CamSource")
+		case "name":
+			out.Values[i] = ec._CamSource_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._CamSource_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iconUrl":
+			out.Values[i] = ec._CamSource_iconUrl(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var camStreamImplementors = []string{"CamStream"}
+
+func (ec *executionContext) _CamStream(ctx context.Context, sel ast.SelectionSet, obj *model.CamStream) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, camStreamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CamStream")
+		case "url":
+			out.Values[i] = ec._CamStream_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mimeType":
+			out.Values[i] = ec._CamStream_mimeType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var changeImplementors = []string{"Change"}
 
 func (ec *executionContext) _Change(ctx context.Context, sel ast.SelectionSet, obj *model.Change) graphql.Marshaler {
@@ -27033,6 +28481,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeBlock":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeBlock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "followCamModel":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_followCamModel(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unfollowCamModel":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unfollowCamModel(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -28172,6 +29634,113 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_blocklist(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "camRooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_camRooms(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "camSources":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_camSources(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "camModel":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_camModel(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "followedCamModels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_followedCamModels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "camStream":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_camStream(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -31670,6 +33239,90 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCamModel2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx context.Context, sel ast.SelectionSet, v model.CamModel) graphql.Marshaler {
+	return ec._CamModel(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CamModel) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx context.Context, sel ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CamModel(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCamRoomPage2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamRoomPage(ctx context.Context, sel ast.SelectionSet, v model.CamRoomPage) graphql.Marshaler {
+	return ec._CamRoomPage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCamRoomPage2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamRoomPage(ctx context.Context, sel ast.SelectionSet, v *model.CamRoomPage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CamRoomPage(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCamSource2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSourceᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CamSource) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCamSource2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSource(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCamSource2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSource(ctx context.Context, sel ast.SelectionSet, v *model.CamSource) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CamSource(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCamStream2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamStream(ctx context.Context, sel ast.SelectionSet, v model.CamStream) graphql.Marshaler {
+	return ec._CamStream(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCamStream2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamStream(ctx context.Context, sel ast.SelectionSet, v *model.CamStream) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CamStream(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNChange2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Change) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -33223,6 +34876,13 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOCamModel2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamModel(ctx context.Context, sel ast.SelectionSet, v *model.CamModel) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CamModel(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCollection2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCollection(ctx context.Context, sel ast.SelectionSet, v *model.Collection) graphql.Marshaler {

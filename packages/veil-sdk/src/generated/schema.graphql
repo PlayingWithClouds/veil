@@ -3,6 +3,11 @@ type Query {
   stream(url: String!, pluginName: String): StreamResult
   checkProviderSpeeds(id: ID!): [ProviderSpeed!]!
   blocklist: [BlocklistEntry!]!
+  camRooms(sources: [String!], tag: String, query: String, gender: String, limit: Int = 48, offset: Int = 0): CamRoomPage!
+  camSources: [CamSource!]!
+  camModel(id: ID!): CamModel
+  followedCamModels: [CamModel!]!
+  camStream(id: ID!): CamStream!
   changes(targetId: ID!, key: String, limit: Int, offset: Int): [Change!]!
   collections(search: String, tagId: ID, origin: String, limit: Int, offset: Int): [Collection!]!
   collection(id: ID!): Collection
@@ -75,6 +80,8 @@ type Mutation {
   queueDownload(url: String!, title: String!, pluginName: String): ID!
   addBlock(kind: String!, targetId: ID!, label: String): BlocklistEntry!
   removeBlock(targetId: ID!): Boolean!
+  followCamModel(id: ID!): CamModel!
+  unfollowCamModel(id: ID!): CamModel!
   createCollection(name: String!): Collection!
   renameCollection(collectionId: ID!, name: String!): Collection!
   deleteCollection(collectionId: ID!): Boolean!
@@ -190,6 +197,38 @@ type BlocklistEntry {
   targetId: ID!
   label: String
   createdAt: String!
+}
+
+type CamModel {
+  id: ID!
+  pluginName: String!
+  username: String!
+  displayName: String!
+  sourceUrl: String!
+  thumbnailUrl: String
+  tags: [String!]!
+  gender: String
+  subject: String
+  viewers: Int!
+  online: Boolean!
+  lastSeenOnlineAt: String
+  followed: Boolean!
+}
+
+type CamRoomPage {
+  rooms: [CamModel!]!
+  totalCount: Int!
+}
+
+type CamSource {
+  name: String!
+  displayName: String!
+  iconUrl: String
+}
+
+type CamStream {
+  url: String!
+  mimeType: String!
 }
 
 type Change {
