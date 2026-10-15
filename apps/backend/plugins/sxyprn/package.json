@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-sxyprn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Veil plugin for sxyprn.com",
   "private": true,
   "type": "module",

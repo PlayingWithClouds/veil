@@ -221,6 +221,9 @@ func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url stri
 		if len(line) == 0 {
 			continue
 		}
+		if failure := scrapeLineError(line); failure != "" {
+			return nil, fmt.Errorf("plugin %q: %s", p.Meta.Name, failure)
+		}
 		var item ScrapeResult
 		if err := json.Unmarshal(line, &item); err != nil {
 			return nil, fmt.Errorf("plugin %q bad scrape line: %w\nraw: %s", p.Meta.Name, err, line)
@@ -231,6 +234,18 @@ func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url stri
 		return nil, fmt.Errorf("plugin %q: read stdout: %w", p.Meta.Name, err)
 	}
 	return results, nil
+}
+
+// scrapeLineError is the message of a {"error": ...} line a find writes when it
+// fails (the SDK's usual error reply); empty for a ScrapeResult line.
+func scrapeLineError(line []byte) string {
+	var failure struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal(line, &failure) != nil {
+		return ""
+	}
+	return failure.Error
 }
 
 func (r *Runner) Resolve(ctx context.Context, p *Plugin, url string) (*ResolveResult, error) {
