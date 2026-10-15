@@ -1,0 +1,36 @@
+# "Who is this?": performers who look like the person in a picture, from the
+# face-recognition plugins. Their databases hold professional performers and
+# cam models only; the user's choice credits a performer to the media.
+
+extend type Mutation {
+  # Sends the picture of a scene (its thumbnail or poster), of an image, or of a
+  # gallery (imageId, else its first image) to every face-recognition plugin and
+  # returns the merged candidates, best first.
+  identifyFace(mediaId: ID!, imageId: ID): FaceIdentification!
+  # Credits the performer called name to a scene or gallery (an image counts for
+  # its gallery), creating the performer when the library has none. The name is
+  # matched like ingest does (spelling-insensitive, aliases).
+  creditPerformerByName(mediaId: ID!, name: String!): Performer!
+}
+
+type FaceIdentification {
+  candidates: [FaceCandidate!]!
+  # Plugins that answered.
+  sources: [String!]!
+  # One line per plugin that failed or timed out.
+  failures: [String!]!
+}
+
+type FaceCandidate {
+  # The performer's stage name.
+  name: String!
+  # 0..1, the best any service gave.
+  similarity: Float!
+  imageUrl: String
+  # The performer's pages on adult sites.
+  profileUrls: [String!]!
+  # Plugins that named this candidate.
+  sources: [String!]!
+  # The library's performer of that name, when there is one.
+  performerId: ID
+}
