@@ -1,9 +1,28 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PerformerCard from '$lib/components/PerformerCard.svelte';
+	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
+	import { loadPerformers, type PerformerCard as PerformerCardData } from '$lib/performerDetail';
+
+	// The loader brings the first page; the rest load as you scroll. The
+	// backend serves at most 100 per page (media.maxPageLimit).
+	const PAGE_SIZE = 100;
 
 	let { data } = $props();
-	let performers = $derived(data.performers);
+	// Follows the loader's data; loadMore appends to it.
+	let performers = $derived<PerformerCardData[]>(data.performers);
+	let loading = $state(false);
+	let done = $derived(data.performers.length < PAGE_SIZE);
+
+	/** Appends the next page of performers. */
+	async function loadMore() {
+		if (loading || done) return;
+		loading = true;
+		const next = await loadPerformers(PAGE_SIZE, performers.length);
+		performers = [...performers, ...next];
+		done = next.length < PAGE_SIZE;
+		loading = false;
+	}
 </script>
 
 <div class="flex flex-col gap-6">
@@ -20,5 +39,6 @@
 				<PerformerCard {performer} onclick={() => goto(`/performers/${performer.id}`)} />
 			{/each}
 		</div>
+		<ScrollSentinel onvisible={loadMore} {loading} {done} />
 	{/if}
 </div>

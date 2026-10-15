@@ -1,11 +1,12 @@
 <!--
 	Galleries tab of a performer/studio page: the galleries credited to it, two
-	columns on phones.
+	columns on phones, loading more as you scroll.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
 	import GalleryCard from './GalleryCard.svelte';
+	import ScrollSentinel from './ScrollSentinel.svelte';
 	import { entityFilter, fetchEntityGalleries, type GalleryHit } from '$lib/explore';
 	import { fetchSearchPlugins, pluginForUrl, type SearchPlugin } from '$lib/search';
 	import { galleryUrl } from '$lib/routes';
@@ -17,8 +18,12 @@
 
 	let { entityKind, entityId }: Props = $props();
 
+	const PAGE_SIZE = 40;
+
 	let galleries = $state.raw<GalleryHit[]>([]);
 	let loading = $state(true);
+	let loadingMore = $state(false);
+	let done = $state(false);
 	let sites = $state<SearchPlugin[]>([]);
 
 	$effect(() => {
@@ -31,12 +36,30 @@
 		const id = entityId;
 		requestedFor = id;
 		loading = true;
-		fetchEntityGalleries(entityFilter(entityKind, id), 60).then((found) => {
+		done = false;
+		fetchEntityGalleries(entityFilter(entityKind, id), PAGE_SIZE).then((found) => {
 			if (requestedFor !== id) return;
 			galleries = found;
+			done = found.length < PAGE_SIZE;
 			loading = false;
 		});
 	});
+
+	/** Appends the next page of galleries. */
+	async function loadMore() {
+		if (loading || loadingMore || done) return;
+		const id = entityId;
+		loadingMore = true;
+		const next = await fetchEntityGalleries(
+			entityFilter(entityKind, id),
+			PAGE_SIZE,
+			galleries.length
+		);
+		loadingMore = false;
+		if (requestedFor !== id) return;
+		galleries = [...galleries, ...next];
+		done = next.length < PAGE_SIZE;
+	}
 </script>
 
 {#if loading}
@@ -60,4 +83,5 @@
 			/>
 		{/each}
 	</div>
+	<ScrollSentinel onvisible={loadMore} loading={loadingMore} {done} />
 {/if}
