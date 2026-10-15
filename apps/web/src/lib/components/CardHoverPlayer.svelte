@@ -36,9 +36,15 @@
 		// own preview) and false when it goes.
 		onshow: (shown: boolean) => void;
 		onopen: () => void;
+		/**
+		 * Start almost at once instead of after the preview: for videos stored on
+		 * the backend (downloads, recordings), which cost no site visit and often have no preview.
+		 */
+		instant?: boolean;
 	}
 
-	let { sceneId, title, frameCount, clipSeconds, onshow, onopen }: Props = $props();
+	let { sceneId, title, frameCount, clipSeconds, onshow, onopen, instant = false }: Props =
+		$props();
 
 	// One frame of the preview strip is shown this long (matches the cards).
 	const FRAME_MS = 700;
@@ -46,6 +52,8 @@
 	const MIN_DELAY_MS = 2500;
 	// Same threshold as the cards' stream prefetch.
 	const RESOLVE_AFTER_MS = 1400;
+	// An instant card still waits this long, so passing over it starts nothing.
+	const INSTANT_DELAY_MS = 300;
 
 	const hoveredAt = performance.now();
 	// A card hovered before skips the preview and the wait for its stream.
@@ -68,7 +76,7 @@
 				resolvedSources.set(sceneId, resolved);
 				source = resolved;
 			});
-		}, RESOLVE_AFTER_MS);
+		}, untrack(resolveDelayMs));
 		return () => {
 			cancelled = true;
 			clearTimeout(timer);
@@ -105,8 +113,15 @@
 		};
 	});
 
+	/** How long the hover waits before resolving the stream. */
+	function resolveDelayMs(): number {
+		if (instant) return INSTANT_DELAY_MS;
+		return RESOLVE_AFTER_MS;
+	}
+
 	/** How long the card's own preview runs before real playback takes over. */
 	function previewMs(frames: number, clip: number): number {
+		if (instant) return INSTANT_DELAY_MS;
 		if (clip > 0) return Math.max(MIN_DELAY_MS, clip * 1000);
 		return Math.max(MIN_DELAY_MS, frames * FRAME_MS);
 	}

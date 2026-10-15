@@ -15,9 +15,17 @@
 		// When set, left-edge navigation hands focus here (e.g. the search keyboard)
 		// instead of opening the sidebar.
 		onleftedge?: () => void;
+		/** The items are stored on the backend: hovering plays them almost at once. */
+		instantHover?: boolean;
 	}
 
-	let { items, loading = false, ariaLabel = 'Adult content', onleftedge }: Props = $props();
+	let {
+		items,
+		loading = false,
+		ariaLabel = 'Adult content',
+		onleftedge,
+		instantHover = false
+	}: Props = $props();
 
 	const GRID_CLASS = 'grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
@@ -77,6 +85,7 @@
 				<SceneCard
 					item={toSceneCard(entry)}
 					onclick={() => openResult(entry)}
+					{instantHover}
 				/>
 				{#if openingUrl === entry.sourceUrl}
 					<div

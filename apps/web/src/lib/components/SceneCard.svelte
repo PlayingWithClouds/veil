@@ -60,9 +60,11 @@
 	interface Props {
 		item: SceneCardData;
 		onclick: () => void;
+		/** Play the video itself on hover almost at once (videos stored on the backend). */
+		instantHover?: boolean;
 	}
 
-	let { item, onclick }: Props = $props();
+	let { item, onclick, instantHover = false }: Props = $props();
 
 	/** Quick-saves to the last-used collection without opening the card. */
 	function save() {
@@ -229,6 +231,7 @@
 				{clipSeconds}
 				onshow={(shown) => (hoverPlaying = shown)}
 				onopen={onclick}
+				instant={instantHover}
 			/>
 		{/if}
 
