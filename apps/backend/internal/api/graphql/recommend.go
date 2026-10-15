@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -17,7 +18,34 @@ const (
 	defaultCategoryLimit = 8
 	defaultPerCategory   = 12
 	defaultTasteLimit    = 10
+	// siteFeedTimeout bounds the catalog pull a short site-filtered feed waits for.
+	siteFeedTimeout = 30 * time.Second
 )
+
+// siteFeedShort reports whether a site-filtered feed's first page needs a
+// fresh pull from those sites: a refresh that didn't fill the page, or any
+// load that came back empty.
+func (r *Resolver) siteFeedShort(sources []string, offset int, refresh bool, itemCount, limit int) bool {
+	if r.feeder == nil || len(sources) == 0 || offset > 0 {
+		return false
+	}
+	if refresh {
+		return itemCount < limit
+	}
+	return itemCount == 0
+}
+
+// feedSites pulls the next catalog page of the given plugins and reports
+// whether it stored anything worth re-ranking for.
+func (r *Resolver) feedSites(ctx context.Context, sources []string) bool {
+	feedContext, cancel := context.WithTimeout(ctx, siteFeedTimeout)
+	defer cancel()
+	stored, err := r.feeder.FeedSites(feedContext, sources)
+	if err != nil {
+		log.Printf("recommendations: feed sites %v: %v", sources, err)
+	}
+	return stored > 0
+}
 
 // tasteEntryModels converts the engine's taste entries; an empty photo becomes null.
 func tasteEntryModels(entries []recommend.TasteEntry) []*model.TasteEntry {

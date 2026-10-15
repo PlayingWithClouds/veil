@@ -76,8 +76,8 @@ func TestFeederRecordsCatalogScenesPerPlugin(t *testing.T) {
 	if _, ran := marks[feedLastRunKey]; !ran || *fedCount != 1 {
 		t.Errorf("a run that stored scenes is the interval's run: marks %v, fed %d", marks, *fedCount)
 	}
-	if marks[feedCatalogPageKey] != "1" {
-		t.Errorf("next catalog page = %q, want 1", marks[feedCatalogPageKey])
+	if marks[feedCatalogPageKey+"eporner"] != "1" {
+		t.Errorf("next eporner catalog page = %q, want 1", marks[feedCatalogPageKey+"eporner"])
 	}
 }
 
@@ -106,5 +106,27 @@ func TestFeederRetriesARunThatFoundNothing(t *testing.T) {
 	}
 	if !feeder.due(context.Background()) {
 		t.Error("feeder is not due after an empty run")
+	}
+}
+
+func TestFeedSitesListsOnlyTheNamedSitesOnePageDeeper(t *testing.T) {
+	fake := &fakeDiscovery{plugins: testPlugins(), searchHits: map[string][]string{
+		"eporner":  {"scene:a"},
+		"xhamster": {"scene:c"},
+	}}
+	feeder, database, marks, fedCount := newTestFeeder(t, fake, emptyProfile())
+
+	for run := 0; run < 2; run++ {
+		if _, err := feeder.FeedSites(context.Background(), []string{"xhamster"}); err != nil {
+			t.Fatalf("feed sites: %v", err)
+		}
+	}
+	assertStrings(t, "finds", finds(t, database), []string{"catalog/xhamster/scene:c#0"})
+	assertStrings(t, "searches", fake.searches, []string{"@xhamster", "@xhamster"})
+	if marks[feedCatalogPageKey+"xhamster"] != "2" || *fedCount != 2 {
+		t.Errorf("xhamster next page %q, fed %d", marks[feedCatalogPageKey+"xhamster"], *fedCount)
+	}
+	if _, listed := marks[feedCatalogPageKey+"eporner"]; listed {
+		t.Error("an unnamed site's catalog page moved")
 	}
 }

@@ -347,6 +347,7 @@ func main() {
 	recommender.OnLowPool(feeder.TopUp)
 	go feeder.Start(ctx)
 	resolver.SetRecommender(recommender)
+	resolver.SetFeeder(feeder)
 	resolver.SetPluginStore(pluginStore)
 	// Search suggestions: build the name/phrase index now, not on the first keystroke.
 	suggestions := suggest.New(database, recommender, repo)

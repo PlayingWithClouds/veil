@@ -37,8 +37,9 @@ const (
 	// feedRetention is how long a find is kept after it was last listed.
 	feedRetention = 30 * 24 * time.Hour
 
-	feedLastRunKey     = "feeder:last-run"
-	feedCatalogPageKey = "feeder:catalog-page"
+	feedLastRunKey = "feeder:last-run"
+	// feedCatalogPageKey + plugin name holds the catalog page it lists next.
+	feedCatalogPageKey = "feeder:catalog-page:"
 )
 
 // TasteSource is what the feeder needs from the recommendation engine.
@@ -143,7 +144,7 @@ func (f *Feeder) release() {
 // that found nothing (no plugins installed yet, offline) is retried at the
 // next check. Listing failures are joined into the error.
 func (f *Feeder) Run(ctx context.Context) (int, error) {
-	catalogStored, catalogErr := f.feedCatalog(ctx)
+	catalogStored, catalogErr := f.feedCatalog(ctx, f.scheduler.discovery.Plugins(nil))
 	tasteStored, tasteErr := f.feedTaste(ctx)
 	stored := catalogStored + tasteStored
 	recordContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
@@ -159,23 +160,38 @@ func (f *Feeder) Run(ctx context.Context) (int, error) {
 	return stored, errors.Join(catalogErr, tasteErr, pruneErr, markErr)
 }
 
-// feedCatalog lists one catalog page of every scene plugin, a page deeper
-// than the previous run, and records each plugin's scenes in listing order.
-func (f *Feeder) feedCatalog(ctx context.Context) (int, error) {
-	catalogPlugins := f.scheduler.discovery.Plugins(nil)
-	if len(catalogPlugins) == 0 {
+// FeedSites lists the next catalog page of the named plugins right away and
+// returns how many scenes it recorded: a site-filtered feed that came up
+// short. Runs beside the scheduled runs; the upserts don't conflict.
+func (f *Feeder) FeedSites(ctx context.Context, pluginNames []string) (int, error) {
+	sitePlugins := f.scheduler.discovery.Plugins(pluginNames)
+	if len(pluginNames) == 0 || len(sitePlugins) == 0 {
 		return 0, nil
 	}
-	page := f.nextCatalogPage(ctx)
+	stored, err := f.feedCatalog(ctx, sitePlugins)
+	if stored > 0 && f.onFed != nil {
+		f.onFed()
+	}
+	return stored, err
+}
+
+// feedCatalog lists one catalog page of each plugin, a page deeper than that
+// plugin's previous listing, and records each plugin's scenes in listing order.
+func (f *Feeder) feedCatalog(ctx context.Context, catalogPlugins []*plugins.Plugin) (int, error) {
 	scenesByPlugin := map[string][]string{}
 	listContext, cancel := context.WithTimeout(ctx, feedListTimeout)
 	defer cancel()
-	options := discovery.Options{Limit: catalogItemLimit, Offset: page * catalogItemLimit, Paginate: true, Entity: plugins.MediaTypeScene}
-	listErr := f.scheduler.discovery.Run(listContext, options, catalogPlugins, func(hit discovery.Hit) {
-		if strings.HasPrefix(hit.ID, "scene:") {
-			scenesByPlugin[hit.Plugin] = append(scenesByPlugin[hit.Plugin], hit.ID)
-		}
-	})
+	var listFailures []error
+	for page, pagePlugins := range f.pluginsByCatalogPage(ctx, catalogPlugins) {
+		options := discovery.Options{Limit: catalogItemLimit, Offset: page * catalogItemLimit, Paginate: true, Entity: plugins.MediaTypeScene}
+		err := f.scheduler.discovery.Run(listContext, options, pagePlugins, func(hit discovery.Hit) {
+			if strings.HasPrefix(hit.ID, "scene:") {
+				scenesByPlugin[hit.Plugin] = append(scenesByPlugin[hit.Plugin], hit.ID)
+			}
+		})
+		listFailures = append(listFailures, err)
+	}
+	listErr := errors.Join(listFailures...)
 	stored := 0
 	for pluginName, sceneIDs := range scenesByPlugin {
 		count, err := f.record(ctx, "catalog", pluginName, sceneIDs)
@@ -187,15 +203,27 @@ func (f *Feeder) feedCatalog(ctx context.Context) (int, error) {
 	return stored, listErr
 }
 
-// nextCatalogPage returns the catalog page this run lists and advances the
-// stored page, wrapping after catalogPages.
-func (f *Feeder) nextCatalogPage(ctx context.Context) int {
+// pluginsByCatalogPage groups the plugins by the catalog page each lists
+// next, advancing every plugin's stored page (wrapping after catalogPages).
+func (f *Feeder) pluginsByCatalogPage(ctx context.Context, catalogPlugins []*plugins.Plugin) map[int][]*plugins.Plugin {
+	byPage := map[int][]*plugins.Plugin{}
+	for _, plugin := range catalogPlugins {
+		page := f.nextCatalogPage(ctx, plugin.Meta.Name)
+		byPage[page] = append(byPage[page], plugin)
+	}
+	return byPage
+}
+
+// nextCatalogPage returns the catalog page a plugin lists now and stores the
+// one after it.
+func (f *Feeder) nextCatalogPage(ctx context.Context, pluginName string) int {
+	key := feedCatalogPageKey + pluginName
 	page := 0
-	if value, err := f.marks.Get(ctx, feedCatalogPageKey); err == nil {
+	if value, err := f.marks.Get(ctx, key); err == nil {
 		page, _ = strconv.Atoi(value)
 	}
 	page = page % catalogPages
-	if err := f.marks.Set(ctx, feedCatalogPageKey, strconv.Itoa(page+1), 0); err != nil {
+	if err := f.marks.Set(ctx, key, strconv.Itoa(page+1), 0); err != nil {
 		log.Printf("feeder: store catalog page: %v", err)
 	}
 	return page

@@ -31,9 +31,16 @@ func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset 
 		Duration:      recommend.DurationRange{MinSeconds: derefInt(minDuration, 0), MaxSeconds: derefInt(maxDuration, 0)},
 		ExcludeTagIDs: excludeTagIds,
 	}
-	items, err := r.recommender.FeedFiltered(ctx, r.registry.InactiveNames(), sources, filter, derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh)
+	feedLimit, feedOffset, feedRefresh := derefInt(limit, defaultFeedLimit), derefInt(offset, 0), refresh != nil && *refresh
+	items, err := r.recommender.FeedFiltered(ctx, r.registry.InactiveNames(), sources, filter, feedLimit, feedOffset, feedRefresh)
 	if err != nil {
 		return nil, err
+	}
+	if r.siteFeedShort(sources, feedOffset, feedRefresh, len(items), feedLimit) && r.feedSites(ctx, sources) {
+		items, err = r.recommender.FeedFiltered(ctx, r.registry.InactiveNames(), sources, filter, feedLimit, feedOffset, true)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return r.recommendedScenes(ctx, items)
 }
