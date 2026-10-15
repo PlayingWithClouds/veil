@@ -185,6 +185,20 @@ func (r *Runner) Suggest(ctx context.Context, p *Plugin, args SuggestArgs) (*Sug
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// IdentifyFace invokes "face:identify" — the performers a recognition service
+// ranks as matches for the face in a picture, best first.
+func (r *Runner) IdentifyFace(ctx context.Context, p *Plugin, args FaceIdentifyArgs) (*FaceIdentifyResult, error) {
+	if !p.Meta.Has(CapabilityFaceIdentify) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityFaceIdentify)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityFaceIdentify, args)
+	if err != nil {
+		return nil, err
+	}
+	var result FaceIdentifyResult
+	return &result, json.Unmarshal(raw, &result)
+}
+
 // Find invokes "<entity>:find" — one full record by URL — and reads the NDJSON
 // stream. Plugins emit one ScrapeResult per line: root entity first, then
 // related standalone entities (performers, studio, tags, collection).

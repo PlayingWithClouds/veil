@@ -88,6 +88,30 @@ export async function followRedirect(url: string): Promise<string> {
   }
 }
 
+const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/**
+ * Decodes base64 into bytes in plain JS: the embedded plugin runtime has no
+ * atob or Buffer. Used for the picture a face:identify call carries.
+ */
+export function base64ToBytes(base64: string): Uint8Array {
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, "");
+  const bytes = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let byteIndex = 0;
+  let buffer = 0;
+  let bitCount = 0;
+  for (const character of clean) {
+    buffer = (buffer << 6) | BASE64_ALPHABET.indexOf(character);
+    bitCount += 6;
+    if (bitCount >= 8) {
+      bitCount -= 8;
+      bytes[byteIndex] = (buffer >> bitCount) & 0xff;
+      byteIndex += 1;
+    }
+  }
+  return bytes;
+}
+
 export function domainOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

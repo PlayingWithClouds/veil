@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -97,6 +98,75 @@ func TestEmbeddedRunnerTimeout(t *testing.T) {
 	}
 }
 
+// TestEmbeddedRunnerMultipartUpload posts a FormData with a text field and a
+// binary Blob, and a raw Uint8Array body, checking the server receives the bytes intact.
+func TestEmbeddedRunnerMultipartUpload(t *testing.T) {
+	binary := []byte{0, 1, 2, 0xff, 0xfe, '\r', '\n', 0x80}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		answer := map[string]any{"contentType": r.Header.Get("Content-Type")}
+		if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			file, header, err := r.FormFile("upload")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			content := make([]byte, 64)
+			count, _ := file.Read(content)
+			answer["file"] = content[:count]
+			answer["filename"] = header.Filename
+			answer["fileType"] = header.Header.Get("Content-Type")
+			answer["field"] = r.FormValue("note")
+		} else {
+			raw := make([]byte, 64)
+			count, _ := r.Body.Read(raw)
+			answer["raw"] = raw[:count]
+		}
+		_ = json.NewEncoder(w).Encode(answer)
+	}))
+	defer server.Close()
+
+	bundle := `
+const { writeSync } = require("fs");
+async function main() {
+  const input = JSON.parse(await Bun.stdin.text());
+  const bytes = new Uint8Array(input.args.bytes);
+  const form = new FormData();
+  form.append("note", "hello");
+  form.append("upload", new Blob([bytes], { type: "image/jpeg" }), "face.jpg");
+  const multipart = await (await fetch(input.args.url, { method: "POST", body: form })).json();
+  const raw = await (await fetch(input.args.url, { method: "POST", body: bytes })).json();
+  writeSync(1, JSON.stringify({ result: { multipart, raw } }) + "\n");
+  process.exit(0);
+}
+main().catch((error) => { writeSync(1, JSON.stringify({ error: String(error) }) + "\n"); process.exit(0); });
+`
+	raw, err := NewEmbeddedRunner().invoke(context.Background(), writeBundle(t, bundle), "test", map[string]any{"url": server.URL, "bytes": []int{0, 1, 2, 255, 254, 13, 10, 128}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Multipart struct {
+			File     []byte `json:"file"`
+			Filename string `json:"filename"`
+			FileType string `json:"fileType"`
+			Field    string `json:"field"`
+		} `json:"multipart"`
+		Raw struct {
+			Raw []byte `json:"raw"`
+		} `json:"raw"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Multipart.File) != string(binary) || result.Multipart.Filename != "face.jpg" ||
+		result.Multipart.FileType != "image/jpeg" || result.Multipart.Field != "hello" {
+		t.Errorf("multipart upload altered: %+v", result.Multipart)
+	}
+	if string(result.Raw.Raw) != string(binary) {
+		t.Errorf("Uint8Array body altered: %v", result.Raw.Raw)
+	}
+}
+
 // TestEmbeddedBundlesLive runs the real plugin bundles against the live sites.
 // Opt-in: VEIL_EMBEDDED_BUNDLES=<dir from apps/backend/scripts/bundle-plugins.ts>.
 func TestEmbeddedBundlesLive(t *testing.T) {
@@ -121,6 +191,24 @@ func TestEmbeddedBundlesLive(t *testing.T) {
 	}
 }
 
+// checkFaceIdentifyLive uploads the pornstarbyface plugin's fixture photo (a
+// performer's own picture) and expects that performer back as the best match.
+func checkFaceIdentifyLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin) {
+	picture, err := os.ReadFile("../../plugins/pornstarbyface/tests/fixtures/face.jpg")
+	if err != nil {
+		t.Skip("no face fixture")
+	}
+	started := time.Now()
+	result, err := runner.IdentifyFace(ctx, plugin, FaceIdentifyArgs{ImageBase64: base64.StdEncoding.EncodeToString(picture), MimeType: "image/jpeg"})
+	if err != nil {
+		t.Fatalf("face:identify: %v", err)
+	}
+	t.Logf("face:identify → %d candidates in %s", len(result.Candidates), time.Since(started))
+	if len(result.Candidates) == 0 || result.Candidates[0].Name != "Lexi Lore" {
+		t.Fatalf("expected Lexi Lore first, got %+v", result.Candidates)
+	}
+}
+
 // checkBundleLive loads one bundle's meta, searches, opens the first hit and
 // resolves its page to a playable stream, logging how long each step took.
 func checkBundleLive(t *testing.T, runner *Runner, dir, query string) {
@@ -140,6 +228,10 @@ func checkBundleLive(t *testing.T, runner *Runner, dir, query string) {
 
 	if meta.Has(CapabilityCamList) {
 		checkCamBundleLive(t, runner, plugin)
+		return
+	}
+	if meta.Has(CapabilityFaceIdentify) {
+		checkFaceIdentifyLive(t, ctx, runner, plugin)
 		return
 	}
 

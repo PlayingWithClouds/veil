@@ -30,7 +30,11 @@ export type Capability =
   // Live webcam rooms: "cam:list" lists the rooms online right now, "cam:stream"
   // resolves one room to its live HLS master playlist.
   | "cam:list"
-  | "cam:stream";
+  | "cam:stream"
+  // Ranks the performers who look like the face in a picture (args.image_base64).
+  // Only for services whose database holds professional performers or cam
+  // models (stage personas), never general face search.
+  | "face:identify";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
 // standalone images, the performers/studios/tags that describe them, and
@@ -366,6 +370,28 @@ export interface SiteSuggestion {
 /** Result of the search:suggest capability, best first. */
 export interface SuggestResult {
   suggestions: SiteSuggestion[];
+}
+
+/** Arguments of the face:identify capability; the backend downloads the picture itself. */
+export interface FaceIdentifyArgs {
+  image_base64: string;
+  mime_type: string;
+}
+
+/** One performer a face-recognition service ranks as a match. */
+export interface FaceCandidate {
+  /** Stage name. */
+  name: string;
+  /** 0..1 */
+  similarity: number;
+  image_url?: string;
+  /** The performer's pages on adult sites. */
+  profile_urls: string[];
+}
+
+/** Result of the face:identify capability, best first. */
+export interface FaceIdentifyResult {
+  candidates: FaceCandidate[];
 }
 
 export interface EnrichArgs {
