@@ -255,9 +255,12 @@ func (s *Service) storeChunk(key string, chunk cachedChunk) {
 }
 
 // mergeByViewers merges lists that are each ordered best first into one list,
-// always taking the head with the most viewers.
+// always taking the head with the most viewers. A room listed twice (sites
+// reorder rooms between the chunks of one listing, and chunks are cached at
+// different times) keeps only its first, best place.
 func mergeByViewers(lists [][]*model.CamModel) []*model.CamModel {
 	positions := make([]int, len(lists))
+	seen := map[string]bool{}
 	var merged []*model.CamModel
 	for {
 		best := -1
@@ -272,10 +275,15 @@ func mergeByViewers(lists [][]*model.CamModel) []*model.CamModel {
 		if best == -1 {
 			return merged
 		}
-		// Copy: cached pages are shared between requests, and the caller sets flags.
-		room := *lists[best][positions[best]]
-		merged = append(merged, &room)
+		head := lists[best][positions[best]]
 		positions[best]++
+		if seen[head.ID] {
+			continue
+		}
+		seen[head.ID] = true
+		// Copy: cached pages are shared between requests, and the caller sets flags.
+		room := *head
+		merged = append(merged, &room)
 	}
 }
 

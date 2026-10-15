@@ -76,6 +76,18 @@
 		void loadMore();
 	}
 
+	/** The page's rooms not shown yet, each once (a site can list a room twice). */
+	function unseenRooms(pageRooms: CamModel[]): CamModel[] {
+		const known = new Set(rooms.map((room) => room.id));
+		const unseen: CamModel[] = [];
+		for (const room of pageRooms) {
+			if (known.has(room.id)) continue;
+			known.add(room.id);
+			unseen.push(room);
+		}
+		return unseen;
+	}
+
 	/** Appends the next page of rooms. */
 	async function loadMore() {
 		if (loading || done) return;
@@ -88,11 +100,10 @@
 				rooms.length
 			);
 			if (requested !== generation) return;
-			const known = new Set(rooms.map((room) => room.id));
-			const fresh = page.rooms.filter((room) => !known.has(room.id));
-			rooms = [...rooms, ...fresh];
+			const before = rooms.length;
+			rooms = [...rooms, ...unseenRooms(page.rooms)];
 			totalCount = page.totalCount;
-			done = page.rooms.length < PAGE_SIZE || fresh.length === 0;
+			done = page.rooms.length < PAGE_SIZE || rooms.length === before;
 		} catch {
 			if (requested !== generation) return;
 			failed = true;

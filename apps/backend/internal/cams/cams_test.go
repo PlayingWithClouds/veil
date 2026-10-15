@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
 )
@@ -178,5 +180,20 @@ func TestFollowShowsOnCachedPageAndOffline(t *testing.T) {
 	stream, err := service.Stream(ctx, second.ID)
 	if err != nil || stream.URL != "http://backend.test/api/stream/manifest?live=https://edge.example/a2.m3u8" {
 		t.Errorf("stream = %+v, %v", stream, err)
+	}
+}
+
+func TestMergeByViewersKeepsARepeatedRoomOnce(t *testing.T) {
+	first := []*model.CamModel{{ID: "cam_model:a", Viewers: 900}, {ID: "cam_model:b", Viewers: 500}}
+	// The site moved b ahead between two chunks, so it shows up again later.
+	second := []*model.CamModel{{ID: "cam_model:b", Viewers: 400}, {ID: "cam_model:c", Viewers: 300}}
+
+	merged := mergeByViewers([][]*model.CamModel{first, second})
+	ids := make([]string, 0, len(merged))
+	for _, room := range merged {
+		ids = append(ids, room.ID)
+	}
+	if strings.Join(ids, ",") != "cam_model:a,cam_model:b,cam_model:c" {
+		t.Errorf("merged = %v, want each room once in viewer order", ids)
 	}
 }
