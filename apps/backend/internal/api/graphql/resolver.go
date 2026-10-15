@@ -3,6 +3,7 @@ package graphql
 import (
 	"github.com/playingwithclouds/veil/internal/api/imgcache"
 	"github.com/playingwithclouds/veil/internal/cams"
+	"github.com/playingwithclouds/veil/internal/face"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/media"
@@ -43,6 +44,7 @@ type Resolver struct {
 	siteSuggest  *sitesuggest.Service
 	blobStore    *storage.Client
 	cams         *cams.Service
+	faces        *face.Service
 }
 
 // SetCams wires in the live cam service.

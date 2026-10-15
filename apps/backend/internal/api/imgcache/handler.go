@@ -106,6 +106,25 @@ func (h *Handler) Prefetch(ctx context.Context, raw string) error {
 	return h.fetchAndStore(ctx, remote, key)
 }
 
+// Load returns the bytes of an image: a blob of the store directly, or a
+// remote image through the cache (fetched and stored on first use, so the
+// picture is the same downscaled copy the web shows).
+func (h *Handler) Load(ctx context.Context, raw string) ([]byte, error) {
+	key, isBlob := storage.KeyFromURL(raw)
+	if !isBlob {
+		if err := h.Prefetch(ctx, raw); err != nil {
+			return nil, err
+		}
+		key = keyPrefix + hashURL(raw)
+	}
+	reader, err := h.store.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	return io.ReadAll(reader)
+}
+
 func (h *Handler) fetchAndStore(ctx context.Context, remote *url.URL, key string) error {
 	data, contentType, err := fetchImage(ctx, remote)
 	if err != nil {

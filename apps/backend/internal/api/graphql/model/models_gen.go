@@ -120,6 +120,21 @@ type CreateStreamInput struct {
 	PluginName       *string  `json:"pluginName,omitempty"`
 }
 
+type FaceCandidate struct {
+	Name        string   `json:"name"`
+	Similarity  float64  `json:"similarity"`
+	ImageURL    *string  `json:"imageUrl,omitempty"`
+	ProfileUrls []string `json:"profileUrls"`
+	Sources     []string `json:"sources"`
+	PerformerID *string  `json:"performerId,omitempty"`
+}
+
+type FaceIdentification struct {
+	Candidates []*FaceCandidate `json:"candidates"`
+	Sources    []string         `json:"sources"`
+	Failures   []string         `json:"failures"`
+}
+
 type Gallery struct {
 	ID         string       `json:"id"`
 	ExternalID string       `json:"externalId"`

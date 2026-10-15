@@ -24,6 +24,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/discovery"
+	"github.com/playingwithclouds/veil/internal/face"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/media"
@@ -355,6 +356,7 @@ func main() {
 	suggestions := suggest.New(database, recommender, repo)
 	resolver.SetSuggestions(suggestions)
 	resolver.SetSiteSuggestions(sitesuggest.New(registry, runner))
+	resolver.SetFaceIdentifier(face.New(database, ingestSvc, registry, runner, imgHandler.Load))
 	go suggestions.Warm(ctx)
 
 	mux := http.NewServeMux()
