@@ -230,6 +230,7 @@ export interface Collection {
     coverPath: (Scalars['String'] | null)
     itemCount: Scalars['Int']
     origin: Scalars['String']
+    builtIn: Scalars['Boolean']
     sourceUrl: (Scalars['String'] | null)
     externalId: (Scalars['String'] | null)
     tags: Tag[]
@@ -968,6 +969,7 @@ export interface CollectionGenqlSelection{
     coverPath?: boolean | number
     itemCount?: boolean | number
     origin?: boolean | number
+    builtIn?: boolean | number
     sourceUrl?: boolean | number
     externalId?: boolean | number
     tags?: TagGenqlSelection

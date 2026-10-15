@@ -1,11 +1,14 @@
 <script lang="ts">
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
-	import CaretLeftIcon from 'phosphor-svelte/lib/CaretLeftIcon';
-	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
-	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
+	import ListPlusIcon from 'phosphor-svelte/lib/ListPlusIcon';
 	import { cacheUrl } from '$lib/img';
 	import TagChips from '$lib/components/TagChips.svelte';
+	import RatingButtons from '$lib/components/RatingButtons.svelte';
+	import OCounterButton from '$lib/components/OCounterButton.svelte';
+	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import GalleryViewer from '$lib/components/GalleryViewer.svelte';
+	import { openMoveDialog } from '$lib/stores/moveDialog';
 	import { ensureGalleryImages, type GalleryDetail } from '$lib/galleries';
 
 	let { data } = $props();
@@ -33,30 +36,9 @@
 		};
 	});
 
-	// Lightbox: index of the open image, or null when closed.
-	let lightboxIndex = $state<number | null>(null);
-	let open = $derived(lightboxIndex !== null);
-
-	function openAt(index: number) {
-		lightboxIndex = index;
-	}
-	function closeLightbox() {
-		lightboxIndex = null;
-	}
-	function step(delta: number) {
-		if (lightboxIndex === null || images.length === 0) return;
-		lightboxIndex = (lightboxIndex + delta + images.length) % images.length;
-	}
-
-	function onKeydown(event: KeyboardEvent) {
-		if (lightboxIndex === null) return;
-		if (event.key === 'Escape') closeLightbox();
-		if (event.key === 'ArrowRight') step(1);
-		if (event.key === 'ArrowLeft') step(-1);
-	}
+	// Viewer: index of the open image, or null when closed.
+	let viewerIndex = $state<number | null>(null);
 </script>
-
-<svelte:window onkeydown={onKeydown} />
 
 {#if !gallery}
 	<div class="flex h-64 items-center justify-center">
@@ -89,8 +71,25 @@
 			<span class="badge badge-error ml-auto">18+</span>
 		</div>
 
+		<div class="flex flex-wrap items-center gap-2">
+			<RatingButtons mediaId={gallery.id} />
+			<OCounterButton mediaId={gallery.id} />
+			<FavoriteButton mediaId={gallery.id} />
+			<button
+				type="button"
+				class="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+				title="Add to collection"
+				onclick={() => gallery && openMoveDialog('gallery', gallery.id, gallery.title)}
+			>
+				<ListPlusIcon size={18} />
+				Save
+			</button>
+		</div>
+
 		{#if images.length === 0}
-			<div class="border-base-300 flex flex-col items-center gap-3 rounded-xl border border-dashed py-24 text-center">
+			<div
+				class="border-base-300 flex flex-col items-center gap-3 rounded-xl border border-dashed py-24 text-center"
+			>
 				<span class="text-base-content/20"><ImagesIcon size={48} /></span>
 				{#if fetchingImages}
 					<span class="loading loading-spinner"></span>
@@ -105,7 +104,7 @@
 					<button
 						type="button"
 						class="bg-base-200 aspect-square overflow-hidden rounded-lg transition-transform hover:scale-[1.02]"
-						onclick={() => openAt(index)}
+						onclick={() => (viewerIndex = index)}
 					>
 						<img
 							src={cacheUrl(image.filePath)}
@@ -119,53 +118,12 @@
 		{/if}
 	</div>
 
-	{#if open && lightboxIndex !== null}
-		<div
-			class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
-			role="presentation"
-			onclick={closeLightbox}
-		>
-			<button
-				type="button"
-				class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-				onclick={closeLightbox}
-				aria-label="Close"
-			>
-				<XIcon size={20} weight="bold" />
-			</button>
-			<button
-				type="button"
-				class="absolute left-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-				onclick={(event) => {
-					event.stopPropagation();
-					step(-1);
-				}}
-				aria-label="Previous"
-			>
-				<CaretLeftIcon size={24} weight="bold" />
-			</button>
-			<img
-				src={cacheUrl(images[lightboxIndex].filePath)}
-				alt="{gallery.title} {lightboxIndex + 1}"
-				class="max-h-[92vh] max-w-[92vw] object-contain"
-				onclick={(event) => event.stopPropagation()}
-			/>
-			<button
-				type="button"
-				class="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-				onclick={(event) => {
-					event.stopPropagation();
-					step(1);
-				}}
-				aria-label="Next"
-			>
-				<CaretRightIcon size={24} weight="bold" />
-			</button>
-			<span
-				class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-xs text-white"
-			>
-				{lightboxIndex + 1} / {images.length}
-			</span>
-		</div>
+	{#if viewerIndex !== null}
+		<GalleryViewer
+			{images}
+			bind:index={viewerIndex}
+			title={gallery.title}
+			onclose={() => (viewerIndex = null)}
+		/>
 	{/if}
 {/if}

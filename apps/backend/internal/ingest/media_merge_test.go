@@ -168,7 +168,7 @@ func TestMergeDuplicateCollections(t *testing.T) {
 	if err != nil || merged != 1 {
 		t.Fatalf("merged %d (err %v), want 1", merged, err)
 	}
-	if collections := countRows(t, ctx, database, `SELECT count(*) FROM collection`, nil); collections != 2 {
+	if collections := countRows(t, ctx, database, `SELECT count(*) FROM collection WHERE id != 'collection:favorites'`, nil); collections != 2 {
 		t.Fatalf("collections = %d, want 2", collections)
 	}
 	if members := countRows(t, ctx, database, `SELECT count(*) FROM collection_item WHERE collection = $id`, db.Vars{"id": big.String()}); members != 2 {

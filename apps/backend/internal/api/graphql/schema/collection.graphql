@@ -34,6 +34,9 @@ type Collection {
   itemCount: Int!
   # "user" (user-created) | "scraped" (plugin-created)
   origin: String!
+  # The built-in Favorites collection (id collection:favorites), which the
+  # favorite buttons fill; it can be neither renamed nor deleted.
+  builtIn: Boolean!
   sourceUrl: String
   externalId: String
   tags: [Tag!]!

@@ -80,6 +80,7 @@ type ComplexityRoot struct {
 	}
 
 	Collection struct {
+		BuiltIn    func(childComplexity int) int
 		CoverPath  func(childComplexity int) int
 		CreatedAt  func(childComplexity int) int
 		Details    func(childComplexity int) int
@@ -1038,6 +1039,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Change.Value(childComplexity), true
 
+	case "Collection.builtIn":
+		if e.ComplexityRoot.Collection.BuiltIn == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Collection.BuiltIn(childComplexity), true
 	case "Collection.coverPath":
 		if e.ComplexityRoot.Collection.CoverPath == nil {
 			break
@@ -4770,6 +4777,9 @@ type Collection {
   itemCount: Int!
   # "user" (user-created) | "scraped" (plugin-created)
   origin: String!
+  # The built-in Favorites collection (id collection:favorites), which the
+  # favorite buttons fill; it can be neither renamed nor deleted.
+  builtIn: Boolean!
   sourceUrl: String
   externalId: String
   tags: [Tag!]!
@@ -5999,6 +6009,8 @@ func (ec *executionContext) childFields_Collection(ctx context.Context, field gr
 		return ec.fieldContext_Collection_itemCount(ctx, field)
 	case "origin":
 		return ec.fieldContext_Collection_origin(ctx, field)
+	case "builtIn":
+		return ec.fieldContext_Collection_builtIn(ctx, field)
 	case "sourceUrl":
 		return ec.fieldContext_Collection_sourceUrl(ctx, field)
 	case "externalId":
@@ -10376,6 +10388,29 @@ func (ec *executionContext) _Collection_origin(ctx context.Context, field graphq
 }
 func (ec *executionContext) fieldContext_Collection_origin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Collection", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Collection_builtIn(ctx context.Context, field graphql.CollectedField, obj *model.Collection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Collection_builtIn(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BuiltIn, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Collection_builtIn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Collection", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Collection_sourceUrl(ctx context.Context, field graphql.CollectedField, obj *model.Collection) (ret graphql.Marshaler) {
@@ -26105,6 +26140,11 @@ func (ec *executionContext) _Collection(ctx context.Context, sel ast.SelectionSe
 			}
 		case "origin":
 			out.Values[i] = ec._Collection_origin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "builtIn":
+			out.Values[i] = ec._Collection_builtIn(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

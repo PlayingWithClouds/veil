@@ -214,6 +214,7 @@ type Collection {
   coverPath: String
   itemCount: Int!
   origin: String!
+  builtIn: Boolean!
   sourceUrl: String
   externalId: String
   tags: [Tag!]!

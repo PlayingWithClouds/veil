@@ -54,6 +54,7 @@ type Collection struct {
 	CoverPath  *string `json:"coverPath,omitempty"`
 	ItemCount  int     `json:"itemCount"`
 	Origin     string  `json:"origin"`
+	BuiltIn    bool    `json:"builtIn"`
 	SourceURL  *string `json:"sourceUrl,omitempty"`
 	ExternalID *string `json:"externalId,omitempty"`
 	Tags       []*Tag  `json:"tags"`

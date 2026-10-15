@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -350,11 +351,20 @@ func TestCollections(t *testing.T) {
 	}
 
 	userOnly, err := repo.ListCollections(ctx, nil, nil, stringPointer("user"), nil, nil)
-	if err != nil || len(userOnly) != 1 || userOnly[0].ID != created.ID || userOnly[0].ItemCount != 2 {
-		t.Fatalf("user collections: %v %+v", err, userOnly)
+	if err != nil || len(userOnly) != 2 || userOnly[0].ID != FavoritesCollectionID || !userOnly[0].BuiltIn {
+		t.Fatalf("user collections start with the built-in Favorites: %v %+v", err, userOnly)
 	}
-	if userOnly[0].CoverPath == nil || *userOnly[0].CoverPath != "one.jpg" {
-		t.Fatalf("cover from first member: %+v", userOnly[0].CoverPath)
+	if userOnly[1].ID != created.ID || userOnly[1].ItemCount != 2 || userOnly[1].BuiltIn {
+		t.Fatalf("user collections: %+v", userOnly[1])
+	}
+	if userOnly[1].CoverPath == nil || *userOnly[1].CoverPath != "one.jpg" {
+		t.Fatalf("cover from first member: %+v", userOnly[1].CoverPath)
+	}
+	if _, err := repo.DeleteCollection(ctx, FavoritesCollectionID); !errors.Is(err, ErrBuiltInCollection) {
+		t.Fatalf("deleting Favorites: %v", err)
+	}
+	if _, err := repo.RenameCollection(ctx, FavoritesCollectionID, "Other"); !errors.Is(err, ErrBuiltInCollection) {
+		t.Fatalf("renaming Favorites: %v", err)
 	}
 	scraped, err := repo.ListCollections(ctx, nil, nil, stringPointer("scraped"), nil, nil)
 	if err != nil || len(scraped) != 1 || scraped[0].Origin != "scraped" {
