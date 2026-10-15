@@ -847,6 +847,9 @@ export default {
                     ],
                     "quality": [
                         1
+                    ],
+                    "fromSecondsAgo": [
+                        3
                     ]
                 }
             ],

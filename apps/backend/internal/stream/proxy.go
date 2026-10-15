@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/livebuffer"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/storage"
 )
@@ -28,6 +29,9 @@ type sessionData struct {
 	// Live marks a live broadcast: nothing is written to the stream cache and
 	// low-latency playlist tags are stripped (see serveLiveManifest).
 	Live bool `json:"live,omitempty"`
+	// Room is the cam room a live session belongs to; its segments are kept in
+	// the live buffer so the player can rewind.
+	Room string `json:"room,omitempty"`
 }
 
 // Proxy is an HTTP handler that serves HLS streams through the backend.
@@ -43,6 +47,13 @@ type Proxy struct {
 	cache   *CacheService
 	kv      *cache.Client
 	baseURL string // public backend URL, e.g. "http://localhost:8080"
+	// liveBuffer keeps the last minutes of watched live rooms; nil disables rewinding.
+	liveBuffer *livebuffer.Manager
+}
+
+// SetLiveBuffer turns on rewinding for live room sessions.
+func (p *Proxy) SetLiveBuffer(buffer *livebuffer.Manager) {
+	p.liveBuffer = buffer
 }
 
 func NewProxy(cs *CacheService, kv *cache.Client, baseURL string) *Proxy {
@@ -60,7 +71,7 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 		return result.URL, nil
 	}
 	if !isHLS(result) {
-		id, err := p.newSession(ctx, result.Headers, false)
+		id, err := p.newSession(ctx, result.Headers, false, "")
 		if err != nil {
 			return result.URL, nil
 		}
@@ -68,7 +79,7 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 		return p.baseURL + "/api/stream/mp4?s=" + id + "&u=" + encURL(result.URL), nil
 	}
 
-	id, err := p.newSession(ctx, result.Headers, false)
+	id, err := p.newSession(ctx, result.Headers, false, "")
 	if err != nil {
 		return result.URL, nil // fallback: return remote URL on session failure
 	}
@@ -79,8 +90,11 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 // room). The session is marked live: playlists change constantly and segments
 // are ephemeral, so nothing is cached — no blob, no kv entry, no redirect to
 // the blob store.
-func (p *Proxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error) {
-	id, err := p.newSession(ctx, result.Headers, true)
+//
+// roomID names the cam room: the live buffer keeps its last minutes, and the
+// playlists served to the player cover that window.
+func (p *Proxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult, roomID string) (string, error) {
+	id, err := p.newSession(ctx, result.Headers, true, roomID)
 	if err != nil {
 		return "", err
 	}
@@ -141,6 +155,9 @@ func (p *Proxy) serveManifest(w http.ResponseWriter, r *http.Request) {
 	manifest := string(body)
 	if session.Live {
 		manifest = stripLowLatencyTags(manifest)
+	}
+	if p.serveBufferedPlaylist(w, session, sessID, manifestURL, manifest, q.Get("a") == "1") {
+		return
 	}
 	rewritten := p.rewriteManifest(manifest, base, sessID)
 
@@ -206,7 +223,11 @@ func (p *Proxy) rewriteTagURI(line string, base *url.URL, sessID string) string 
 		if route == "seg" {
 			return `URI="/api/stream/seg?s=` + sessID + "&h=" + urlHash(abs) + "&u=" + encURL(abs) + `"`
 		}
-		return `URI="/api/stream/manifest?s=` + sessID + "&u=" + encURL(abs) + `"`
+		manifestURL := `URI="/api/stream/manifest?s=` + sessID + "&u=" + encURL(abs)
+		if livebuffer.AttributeValue(line, "TYPE") == "AUDIO" {
+			manifestURL += "&a=1"
+		}
+		return manifestURL + `"`
 	})
 }
 
@@ -224,7 +245,7 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 
 	session := p.loadSessionData(r.Context(), sessID)
 	if session.Live {
-		p.serveLiveSeg(w, r, segURL, session.Headers)
+		p.serveLiveSeg(w, r, segURL, session)
 		return
 	}
 
@@ -273,8 +294,15 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 
 // serveLiveSeg relays a live segment (or init/key file) from the origin without
 // touching the stream cache.
-func (p *Proxy) serveLiveSeg(w http.ResponseWriter, r *http.Request, segURL string, headers map[string]string) {
-	resp, err := p.cache.fetch(r.Context(), segURL, headers)
+func (p *Proxy) serveLiveSeg(w http.ResponseWriter, r *http.Request, segURL string, session sessionData) {
+	if p.serveBufferedSeg(w, r, session) {
+		return
+	}
+	if segURL == "" {
+		http.NotFound(w, r)
+		return
+	}
+	resp, err := p.cache.fetch(r.Context(), segURL, session.Headers)
 	if err != nil {
 		http.Error(w, "upstream error", http.StatusBadGateway)
 		return
@@ -373,9 +401,9 @@ func (p *Proxy) serveMP4(w http.ResponseWriter, r *http.Request) {
 
 // -- session --
 
-func (p *Proxy) newSession(ctx context.Context, headers map[string]string, live bool) (string, error) {
+func (p *Proxy) newSession(ctx context.Context, headers map[string]string, live bool, room string) (string, error) {
 	id := strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
-	data, _ := json.Marshal(sessionData{Headers: headers, Live: live})
+	data, _ := json.Marshal(sessionData{Headers: headers, Live: live, Room: room})
 	if err := p.kv.Set(ctx, sessPrefix+id, string(data), sessTTL); err != nil {
 		return "", err
 	}

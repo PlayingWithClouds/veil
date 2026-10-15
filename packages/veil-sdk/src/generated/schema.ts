@@ -919,7 +919,7 @@ export interface MutationGenqlSelection{
     removeBlock?: { __args: {targetId: Scalars['ID']} }
     followCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     unfollowCamModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
-    startCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID'], quality?: (Scalars['String'] | null)} })
+    startCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID'], quality?: (Scalars['String'] | null), fromSecondsAgo?: (Scalars['Int'] | null)} })
     stopCamRecording?: (CamRecordingGenqlSelection & { __args: {id: Scalars['ID']} })
     setCamAutoRecord?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], enabled: Scalars['Boolean'], quality?: (Scalars['String'] | null)} })
     createCollection?: (CollectionGenqlSelection & { __args: {name: Scalars['String']} })

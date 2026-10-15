@@ -27,6 +27,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/face"
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
+	"github.com/playingwithclouds/veil/internal/livebuffer"
 	"github.com/playingwithclouds/veil/internal/media"
 	"github.com/playingwithclouds/veil/internal/netdns"
 	"github.com/playingwithclouds/veil/internal/outbound"
@@ -115,7 +116,7 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 		// Keep reading blobs encrypted earlier, but write new ones plain.
 		return store.WithEncryption(key)
 	}
-	return store.WithEncryption(key, "stream-cache/", cams.RecordingPrefix)
+	return store.WithEncryption(key, "stream-cache/", cams.RecordingPrefix, livebuffer.Prefix)
 }
 
 // camRecordingMaxDuration returns the longest a cam recording may run, read
@@ -338,9 +339,18 @@ func main() {
 	// HLS proxy: rewrites manifest URIs to local proxy URLs, write-through caches segments.
 	streamProxy := stream.NewProxy(streamCache, cacheClient, publicURL)
 	resolver.SetStreamProxy(streamProxy)
+	// Live buffer: the last minutes of watched cam rooms, so a viewer can rewind
+	// and a recording can start in the past. It does not survive a restart.
+	liveBuffer := livebuffer.New(ctx, storeClient)
+	if err := liveBuffer.Reset(ctx); err != nil {
+		log.Printf("live buffer reset: %v", err)
+	}
+	go liveBuffer.Run(ctx)
+	streamProxy.SetLiveBuffer(liveBuffer)
 	camService := cams.New(database, cams.NewPluginSites(registry, runner), streamProxy)
 	resolver.SetCams(camService)
 	camRecorder := cams.NewRecorder(ctx, camService, storeClient, cams.NewHTTPFetcher(), ingestSvc, camRecordingMaxDuration(settingsSvc))
+	camRecorder.SetLiveBuffer(liveBuffer)
 	resolver.SetCamRecorder(camRecorder)
 	go func() {
 		camRecorder.Recover(ctx)

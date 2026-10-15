@@ -321,7 +321,7 @@ type ComplexityRoot struct {
 		SetPerformerFavorite       func(childComplexity int, id string, favorite bool) int
 		SetSceneThumbnail          func(childComplexity int, sceneID string, atSeconds float64, jpegBase64 string) int
 		SetStudioTags              func(childComplexity int, studioID string, tagIds []string) int
-		StartCamRecording          func(childComplexity int, id string, quality *string) int
+		StartCamRecording          func(childComplexity int, id string, quality *string, fromSecondsAgo *int) int
 		StopCamRecording           func(childComplexity int, id string) int
 		Subscribe                  func(childComplexity int, kind model.SubscriptionKind, targetID string, intervalHours *int) int
 		SubscribeSearch            func(childComplexity int, query string, sources []string, intervalHours *int) int
@@ -806,7 +806,7 @@ type MutationResolver interface {
 	RemoveBlock(ctx context.Context, targetID string) (bool, error)
 	FollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
 	UnfollowCamModel(ctx context.Context, id string) (*model.CamModel, error)
-	StartCamRecording(ctx context.Context, id string, quality *string) (*model.CamRecording, error)
+	StartCamRecording(ctx context.Context, id string, quality *string, fromSecondsAgo *int) (*model.CamRecording, error)
 	StopCamRecording(ctx context.Context, id string) (*model.CamRecording, error)
 	SetCamAutoRecord(ctx context.Context, id string, enabled bool, quality *string) (*model.CamModel, error)
 	CreateCollection(ctx context.Context, name string) (*model.Collection, error)
@@ -2587,7 +2587,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.StartCamRecording(childComplexity, args["id"].(string), args["quality"].(*string)), true
+		return e.ComplexityRoot.Mutation.StartCamRecording(childComplexity, args["id"].(string), args["quality"].(*string), args["fromSecondsAgo"].(*int)), true
 	case "Mutation.stopCamRecording":
 		if e.ComplexityRoot.Mutation.StopCamRecording == nil {
 			break
@@ -5376,7 +5376,11 @@ extend type Mutation {
   # stopped, the room goes offline or the maximum duration passes, then the
   # footage becomes a scene.
   # quality: source (default, the best rendition) or a target height like 480.
-  startCamRecording(id: ID!, quality: String): CamRecording!
+  # fromSecondsAgo: begin that many seconds in the past, from the room's live
+  # buffer (the last 3 minutes while it is watched), capped to what is
+  # buffered; the recording then goes on live. It continues in the buffered
+  # rendition, whatever quality says. Ignored when the room is already recorded.
+  startCamRecording(id: ID!, quality: String, fromSecondsAgo: Int): CamRecording!
   # Stop the room's recording and wait for its scene; null when none was running.
   stopCamRecording(id: ID!): CamRecording
   # Record this model automatically whenever she is live (also follows).
@@ -9010,6 +9014,14 @@ func (ec *executionContext) field_Mutation_startCamRecording_args(ctx context.Co
 		return nil, err
 	}
 	args["quality"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "fromSecondsAgo",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["fromSecondsAgo"] = arg2
 	return args, nil
 }
 
@@ -15056,7 +15068,7 @@ func (ec *executionContext) _Mutation_startCamRecording(ctx context.Context, fie
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().StartCamRecording(ctx, fc.Args["id"].(string), fc.Args["quality"].(*string))
+			return ec.Resolvers.Mutation().StartCamRecording(ctx, fc.Args["id"].(string), fc.Args["quality"].(*string), fc.Args["fromSecondsAgo"].(*int))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.CamRecording) graphql.Marshaler {

@@ -24,12 +24,16 @@ func (r *mutationResolver) UnfollowCamModel(ctx context.Context, id string) (*mo
 }
 
 // StartCamRecording is the resolver for the startCamRecording field.
-func (r *mutationResolver) StartCamRecording(ctx context.Context, id string, quality *string) (*model.CamRecording, error) {
+func (r *mutationResolver) StartCamRecording(ctx context.Context, id string, quality *string, fromSecondsAgo *int) (*model.CamRecording, error) {
 	requested := cams.QualitySource
 	if quality != nil {
 		requested = *quality
 	}
-	return r.camRecorder.Start(ctx, id, requested)
+	secondsAgo := 0
+	if fromSecondsAgo != nil {
+		secondsAgo = *fromSecondsAgo
+	}
+	return r.camRecorder.StartFrom(ctx, id, requested, secondsAgo)
 }
 
 // StopCamRecording is the resolver for the stopCamRecording field.

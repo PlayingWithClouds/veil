@@ -55,7 +55,7 @@ func (sites *fakeSites) Stream(ctx context.Context, plugin *plugins.Plugin, user
 
 type fakeProxy struct{}
 
-func (fakeProxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error) {
+func (fakeProxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult, roomID string) (string, error) {
 	return "http://backend.test/api/stream/manifest?live=" + result.URL, nil
 }
 

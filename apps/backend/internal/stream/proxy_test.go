@@ -30,7 +30,8 @@ func TestRewriteManifestRootRelative(t *testing.T) {
 }
 
 // TestRewriteManifestTagURIs checks that files referenced from tag attributes
-// (fMP4 init segments, alternate renditions) are proxied too.
+// (fMP4 init segments, alternate renditions) are proxied too, audio renditions
+// marked so the live buffer tells them from video.
 func TestRewriteManifestTagURIs(t *testing.T) {
 	proxy := NewProxy(nil, nil, "http://localhost:8080")
 	base, _ := url.Parse("https://cdn.example/video/720p.av1.mp4/index.m3u8")
@@ -47,7 +48,7 @@ func TestRewriteManifestTagURIs(t *testing.T) {
 	if !strings.HasPrefix(lines[1], wantInit) || !strings.Contains(lines[1], "&u="+encURL("https://cdn.example/video/720p.av1.mp4/init-v1-a1.mp4")+`"`) {
 		t.Errorf("init line = %q", lines[1])
 	}
-	wantMedia := `#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="/api/stream/manifest?s=session&u=` + encURL("https://cdn.example/video/720p.av1.mp4/audio/index.m3u8") + `"`
+	wantMedia := `#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="/api/stream/manifest?s=session&u=` + encURL("https://cdn.example/video/720p.av1.mp4/audio/index.m3u8") + `&a=1"`
 	if lines[2] != wantMedia {
 		t.Errorf("media line = %q, want %q", lines[2], wantMedia)
 	}
