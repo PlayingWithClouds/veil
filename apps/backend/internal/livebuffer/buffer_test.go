@@ -81,7 +81,7 @@ func (f *fixture) source(playlist string, kind string) Source {
 func (f *fixture) playlistOf(t *testing.T, sequences ...int) *Playlist {
 	t.Helper()
 	var text strings.Builder
-	text.WriteString("#EXTM3U\n#EXT-X-TARGETDURATION:2\n")
+	fmt.Fprintf(&text, "#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:%d\n", sequences[0])
 	for _, sequence := range sequences {
 		fmt.Fprintf(&text, "#EXTINF:2.000,\nseg/%d.ts?token=1\n", sequence)
 	}
@@ -163,7 +163,7 @@ func TestRenderIsASlidingLivePlaylist(t *testing.T) {
 	f := newFixture(t)
 	window := f.manager.Observe("cam_model:nova", f.source("video", KindVideo), f.playlistOf(t, 4, 5), true)
 	rendered := window.Render(func(name, sourceURL string) string { return "/x/" + name })
-	for _, want := range []string{"#EXT-X-MEDIA-SEQUENCE:0", "#EXT-X-DISCONTINUITY-SEQUENCE:0", "#EXT-X-TARGETDURATION:2", "#EXTINF:2.000,\n/x/"} {
+	for _, want := range []string{"#EXT-X-MEDIA-SEQUENCE:4", "#EXT-X-DISCONTINUITY-SEQUENCE:0", "#EXT-X-TARGETDURATION:2", "#EXTINF:2.000,\n/x/"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("playlist lacks %q:\n%s", want, rendered)
 		}
