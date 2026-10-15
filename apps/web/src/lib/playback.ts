@@ -32,6 +32,10 @@ export interface PlaybackOptions {
 	onMutedFallback?: () => void;
 	// Called with the stream's qualities, best first, once its playlist is read.
 	onLevels?: (levels: PlaybackLevel[]) => void;
+	// The owner controls the sound (a split-view pane): the session's live audio
+	// choice is neither applied nor updated, and a refused autoplay with sound
+	// falls back to muted for any stream, not just live ones.
+	isolatedAudio?: boolean;
 }
 
 // A live stream retries this many network errors in a row before it is
@@ -81,7 +85,7 @@ export class Playback {
 		if (this.loadedSrc === src) return;
 		this.detachSource();
 		this.loadedSrc = src;
-		if (options.live) this.useLiveAudio();
+		if (options.live && !options.isolatedAudio) this.useLiveAudio();
 		if (!isHlsSource(src, mimeType)) {
 			this.video.src = src;
 			this.startPlayback(options);
@@ -93,7 +97,7 @@ export class Playback {
 	/** Starts playing; a live stream falls back to muted when sound autoplay is refused. */
 	private startPlayback(options: PlaybackOptions) {
 		this.video.play().catch(() => {
-			if (!options.live) return;
+			if (!options.live && !options.isolatedAudio) return;
 			this.mutedFallback = true;
 			this.video.muted = true;
 			options.onMutedFallback?.();

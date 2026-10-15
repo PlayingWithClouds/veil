@@ -48,6 +48,7 @@
 <script lang="ts">
 	import BookmarkSimpleIcon from 'phosphor-svelte/lib/BookmarkSimpleIcon';
 	import CardCaption from './CardCaption.svelte';
+	import SplitAddButton from './SplitAddButton.svelte';
 	import CardHoverPlayer from './CardHoverPlayer.svelte';
 	import { centerPreview } from '$lib/centerPreview';
 	import { watchProgress } from '$lib/stores/watchProgress';
@@ -243,6 +244,12 @@
 			>
 				<BookmarkSimpleIcon size={16} weight="fill" />
 			</button>
+			<SplitAddButton
+				kind="scene"
+				mediaId={item.id}
+				title={item.title}
+				class="absolute top-1.5 left-11"
+			/>
 		{/if}
 	</div>
 

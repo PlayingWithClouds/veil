@@ -15,7 +15,10 @@
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimpleIcon';
 	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
-	import { camsUrl, camUrl, subscriptionsUrl } from '$lib/routes';
+	import SquareSplitHorizontalIcon from 'phosphor-svelte/lib/SquareSplitHorizontalIcon';
+	import { camsUrl, camUrl, splitUrl, subscriptionsUrl } from '$lib/routes';
+	import { splitState } from '$lib/stores/split';
+	import SplitAddButton from './SplitAddButton.svelte';
 	import { followedCams, refreshFollowedCams } from '$lib/stores/followedCams';
 	import CamAvatar from './CamAvatar.svelte';
 	import ActiveRecordings from './ActiveRecordings.svelte';
@@ -113,6 +116,26 @@
 		{#each mainLinks as link (link.href)}
 			{@render navLink(link)}
 		{/each}
+		{#if $splitState.panes.length > 0}
+			<a
+				href={splitUrl()}
+				title="Split view"
+				class="text-base-content/80 hover:bg-base-200 hover:text-base-content sidebar-link-full flex items-center rounded-lg transition-colors"
+				class:sidebar-link-active={$page.url.pathname === splitUrl()}
+			>
+				<SquareSplitHorizontalIcon
+					size={20}
+					weight={$page.url.pathname === splitUrl() ? 'fill' : 'regular'}
+				/>
+				<span class="flex-1 truncate">Split view</span>
+				<span
+					class="bg-primary text-primary-content min-w-5 rounded-full px-1.5 text-center text-xs font-semibold"
+					data-split-count
+				>
+					{$splitState.panes.length}
+				</span>
+			</a>
+		{/if}
 	</nav>
 
 	<hr class="border-base-300 my-3" />
@@ -145,15 +168,25 @@
 			</a>
 		{/each}
 		{#each visibleCams as camModel (camModel.id)}
-			<a
-				href={camUrl(camModel.id)}
-				title={camModel.displayName}
-				class="text-base-content/80 hover:bg-base-200 hover:text-base-content sidebar-link-full flex items-center rounded-lg transition-colors"
-				class:sidebar-link-active={$page.url.pathname === camUrl(camModel.id)}
-			>
-				<CamAvatar {camModel} />
-				<span class="flex-1 truncate">{camModel.displayName}</span>
-			</a>
+			<div class="group relative">
+				<a
+					href={camUrl(camModel.id)}
+					title={camModel.displayName}
+					class="text-base-content/80 hover:bg-base-200 hover:text-base-content sidebar-link-full flex items-center rounded-lg transition-colors"
+					class:sidebar-link-active={$page.url.pathname === camUrl(camModel.id)}
+				>
+					<CamAvatar {camModel} />
+					<span class="flex-1 truncate">{camModel.displayName}</span>
+				</a>
+				{#if camModel.online}
+					<SplitAddButton
+						kind="cam"
+						mediaId={camModel.id}
+						title={camModel.displayName}
+						class="absolute top-1/2 right-2 -translate-y-1/2"
+					/>
+				{/if}
+			</div>
 		{/each}
 		{#if followingCount === 0}
 			<p class="text-base-content/40 px-3 py-1 text-xs">

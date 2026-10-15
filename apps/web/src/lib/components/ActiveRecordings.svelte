@@ -11,6 +11,7 @@
 	import { activeCamRecordings, refreshCamRecordings } from '$lib/stores/camRecordings';
 	import { notifications } from '$lib/stores/notifications';
 	import CamAvatar from './CamAvatar.svelte';
+	import SplitAddButton from './SplitAddButton.svelte';
 
 	// Ticks every second while something records, for the running times.
 	let now = $state(Date.now());
@@ -49,7 +50,9 @@
 			Recording
 		</p>
 		{#each $activeCamRecordings as recording (recording.id)}
-			<div class="hover:bg-base-200 flex items-center gap-1 rounded-lg pr-1 transition-colors">
+			<div
+				class="group hover:bg-base-200 flex items-center gap-1 rounded-lg pr-1 transition-colors"
+			>
 				<a
 					href={camUrl(recording.camModelId)}
 					class="flex min-w-0 flex-1 items-center gap-3 px-3 py-1.5"
@@ -78,6 +81,12 @@
 						</span>
 					</span>
 				</a>
+				<SplitAddButton
+					kind="cam"
+					mediaId={recording.camModelId}
+					title={recording.displayName}
+					class="shrink-0"
+				/>
 				<button
 					type="button"
 					class="text-base-content/70 hover:text-base-content hover:bg-base-300 flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-50"

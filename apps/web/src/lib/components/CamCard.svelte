@@ -6,6 +6,7 @@
 <script lang="ts">
 	import EyeIcon from 'phosphor-svelte/lib/EyeIcon';
 	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
+	import SplitAddButton from './SplitAddButton.svelte';
 	import { activeCamRecordings } from '$lib/stores/camRecordings';
 	import { cacheUrl } from '$lib/img';
 	import { formatViewers, type CamModel, type CamSource } from '$lib/cams';
@@ -40,58 +41,68 @@
 </script>
 
 <div class="group flex w-full flex-col gap-2">
-	<button
-		type="button"
-		{onclick}
-		class="tv-card bg-base-200 relative block aspect-video w-full overflow-hidden rounded-xl"
-		aria-label="Watch {camModel.displayName}"
-	>
-		{#if thumbnail}
-			<img
-				src={thumbnail}
-				alt=""
-				loading="lazy"
-				class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-				class:opacity-40={!camModel.online}
+	<div class="relative">
+		<button
+			type="button"
+			{onclick}
+			class="tv-card bg-base-200 relative block aspect-video w-full overflow-hidden rounded-xl"
+			aria-label="Watch {camModel.displayName}"
+		>
+			{#if thumbnail}
+				<img
+					src={thumbnail}
+					alt=""
+					loading="lazy"
+					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+					class:opacity-40={!camModel.online}
+				/>
+			{/if}
+			{#if camModel.online}
+				<span
+					class="absolute top-2 left-2 flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
+				>
+					<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
+					Live
+				</span>
+				<span
+					class="absolute right-2 bottom-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white"
+				>
+					<EyeIcon size={12} weight="fill" />
+					{formatViewers(camModel.viewers)}
+				</span>
+			{:else}
+				<span
+					class="absolute top-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white uppercase"
+				>
+					Offline
+				</span>
+			{/if}
+			{#if isRecording}
+				<span
+					class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
+				>
+					<RecordIcon size={12} weight="fill" class="text-red-500" />
+					Rec
+				</span>
+			{:else if camModel.autoRecord}
+				<span
+					class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white/80"
+					title="Recorded automatically when live"
+				>
+					<RecordIcon size={12} class="text-red-400" />
+					Auto
+				</span>
+			{/if}
+		</button>
+		{#if camModel.online}
+			<SplitAddButton
+				kind="cam"
+				mediaId={camModel.id}
+				title={camModel.displayName}
+				class="absolute bottom-2 left-2"
 			/>
 		{/if}
-		{#if camModel.online}
-			<span
-				class="absolute top-2 left-2 flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
-			>
-				<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
-				Live
-			</span>
-			<span
-				class="absolute right-2 bottom-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white"
-			>
-				<EyeIcon size={12} weight="fill" />
-				{formatViewers(camModel.viewers)}
-			</span>
-		{:else}
-			<span
-				class="absolute top-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white uppercase"
-			>
-				Offline
-			</span>
-		{/if}
-		{#if isRecording}
-			<span
-				class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
-			>
-				<RecordIcon size={12} weight="fill" class="text-red-500" />
-				Rec
-			</span>
-		{:else if camModel.autoRecord}
-			<span
-				class="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white/80"
-				title="Recorded automatically when live"
-			>
-				<RecordIcon size={12} class="text-red-400" />
-				Auto
-			</span>
-		{/if}
-	</button>
+	</div>
 
 	<div class="flex min-w-0 flex-col gap-1.5">
 		<button type="button" {onclick} class="flex min-w-0 items-center gap-2 text-left">

@@ -118,6 +118,14 @@
 		onstreamerror?: () => void;
 		// Extra buttons placed in the control row, before the volume.
 		controls?: Snippet;
+		// Split-view pane: the owner decides whether this player makes sound
+		// (true = muted), instead of the session's live audio choice.
+		silenced?: boolean;
+		// Whether the keyboard shortcuts act on this player; off for panes that
+		// are not focused, so one key press doesn't hit every player.
+		keyboard?: boolean;
+		// An inline player fills its parent's height instead of keeping 16:9.
+		fill?: boolean;
 		onclose: () => void;
 	}
 
@@ -149,6 +157,9 @@
 		onlevelchange,
 		onstreamerror,
 		controls,
+		silenced,
+		keyboard = true,
+		fill = false,
 		onclose
 	}: Props = $props();
 
@@ -907,6 +918,7 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (!keyboard) return;
 		// only intercept when no input is focused
 		if (e.target instanceof HTMLInputElement) return;
 		switch (e.key) {
@@ -1044,11 +1056,19 @@
 		current.stop();
 	}
 
+	// A pane's sound follows the split view's focus; set before the source loads
+	// so an unfocused pane starts muted.
+	$effect(() => {
+		if (silenced === undefined || !videoEl) return;
+		videoEl.muted = silenced;
+	});
+
 	$effect(() => {
 		if (!activePlayback) return;
 		const alreadyLoaded = activePlayback.src === src;
 		activePlayback.load(src, mimeType, headers, onPlaybackError, {
 			live,
+			isolatedAudio: silenced !== undefined,
 			onLevels: onStreamLevels,
 			onMutedFallback: () => (mutedByBrowser = true)
 		});
@@ -1361,8 +1381,10 @@
 	bind:this={containerEl}
 	data-swipe-ignore
 	class="flex flex-col bg-black {inline
-		? 'relative aspect-video w-full overflow-hidden'
+		? 'relative w-full overflow-hidden'
 		: 'fixed inset-0 z-[60]'}"
+	class:aspect-video={inline && !fill}
+	class:h-full={inline && fill}
 	class:rounded-xl={inline && !square}
 	onmousemove={onMouseMove}
 	role="presentation"
