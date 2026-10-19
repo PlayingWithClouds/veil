@@ -39,7 +39,7 @@ fun SearchButton(navigator: AppNavigator, bare: Boolean = false) {
 }
 
 /**
- * The gear of the tab screens: a menu with Random, Plugins and Settings. [bare] draws just the
+ * The gear of the tab screens: a menu with Cams, Random, Previews, Taste, Plugins and Settings. [bare] draws just the
  * icon, for the compact Home bar.
  */
 @Composable
@@ -52,6 +52,10 @@ fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
             RoundIconButton(VeilIcons.Settings, contentDescription = "More", onClick = { open = true })
         }
         VeilMenu(expanded = open, onDismissRequest = { open = false }) {
+            VeilMenuItem("Cams", icon = VeilIcons.Cams, onClick = {
+                open = false
+                navigator.openCams()
+            })
             VeilMenuItem("Random", icon = VeilIcons.Random, onClick = {
                 open = false
                 navigator.openRandom()

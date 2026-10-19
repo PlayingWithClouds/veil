@@ -276,3 +276,27 @@ fun markerFractions(markers: List<SceneMarker>, durationSeconds: Double): List<F
         .filter { marker -> marker.seconds in 0.0..durationSeconds }
         .map { marker -> (marker.seconds / durationSeconds).toFloat() }
 }
+
+/** Further behind the live edge than this, a live room shows how far back it is and "Go live". */
+const val LIVE_EDGE_TOLERANCE_MILLISECONDS = 20_000L
+
+/**
+ * How far a live stream's playhead at [positionMilliseconds] is behind the newest media of its
+ * window [durationMilliseconds] long; 0 while the window is unknown.
+ */
+fun liveLagMilliseconds(positionMilliseconds: Long, durationMilliseconds: Long): Long {
+    if (durationMilliseconds <= 0) {
+        return 0
+    }
+    return maxOf(0L, durationMilliseconds - positionMilliseconds)
+}
+
+/** Whether a live playhead [lagMilliseconds] behind the newest media counts as rewound rather than live. */
+fun isBehindLive(lagMilliseconds: Long): Boolean {
+    return lagMilliseconds > LIVE_EDGE_TOLERANCE_MILLISECONDS
+}
+
+/** A rewound live playhead as "-1:23". */
+fun formatBehindLive(lagMilliseconds: Long): String {
+    return "-" + formatPlaybackClock(lagMilliseconds)
+}

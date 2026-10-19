@@ -28,6 +28,8 @@ object Routes {
     const val SUBSCRIPTION = "subscription/{id}"
     const val PREVIEW_FEED = "previews"
     const val TASTE = "taste"
+    const val CAMS = "cams?tag={tag}"
+    const val CAM = "cam/{id}"
 
     /** Search, optionally with a query to run right away. */
     fun search(query: String = ""): String {
@@ -51,6 +53,11 @@ object Routes {
     fun gallery(id: String): String = "gallery/${Uri.encode(id)}"
 
     fun subscription(id: String): String = "subscription/${Uri.encode(id)}"
+
+    /** The live cam rooms, optionally narrowed to a tag. */
+    fun cams(tag: String = ""): String = "cams?tag=${Uri.encode(tag)}"
+
+    fun cam(id: String): String = "cam/${Uri.encode(id)}"
 }
 
 /**
@@ -125,4 +132,10 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     /** The taste dashboard: what the recommender has learned. */
     fun openTaste() = controller.navigate(Routes.TASTE)
+
+    /** Live cam rooms, narrowed to [tag] when it is set. */
+    fun openCams(tag: String = "") = controller.navigate(Routes.cams(tag))
+
+    /** A live cam room. */
+    fun openCam(id: String) = controller.navigate(Routes.cam(id))
 }

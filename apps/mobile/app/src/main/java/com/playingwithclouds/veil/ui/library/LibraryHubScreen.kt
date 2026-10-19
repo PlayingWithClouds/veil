@@ -74,6 +74,7 @@ private val hubEntries = listOf(
     HubEntry("Studios", VeilIcons.Studios) { navigator -> navigator.openStudios() },
     HubEntry("Tags", VeilIcons.Tags) { navigator -> navigator.openTags() },
     HubEntry("Galleries", VeilIcons.Galleries) { navigator -> navigator.openTab(Tab.GALLERIES) },
+    HubEntry("Cams", VeilIcons.Cams) { navigator -> navigator.openCams() },
 )
 
 /** The started-but-unfinished and the recently watched scenes shown at the top of the hub. */

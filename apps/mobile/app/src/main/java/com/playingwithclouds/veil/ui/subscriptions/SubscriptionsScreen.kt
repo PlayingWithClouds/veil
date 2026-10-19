@@ -27,11 +27,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.playingwithclouds.veil.data.CamModel
+import com.playingwithclouds.veil.data.CamRepository
 import com.playingwithclouds.veil.data.FeedFilter
 import com.playingwithclouds.veil.data.SubscriptionFeedEntry
 import com.playingwithclouds.veil.data.SubscriptionRepository
 import com.playingwithclouds.veil.data.SubscriptionSummary
 import com.playingwithclouds.veil.ui.AppNavigator
+import com.playingwithclouds.veil.ui.cams.FollowedCamsRow
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.PagedGrid
@@ -61,9 +64,13 @@ class SubscriptionsViewModel : ViewModel() {
 
     private val mutableSubscriptions = MutableStateFlow<List<SubscriptionSummary>>(emptyList())
     private val mutableOptions = MutableStateFlow(FeedOptions())
+    private val mutableFollowedCams = MutableStateFlow<List<CamModel>>(emptyList())
 
     /** The subscriptions, for the strip on top. */
     val subscriptions: StateFlow<List<SubscriptionSummary>> = mutableSubscriptions
+
+    /** Followed cam rooms, live ones first. */
+    val followedCams: StateFlow<List<CamModel>> = mutableFollowedCams
 
     /** The selected feed filters. */
     val options: StateFlow<FeedOptions> = mutableOptions
@@ -79,7 +86,7 @@ class SubscriptionsViewModel : ViewModel() {
         loadSubscriptions()
     }
 
-    /** Reloads the subscription strip (new-scene counts change as runs finish). */
+    /** Reloads the subscription strip (new-scene counts change as runs finish) and the followed cams. */
     fun loadSubscriptions() {
         viewModelScope.launch {
             try {
@@ -87,6 +94,10 @@ class SubscriptionsViewModel : ViewModel() {
             } catch (error: Exception) {
                 // Keep the strip as it was.
             }
+        }
+        viewModelScope.launch {
+            val followed = runCatching { CamRepository.followed() }.getOrNull() ?: return@launch
+            mutableFollowedCams.value = followed
         }
     }
 
@@ -108,6 +119,7 @@ fun SubscriptionsScreen(navigator: AppNavigator) {
     val gridState = rememberLazyGridState()
     val subscriptions by viewModel.subscriptions.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
+    val followedCams by viewModel.followedCams.collectAsStateWithLifecycle()
     val headerScrolledAway by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 } }
     LaunchedEffect(Unit) { viewModel.loadSubscriptions() }
 
@@ -126,6 +138,9 @@ fun SubscriptionsScreen(navigator: AppNavigator) {
                         }
                     }
                     fullWidthItem("strip") { SubscriptionStrip(subscriptions, navigator) }
+                    fullWidthItem("cams") {
+                        FollowedCamsRow(followedCams, onOpen = { model -> navigator.openCam(model.id) }, onSeeAll = { navigator.openCams() })
+                    }
                     fullWidthItem("filters") { FeedFilters(options, viewModel::setOptions) }
                 },
             ) { _, entry ->
