@@ -18,6 +18,9 @@ data class CollectionContents(val collection: CollectionSummary, val members: Li
 /** User playlists and scraper-created collections. */
 object CollectionRepository {
 
+    /** The built-in Favorites collection the favorite buttons fill. */
+    const val FAVORITES_ID = "collection:favorites"
+
     /** Collections, optionally only user-created ("user") or scraper-created ("scraped") ones. */
     suspend fun collections(origin: String?, limit: Int, offset: Int): List<CollectionSummary> {
         val query = CollectionsQuery(origin.orAbsent(), Optional.Absent, Optional.present(limit), Optional.present(offset))

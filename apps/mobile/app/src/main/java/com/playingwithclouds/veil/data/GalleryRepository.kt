@@ -4,7 +4,9 @@ import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.EnsureGalleryImagesMutation
+import com.playingwithclouds.veil.graphql.FindGalleryVideosQuery
 import com.playingwithclouds.veil.graphql.GalleryDetailQuery
+import com.playingwithclouds.veil.graphql.LinkGalleryVideoMutation
 import com.playingwithclouds.veil.graphql.PluginCategoriesQuery
 import com.playingwithclouds.veil.graphql.fragment.GalleryDetailFields
 
@@ -20,6 +22,8 @@ data class GalleryDetail(
     val imageCount: Int,
     val tags: List<EntityRef>,
     val images: List<GalleryImage>,
+    /** The video the set comes from, once picked through [GalleryRepository.linkVideo]. */
+    val video: EntityRef?,
 )
 
 /** A browsable category of a gallery site, with a preview thumbnail. */
@@ -51,6 +55,27 @@ object GalleryRepository {
         return data.ensureGalleryImages?.galleryDetailFields?.toDetail()
     }
 
+    /** Videos the photo set may come from, ranked across every scene site. Slow: it searches live. */
+    suspend fun findVideos(galleryId: String): List<AlikeCandidate> {
+        val data = VeilApi.client.query(FindGalleryVideosQuery(galleryId, Optional.Absent)).execute().dataOrThrow()
+        return data.findGalleryVideos.map { candidate ->
+            AlikeCandidate(
+                title = candidate.title,
+                plugin = candidate.plugin,
+                sourceUrl = candidate.sourceUrl,
+                posterUrl = candidate.posterUrl,
+                durationSeconds = candidate.durationSeconds,
+                matchScore = candidate.matchScore,
+            )
+        }
+    }
+
+    /** Stores a found video as a scene and remembers it as the gallery's video; returns the scene id. */
+    suspend fun linkVideo(galleryId: String, candidate: AlikeCandidate): String {
+        val mutation = LinkGalleryVideoMutation(galleryId, candidate.plugin, candidate.sourceUrl)
+        return VeilApi.client.mutation(mutation).execute().dataOrThrow().linkGalleryVideo.id
+    }
+
     /** Maps the gallery fragment to the gallery model. */
     private fun GalleryDetailFields.toDetail(): GalleryDetail {
         return GalleryDetail(
@@ -63,6 +88,7 @@ object GalleryRepository {
             images = images
                 .sortedBy { image -> image.position ?: Int.MAX_VALUE }
                 .map { image -> GalleryImage(image.id, image.filePath, image.title, image.width, image.height) },
+            video = video?.let { scene -> EntityRef(scene.id, scene.title, null) },
         )
     }
 }

@@ -17,6 +17,10 @@ fragment GalleryDetailFields on Gallery {
     height
     position
   }
+  video {
+    id
+    title
+  }
 }
 
 query GalleryDetail($id: ID!) {
@@ -36,5 +40,23 @@ query PluginCategories($plugin: String!, $limit: Int) {
     id
     name
     poster
+  }
+}
+
+query FindGalleryVideos($galleryId: ID!, $limit: Int) {
+  findGalleryVideos(galleryId: $galleryId, limit: $limit) {
+    externalId
+    title
+    plugin
+    sourceUrl
+    posterUrl
+    durationSeconds
+    matchScore
+  }
+}
+
+mutation LinkGalleryVideo($galleryId: ID!, $pluginName: String!, $url: String!) {
+  linkGalleryVideo(galleryId: $galleryId, pluginName: $pluginName, url: $url) {
+    id
   }
 }
