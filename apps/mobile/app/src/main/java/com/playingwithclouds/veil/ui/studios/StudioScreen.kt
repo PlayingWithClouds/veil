@@ -23,6 +23,8 @@ import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.MergeKind
+import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.design.bleed
@@ -118,7 +120,19 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val galleries by viewModel.galleries.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Studio", onBack = navigator::back) }) { padding ->
+    Scaffold(
+        topBar = {
+            VeilTopBar("Studio", onBack = navigator::back) {
+                val loaded = (detail as? LoadState.Loaded)?.value
+                if (loaded != null) {
+                    MergeMenuButton(MergeKind.STUDIO, loaded.id, loaded.name) { survivorId ->
+                        navigator.back()
+                        navigator.openStudio(survivorId)
+                    }
+                }
+            }
+        },
+    ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { studio ->
             PagedGrid(
                 paged = viewModel.scenes,

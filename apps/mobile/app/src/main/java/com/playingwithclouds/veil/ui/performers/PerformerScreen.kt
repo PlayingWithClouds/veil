@@ -23,6 +23,8 @@ import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.MergeKind
+import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
@@ -145,7 +147,19 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val galleries by viewModel.galleries.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Performer", onBack = navigator::back) }) { padding ->
+    Scaffold(
+        topBar = {
+            VeilTopBar("Performer", onBack = navigator::back) {
+                val loaded = (detail as? LoadState.Loaded)?.value
+                if (loaded != null) {
+                    MergeMenuButton(MergeKind.PERFORMER, loaded.id, loaded.name) { survivorId ->
+                        navigator.back()
+                        navigator.openPerformer(survivorId)
+                    }
+                }
+            }
+        },
+    ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { performer ->
             PagedGrid(
                 paged = viewModel.scenes,
