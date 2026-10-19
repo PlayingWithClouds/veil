@@ -8,6 +8,7 @@ import com.playingwithclouds.veil.graphql.EnrichPerformerMutation
 import com.playingwithclouds.veil.graphql.EnsureEntityScenesMutation
 import com.playingwithclouds.veil.graphql.FollowTargetMutation
 import com.playingwithclouds.veil.graphql.GalleriesListQuery
+import com.playingwithclouds.veil.graphql.MergeRecordsMutation
 import com.playingwithclouds.veil.graphql.PerformerDetailQuery
 import com.playingwithclouds.veil.graphql.PerformersQuery
 import com.playingwithclouds.veil.graphql.ScenesListQuery
@@ -237,5 +238,13 @@ object EntityRepository {
     suspend fun follow(kind: FollowKind, targetId: String): SubscriptionSummary {
         val data = VeilApi.client.mutation(FollowTargetMutation(kind.graphqlKind, targetId)).execute().dataOrThrow()
         return data.subscribe.subscriptionFields.toSummary()
+    }
+
+    /**
+     * Folds [mergedId] into [survivorId], two records of one kind: credits, memberships, history
+     * and site addresses move over and the merged record is deleted. It cannot be undone.
+     */
+    suspend fun merge(survivorId: String, mergedId: String): String {
+        return VeilApi.client.mutation(MergeRecordsMutation(survivorId, mergedId)).execute().dataOrThrow().mergeRecords
     }
 }

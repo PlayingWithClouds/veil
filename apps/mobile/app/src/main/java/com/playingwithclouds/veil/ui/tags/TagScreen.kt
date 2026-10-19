@@ -26,6 +26,8 @@ import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.MergeKind
+import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.SectionHeading
@@ -112,7 +114,19 @@ fun TagScreen(id: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "tag-$id") { TagViewModel(id) }
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val relations by viewModel.relations.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Tag", onBack = navigator::back) }) { padding ->
+    Scaffold(
+        topBar = {
+            VeilTopBar("Tag", onBack = navigator::back) {
+                val loaded = (detail as? LoadState.Loaded)?.value
+                if (loaded != null) {
+                    MergeMenuButton(MergeKind.TAG, loaded.id, loaded.name) { survivorId ->
+                        navigator.back()
+                        navigator.openTag(survivorId)
+                    }
+                }
+            }
+        },
+    ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { tag ->
             PagedGrid(
                 paged = viewModel.scenes,

@@ -159,3 +159,7 @@ mutation FollowTarget($kind: SubscriptionKind!, $targetId: ID!) {
     ...SubscriptionFields
   }
 }
+
+mutation MergeRecords($survivorId: ID!, $mergedId: ID!) {
+  mergeRecords(survivorId: $survivorId, mergedId: $mergedId)
+}
