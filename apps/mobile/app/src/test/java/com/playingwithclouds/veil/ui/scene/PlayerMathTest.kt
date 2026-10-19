@@ -112,4 +112,19 @@ class PlayerMathTest {
         assertEquals(VideoQuality(1080, 0, 1), distinct.first())
         assertEquals("720p", videoQualityLabel(720))
     }
+
+    @Test
+    fun liveLagIsTheDistanceToTheWindowsEnd() {
+        assertEquals(30_000L, liveLagMilliseconds(150_000, 180_000))
+        assertEquals(0L, liveLagMilliseconds(190_000, 180_000))
+        assertEquals(0L, liveLagMilliseconds(5_000, 0))
+    }
+
+    @Test
+    fun aLiveRoomCountsAsRewoundOnlyPastTheTolerance() {
+        assertFalse(isBehindLive(8_000))
+        assertFalse(isBehindLive(LIVE_EDGE_TOLERANCE_MILLISECONDS))
+        assertTrue(isBehindLive(LIVE_EDGE_TOLERANCE_MILLISECONDS + 1))
+        assertEquals("-1:05", formatBehindLive(65_000))
+    }
 }

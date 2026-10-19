@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,6 +42,8 @@ import androidx.media3.common.Player
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberProgressStateWithTickInterval
 import com.playingwithclouds.veil.data.SceneMarker
+import com.playingwithclouds.veil.ui.components.pressClickable
+import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.GlassIconButton
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.Spinner
@@ -102,13 +105,16 @@ private fun rememberPlaybackStatus(player: Player): PlaybackStatus {
 
 /**
  * What the controls show beyond playback itself: the scene's markers (chips and ticks on the seek
- * bar), the most-replayed graph, a next-in-queue action and the picture-in-picture action.
+ * bar), the most-replayed graph, a next-in-queue action and the picture-in-picture action. [live]
+ * is a live room: no frame steps, speed or loop, and instead of the clock a LIVE badge, or how far
+ * the playhead is rewound into the room's buffer with "Go live".
  */
 data class PlayerExtras(
     val markers: List<SceneMarker> = emptyList(),
     val heatmap: List<Float> = emptyList(),
     val onNext: (() -> Unit)? = null,
     val onEnterPictureInPicture: (() -> Unit)? = null,
+    val live: Boolean = false,
 )
 
 /**
@@ -250,9 +256,9 @@ private fun ControlsLayer(
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.TopCenter).background(TopScrim))
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.BottomCenter).background(BottomScrim))
-        TopRow(player, options, title, isFullscreen, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
+        TopRow(player, options, title, isFullscreen, extras.live, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
         if (!isBuffering) {
-            CentreButtons(player, onTouch, Modifier.align(Alignment.Center))
+            CentreButtons(player, extras.live, onTouch, Modifier.align(Alignment.Center))
         }
         BottomBar(
             player = player,
@@ -289,6 +295,7 @@ private fun TopRow(
     options: PlayerOptions,
     title: String,
     isFullscreen: Boolean,
+    live: Boolean,
     onToggleFullscreen: () -> Unit,
     onMenuChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -312,14 +319,14 @@ private fun TopRow(
         if (!isFullscreen) {
             Box(Modifier.weight(1f))
         }
-        PlayerSettingsButton(player, options, ControlButtonSize, onOpenChange = onMenuChange)
+        PlayerSettingsButton(player, options, ControlButtonSize, live = live, onOpenChange = onMenuChange)
     }
 }
 
-/** The play/pause button in the middle, with frame-step buttons on either side while paused. */
+/** The play/pause button in the middle, with frame-step buttons on either side while a video (not a live room) is paused. */
 @Composable
-private fun CentreButtons(player: Player, onTouch: () -> Unit, modifier: Modifier = Modifier) {
-    val paused = rememberPlayPauseButtonState(player).showPlay
+private fun CentreButtons(player: Player, live: Boolean, onTouch: () -> Unit, modifier: Modifier = Modifier) {
+    val paused = rememberPlayPauseButtonState(player).showPlay && !live
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraLarge), verticalAlignment = Alignment.CenterVertically) {
         FrameStepSlot(paused) {
             RoundIconButton(
@@ -402,12 +409,24 @@ private fun BottomBar(
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                formatPlaybackTime(progress.currentPositionMs, progress.durationMs),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelMedium,
-                color = VeilColors.content,
-            )
+            if (extras.live) {
+                LiveStatus(
+                    liveLagMilliseconds(progress.currentPositionMs, progress.durationMs),
+                    onGoLive = {
+                        player.seekToDefaultPosition()
+                        player.play()
+                        onTouch()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Text(
+                    formatPlaybackTime(progress.currentPositionMs, progress.durationMs),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = VeilColors.content,
+                )
+            }
             if (options.loop.startMilliseconds != null) {
                 RoundIconButton(VeilIcons.Repeat, contentDescription = "Loop: ${loopLabel(options.loop)}", onClick = options::clearLoop, size = ControlButtonSize)
             }
@@ -444,6 +463,27 @@ private fun BottomBar(
 }
 
 private const val MILLISECONDS_PER_SECOND_DOUBLE = 1000.0
+
+/**
+ * Where a live room's playhead is: a red LIVE badge at the live edge, else how far it is rewound
+ * and a "Go live" button that jumps back to the edge.
+ */
+@Composable
+private fun LiveStatus(lagMilliseconds: Long, onGoLive: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalAlignment = Alignment.CenterVertically) {
+        if (!isBehindLive(lagMilliseconds)) {
+            Badge("LIVE", background = VeilColors.error, foreground = VeilColors.content)
+            return@Row
+        }
+        Text(formatBehindLive(lagMilliseconds), style = MaterialTheme.typography.labelMedium, color = VeilColors.content)
+        Text(
+            "Go live",
+            modifier = Modifier.clip(VeilShapes.capsule).pressClickable(onGoLive).glass(VeilShapes.capsule).padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.extraSmall),
+            style = MaterialTheme.typography.labelMedium,
+            color = VeilColors.content,
+        )
+    }
+}
 
 /** Enter or leave fullscreen, by the current mode. */
 private fun fullscreenIcon(isFullscreen: Boolean): ImageVector {

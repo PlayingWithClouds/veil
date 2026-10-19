@@ -1,0 +1,104 @@
+fragment CamModelFields on CamModel {
+  id
+  pluginName
+  username
+  displayName
+  sourceUrl
+  thumbnailUrl
+  tags
+  gender
+  subject
+  viewers
+  online
+  lastSeenOnlineAt
+  followed
+  autoRecord
+  recordQuality
+}
+
+fragment CamRecordingFields on CamRecording {
+  id
+  camModelId
+  displayName
+  thumbnailUrl
+  quality
+  status
+  stopReason
+  startedAt
+  endedAt
+  durationSeconds
+  sizeBytes
+  sceneId
+}
+
+query CamRooms($sources: [String!], $tag: String, $query: String, $gender: String, $limit: Int, $offset: Int) {
+  camRooms(sources: $sources, tag: $tag, query: $query, gender: $gender, limit: $limit, offset: $offset) {
+    rooms {
+      ...CamModelFields
+    }
+    totalCount
+  }
+}
+
+query CamSources {
+  camSources {
+    name
+    displayName
+    iconUrl
+  }
+}
+
+query CamModel($id: ID!) {
+  camModel(id: $id) {
+    ...CamModelFields
+  }
+}
+
+query FollowedCamModels {
+  followedCamModels {
+    ...CamModelFields
+  }
+}
+
+query CamStream($id: ID!) {
+  camStream(id: $id) {
+    url
+    mimeType
+  }
+}
+
+mutation FollowCamModel($id: ID!) {
+  followCamModel(id: $id) {
+    ...CamModelFields
+  }
+}
+
+mutation UnfollowCamModel($id: ID!) {
+  unfollowCamModel(id: $id) {
+    ...CamModelFields
+  }
+}
+
+query CamRecordings($camModelId: ID, $activeOnly: Boolean) {
+  camRecordings(camModelId: $camModelId, activeOnly: $activeOnly) {
+    ...CamRecordingFields
+  }
+}
+
+mutation StartCamRecording($id: ID!, $quality: String, $fromSecondsAgo: Int) {
+  startCamRecording(id: $id, quality: $quality, fromSecondsAgo: $fromSecondsAgo) {
+    ...CamRecordingFields
+  }
+}
+
+mutation StopCamRecording($id: ID!) {
+  stopCamRecording(id: $id) {
+    ...CamRecordingFields
+  }
+}
+
+mutation SetCamAutoRecord($id: ID!, $enabled: Boolean!, $quality: String) {
+  setCamAutoRecord(id: $id, enabled: $enabled, quality: $quality) {
+    ...CamModelFields
+  }
+}

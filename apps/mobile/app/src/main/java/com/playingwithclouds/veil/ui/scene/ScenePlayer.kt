@@ -120,7 +120,7 @@ fun ScenePlayerView(
         if (relatedAvailable) {
             openRelated = { showingRelated = true }
         }
-        CompositionLocalProvider(LocalSeekPreview provides rememberSeekPreview(stream)) {
+        CompositionLocalProvider(LocalSeekPreview provides rememberSeekPreviewUnlessLive(stream, extras.live)) {
             PlayerControls(
                 player = player,
                 options = options,
@@ -141,6 +141,15 @@ fun ScenePlayerView(
             },
         )
     }
+}
+
+/** A seek preview for a video; none for a live room, whose window moves under it. */
+@Composable
+private fun rememberSeekPreviewUnlessLive(stream: PlayableStream, live: Boolean): SeekPreview? {
+    if (live) {
+        return null
+    }
+    return rememberSeekPreview(stream)
 }
 
 /** Crops the video to fill its box when zooming to fill, else shows all of it. */

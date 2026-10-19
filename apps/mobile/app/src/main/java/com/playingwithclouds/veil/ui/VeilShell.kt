@@ -31,6 +31,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.playingwithclouds.veil.ui.cams.CamRoomScreen
+import com.playingwithclouds.veil.ui.cams.CamsScreen
 import com.playingwithclouds.veil.ui.collections.CollectionScreen
 import com.playingwithclouds.veil.ui.collections.CollectionsScreen
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
@@ -163,6 +165,11 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.SUBSCRIPTION) { entry -> SubscriptionScreen(entry.argument("id"), navigator) }
     composable(Routes.PREVIEW_FEED) { PreviewFeedScreen(navigator) }
     composable(Routes.TASTE) { TasteScreen(navigator) }
+    composable(
+        Routes.CAMS,
+        arguments = listOf(navArgument("tag") { type = NavType.StringType; defaultValue = "" }),
+    ) { entry -> CamsScreen(entry.argument("tag"), navigator) }
+    composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
 }
 
 /** A string argument of the destination; empty when missing. */

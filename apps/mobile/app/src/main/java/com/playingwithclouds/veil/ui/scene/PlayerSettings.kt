@@ -25,7 +25,8 @@ private enum class SettingsPage { MAIN, SPEED, QUALITY, PICTURE_IN_PICTURE }
 /**
  * A glass gear opening the playback settings: speed (slow motion included), the video quality when
  * the stream offers several (HLS variants), the A–B loop, zoom to fill and what picture-in-picture
- * shows. [onOpenChange] reports the menu so the controls stay up while it is open.
+ * shows; a [live] room has no speed or loop. [onOpenChange] reports the menu so the controls stay
+ * up while it is open.
  */
 @Composable
 fun PlayerSettingsButton(
@@ -34,6 +35,7 @@ fun PlayerSettingsButton(
     buttonSize: Dp,
     onOpenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    live: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf(SettingsPage.MAIN) }
@@ -55,7 +57,7 @@ fun PlayerSettingsButton(
         RoundIconButton(VeilIcons.Settings, contentDescription = "Playback settings", onClick = { setOpen(true) }, size = buttonSize)
         VeilMenu(expanded = open, onDismissRequest = { setOpen(false) }) {
             when (page) {
-                SettingsPage.MAIN -> MainSettings(player, options, tracks, onPage = { chosen -> page = chosen }, onDone = { setOpen(false) })
+                SettingsPage.MAIN -> MainSettings(player, options, tracks, live, onPage = { chosen -> page = chosen }, onDone = { setOpen(false) })
                 SettingsPage.SPEED -> SpeedSettings(player, onDone = { setOpen(false) })
                 SettingsPage.QUALITY -> QualitySettings(player, tracks, onDone = { setOpen(false) })
                 SettingsPage.PICTURE_IN_PICTURE -> PictureInPictureSettings(options, onDone = { setOpen(false) })
@@ -64,23 +66,19 @@ fun PlayerSettingsButton(
     }
 }
 
-/** The menu's first page: one entry per setting with its current value. */
+/** The menu's first page: one entry per setting with its current value; speed and loop only for videos. */
 @Composable
-private fun MainSettings(player: Player, options: PlayerOptions, tracks: Tracks, onPage: (SettingsPage) -> Unit, onDone: () -> Unit) {
+private fun MainSettings(player: Player, options: PlayerOptions, tracks: Tracks, live: Boolean, onPage: (SettingsPage) -> Unit, onDone: () -> Unit) {
     val speedState = rememberPlaybackSpeedState(player)
-    VeilMenuItem("Speed · ${formatSpeed(speedState.playbackSpeed)}", onClick = { onPage(SettingsPage.SPEED) })
+    if (!live) {
+        VeilMenuItem("Speed · ${formatSpeed(speedState.playbackSpeed)}", onClick = { onPage(SettingsPage.SPEED) })
+    }
     if (videoQualities(tracks).size > 1) {
         VeilMenuItem("Quality · ${selectedQualityLabel(player, tracks)}", onClick = { onPage(SettingsPage.QUALITY) })
     }
-    VeilMenuItem(
-        loopMenuLabel(options.loop),
-        onClick = {
-            options.advanceLoop(player)
-            onDone()
-        },
-        icon = VeilIcons.Repeat,
-        selected = options.loop.isActive,
-    )
+    if (!live) {
+        LoopMenuItem(player, options, onDone)
+    }
     VeilMenuItem(
         "Zoom to fill",
         onClick = {
@@ -94,6 +92,20 @@ private fun MainSettings(player: Player, options: PlayerOptions, tracks: Tracks,
         "Picture-in-picture · ${options.pictureInPicturePrivacy.summary}",
         onClick = { onPage(SettingsPage.PICTURE_IN_PICTURE) },
         icon = VeilIcons.PictureInPicture,
+    )
+}
+
+/** The A–B loop entry: each tap sets A, then B, then clears the loop. */
+@Composable
+private fun LoopMenuItem(player: Player, options: PlayerOptions, onDone: () -> Unit) {
+    VeilMenuItem(
+        loopMenuLabel(options.loop),
+        onClick = {
+            options.advanceLoop(player)
+            onDone()
+        },
+        icon = VeilIcons.Repeat,
+        selected = options.loop.isActive,
     )
 }
 
@@ -154,7 +166,7 @@ private fun QualitySettings(player: Player, tracks: Tracks, onDone: () -> Unit) 
 
 /** The player's current tracks, updated as the stream's tracks become known or change. */
 @Composable
-private fun rememberPlayerTracks(player: Player): Tracks {
+internal fun rememberPlayerTracks(player: Player): Tracks {
     var tracks by remember(player) { mutableStateOf(player.currentTracks) }
     DisposableEffect(player) {
         val listener = object : Player.Listener {
@@ -169,7 +181,7 @@ private fun rememberPlayerTracks(player: Player): Tracks {
 }
 
 /** The selectable video qualities of [tracks], highest first. */
-private fun videoQualities(tracks: Tracks): List<VideoQuality> {
+internal fun videoQualities(tracks: Tracks): List<VideoQuality> {
     val found = mutableListOf<VideoQuality>()
     tracks.groups.forEachIndexed { groupIndex, group ->
         if (group.type == C.TRACK_TYPE_VIDEO) {
@@ -198,7 +210,7 @@ private fun Player.selectQuality(quality: VideoQuality?) {
 }
 
 /** The height the video is pinned to, or null on Auto (also when the pin belongs to a previous stream). */
-private fun selectedQualityHeight(player: Player, tracks: Tracks): Int? {
+internal fun selectedQualityHeight(player: Player, tracks: Tracks): Int? {
     val override = player.trackSelectionParameters.overrides.values
         .firstOrNull { candidate -> candidate.type == C.TRACK_TYPE_VIDEO }
     if (override == null || override.trackIndices.isEmpty()) {
