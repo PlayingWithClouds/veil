@@ -75,6 +75,9 @@ private fun BackendSettingsForm(settings: BackendSettings, status: String?, view
         NumberField("Download speed limit (KB/s, 0 = unlimited)", settings.downloadSpeedLimitKBps) { value ->
             viewModel.edit(settings.copy(downloadSpeedLimitKBps = value))
         }
+        NumberField("Cam recordings stop after (minutes)", settings.camRecordingMaxMinutes) { value ->
+            viewModel.edit(settings.copy(camRecordingMaxMinutes = value))
+        }
     }
     VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         SwitchRow("Require VPN for downloads", settings.requireVpn) { value -> viewModel.edit(settings.copy(requireVpn = value)) }

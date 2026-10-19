@@ -31,36 +31,39 @@ fun needsNewThumbnail(bestMomentSeconds: Double?, thumbnailSeconds: Double?): Bo
 /** Takes a frame out of a scene's stream for use as its thumbnail. */
 object ThumbnailCapture {
 
+    /** Width a frame for the face search is scaled down to: larger than a thumbnail, so faces stay sharp. */
+    const val FACE_FRAME_WIDTH = 1280
+
     /**
-     * The frame at [atSeconds] as a base64 JPEG, or null when the device cannot read it (most HLS
-     * streams, a stream that has gone away).
+     * The frame at [atSeconds] as a base64 JPEG at most [width] wide, or null when the device
+     * cannot read it (most HLS streams, a stream that has gone away).
      */
-    suspend fun jpegBase64(stream: PlayableStream, atSeconds: Double): String? {
+    suspend fun jpegBase64(stream: PlayableStream, atSeconds: Double, width: Int = THUMBNAIL_WIDTH): String? {
         return withContext(Dispatchers.IO) {
-            runCatching { grabFrame(stream, atSeconds) }.getOrNull()
+            runCatching { grabFrame(stream, atSeconds, width) }.getOrNull()
         }
     }
 
-    /** Reads the frame through [MediaMetadataRetriever], scaled to the thumbnail width. */
-    private fun grabFrame(stream: PlayableStream, atSeconds: Double): String? {
+    /** Reads the frame through [MediaMetadataRetriever], scaled to [width]. */
+    private fun grabFrame(stream: PlayableStream, atSeconds: Double, width: Int): String? {
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(stream.url, stream.headers)
             val frame = retriever.getFrameAtTime((atSeconds * MICROSECONDS_PER_SECOND).toLong(), MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: return null
-            return encode(scaled(frame))
+            return encode(scaled(frame, width))
         } finally {
             retriever.release()
         }
     }
 
-    /** The frame scaled down to the thumbnail width, keeping its shape. */
-    private fun scaled(frame: Bitmap): Bitmap {
-        if (frame.width <= THUMBNAIL_WIDTH) {
+    /** The frame scaled down to [width], keeping its shape. */
+    private fun scaled(frame: Bitmap, width: Int): Bitmap {
+        if (frame.width <= width) {
             return frame
         }
-        val height = frame.height * THUMBNAIL_WIDTH / frame.width
-        return Bitmap.createScaledBitmap(frame, THUMBNAIL_WIDTH, height, true)
+        val height = frame.height * width / frame.width
+        return Bitmap.createScaledBitmap(frame, width, height, true)
     }
 
     /** The bitmap as a base64 JPEG. */

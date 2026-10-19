@@ -35,6 +35,8 @@ import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
+import com.playingwithclouds.veil.ui.face.FaceIdentifySheet
+import com.playingwithclouds.veil.ui.face.FaceRequest
 import com.playingwithclouds.veil.ui.components.FailedMessage
 import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.RemoteImage
@@ -77,6 +79,21 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
     val findAlternates = {
         viewModel.findAlike()
         showingAlternates = true
+    }
+
+    var faceRequest by remember { mutableStateOf<FaceRequest?>(null) }
+    val identify = {
+        player.pause()
+        faceRequest = viewModel.faceRequest(player.currentPosition / MILLISECONDS_PER_SECOND.toDouble())
+    }
+    val request = faceRequest
+    if (request != null) {
+        FaceIdentifySheet(
+            request,
+            navigator,
+            onDismiss = { faceRequest = null },
+            onPickAnotherMoment = { faceRequest = null },
+        )
     }
 
     if (showingAlternates) {
@@ -148,6 +165,7 @@ fun SceneScreen(sceneId: String, navigator: AppNavigator) {
                     player,
                     navigator,
                     onFindAlternates = findAlternates,
+                    onIdentify = identify,
                     queuedCount = queue.entries.size,
                     onOpenQueue = { showingQueue = true },
                 )

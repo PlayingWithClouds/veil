@@ -11,11 +11,18 @@ import com.adamglin.phosphoricons.fill.House as HouseFill
 import com.adamglin.phosphoricons.fill.Pause as PauseFill
 import com.adamglin.phosphoricons.fill.Play as PlayFill
 import com.adamglin.phosphoricons.fill.Images as ImagesFill
+import com.adamglin.phosphoricons.fill.Record as RecordFill
 import com.adamglin.phosphoricons.fill.Rss as RssFill
+import com.adamglin.phosphoricons.fill.Stop as StopFill
 import com.adamglin.phosphoricons.fill.ThumbsDown as ThumbsDownFill
 import com.adamglin.phosphoricons.fill.ThumbsUp as ThumbsUpFill
 import com.adamglin.phosphoricons.regular.ArrowClockwise
 import com.adamglin.phosphoricons.regular.ArrowLeft
+import com.adamglin.phosphoricons.regular.ArrowsMerge
+import com.adamglin.phosphoricons.regular.Eye
+import com.adamglin.phosphoricons.regular.FilmStrip
+import com.adamglin.phosphoricons.regular.UserFocus
+import com.adamglin.phosphoricons.regular.Webcam
 import com.adamglin.phosphoricons.regular.BellRinging
 import com.adamglin.phosphoricons.regular.BookmarkSimple
 import com.adamglin.phosphoricons.regular.Books
@@ -75,6 +82,13 @@ object VeilIcons {
     val Alternates: ImageVector get() = PhosphorIcons.Regular.ListMagnifyingGlass
     val Back: ImageVector get() = PhosphorIcons.Regular.ArrowLeft
     val Block: ImageVector get() = PhosphorIcons.Regular.Prohibit
+    val Cams: ImageVector get() = PhosphorIcons.Regular.Webcam
+    val FindVideo: ImageVector get() = PhosphorIcons.Regular.FilmStrip
+    val Identify: ImageVector get() = PhosphorIcons.Regular.UserFocus
+    val Merge: ImageVector get() = PhosphorIcons.Regular.ArrowsMerge
+    val Record: ImageVector get() = PhosphorIcons.Fill.RecordFill
+    val Stop: ImageVector get() = PhosphorIcons.Fill.StopFill
+    val Viewers: ImageVector get() = PhosphorIcons.Regular.Eye
     val Bookmark: ImageVector get() = PhosphorIcons.Regular.BookmarkSimple
     val BookmarkFilled: ImageVector get() = PhosphorIcons.Fill.BookmarkSimpleFill
     val Check: ImageVector get() = PhosphorIcons.Regular.Check

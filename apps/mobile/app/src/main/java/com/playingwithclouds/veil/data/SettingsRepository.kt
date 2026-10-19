@@ -17,6 +17,8 @@ data class BackendSettings(
     val allowDownloadsWhileStreaming: Boolean,
     val autoEnrichAfterScrape: Boolean,
     val requireVpn: Boolean,
+    /** A cam recording stops after this many minutes. */
+    val camRecordingMaxMinutes: Int,
 )
 
 /** A blocked tag, performer or studio. */
@@ -35,6 +37,7 @@ object SettingsRepository {
             allowDownloadsWhileStreaming = settings.allowDownloadsWhileStreaming,
             autoEnrichAfterScrape = settings.autoEnrichAfterScrape,
             requireVpn = settings.requireVpn,
+            camRecordingMaxMinutes = settings.camRecordingMaxMinutes,
         )
     }
 
@@ -48,6 +51,7 @@ object SettingsRepository {
             autoEnrichAfterScrape = Optional.present(settings.autoEnrichAfterScrape),
             requireVpn = Optional.present(settings.requireVpn),
             kindLimits = Optional.Absent,
+            camRecordingMaxMinutes = Optional.present(settings.camRecordingMaxMinutes),
         )
         VeilApi.client.mutation(UpdateBackendSettingsMutation(input)).execute().dataOrThrow()
     }

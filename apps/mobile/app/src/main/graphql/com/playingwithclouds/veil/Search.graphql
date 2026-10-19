@@ -8,6 +8,14 @@ query SearchSuggestions($query: String!, $limit: Int) {
   }
 }
 
+query SourceSuggestions($query: String!, $limit: Int) {
+  sourceSuggestions(query: $query, limit: $limit) {
+    kind
+    text
+    sources
+  }
+}
+
 mutation RecordSearch($query: String!) {
   recordSearch(query: $query)
 }

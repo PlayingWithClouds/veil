@@ -72,6 +72,7 @@ fun SceneContent(
     player: ExoPlayer,
     navigator: AppNavigator,
     onFindAlternates: () -> Unit,
+    onIdentify: () -> Unit,
     queuedCount: Int,
     onOpenQueue: () -> Unit,
 ) {
@@ -88,6 +89,7 @@ fun SceneContent(
                 viewModel,
                 onOpen = { chosen -> dialog = chosen },
                 onFindAlternates = onFindAlternates,
+                onIdentify = onIdentify,
                 queuedCount = queuedCount,
                 onOpenQueue = onOpenQueue,
             )
@@ -131,13 +133,14 @@ private fun SceneTitleBlock(detail: SceneDetail, state: SceneState) {
     }
 }
 
-/** The row of reactions and actions: like, dislike, O-counter, watchlist, collections, download, alternates, block. */
+/** The row of reactions and actions: like, dislike, O-counter, watchlist, collections, download, alternates, who is this, block. */
 @Composable
 private fun ReactionRow(
     state: SceneState,
     viewModel: SceneViewModel,
     onOpen: (SceneDialog) -> Unit,
     onFindAlternates: () -> Unit,
+    onIdentify: () -> Unit,
     queuedCount: Int,
     onOpenQueue: () -> Unit,
 ) {
@@ -166,6 +169,7 @@ private fun ReactionRow(
         }
         item { ActionButton(VeilIcons.Queue, queueLabel(queuedCount), active = queuedCount > 0) { onOpenQueue() } }
         item { ActionButton(VeilIcons.Alternates, "Alternates") { onFindAlternates() } }
+        item { ActionButton(VeilIcons.Identify, "Who is this?") { onIdentify() } }
         item { ActionButton(VeilIcons.Block, "Block") { onOpen(SceneDialog.Block) } }
     }
 }
