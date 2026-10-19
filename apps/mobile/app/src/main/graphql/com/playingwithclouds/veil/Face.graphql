@@ -1,0 +1,34 @@
+mutation IdentifyFace($mediaId: ID!, $imageId: ID, $frameBase64: String) {
+  identifyFace(mediaId: $mediaId, imageId: $imageId, frameBase64: $frameBase64) {
+    candidates {
+      name
+      similarity
+      imageUrl
+      profileUrls
+      sources
+      performerId
+    }
+    videos {
+      title
+      similarity
+      url
+      thumbnailUrl
+      sources
+      scenePlugin
+    }
+    sources
+    failures
+    pictureUrl
+  }
+}
+
+mutation CreditPerformerByName($mediaId: ID!, $name: String!) {
+  creditPerformerByName(mediaId: $mediaId, name: $name) {
+    id
+    name
+  }
+}
+
+mutation ResolvePluginResult($pluginName: String!, $url: String!, $posterUrl: String) {
+  resolvePluginResult(pluginName: $pluginName, url: $url, posterUrl: $posterUrl)
+}

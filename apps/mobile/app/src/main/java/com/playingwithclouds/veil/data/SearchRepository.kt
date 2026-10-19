@@ -15,6 +15,7 @@ import com.playingwithclouds.veil.graphql.SearchPluginsQuery
 import com.playingwithclouds.veil.graphql.SearchScenesQuery
 import com.playingwithclouds.veil.graphql.SearchStudiosQuery
 import com.playingwithclouds.veil.graphql.SearchSuggestionsQuery
+import com.playingwithclouds.veil.graphql.SourceSuggestionsQuery
 import kotlinx.coroutines.flow.Flow
 
 /** One entry of the search box's suggestion list. */
@@ -75,6 +76,17 @@ object SearchRepository {
         val data = VeilApi.client.query(SearchSuggestionsQuery(query, Optional.present(limit))).execute().dataOrThrow()
         return data.searchSuggestions.map { suggestion ->
             SearchSuggestion(suggestion.kind.rawValue, suggestion.text, suggestion.entityId, suggestion.imageUrl, suggestion.detail)
+        }
+    }
+
+    /**
+     * Completions from the sites' own search boxes, for things the library does not hold yet.
+     * Fetched live, so slower than [suggestions]; as suggestions without entity or picture.
+     */
+    suspend fun sourceSuggestions(query: String, limit: Int): List<SearchSuggestion> {
+        val data = VeilApi.client.query(SourceSuggestionsQuery(query, Optional.present(limit))).execute().dataOrThrow()
+        return data.sourceSuggestions.map { suggestion ->
+            SearchSuggestion(suggestion.kind.rawValue, suggestion.text, null, null, suggestion.sources.joinToString(", "))
         }
     }
 

@@ -91,11 +91,20 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
         }
     }
 
-    /** Fetches suggestions for the text; a failure leaves the list empty. */
+    /**
+     * Fetches suggestions for the text, then appends the sites' own completions, which take
+     * longer; a failure leaves either part empty.
+     */
     private fun loadSuggestions(text: String) {
+        val query = text.trim()
         viewModelScope.launch {
-            val suggestions = runCatching { SearchRepository.suggestions(text.trim(), SUGGESTION_LIMIT) }.getOrDefault(emptyList())
+            val suggestions = runCatching { SearchRepository.suggestions(query, SUGGESTION_LIMIT) }.getOrDefault(emptyList())
             mutableState.update { current -> current.copy(suggestions = suggestions) }
+            if (query.isEmpty()) {
+                return@launch
+            }
+            val completions = runCatching { SearchRepository.sourceSuggestions(query, SOURCE_SUGGESTION_LIMIT) }.getOrDefault(emptyList())
+            mutableState.update { current -> current.withSiteCompletions(query, completions) }
         }
     }
 
@@ -218,10 +227,24 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
     companion object {
         private const val SUGGESTION_DEBOUNCE_MILLISECONDS = 200L
         private const val SUGGESTION_LIMIT = 12
+        private const val SOURCE_SUGGESTION_LIMIT = 8
         private const val SCENE_LIMIT = 40
         private const val GALLERY_LIMIT = 30
         private const val ENTITY_LIMIT = 20
     }
+}
+
+/**
+ * The state with the sites' completions for [query] after its suggestions, skipping texts already
+ * suggested. Ignored once the box holds other text, since the completions arrive late.
+ */
+fun SearchState.withSiteCompletions(query: String, completions: List<SearchSuggestion>): SearchState {
+    if (this.query.trim() != query || submitted != null) {
+        return this
+    }
+    val known = suggestions.map { suggestion -> suggestion.text.lowercase() }.toSet()
+    val fresh = completions.filter { completion -> completion.text.lowercase() !in known }
+    return copy(suggestions = suggestions + fresh)
 }
 
 /** The state with a live result appended, unless the library already listed it. */

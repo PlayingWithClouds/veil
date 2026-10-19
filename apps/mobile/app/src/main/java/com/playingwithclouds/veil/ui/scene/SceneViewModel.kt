@@ -24,6 +24,7 @@ import com.playingwithclouds.veil.data.Verdict
 import com.playingwithclouds.veil.data.WatchProgressStore
 import com.playingwithclouds.veil.data.needsNewThumbnail
 import com.playingwithclouds.veil.ui.LoadState
+import com.playingwithclouds.veil.ui.face.FaceRequest
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -445,6 +446,19 @@ class SceneViewModel(private val sceneId: String) : ViewModel() {
             }
             mutableAlike.update { current -> current.copy(attachingUrl = null) }
         }
+    }
+
+    /**
+     * A "Who is this?" request for the frame at [atSeconds] of the playing source. HLS sources
+     * cannot be read frame by frame on the device, so they (and a frame that fails) fall back to
+     * the scene's thumbnail.
+     */
+    fun faceRequest(atSeconds: Double): FaceRequest {
+        val playable = mutableState.value.active?.playable
+        if (playable == null || playable.isHls) {
+            return FaceRequest(sceneId)
+        }
+        return FaceRequest(sceneId, grabFrame = { ThumbnailCapture.jpegBase64(playable, atSeconds, ThumbnailCapture.FACE_FRAME_WIDTH) })
     }
 
     /** Marks the snackbar note as shown. */

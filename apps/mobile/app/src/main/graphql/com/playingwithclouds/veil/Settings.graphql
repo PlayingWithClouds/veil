@@ -6,6 +6,7 @@ query BackendSettings {
     allowDownloadsWhileStreaming
     autoEnrichAfterScrape
     requireVpn
+    camRecordingMaxMinutes
   }
 }
 
