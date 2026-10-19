@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import com.playingwithclouds.veil.data.AlikeCandidate
 import com.playingwithclouds.veil.data.SceneDetail
+import com.playingwithclouds.veil.ui.components.CollectionPickerDialog
 import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.TextInputDialog
@@ -56,7 +57,7 @@ sealed interface SceneDialog {
 @Composable
 fun SceneDialogs(dialog: SceneDialog?, detail: SceneDetail, viewModel: SceneViewModel, player: ExoPlayer, onDismiss: () -> Unit) {
     when (dialog) {
-        SceneDialog.Collections -> CollectionPickerDialog(viewModel, onDismiss)
+        SceneDialog.Collections -> SceneCollectionsDialog(viewModel, onDismiss)
         SceneDialog.Block -> BlockDialog(detail, viewModel, onDismiss)
         SceneDialog.Marker -> MarkerDialog(
             seconds = player.currentPosition / MILLISECONDS_PER_SECOND,
@@ -70,52 +71,18 @@ fun SceneDialogs(dialog: SceneDialog?, detail: SceneDetail, viewModel: SceneView
     }
 }
 
-/** Ticks the user's collections the scene belongs to; a new one can be created on the spot. */
+/** The user's collections with the scene's ticked; a new one can be created on the spot. */
 @Composable
-private fun CollectionPickerDialog(viewModel: SceneViewModel, onDismiss: () -> Unit) {
+private fun SceneCollectionsDialog(viewModel: SceneViewModel, onDismiss: () -> Unit) {
     val collections by viewModel.userCollections.collectAsStateWithLifecycle()
     val memberOf by viewModel.collectionIds.collectAsStateWithLifecycle()
-    var creating by remember { mutableStateOf(false) }
-
-    if (creating) {
-        TextInputDialog(
-            title = "New collection",
-            label = "Name",
-            confirmLabel = "Create",
-            onConfirm = { name ->
-                creating = false
-                viewModel.createCollectionWithScene(name)
-            },
-            onDismiss = { creating = false },
-        )
-        return
-    }
-    VeilDialog(
-        title = "Add to collection",
-        onDismissRequest = onDismiss,
-        buttons = {
-            SecondaryButton("New collection", onClick = { creating = true })
-            PrimaryButton("Done", onClick = onDismiss)
-        },
-    ) {
-        if (collections.isEmpty()) {
-            Text("You have no collections yet.", color = VeilColors.contentMuted)
-            return@VeilDialog
-        }
-        LazyColumn {
-            items(collections, key = { collection -> collection.id }) { collection ->
-                val included = collection.id in memberOf
-                Row(
-                    Modifier.fillMaxWidth().pressClickable { viewModel.setInCollection(collection, !included) }.padding(vertical = VeilSpacing.small),
-                    horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    VeilCheck(checked = included)
-                    Text(collection.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
+    CollectionPickerDialog(
+        collections,
+        memberOf,
+        onToggle = viewModel::setInCollection,
+        onCreate = viewModel::createCollectionWithScene,
+        onDismiss = onDismiss,
+    )
 }
 
 /** Lists the scene's studio, performers and tags; each can be blocked from recommendations. */
@@ -202,7 +169,7 @@ fun AlternatesSheet(viewModel: SceneViewModel, onDismiss: () -> Unit) {
 
 /** A candidate with poster, title, site, runtime and match percentage. */
 @Composable
-private fun AlternateRow(candidate: AlikeCandidate, attaching: Boolean, onChoose: () -> Unit) {
+fun AlternateRow(candidate: AlikeCandidate, attaching: Boolean, onChoose: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().pressClickable(enabled = !attaching, onClick = onChoose).padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),

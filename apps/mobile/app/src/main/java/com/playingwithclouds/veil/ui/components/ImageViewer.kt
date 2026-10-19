@@ -35,9 +35,12 @@ import androidx.compose.ui.window.DialogProperties
 
 private const val MAX_ZOOM = 5f
 
-/** A full-screen pager over images with pinch-to-zoom; system back or the close button dismisses it. */
+/**
+ * A full-screen pager over images with pinch-to-zoom; system back or the close button dismisses
+ * it. With [onIdentify], a "Who is this?" button asks about the image on screen (by index).
+ */
 @Composable
-fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Unit) {
+fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Unit, onIdentify: ((Int) -> Unit)? = null) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
@@ -53,6 +56,14 @@ fun ImageViewer(imagePaths: List<String>, initialIndex: Int, onDismiss: () -> Un
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(VeilSpacing.medium),
             )
+            if (onIdentify != null) {
+                RoundIconButton(
+                    VeilIcons.Identify,
+                    contentDescription = "Who is this?",
+                    onClick = { onIdentify(pagerState.currentPage) },
+                    modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(VeilSpacing.medium),
+                )
+            }
             Text(
                 "${pagerState.currentPage + 1} / ${imagePaths.size}",
                 modifier = Modifier

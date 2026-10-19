@@ -40,6 +40,10 @@ import com.playingwithclouds.veil.data.qualityLabel
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
+import com.playingwithclouds.veil.ui.components.ReactionButton
+import com.playingwithclouds.veil.ui.components.ReactionRowInset
+import com.playingwithclouds.veil.ui.components.dislikeIcon
+import com.playingwithclouds.veil.ui.components.likeIcon
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
@@ -147,30 +151,30 @@ private fun ReactionRow(
     val best = state.active?.option ?: state.streams.firstOrNull()
     LazyRow(contentPadding = PaddingValues(horizontal = ReactionRowInset), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
         item {
-            ActionButton(likeIcon(state.verdict == Verdict.UP), "Like", active = state.verdict == Verdict.UP) { viewModel.react(Verdict.UP) }
+            ReactionButton(likeIcon(state.verdict == Verdict.UP), "Like", active = state.verdict == Verdict.UP) { viewModel.react(Verdict.UP) }
         }
         item {
-            ActionButton(dislikeIcon(state.verdict == Verdict.DOWN), "Dislike", active = state.verdict == Verdict.DOWN) { viewModel.react(Verdict.DOWN) }
+            ReactionButton(dislikeIcon(state.verdict == Verdict.DOWN), "Dislike", active = state.verdict == Verdict.DOWN) { viewModel.react(Verdict.DOWN) }
         }
         item {
-            ActionButton(VeilIcons.HeartFilled, "O ${state.oCount}", onLongClick = viewModel::decrementOCount) { viewModel.incrementOCount() }
+            ReactionButton(VeilIcons.HeartFilled, "O ${state.oCount}", onLongClick = viewModel::decrementOCount) { viewModel.incrementOCount() }
         }
         item {
-            ActionButton(watchlistIcon(state.onWatchlist), "Watchlist", active = state.onWatchlist) { viewModel.toggleWatchlist() }
+            ReactionButton(watchlistIcon(state.onWatchlist), "Watchlist", active = state.onWatchlist) { viewModel.toggleWatchlist() }
         }
         item {
-            ActionButton(VeilIcons.CollectionAdd, "Collect") {
+            ReactionButton(VeilIcons.CollectionAdd, "Collect") {
                 viewModel.loadUserCollections()
                 onOpen(SceneDialog.Collections)
             }
         }
         if (best != null) {
-            item { ActionButton(VeilIcons.Download, "Download") { viewModel.download(best) } }
+            item { ReactionButton(VeilIcons.Download, "Download") { viewModel.download(best) } }
         }
-        item { ActionButton(VeilIcons.Queue, queueLabel(queuedCount), active = queuedCount > 0) { onOpenQueue() } }
-        item { ActionButton(VeilIcons.Alternates, "Alternates") { onFindAlternates() } }
-        item { ActionButton(VeilIcons.Identify, "Who is this?") { onIdentify() } }
-        item { ActionButton(VeilIcons.Block, "Block") { onOpen(SceneDialog.Block) } }
+        item { ReactionButton(VeilIcons.Queue, queueLabel(queuedCount), active = queuedCount > 0) { onOpenQueue() } }
+        item { ReactionButton(VeilIcons.Alternates, "Alternates") { onFindAlternates() } }
+        item { ReactionButton(VeilIcons.Identify, "Who is this?") { onIdentify() } }
+        item { ReactionButton(VeilIcons.Block, "Block") { onOpen(SceneDialog.Block) } }
     }
 }
 
@@ -182,67 +186,12 @@ private fun queueLabel(queuedCount: Int): String {
     return "Queue $queuedCount"
 }
 
-/** The like icon, filled when chosen. */
-private fun likeIcon(chosen: Boolean): ImageVector {
-    if (chosen) {
-        return VeilIcons.LikeFilled
-    }
-    return VeilIcons.Like
-}
-
-/** The dislike icon, filled when chosen. */
-private fun dislikeIcon(chosen: Boolean): ImageVector {
-    if (chosen) {
-        return VeilIcons.DislikeFilled
-    }
-    return VeilIcons.Dislike
-}
-
 /** The watchlist icon, filled when the scene is saved. */
 private fun watchlistIcon(saved: Boolean): ImageVector {
     if (saved) {
         return VeilIcons.BookmarkFilled
     }
     return VeilIcons.Bookmark
-}
-
-/** Width of a reaction button, wider than its circle so captions fit. */
-private val ActionButtonWidth = 68.dp
-
-/** Diameter of a reaction button's circle. */
-private val ActionCircleSize = 48.dp
-
-/** Side inset of the reaction row that puts the first circle on the gutter. */
-private val ReactionRowInset = VeilSpacing.gutter - (ActionButtonWidth - ActionCircleSize) / 2
-
-/**
- * A round icon button over a caption, white with a dark icon while [active]; a long press can
- * trigger a second action.
- */
-@Composable
-private fun ActionButton(
-    icon: ImageVector,
-    label: String,
-    active: Boolean = false,
-    onLongClick: (() -> Unit)? = null,
-    onClick: () -> Unit,
-) {
-    var background = VeilColors.surfaceHigh
-    var tint = VeilColors.content
-    if (active) {
-        background = VeilColors.content
-        tint = VeilColors.canvas
-    }
-    Column(
-        Modifier.width(ActionButtonWidth).pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick).padding(vertical = VeilSpacing.small),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
-    ) {
-        Box(Modifier.size(ActionCircleSize).clip(VeilShapes.capsule).background(background), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
-        }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 /** Sources grouped by site, with a pill per quality; the playing one is selected. */
