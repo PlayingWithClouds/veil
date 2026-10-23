@@ -126,10 +126,11 @@ func TestSourceKindGroupsEverySource(t *testing.T) {
 	want := map[string]string{
 		SourceRelatedSite: kindPersonal, SourceRelatedPerformer: kindPersonal, SourceRelatedTag: kindPersonal,
 		SourceRelatedTitle: kindPersonal, SourceSubscription: kindPersonal, SourcePerformer: kindPersonal,
-		SourceStudio: kindPersonal, SourceTag: kindPersonal,
+		SourceStudio: kindPersonal, SourceTag: kindPersonal, SourceRelatedWalk: kindPersonal,
 		SourceTaste: kindTaste, SourceCatalog: kindCatalog, SourcePopular: kindCatalog,
 		SourceAdjacentTag: kindExplore, SourceRandom: kindExplore, SourceExploreSite: kindExplore,
-		SourceSearch: kindSearch, SourceNewest: kindFiller, "unknown": kindFiller,
+		SourceExploreAttribute: kindExplore,
+		SourceSearch:           kindSearch, SourceNewest: kindFiller, "unknown": kindFiller,
 	}
 	for source, kind := range want {
 		if got := sourceKind(source); got != kind {

@@ -132,6 +132,13 @@ var sourcePriors = map[string]float64{
 	SourceExploreSite:      0.3,
 	SourceRandom:           0.2,
 	SourceNewest:           0.1,
+	// SourceRelatedWalk: scenes two or three hops from a seed. It sits below
+	// the direct lists (the site's own and the library-built ones) because
+	// every hop dilutes the evidence.
+	SourceRelatedWalk: 0.5,
+	// SourceExploreAttribute: scenes of performers the user has no signal on
+	// yet whose looks match the performers they like.
+	SourceExploreAttribute: 0.35,
 }
 
 // Prior shaping.
@@ -175,6 +182,127 @@ const (
 	penaltyDislikedNeighbor = 0.5
 )
 
+// Rewatching: a video that ended a session did its job, so once it is not
+// fresh in memory the watched penalty fades and turns into a small bonus.
+// A watch another video followed keeps the full penalty.
+const (
+	// rewatchFreeAfter is how long after a session-ending watch the full
+	// penalty stands.
+	rewatchFreeAfter = 3 * 24 * time.Hour
+	// rewatchRampDuration is how long the penalty then takes to give way
+	// completely (after rewatchFreeAfter + rewatchRampDuration the scene
+	// carries only the bonus).
+	rewatchRampDuration = 11 * 24 * time.Hour
+	// rewatchBonus is the score a fully lifted session ender gains instead
+	// of a penalty.
+	rewatchBonus = 0.3
+	// rewatchRowMinAge is how long ago a session ender was last watched to
+	// be offered on the "Watch again" shelf.
+	rewatchRowMinAge = 7 * 24 * time.Hour
+	// rewatchRowLimit caps the shelf's scenes.
+	rewatchRowLimit = 30
+	// rewatchRowPosition is where the shelf sits among the rows (0 = first).
+	rewatchRowPosition = 1
+)
+
+// Moments: the tags of the markers around where a session-ending watch
+// stopped, and around the scene's replay peak, are what the user came for.
+const (
+	// momentTagBoost is the share of a scene's weight its moment tags get on
+	// top of the weight every tag of the scene already carries.
+	momentTagBoost = 0.5
+	// momentSecondsBefore and momentSecondsAfter bound the markers near the
+	// stop point: the last minutes watched explain why it ended there.
+	momentSecondsBefore = 120.0
+	momentSecondsAfter  = 20.0
+	// momentHeatMarginSeconds widens the replay peak's bucket on both sides.
+	momentHeatMarginSeconds = 30.0
+	// momentHeatPeakRatio is how far above the bucket average the busiest
+	// heat bucket must be to count as a peak.
+	momentHeatPeakRatio = 2.0
+	// momentSceneLimit bounds how many session-ending scenes (the most
+	// recent) are read for markers and heat.
+	momentSceneLimit = 100
+)
+
+// Tag rarity: a tag on most scenes says little about taste. Its weight falls
+// with the log of its share of the tagged scenes (inverse document frequency)
+// from 1 for tags on rarityFullShare of them or fewer.
+const (
+	rarityFullShare = 0.05
+	rarityFloor     = 0.05
+	// rarityMinScenes is how many tagged scenes the library needs before the
+	// shares mean anything; below it every tag weighs 1.
+	rarityMinScenes = 50
+	// libraryStatsTTL is how long the library-wide aggregates (tag shares,
+	// performer attributes) are reused.
+	libraryStatsTTL = 10 * time.Minute
+)
+
+// Runtime preference: the user's signals are spread over runtime bands (see
+// runtimeBandSeconds), smoothed between neighbours.
+const (
+	// runtimeMinMass is the affinity mass a band needs to reach ±1: with
+	// less evidence than a couple of session-ending watches the preference
+	// stays proportionally weak.
+	runtimeMinMass = 8.0
+)
+
+// Performer attributes: looks (hair, ethnicity, ...) liked on known
+// performers are inherited, damped, by performers with no signal of their own.
+const (
+	// attributeInheritance damps an unknown performer's inherited affinity.
+	attributeInheritance = 0.5
+	// attributeMinMass is the evidence an attribute needs to reach ±1: two
+	// fully liked performers sharing it.
+	attributeMinMass = 2.0
+	// attributeFullShare and attributeFloor shape the weight of an attribute
+	// by how many profiled performers share it (hair:Brown says less than
+	// hair:Red); values are categories, so the scale is coarser than a tag's.
+	attributeFullShare = 0.15
+	attributeFloor     = 0.2
+	// attributeCandidatePerformers is how many unknown performers the
+	// attribute source follows, attributeScenesPerPerformer how many scenes
+	// of each, and attributeCandidateMinimum the inherited affinity a
+	// performer needs to be followed.
+	attributeCandidatePerformers = 8
+	attributeScenesPerPerformer  = 5
+	attributeCandidateMinimum    = 0.15
+	// attributeAffinityFloor is the share of the source prior a find keeps
+	// however faint the match (the inherited affinity is damped twice, by
+	// attributeInheritance and by thin evidence).
+	attributeAffinityFloor = 0.5
+)
+
+// Walk: a short personalized random walk over the related graph (scene_related,
+// both directions) mixed with shared-performer and shared-rare-tag edges.
+const (
+	// walkHops is how many hops the walk goes from the seeds; the first hop
+	// is what relatedCandidates already proposes.
+	walkHops = 3
+	// walkFrontierLimit caps the scenes expanded per hop (the strongest by
+	// mass), so the queries stay small however dense the graph is.
+	walkFrontierLimit = 100
+	// walkDamping is the share of its mass a scene passes on per hop.
+	walkDamping = 0.6
+	// walkReverseWeight scales edges walked against their direction (scenes
+	// that list this one as related).
+	walkReverseWeight = 0.5
+	// walkPerformerEdgeWeight and walkTagEdgeWeight are the edge weights of a
+	// shared performer and a shared rare tag, against the related edges'
+	// source priors (site 1.0 ... title 0.4).
+	walkPerformerEdgeWeight = 0.6
+	walkTagEdgeWeight       = 0.3
+	// walkTagMinRarity is the rarity weight a tag needs to link scenes.
+	walkTagMinRarity = 0.7
+	// walkEntitiesPerScene caps the tags a scene links through, walkScenesPerEntity
+	// the newest scenes taken per performer or tag.
+	walkEntitiesPerScene = 3
+	walkScenesPerEntity  = 6
+	// walkCandidateLimit caps the scenes the walk proposes.
+	walkCandidateLimit = 60
+)
+
 // Popularity: how a scene's standing on its own site is read. Views and
 // ratings are compared to the site's other scenes (sites count views and
 // rate on very different scales), then blended.
@@ -190,12 +318,14 @@ const (
 	popularityMinSample = 20
 )
 
-// Affinity match: how a scene's features mix into one [-1, 1] value.
+// Affinity match: how a scene's features mix into one [-1, 1] value (the
+// weights add up to 1).
 const (
-	matchWeightPerformer = 0.4
-	matchWeightTag       = 0.3
-	matchWeightStudio    = 0.2
-	matchWeightSite      = 0.1
+	matchWeightPerformer = 0.36
+	matchWeightTag       = 0.27
+	matchWeightStudio    = 0.18
+	matchWeightSite      = 0.09
+	matchWeightRuntime   = 0.10
 )
 
 // Re-ranking.

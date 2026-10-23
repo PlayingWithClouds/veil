@@ -36,6 +36,11 @@ type Engine struct {
 	random sampler
 	// lastPolicyLog is when the learned values were last logged.
 	lastPolicyLog time.Time
+	// learningDisabled keeps the hand-set priors and quotas (evaluation).
+	learningDisabled bool
+
+	// stats caches the library-wide aggregates (tag rarity, performer attributes).
+	stats statsCache
 
 	mutex sync.Mutex
 	cache *rankedFeed
@@ -58,6 +63,8 @@ type rankedFeed struct {
 	// durations holds each ranked scene's runtime in seconds (absent when
 	// unknown), for the duration filter.
 	durations map[string]int
+	// rewatch is the "Watch again" shelf: past session enders, strongest first.
+	rewatch []Item
 }
 
 // New returns an engine over the database; repo supplies the blocklist and
@@ -208,7 +215,7 @@ func (e *Engine) Rows(ctx context.Context, disabledPlugins []string, rowLimit, p
 	if err != nil {
 		return nil, err
 	}
-	return groupRows(feed.scored, rowLimit, perRow), nil
+	return withRewatchRow(groupRows(feed.scored, rowLimit, perRow), feed.rewatch, rowLimit, perRow), nil
 }
 
 // Pair returns the two best-ranked scenes not compared recently, for the A/B
@@ -320,7 +327,7 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 	if err != nil {
 		return nil, err
 	}
-	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerankWithQuotas(scored, state.policy.pageQuotas()), observingPlugins: observingPlugins, durations: durations}, nil
+	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerankWithQuotas(scored, state.policy.pageQuotas()), rewatch: rewatchItems(state), observingPlugins: observingPlugins, durations: durations}, nil
 }
 
 // freshCount counts the scored scenes the user has neither watched nor been

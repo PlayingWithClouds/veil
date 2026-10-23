@@ -55,7 +55,16 @@ func (e *Engine) profileAt(ctx context.Context, now time.Time) (*Profile, map[st
 	if err != nil {
 		return nil, nil, err
 	}
-	return buildProfile(signals, features, e.repo.BlockedTargetIDSet(ctx), now), ignored, nil
+	stats, err := e.libraryStats(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	moments, err := e.loadMoments(ctx, sessionEnders(signals))
+	if err != nil {
+		return nil, nil, err
+	}
+	inputs := profileInputs{rarity: stats.rarity, attributes: stats.attributes, moments: moments}
+	return buildProfileWith(signals, features, e.repo.BlockedTargetIDSet(ctx), now, inputs), ignored, nil
 }
 
 // takeSnapshot reads the profile and the per-scene state ranking needs.

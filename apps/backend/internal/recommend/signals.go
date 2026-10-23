@@ -15,6 +15,14 @@ type signal struct {
 	at      time.Time
 	// disliked marks an explicit thumbs-down, which also excludes the scene.
 	disliked bool
+	// weak marks a signal that says nothing about the scene's content (shown
+	// but not clicked), so the runtime preference leaves it out.
+	weak bool
+	// sessionEnd marks a watch nothing else followed. stopSeconds is where
+	// its playback was left and durationSeconds the runtime (0 when unknown).
+	sessionEnd      bool
+	stopSeconds     int
+	durationSeconds int
 }
 
 // Queries returning (media, at) rows since $since; every row gets the same weight.
@@ -48,7 +56,7 @@ const ratingQuery = `SELECT media, rating, updated_at AS at FROM user_rating
 // watchQuery reads scene watches since $since, with the scene's runtime as the
 // fallback duration.
 const watchQuery = `SELECT watch_history.media, watch_history.max_progress_seconds AS progress,
-	watch_history.completed,
+	watch_history.progress_seconds AS stop, watch_history.completed,
 	coalesce(watch_history.duration_seconds, scene.duration_seconds) AS duration,
 	watch_history.started_at AS started, watch_history.updated_at AS at
 	FROM watch_history LEFT JOIN scene ON scene.id = watch_history.media
@@ -136,6 +144,7 @@ func (e *Engine) watchSignals(ctx context.Context, since string, now time.Time) 
 		watches = append(watches, watch{
 			sceneID:         rowString(row, "media"),
 			progressSeconds: rowInt(row, "progress"),
+			stopSeconds:     rowInt(row, "stop"),
 			durationSeconds: rowInt(row, "duration"),
 			completed:       db.AsBool(row["completed"]),
 			startedAt:       rowTime(row, "started"),
@@ -145,11 +154,19 @@ func (e *Engine) watchSignals(ctx context.Context, since string, now time.Time) 
 	followed := followedWatches(watches)
 	out := make([]signal, 0, len(watches))
 	for index, entry := range watches {
-		weight, counts := watchWeight(entry, followed[index], now.Sub(entry.lastActivityAt))
+		sinceUpdate := now.Sub(entry.lastActivityAt)
+		weight, counts := watchWeight(entry, followed[index], sinceUpdate)
 		if !counts {
 			continue
 		}
-		out = append(out, signal{sceneID: entry.sceneID, weight: weight, at: entry.lastActivityAt})
+		out = append(out, signal{
+			sceneID:         entry.sceneID,
+			weight:          weight,
+			at:              entry.lastActivityAt,
+			sessionEnd:      endsSession(entry, followed[index], sinceUpdate),
+			stopSeconds:     entry.stopSeconds,
+			durationSeconds: entry.durationSeconds,
+		})
 	}
 	return out, nil
 }
@@ -167,14 +184,23 @@ func watchWeight(entry watch, followed bool, sinceUpdate time.Duration) (weight 
 		}
 		return weightEarlyAbandon, true
 	}
-	sessionEnded := !followed && sinceUpdate >= sessionGap
-	if sessionEnded && entry.progressSeconds >= sessionEndMinimumSeconds {
+	if endsSession(entry, followed, sinceUpdate) {
 		return weightSessionEnd, true
 	}
 	if entry.completed || watchedFraction(entry.progressSeconds, entry.durationSeconds) >= completedFraction {
 		return weightCompletedWatch, true
 	}
 	return weightPartialWatch, true
+}
+
+// endsSession reports whether the watch was the last of its session: nothing
+// else played within sessionGap after it, it played long enough to be more
+// than a look, and it was not an early abandonment.
+func endsSession(entry watch, followed bool, sinceUpdate time.Duration) bool {
+	if isEarlyAbandon(entry.progressSeconds, entry.durationSeconds) {
+		return false
+	}
+	return !followed && sinceUpdate >= sessionGap && entry.progressSeconds >= sessionEndMinimumSeconds
 }
 
 // watchedFraction is the share of the runtime reached; 0 when the runtime is
@@ -201,7 +227,7 @@ func ignoredImpressionSignals(ignored map[string]ignoredImpression) []signal {
 	out := make([]signal, 0, len(ignored))
 	for sceneID, impression := range ignored {
 		count := min(impression.count, ignoredImpressionCap)
-		out = append(out, signal{sceneID: sceneID, weight: weightIgnoredImpression * float64(count), at: impression.lastShown})
+		out = append(out, signal{sceneID: sceneID, weight: weightIgnoredImpression * float64(count), at: impression.lastShown, weak: true})
 	}
 	return out
 }
