@@ -51,39 +51,32 @@ func score(proposed *candidate, scene *sceneFeatures, state *snapshot, undated f
 	return total - penalties(proposed.sceneID, state)
 }
 
-// affinityMatch mixes the scene's performer, tag, studio and site affinities
-// into one value in [-1, 1].
+// affinityMatch mixes the scene's performer, tag, studio, site and runtime
+// affinities into one value in [-1, 1].
 func affinityMatch(scene *sceneFeatures, profile *Profile) float64 {
-	match := matchWeightPerformer * strongestAffinity(scene.performers, profile.Performers)
-	match += matchWeightTag * tagAffinity(scene.tags, profile.Tags)
+	match := matchWeightPerformer * castAffinity(scene.performers, profile)
+	match += matchWeightTag * tagAffinity(scene.tags, profile.Tags, profile.rarity)
 	match += matchWeightStudio * profile.Studios[scene.studio]
 	match += matchWeightSite * profile.Sites[scene.site]
+	match += matchWeightRuntime * profile.runtimeAffinity(scene.durationSeconds)
 	return match
 }
 
-// strongestAffinity is the highest affinity among ids, or the lowest when none
-// is positive: one loved performer carries a scene, an all-disliked cast sinks it.
-func strongestAffinity(ids []string, affinities map[string]float64) float64 {
-	highest, lowest := 0.0, 0.0
-	for _, id := range ids {
-		highest = math.Max(highest, affinities[id])
-		lowest = math.Min(lowest, affinities[id])
-	}
-	if highest > 0 {
-		return highest
-	}
-	return lowest
-}
-
-// tagAffinity sums the tag affinities damped by the tag count (mirroring how
-// the profile spreads weight over tags), clamped to [-1, 1].
-func tagAffinity(tags []string, affinities map[string]float64) float64 {
+// tagAffinity sums the tag affinities, each weighted by how rare the tag is
+// (a generic tag barely counts) and damped by the tag count (mirroring how
+// the profile spreads weight over tags), clamped to [-1, 1]. A blocked tag
+// keeps its full weight whatever its rarity.
+func tagAffinity(tags []string, affinities map[string]float64, rarity *tagRarity) float64 {
 	if len(tags) == 0 {
 		return 0
 	}
 	sum := 0.0
 	for _, tag := range tags {
-		sum += affinities[tag]
+		affinity := affinities[tag]
+		if affinity > affinityBlocked {
+			affinity *= rarity.weight(tag)
+		}
+		sum += affinity
 	}
 	return math.Max(-1, math.Min(1, sum/math.Sqrt(float64(len(tags)))))
 }
@@ -91,7 +84,7 @@ func tagAffinity(tags []string, affinities map[string]float64) float64 {
 // penalties adds up what counts against a scene: already watched, shown
 // repeatedly without a click, or related to a disliked scene.
 func penalties(sceneID string, state *snapshot) float64 {
-	total := watchedPenalty(state.watched[sceneID])
+	total := watchedPenalty(state.watched[sceneID], state.profile.sessionEnds[sceneID], state.now)
 	total += fatiguePenalty(state.ignored[sceneID].count)
 	if state.dislikedNeighbors[sceneID] {
 		total += penaltyDislikedNeighbor
@@ -99,15 +92,23 @@ func penalties(sceneID string, state *snapshot) float64 {
 	return total
 }
 
-// watchedPenalty costs a completed watch more than a partial one.
-func watchedPenalty(state watchState) float64 {
+// watchedPenalty costs a completed watch more than a partial one. A watch that
+// ended a session (endedSessionAt, zero when it did not) is a favourite worth
+// seeing again: its penalty fades with time (rewatchLift) and turns into a
+// small bonus.
+func watchedPenalty(state watchState, endedSessionAt, now time.Time) float64 {
+	penalty := 0.0
 	switch state {
 	case watchCompleted:
-		return penaltyWatchedCompleted
+		penalty = penaltyWatchedCompleted
 	case watchPartial:
-		return penaltyWatchedPartial
+		penalty = penaltyWatchedPartial
 	}
-	return 0
+	if penalty == 0 || endedSessionAt.IsZero() {
+		return penalty
+	}
+	lift := rewatchLift(now.Sub(endedSessionAt))
+	return penalty*(1-lift) - rewatchBonus*lift
 }
 
 // fatiguePenalty grows with every ignored showing past the free ones.

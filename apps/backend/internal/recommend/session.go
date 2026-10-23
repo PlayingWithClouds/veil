@@ -10,6 +10,8 @@ import (
 type watch struct {
 	sceneID         string
 	progressSeconds int
+	// stopSeconds is where playback was when the scene was last left.
+	stopSeconds     int
 	durationSeconds int
 	completed       bool
 	startedAt       time.Time

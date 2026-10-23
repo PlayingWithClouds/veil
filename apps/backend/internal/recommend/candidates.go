@@ -77,6 +77,8 @@ type candidateGenerator func(ctx context.Context, state *snapshot) ([]candidate,
 func (e *Engine) generateCandidates(ctx context.Context, state *snapshot) (*candidatePool, error) {
 	generators := []candidateGenerator{
 		e.relatedCandidates,
+		e.walkCandidates,
+		e.attributeCandidates,
 		e.subscriptionCandidates,
 		e.affinityCandidates,
 		e.tasteCandidates,

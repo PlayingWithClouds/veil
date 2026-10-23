@@ -21,6 +21,8 @@ type sceneFeatures struct {
 	site string
 	// publishedAt is the site's release date; zero when the site gave none.
 	publishedAt time.Time
+	// durationSeconds is the runtime; 0 when unknown.
+	durationSeconds int
 	// viewCount and rating (0..10, valid when rated) are what the site
 	// reported about the scene.
 	viewCount int
@@ -30,7 +32,7 @@ type sceneFeatures struct {
 
 // featureQuery reads the features of the scenes in $ids.
 const featureQuery = `SELECT scene.id, scene.tags, scene.performers, scene.studio,
-	scene.date, scene.view_count, scene.rating,
+	scene.date, scene.view_count, scene.rating, scene.duration_seconds,
 	coalesce(
 		(SELECT performer.name FROM json_each(scene.performers) AS credited
 		 JOIN performer ON performer.id = credited.value ORDER BY credited.key LIMIT 1),
@@ -59,16 +61,17 @@ func (e *Engine) loadFeatures(ctx context.Context, ids []string) (map[string]*sc
 // featuresFromRow decodes one featureQuery row.
 func featuresFromRow(row db.Row) *sceneFeatures {
 	return &sceneFeatures{
-		id:          rowString(row, "id"),
-		tags:        rowStrings(row, "tags"),
-		performers:  rowStrings(row, "performers"),
-		studio:      rowString(row, "studio"),
-		credit:      rowString(row, "credit"),
-		site:        rowString(row, "site"),
-		publishedAt: publishedAt(row),
-		viewCount:   rowInt(row, "view_count"),
-		rating:      rowFloat(row, "rating"),
-		rated:       row["rating"] != nil,
+		id:              rowString(row, "id"),
+		tags:            rowStrings(row, "tags"),
+		performers:      rowStrings(row, "performers"),
+		studio:          rowString(row, "studio"),
+		credit:          rowString(row, "credit"),
+		site:            rowString(row, "site"),
+		publishedAt:     publishedAt(row),
+		durationSeconds: rowInt(row, "duration_seconds"),
+		viewCount:       rowInt(row, "view_count"),
+		rating:          rowFloat(row, "rating"),
+		rated:           row["rating"] != nil,
 	}
 }
 

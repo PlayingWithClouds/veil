@@ -24,6 +24,21 @@ type Profile struct {
 	AdjacentTags []string
 	// SignalCount is how many signals the profile was built from.
 	SignalCount int
+	// Attributes are the looks (hair, ethnicity, ...) of the performers the
+	// user rates, as affinities in [-1, 1] per attribute key.
+	Attributes map[string]float64
+	// Rewatchable are the scenes that ended a session at least
+	// rewatchRowMinAge ago, strongest first: the "Watch again" shelf.
+	Rewatchable []Seed
+
+	// runtime is the affinity per runtime band (see runtimeBandSeconds).
+	runtime [runtimeBands]float64
+	// rarity weighs tags by how rare they are; nil weighs all alike.
+	rarity *tagRarity
+	// attributes knows which performer has which looks.
+	attributes *performerAttributes
+	// sessionEnds is when each session-ending scene was last watched.
+	sessionEnds map[string]time.Time
 }
 
 // Seed is a scene whose related scenes are worth recommending.
@@ -63,6 +78,8 @@ func newProfile(signalCount int) *Profile {
 		Studios:     map[string]float64{},
 		Sites:       map[string]float64{},
 		Disliked:    map[string]bool{},
+		Attributes:  map[string]float64{},
+		sessionEnds: map[string]time.Time{},
 		SignalCount: signalCount,
 	}
 }
@@ -75,21 +92,51 @@ func decayFactor(age, halfLife time.Duration) float64 {
 	return math.Pow(0.5, float64(age)/float64(halfLife))
 }
 
+// profileInputs is what the profile reads beyond the signals themselves.
+// The zero value builds a plain profile: every tag weighs the same, no moment
+// tags, no performer attributes.
+type profileInputs struct {
+	// rarity weighs tags by how rare they are in the library.
+	rarity *tagRarity
+	// attributes knows the looks of the profiled performers.
+	attributes *performerAttributes
+	// moments holds, per session-ending scene, the tags of the markers near
+	// where playback stopped and near the replay peak.
+	moments map[string][]string
+}
+
 // buildProfile turns signals into per-entity affinities. features describes
 // the signalled scenes; blocked holds the blocked entity ids ("table:id").
 func buildProfile(signals []signal, features map[string]*sceneFeatures, blocked map[string]bool, now time.Time) *Profile {
+	return buildProfileWith(signals, features, blocked, now, profileInputs{})
+}
+
+// buildProfileWith is buildProfile with the extra inputs.
+func buildProfileWith(signals []signal, features map[string]*sceneFeatures, blocked map[string]bool, now time.Time, inputs profileInputs) *Profile {
 	profile := newProfile(len(signals))
+	profile.rarity = inputs.rarity
+	profile.attributes = inputs.attributes
 	sceneWeights := decayedSceneWeights(signals, now)
 	for sceneID, weight := range sceneWeights {
 		if scene, found := features[sceneID]; found {
 			profile.addScene(scene, weight)
+			profile.addMomentTags(inputs.moments[sceneID], weight)
+		}
+	}
+	for sceneID, weight := range decayedContentWeights(signals, now) {
+		if scene, found := features[sceneID]; found {
+			profile.addRuntime(scene.durationSeconds, weight)
 		}
 	}
 	profile.normalize()
+	profile.normalizeRuntime()
+	profile.Attributes = attributeAffinities(profile.Performers, blocked, inputs.attributes)
 	profile.applyBlocked(blocked)
 	profile.Disliked = dislikedScenes(signals)
 	profile.Seeds = seedsFrom(sceneWeights, features)
 	profile.AdjacentTags = adjacentTags(profile, sceneWeights, features)
+	profile.sessionEnds = lastSessionEnds(signals)
+	profile.Rewatchable = rewatchableScenes(profile.sessionEnds, sceneWeights, features, now)
 	return profile
 }
 
@@ -100,6 +147,18 @@ func decayedSceneWeights(signals []signal, now time.Time) map[string]float64 {
 		out[entry.sceneID] += entry.weight * decayFactor(now.Sub(entry.at), AffinityHalfLife)
 	}
 	return out
+}
+
+// decayedContentWeights is decayedSceneWeights without the signals that say
+// nothing about the scene's content (shown but not clicked).
+func decayedContentWeights(signals []signal, now time.Time) map[string]float64 {
+	content := make([]signal, 0, len(signals))
+	for _, entry := range signals {
+		if !entry.weak {
+			content = append(content, entry)
+		}
+	}
+	return decayedSceneWeights(content, now)
 }
 
 // dislikedScenes collects the scenes with a thumbs-down.
@@ -114,8 +173,9 @@ func dislikedScenes(signals []signal) map[string]bool {
 }
 
 // addScene spreads a scene's weight onto its entities. Tags share the weight
-// (damped by the square root of their count) so a heavily tagged scene
-// doesn't swamp the tag dimension; performers, studio and site take it whole.
+// (damped by the square root of their count, scaled by how rare each tag is)
+// so a heavily tagged scene or a generic tag doesn't swamp the tag dimension;
+// performers, studio and site take it whole.
 func (profile *Profile) addScene(scene *sceneFeatures, weight float64) {
 	for _, performer := range scene.performers {
 		profile.Performers[performer] += weight
@@ -123,7 +183,7 @@ func (profile *Profile) addScene(scene *sceneFeatures, weight float64) {
 	if len(scene.tags) > 0 {
 		tagShare := weight / math.Sqrt(float64(len(scene.tags)))
 		for _, tag := range scene.tags {
-			profile.Tags[tag] += tagShare
+			profile.Tags[tag] += tagShare * profile.rarity.weight(tag)
 		}
 	}
 	if scene.studio != "" {
@@ -131,6 +191,18 @@ func (profile *Profile) addScene(scene *sceneFeatures, weight float64) {
 	}
 	if scene.site != "" {
 		profile.Sites[scene.site] += weight
+	}
+}
+
+// addMomentTags gives the tags of a positively signalled scene's moments an
+// extra share of its weight, on top of what every tag of the scene already got.
+func (profile *Profile) addMomentTags(tags []string, weight float64) {
+	if len(tags) == 0 || weight <= 0 {
+		return
+	}
+	tagShare := momentTagBoost * weight / math.Sqrt(float64(len(tags)))
+	for _, tag := range tags {
+		profile.Tags[tag] += tagShare * profile.rarity.weight(tag)
 	}
 }
 
