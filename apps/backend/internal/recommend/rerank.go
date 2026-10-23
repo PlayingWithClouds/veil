@@ -14,18 +14,20 @@ type rerankState struct {
 	studioCounts    map[string]int
 	siteCounts      map[string]int
 	kindCounts      map[string]int
-	lastSource      string
-	sameSourceRun   int
-	lastSite        string
-	sameSiteRun     int
+	// quotas is how many slots each kind may fill per page.
+	quotas        map[string]int
+	lastSource    string
+	sameSourceRun int
+	lastSite      string
+	sameSiteRun   int
 }
 
 // constraint is one re-ranking rule an item may break.
 type constraint func(item scoredItem) bool
 
 // newRerankState starts at the first slot of the first page.
-func newRerankState() *rerankState {
-	state := &rerankState{}
+func newRerankState(quotas map[string]int) *rerankState {
+	state := &rerankState{quotas: quotas}
 	state.resetPage()
 	return state
 }
@@ -62,8 +64,13 @@ func sourceKind(source string) string {
 // more than twice in a row. Slots a kind cannot fill go to the best remaining
 // items overall. Items that don't fit a page are deferred, never dropped.
 func rerank(scored []scoredItem) []Item {
+	return rerankWithQuotas(scored, kindQuotas)
+}
+
+// rerankWithQuotas is rerank with the page quotas per kind given.
+func rerankWithQuotas(scored []scoredItem, quotas map[string]int) []Item {
 	queue := slices.Clone(scored)
-	state := newRerankState()
+	state := newRerankState(quotas)
 	out := make([]Item, 0, len(scored))
 	for len(queue) > 0 {
 		var picked scoredItem
@@ -104,7 +111,7 @@ func (state *rerankState) nextIndex(queue []scoredItem) int {
 // underQuota reports whether the item's kind still has slots on this page.
 func (state *rerankState) underQuota(item scoredItem) bool {
 	kind := sourceKind(item.Source)
-	return state.kindCounts[kind] < kindQuotas[kind]
+	return state.kindCounts[kind] < state.quotas[kind]
 }
 
 // onPace reports whether taking the item keeps its kind from running ahead of
@@ -113,7 +120,7 @@ func (state *rerankState) underQuota(item scoredItem) bool {
 func (state *rerankState) onPace(item scoredItem) bool {
 	kind := sourceKind(item.Source)
 	slotsSoFar := state.slot%pageSize + 1 + paceLookahead
-	allowed := (kindQuotas[kind]*slotsSoFar + pageSize - 1) / pageSize
+	allowed := (state.quotas[kind]*slotsSoFar + pageSize - 1) / pageSize
 	return state.kindCounts[kind] < allowed
 }
 
