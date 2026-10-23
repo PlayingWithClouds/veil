@@ -36,11 +36,6 @@
       "id": "6-name",
       "text": "nate thai",
       "note": "A less known name: few sites know it, titles may or may not carry it."
-    },
-    {
-      "id": "7-handle",
-      "text": "party_starts deepthroat",
-      "note": "An uploader handle written with an underscore plus an act: tests tokenising handles and creator-as-entity."
     }
   ]
 }
