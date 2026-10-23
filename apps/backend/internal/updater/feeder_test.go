@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/playingwithclouds/veil/internal/db"
@@ -93,6 +94,60 @@ func TestFeederPullsTopEntityPages(t *testing.T) {
 	}
 	assertStrings(t, "finds", finds(t, database), []string{"taste/studio:vixen/scene:page#0"})
 	assertStrings(t, "pages", fake.pages, []string{"eporner@https://www.eporner.com/channel/vixen/"})
+}
+
+func TestFeederPullsAdjacentTagPagesAsExploration(t *testing.T) {
+	// Tags have no page of their own, so they are searched by name.
+	fake := &fakeDiscovery{plugins: testPlugins(), searchHits: map[string][]string{"eporner": {"scene:fresh"}}}
+	profile := emptyProfile()
+	profile.AdjacentTags = []string{"tag:near", "tag:far", "tag:nearer", "tag:nearest"}
+	feeder, database, _, _ := newTestFeeder(t, fake, profile)
+	for _, name := range []string{"near", "far", "nearer", "nearest"} {
+		if _, err := database.Insert(context.Background(), "tag", map[string]any{"id": "tag:" + name, "name": name}); err != nil {
+			t.Fatalf("insert tag: %v", err)
+		}
+	}
+	if _, err := database.Insert(context.Background(), "scene", map[string]any{"id": "scene:fresh", "source_url": "https://x.test/fresh"}); err != nil {
+		t.Fatalf("insert scene: %v", err)
+	}
+
+	if _, err := feeder.Run(context.Background()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	explored := 0
+	for _, find := range finds(t, database) {
+		if strings.HasPrefix(find, "explore/tag:") && strings.HasSuffix(find, "/scene:fresh#0") {
+			explored++
+		}
+	}
+	if explored != exploreTagLimit {
+		t.Errorf("%d adjacent tags explored, want %d: %v", explored, exploreTagLimit, finds(t, database))
+	}
+}
+
+func TestFeederListsPopularPagesTakingTurns(t *testing.T) {
+	fake := &fakeDiscovery{plugins: testPlugins(), pageHits: map[string][]string{"eporner": {"scene:hot"}}}
+	feeder, database, marks, _ := newTestFeeder(t, fake, emptyProfile())
+	feeder.popularPages = []string{
+		"https://www.eporner.com/best-videos/",
+		"https://www.eporner.com/top-rated/",
+		"https://www.eporner.com/cat/all/",
+		"https://elsewhere.test/popular/",
+	}
+
+	for run := 0; run < 2; run++ {
+		if _, err := feeder.Run(context.Background()); err != nil {
+			t.Fatalf("run: %v", err)
+		}
+	}
+	assertStrings(t, "pages", fake.pages, []string{
+		"eporner@https://www.eporner.com/best-videos/", "eporner@https://www.eporner.com/top-rated/",
+		"eporner@https://www.eporner.com/cat/all/",
+	})
+	assertStrings(t, "finds", finds(t, database), []string{"popular/www.eporner.com/scene:hot#0"})
+	if marks[feedPopularIndexKey] != "0" {
+		t.Errorf("next popular page = %q, want 0 after wrapping around", marks[feedPopularIndexKey])
+	}
 }
 
 func TestFeederRetriesARunThatFoundNothing(t *testing.T) {
