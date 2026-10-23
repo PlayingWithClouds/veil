@@ -74,7 +74,7 @@ func (r *Repository) ListGalleries(ctx context.Context, filters EntityFilters, l
 	if len(conditions) > 0 {
 		where = "WHERE " + joinAnd(conditions)
 	}
-	projection, order := "*", "created_at DESC"
+	projection, order := "*", searchOrder("title", vars["q"] != nil, "created_at DESC")
 	if tagFiltered {
 		projection = inheritedTagProjection("gallery")
 		order = "direct_match DESC, " + order

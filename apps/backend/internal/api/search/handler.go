@@ -14,6 +14,8 @@ import (
 	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/media"
 	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/recommend"
+	"github.com/playingwithclouds/veil/internal/searchrank"
 )
 
 // Handler serves live search results as Server-Sent Events.
@@ -23,27 +25,43 @@ import (
 // Events:
 //
 //	event: result
-//	data: {"source":"db"|"<pluginName>","item":{...DiscoveredItem}}
+//	data: {"source":"db"|"<pluginName>","id":"...","score":1.7,"replaces":"<source url>","item":{...DiscoveredItem}}
 //
 //	event: done
 //	data: {}
 //
-// DB results arrive first; plugin results stream in as each plugin finishes.
+// Library results arrive first, ranked by bm25 over title, performers, studio
+// and tags; plugin results stream in as each plugin finishes. Every result
+// carries a relevance score (see package searchrank) that clients order by:
+// streaming order is only arrival order. Copies of one video on several sites
+// are collapsed: later copies that score no better are not sent, and one that
+// scores better is sent with `replaces` naming the source URL of the copy it
+// supersedes.
 type Handler struct {
 	ingestSvc *ingest.Service
 	discovery *discovery.Service
 	repo      *media.Repository
+	taste     TasteSource
 }
 
-// New creates the search handler.
-func New(ingestSvc *ingest.Service, discoverySvc *discovery.Service, repo *media.Repository) *Handler {
-	return &Handler{ingestSvc: ingestSvc, discovery: discoverySvc, repo: repo}
+// TasteSource provides the user's taste profile (recommend.Engine); nil
+// disables the personal term of the score.
+type TasteSource interface {
+	Profile(ctx context.Context) (*recommend.Profile, error)
+}
+
+// New creates the search handler. taste may be nil.
+func New(ingestSvc *ingest.Service, discoverySvc *discovery.Service, repo *media.Repository, taste TasteSource) *Handler {
+	return &Handler{ingestSvc: ingestSvc, discovery: discoverySvc, repo: repo, taste: taste}
 }
 
 type resultEvent struct {
-	Source string                 `json:"source"`
-	ID     string                 `json:"id,omitempty"` // DB record ID for source:"db" results
-	Item   plugins.DiscoveredItem `json:"item"`
+	Source string  `json:"source"`
+	ID     string  `json:"id,omitempty"` // DB record ID for source:"db" results
+	Score  float64 `json:"score"`
+	// Replaces is the source URL of an earlier result this one supersedes.
+	Replaces string                 `json:"replaces,omitempty"`
+	Item     plugins.DiscoveredItem `json:"item"`
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -97,39 +115,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	blockedScenes := h.blockedSceneIDSet(ctx)
 	blockedTargets := h.blockedTargetIDSet(ctx)
 
-	// 1. DB results (immediate).
-	for _, mt := range []plugins.MediaType{plugins.MediaTypeScene, plugins.MediaTypeGallery, plugins.MediaTypePerformer, plugins.MediaTypeStudio} {
-		recs, err := h.ingestSvc.ListByTable(ctx, string(mt), q, limit, 0)
-		if err != nil {
-			log.Printf("search db(%s, %q): %v", mt, q, err)
-			continue
+	ranker := searchrank.New(q, offset)
+	send := func(source, id string, hit searchrank.Hit) {
+		verdict := ranker.Add(hit)
+		if !verdict.Emit {
+			return
 		}
-		for _, rec := range recs {
-			id := recordID(rec)
-			if blockedScenes[id] || blockedTargets[id] {
-				continue
-			}
-			sourceURL, _ := rec["source_url"].(string)
-			// Performers and studios label with `name`; scenes/galleries with `title`.
-			title, _ := rec["title"].(string)
-			if title == "" {
-				title, _ = rec["name"].(string)
-			}
-			externalID, _ := rec["external_id"].(string)
-			posterPath, _ := rec["poster_path"].(string)
-			write("result", resultEvent{
-				Source: "db",
-				ID:     id,
-				Item: plugins.DiscoveredItem{
-					Title:      title,
-					MediaType:  mt,
-					SourceURL:  sourceURL,
-					ExternalID: externalID,
-					PosterPath: posterPath,
-				},
-			})
-			resultCount++
-		}
+		write("result", resultEvent{Source: source, ID: id, Score: verdict.Score, Replaces: verdict.Replaces, Item: hit.Item})
+		resultCount++
+	}
+	profile := h.tasteProfile(ctx)
+
+	// 1. Library results (immediate). Later pages of a paginated search list
+	// the sites only: the library matches were sent with the first.
+	if !paginate || offset == 0 {
+		h.sendLibraryHits(ctx, q, limit, blockedScenes, blockedTargets, profile, send)
 	}
 
 	// 2. Plugin search (concurrent, results streamed per plugin, each ingested
@@ -145,9 +145,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	options := discovery.Options{Query: q, Limit: limit, Offset: offset, Paginate: paginate}
 	// Plugin failures are already logged; the stream just carries what worked.
-	_ = h.discovery.Run(ctx, options, searchPlugins, func(hit discovery.Hit) {
-		write("result", resultEvent{Source: hit.Plugin, ID: hit.ID, Item: hit.Item})
-		resultCount++
+	_ = h.discovery.Run(ctx, options, searchPlugins, func(found discovery.Hit) {
+		hit := searchrank.Hit{Source: found.Plugin, ID: found.ID, Item: found.Item}
+		hit.Personal = h.personalAffinity(ctx, profile, hit)
+		send(found.Plugin, found.ID, hit)
 	})
 	if ctx.Err() != nil {
 		return

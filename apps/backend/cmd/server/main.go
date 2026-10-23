@@ -391,7 +391,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/graphql", gqlHandler)
 	mux.Handle("/api/events", sseapi.New(hub))
-	mux.Handle("/api/search", searchapi.New(ingestSvc, discoverySvc, repo))
+	mux.Handle("/api/search", searchapi.New(ingestSvc, discoverySvc, repo, recommender))
 	mux.Handle("/api/img", imgHandler)
 	mux.Handle("/api/stream/", streamProxy)
 	mux.Handle(storage.RoutePrefix, storeClient.Handler())
