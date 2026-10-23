@@ -2,6 +2,7 @@ package searchrank
 
 import (
 	"math"
+	"sort"
 
 	"github.com/playingwithclouds/veil/internal/alike"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -287,4 +288,23 @@ func candidateOf(hit Hit) alike.Candidate {
 // the names the library holds for it.
 func MatchHit(query string, hit Hit) float64 {
 	return TextMatch(QueryWords(query), textFields(hit))
+}
+
+// Ranked is one result of a finished search: the best copy of a thing and its
+// final score.
+type Ranked struct {
+	Hit   Hit
+	Score float64
+}
+
+// Ranked returns every distinct result added so far, best first, with the
+// scores they have after all copies were folded in. Streaming callers use the
+// Verdicts instead; this is for evaluating a complete result set offline.
+func (r *Ranker) Ranked() []Ranked {
+	out := make([]Ranked, 0, len(r.clusters))
+	for _, found := range r.clusters {
+		out = append(out, Ranked{Hit: found.best, Score: r.clusterScore(found)})
+	}
+	sort.SliceStable(out, func(left, right int) bool { return out[left].Score > out[right].Score })
+	return out
 }

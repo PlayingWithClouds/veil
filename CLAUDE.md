@@ -50,6 +50,7 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 | `internal/alike/` | Cross-plugin alternate-source matching (pHash + performer/duration score) |
 | `internal/cams/` | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL, recorder (`recorder.go`, `recording_scene.go`) and auto-record watcher (`autorecord.go`) |
 | `internal/recommend/` | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go` |
+| `internal/searchlab/` | Search benchmark: frozen plugin results for fixed queries, hand grades, ranking theories scored against them (`cmd/search-lab`, data in `apps/backend/searchlab/`) |
 | `internal/recommendeval/` | Offline replay of the Home ranking over a database's history (`cmd/recommend-eval`) |
 
 After changing SDL: `go run github.com/99designs/gqlgen generate` in `apps/backend`, then `bun run codegen` in `packages/veil-sdk` (regenerates the genql client the frontend uses), then `bun run check` in `apps/web`.
@@ -174,6 +175,8 @@ bun dev   # process-compose: plugin bundler (watch) + backend + web native, Flar
 Backend state lives in `DATA_DIR` (default `apps/backend/data`): `veil.db` + `blobs/` + `plugins/` (bundles). Wipe = stop the backend and delete that directory. `DNS_SERVERS` (comma-separated) or `DNS_SERVERS_FILE` (re-read per lookup) override the resolver where Go can't find the system one (Android). `HOST` sets the bind address (default all interfaces), `PLUGIN_INDEX` the plugin index URL.
 
 Cache blobs (`stream-cache/`, `img-cache/`) are capped at `CACHE_MAX_BYTES` (default 300 MB, `blobcache.DefaultMaxBytes`): once over, the least recently used are evicted down to 90%, checked at start, every 15 min and shortly after writes. Last use is the file's mtime, bumped when served. An HLS stream (manifests + segments) is evicted as one, with its kv entries. Kept and not counted: downloads (blob URLs in download jobs), and streams in playback or being cached (any of their files used in the last 5 min, or during a running cache operation) until they go idle. Other blobs used in the last 5 min are counted but kept. Posters, `images/` and plugin icons are never evicted. Cache files may be deleted by hand: lookups check the blob (and every segment of an HLS stream) exists and otherwise go back to the origin; at start, kv entries for missing blobs are dropped, downloads whose file is gone are marked failed, and half-written `.put-*` files are removed.
+
+**Search lab** (in `apps/backend`): `searchlab/queries.json` lists the queries (easy to hard) and plugins. `go run ./cmd/search-lab fetch` (with `FLARESOLVERR_URL` for missav) runs them through the installed bundles in `data/plugins` and freezes the results in `searchlab/snapshot.json`, keeping existing grades; `go run ./cmd/search-lab label` serves a grading page on 127.0.0.1:8099 (0 wrong, 1 loose, 2 fits, 3 exactly it; keys 0–3), saved to `searchlab/labels.tsv`, which can also be edited by hand; `go run ./cmd/search-lab eval` scores every theory in `internal/searchlab/theories.go` (nDCG@10/24, P@10) and compares each site list's labelled precision with its list fit. A new idea is a new `Theory` there.
 
 ### Mobile app
 
