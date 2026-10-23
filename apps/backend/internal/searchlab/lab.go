@@ -43,6 +43,14 @@ type Snapshot struct {
 	Lists     []List    `json:"lists"`
 }
 
+// Kinds of lists: what the plugin was asked.
+const (
+	// KindKeyword is the plugin's keyword search for the query.
+	KindKeyword = ""
+	// KindRelated is the site's related list of a confident hit (see expand).
+	KindRelated = "related"
+)
+
 // List is one plugin's results for one query, in the site's order.
 type List struct {
 	QueryID string                   `json:"query_id"`
@@ -50,6 +58,24 @@ type List struct {
 	Items   []plugins.DiscoveredItem `json:"items"`
 	// Error is set when the plugin failed; Items is then empty.
 	Error string `json:"error,omitempty"`
+	// Kind is KindKeyword or KindRelated; a related list names its Seed (the
+	// hit's page) and how confident the hit was.
+	Kind           string  `json:"kind,omitempty"`
+	Seed           string  `json:"seed,omitempty"`
+	SeedTitle      string  `json:"seed_title,omitempty"`
+	SeedConfidence float64 `json:"seed_confidence,omitempty"`
+}
+
+// keywordLists keeps the keyword search lists: what a theory that does not
+// expand gets to rank.
+func keywordLists(lists []List) []List {
+	out := []List{}
+	for _, list := range lists {
+		if list.Kind == KindKeyword {
+			out = append(out, list)
+		}
+	}
+	return out
 }
 
 // LoadConfig reads queries.json from a lab directory.

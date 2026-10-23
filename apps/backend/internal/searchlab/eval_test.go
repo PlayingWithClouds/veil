@@ -65,11 +65,39 @@ func TestTheoriesKeepEveryResult(t *testing.T) {
 	}
 	query := Query{ID: "q", Text: "red"}
 	for _, theory := range Theories {
+		if theory.Rank == nil {
+			theory.Rank = siteTrustTheory(&Config{Queries: []Query{query}}, &Snapshot{Lists: lists}, NewLabels())
+		}
 		if got := len(theory.Rank(query, lists)); got != 3 {
 			t.Errorf("%s ranked %d results, want 3", theory.Name, got)
 		}
 	}
 	if first := rankText(query, lists)[0]; first.SourceURL == "a1" {
 		t.Error("text theory put the non-matching title first")
+	}
+}
+
+// TestSeedsTrustAnUploaderRepeatingPartOfTheName mirrors "nate thai": the
+// real hits only say "nate", but one uploader has several of them.
+func TestSeedsTrustAnUploaderRepeatingPartOfTheName(t *testing.T) {
+	channel := &plugins.StudioRef{Name: "JohntronX", SourceURL: "https://site/members/1"}
+	lists := []List{{Plugin: "site", Items: []plugins.DiscoveredItem{
+		{Title: "Nate Porche (2010)", SourceURL: "u1"},
+		{Title: "Bangkok Lockdown Nate: Part 2", SourceURL: "u2", Studio: channel},
+		{Title: "Bangkok Lockdown Nate: Part 3", SourceURL: "u3", Studio: channel},
+		{Title: "Thai wife at home", SourceURL: "u4", Studio: channel},
+	}}}
+	confidences := SeedConfidences(Query{Text: "nate thai"}, lists)
+	if confidences["u2"] != uploaderConfidence || confidences["u3"] != uploaderConfidence {
+		t.Errorf("series parts: %v", confidences)
+	}
+	if confidences["u1"] != 0 {
+		t.Errorf("a lone other Nate counts as a hit: %v", confidences["u1"])
+	}
+	if !IsNiche(Query{Text: "nate thai"}, lists) {
+		t.Error("no whole-name hit, so the query is niche")
+	}
+	if seeds := Seeds(Query{Text: "nate thai"}, lists); len(seeds) != 3 || seeds[0].Item.SourceURL != "u2" {
+		t.Errorf("seeds: %+v", seeds)
 	}
 }
