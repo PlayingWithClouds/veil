@@ -6,6 +6,7 @@
 	import { openMergeDialog } from '$lib/stores/mergeDialog';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
+	import { impression, recordClicked, resetShownImpressions } from '$lib/recommendations';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import SubscribeButton from '$lib/components/SubscribeButton.svelte';
 	import { cacheUrl } from '$lib/img';
@@ -51,6 +52,7 @@
 
 	async function load(tagId: string) {
 		loading = true;
+		resetShownImpressions('tag');
 		[scenes, galleries, images, performers, studios, collections] = await Promise.all([
 			fetchScenesForTag(tagId, SCENE_PAGE_SIZE),
 			fetchGalleriesForTag(tagId),
@@ -61,6 +63,13 @@
 		]);
 		scenesDone = scenes.fetched < SCENE_PAGE_SIZE;
 		loading = false;
+	}
+
+	/** Opens a scene, logging the click with its place on the page. */
+	function openScene(sceneId: string | undefined, position: number) {
+		if (!sceneId) return;
+		recordClicked({ mediaId: sceneId, surface: 'tag', position });
+		goto(sceneUrl(sceneId));
 	}
 
 	/** Appends the next page of the tag's scenes to the direct and inherited lists. */
@@ -253,8 +262,10 @@
 			<section class="flex flex-col gap-3">
 				<h2 class="text-lg font-semibold">Scenes</h2>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{#each scenes.direct as scene (scene.id)}
-						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
+					{#each scenes.direct as scene, index (scene.id)}
+						<div use:impression={{ mediaId: scene.id ?? '', surface: 'tag', position: index }}>
+							<SceneCard item={scene} onclick={() => openScene(scene.id, index)} />
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -267,8 +278,12 @@
 					<span class="text-base-content/40 text-xs">tag carried by the studio or a performer</span>
 				</div>
 				<div class="grid grid-cols-1 gap-4 opacity-90 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{#each scenes.inherited as scene (scene.id)}
-						<SceneCard item={scene} onclick={() => scene.id && goto(sceneUrl(scene.id))} />
+					{#each scenes.inherited as scene, index (scene.id)}
+						<div
+							use:impression={{ mediaId: scene.id ?? '', surface: 'tag', position: scenes.direct.length + index }}
+						>
+							<SceneCard item={scene} onclick={() => openScene(scene.id, scenes.direct.length + index)} />
+						</div>
 					{/each}
 				</div>
 			</section>

@@ -20,6 +20,7 @@
 	} from '$lib/explore';
 	import { fetchSearchPlugins, pluginForUrl, type SearchPlugin } from '$lib/search';
 	import { sceneUrl } from '$lib/routes';
+	import { impression, recordClicked, resetShownImpressions } from '$lib/recommendations';
 
 	interface Props {
 		entityKind: 'performer' | 'studio';
@@ -85,6 +86,7 @@
 	export async function reload(current: EntityFilter = filter, currentName: string = name) {
 		const token = ++requestToken;
 		stream?.close();
+		resetShownImpressions(entityKind);
 		library = [];
 		web = [];
 		libraryDone = false;
@@ -157,6 +159,12 @@
 		return (second.durationSeconds ?? -1) - (first.durationSeconds ?? -1);
 	}
 
+	/** Opens a scene, logging the click with its place in the feed. */
+	function openScene(scene: SceneHit, position: number) {
+		recordClicked({ mediaId: scene.id, surface: entityKind, position });
+		goto(sceneUrl(scene.id));
+	}
+
 	/** The site a scene came from, for its caption. */
 	function siteOf(scene: SceneHit): SearchPlugin | null {
 		return pluginForUrl(scene.sourceUrl, sites);
@@ -210,8 +218,10 @@
 		</div>
 	{:else}
 		<div class="feed-grid grid gap-6">
-			{#each shown as scene (scene.id)}
-				<ExploreSceneCard {scene} site={siteOf(scene)} onclick={() => goto(sceneUrl(scene.id))} />
+			{#each shown as scene, position (scene.id)}
+				<div use:impression={{ mediaId: scene.id, surface: entityKind, position }}>
+					<ExploreSceneCard {scene} site={siteOf(scene)} onclick={() => openScene(scene, position)} />
+				</div>
 			{/each}
 		</div>
 	{/if}

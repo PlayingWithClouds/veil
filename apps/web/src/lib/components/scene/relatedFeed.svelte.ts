@@ -7,6 +7,7 @@ import {
 	pluginBrowse,
 	type PluginSearchResult
 } from '$lib/search';
+import { resetShownImpressions } from '$lib/recommendations';
 
 const RECS_PAGE_SIZE = 12;
 const PLUGIN_PAGE_SIZE = 18;
@@ -39,6 +40,7 @@ export class RelatedFeed {
 
 	/** Clears everything, for a newly viewed scene. */
 	reset() {
+		resetShownImpressions('related');
 		this.related = [];
 		this.recommendations = [];
 		this.loading = false;
