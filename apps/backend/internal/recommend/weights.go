@@ -23,12 +23,17 @@ const (
 // Signal weights per scene interaction, strongest positive first. Negative
 // weights express distaste.
 const (
-	weightOEvent             = 5.0
-	weightLike               = 3.0
-	weightCompletedWatch     = 2.0
-	weightSave               = 1.5
-	weightPreferenceChosen   = 1.5
-	weightPartialWatch       = 1.0
+	weightOEvent = 5.0
+	// weightSessionEnd is a watch nothing else followed (see sessionGap): the
+	// video was the one, whether or not it was watched to the end.
+	weightSessionEnd       = 4.0
+	weightLike             = 3.0
+	weightSave             = 1.5
+	weightPreferenceChosen = 1.5
+	// A watch another video followed: it held attention but didn't end the
+	// session, a little more when it was watched to the end.
+	weightCompletedWatch     = 1.0
+	weightPartialWatch       = 0.5
 	weightClick              = 0.5
 	weightIgnoredImpression  = -0.15
 	weightPreferenceRejected = -0.5
@@ -52,12 +57,19 @@ const (
 	completedFraction = 0.8
 	// abandonGrace keeps a playback that just started from counting as abandoned.
 	abandonGrace = 5 * time.Minute
+	// sessionGap is how long nothing else may play after a watch for it to
+	// have ended the session.
+	sessionGap = 30 * time.Minute
+	// sessionEndMinimumSeconds is how much a session's last watch must have
+	// played to count as ending it, not as a look and leave.
+	sessionEndMinimumSeconds = 60
 )
 
 // Candidate generation sizes.
 const (
 	// seedMinimumWeight is the decayed signal weight a scene needs to seed
-	// related-scene candidates (a completed watch from up to a month ago).
+	// related-scene candidates (a watch another video followed, fresh, or a
+	// session-ending watch from up to two months ago).
 	seedMinimumWeight = 1.0
 	seedSceneLimit    = 12
 	// relatedPerSeedSource caps each seed's edges per scene_related source.
@@ -244,15 +256,15 @@ const (
 	// scene (logged click or first visit) still counts as its result. Showings
 	// younger than this are not read yet: their outcome is still open.
 	learnAttributionWindow = 6 * time.Hour
-	// learnDownstreamWindow is how long after an opened showing a completed
-	// watch or a like still adds to its reward.
+	// learnDownstreamWindow is how long after an opened showing a watch that
+	// ended the session or a like still adds to its reward.
 	learnDownstreamWindow = 7 * 24 * time.Hour
 	// A showing's reward is 0 when ignored, learnRewardClick when opened, plus
-	// a bonus for a completed watch and for a like, capped at 1 so a reward
+	// a bonus for a watch that ended the session and for a like, capped at 1 so a reward
 	// never outweighs the showing it belongs to.
-	learnRewardClick     = 0.6
-	learnRewardCompleted = 0.25
-	learnRewardLiked     = 0.25
+	learnRewardClick      = 0.6
+	learnRewardSessionEnd = 0.25
+	learnRewardLiked      = 0.25
 	// learnPriorClicks is the strength of the Beta prior in pseudo-rewards:
 	// every source starts as Beta(learnPriorClicks, learnPriorClicks·(1−r)/r)
 	// around the pooled reward rate r, i.e. as if it had already been shown

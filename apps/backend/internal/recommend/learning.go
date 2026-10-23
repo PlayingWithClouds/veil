@@ -65,11 +65,12 @@ func (policy *learnedPolicy) pageQuotas() map[string]int {
 // that are old enough to have an outcome, the opened ones and their reward.
 // A showing is opened when a logged click or a first visit of the scene
 // follows within the attribution window and no later showing of the scene
-// came in between (that one gets the credit). Of the opened ones, a
-// completed watch or a like within the downstream window adds to the reward.
+// came in between (that one gets the credit). Of the opened ones, a watch
+// that ended the session (see watchWeight) or a like within the downstream
+// window adds to the reward.
 const outcomeQuery = `SELECT source, substr(shown_at, 1, 10) AS day,
 	count(*) AS shows, sum(opened) AS clicks,
-	sum(opened * min(1.0, $rewardClick + $rewardCompleted * completed + $rewardLiked * liked)) AS reward
+	sum(opened * min(1.0, $rewardClick + $rewardSessionEnd * ended_session + $rewardLiked * liked)) AS reward
 	FROM (
 	  SELECT shown.source, shown.shown_at,
 	    EXISTS (SELECT 1 FROM (
@@ -83,9 +84,17 @@ const outcomeQuery = `SELECT source, substr(shown_at, 1, 10) AS day,
 	          WHERE later.media = shown.media AND later.kind = 'shown'
 	            AND later.shown_at > shown.shown_at AND later.shown_at <= engagement.at)) AS opened,
 	    EXISTS (SELECT 1 FROM watch_history
-	      WHERE watch_history.media = shown.media AND watch_history.completed = 1
+	      WHERE watch_history.media = shown.media
+	        AND watch_history.max_progress_seconds >= $sessionEndMinimum
 	        AND watch_history.updated_at >= shown.shown_at
-	        AND watch_history.updated_at <= strftime('%Y-%m-%dT%H:%M:%fZ', shown.shown_at, $downstream)) AS completed,
+	        AND watch_history.updated_at <= strftime('%Y-%m-%dT%H:%M:%fZ', shown.shown_at, $downstream)
+	        AND watch_history.updated_at <= $sessionDecided
+	        AND NOT EXISTS (SELECT 1 FROM watch_history AS next
+	          WHERE next.media != watch_history.media
+	            AND ((next.updated_at > watch_history.updated_at
+	                  AND next.updated_at <= strftime('%Y-%m-%dT%H:%M:%fZ', watch_history.updated_at, $sessionGap))
+	              OR (next.started_at > watch_history.updated_at
+	                  AND next.started_at <= strftime('%Y-%m-%dT%H:%M:%fZ', watch_history.updated_at, $sessionGap))))) AS ended_session,
 	    EXISTS (SELECT 1 FROM user_rating
 	      WHERE user_rating.media = shown.media AND user_rating.rating > $neutral
 	        AND user_rating.updated_at >= shown.shown_at
@@ -98,14 +107,17 @@ const outcomeQuery = `SELECT source, substr(shown_at, 1, 10) AS day,
 // sourceOutcomes reads the decayed showings and rewards of every source.
 func (e *Engine) sourceOutcomes(ctx context.Context, now time.Time) (map[string]outcomeCounts, error) {
 	rows, err := e.database.Query(ctx, outcomeQuery, db.Vars{
-		"rewardClick":     learnRewardClick,
-		"rewardCompleted": learnRewardCompleted,
-		"rewardLiked":     learnRewardLiked,
-		"neutral":         ratingNeutral,
-		"attribution":     fmt.Sprintf("+%d seconds", int(learnAttributionWindow.Seconds())),
-		"downstream":      fmt.Sprintf("+%d seconds", int(learnDownstreamWindow.Seconds())),
-		"since":           db.FormatTime(now.Add(-learnWindow)),
-		"until":           db.FormatTime(now.Add(-learnAttributionWindow)),
+		"rewardClick":       learnRewardClick,
+		"rewardSessionEnd":  learnRewardSessionEnd,
+		"sessionEndMinimum": sessionEndMinimumSeconds,
+		"sessionGap":        fmt.Sprintf("+%d seconds", int(sessionGap.Seconds())),
+		"sessionDecided":    db.FormatTime(now.Add(-sessionGap)),
+		"rewardLiked":       learnRewardLiked,
+		"neutral":           ratingNeutral,
+		"attribution":       fmt.Sprintf("+%d seconds", int(learnAttributionWindow.Seconds())),
+		"downstream":        fmt.Sprintf("+%d seconds", int(learnDownstreamWindow.Seconds())),
+		"since":             db.FormatTime(now.Add(-learnWindow)),
+		"until":             db.FormatTime(now.Add(-learnAttributionWindow)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read source outcomes: %w", err)

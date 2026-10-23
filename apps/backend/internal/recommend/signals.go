@@ -50,7 +50,7 @@ const ratingQuery = `SELECT media, rating, updated_at AS at FROM user_rating
 const watchQuery = `SELECT watch_history.media, watch_history.max_progress_seconds AS progress,
 	watch_history.completed,
 	coalesce(watch_history.duration_seconds, scene.duration_seconds) AS duration,
-	watch_history.updated_at AS at
+	watch_history.started_at AS started, watch_history.updated_at AS at
 	FROM watch_history LEFT JOIN scene ON scene.id = watch_history.media
 	WHERE watch_history.media LIKE 'scene:%' AND watch_history.updated_at >= $since`
 
@@ -124,38 +124,57 @@ func (e *Engine) ratingSignals(ctx context.Context, since string) ([]signal, err
 	return out, nil
 }
 
-// watchSignals turns watch history rows into completed, partial or abandoned
-// watch signals.
+// watchSignals turns watch history rows into session-ending, continued or
+// abandoned watch signals.
 func (e *Engine) watchSignals(ctx context.Context, since string, now time.Time) ([]signal, error) {
 	rows, err := e.database.Query(ctx, watchQuery, db.Vars{"since": since})
 	if err != nil {
 		return nil, fmt.Errorf("read watch signals: %w", err)
 	}
-	out := make([]signal, 0, len(rows))
+	watches := make([]watch, 0, len(rows))
 	for _, row := range rows {
-		at := rowTime(row, "at")
-		weight, counts := watchWeight(rowInt(row, "progress"), rowInt(row, "duration"), db.AsBool(row["completed"]), now.Sub(at))
+		watches = append(watches, watch{
+			sceneID:         rowString(row, "media"),
+			progressSeconds: rowInt(row, "progress"),
+			durationSeconds: rowInt(row, "duration"),
+			completed:       db.AsBool(row["completed"]),
+			startedAt:       rowTime(row, "started"),
+			lastActivityAt:  rowTime(row, "at"),
+		})
+	}
+	followed := followedWatches(watches)
+	out := make([]signal, 0, len(watches))
+	for index, entry := range watches {
+		weight, counts := watchWeight(entry, followed[index], now.Sub(entry.lastActivityAt))
 		if !counts {
 			continue
 		}
-		out = append(out, signal{sceneID: rowString(row, "media"), weight: weight, at: at})
+		out = append(out, signal{sceneID: entry.sceneID, weight: weight, at: entry.lastActivityAt})
 	}
 	return out, nil
 }
 
-// watchWeight classifies one watch: completed, partial, or abandoned early.
-// counts is false for a fresh playback that may still be starting.
-func watchWeight(progressSeconds, durationSeconds int, completed bool, sinceUpdate time.Duration) (weight float64, counts bool) {
-	if completed || watchedFraction(progressSeconds, durationSeconds) >= completedFraction {
+// watchWeight classifies one watch. A watch that ended the session (nothing
+// else played within sessionGap) is the strongest watch signal, finished or
+// not: the video did its job. A watch another video followed counts for little,
+// more when it was watched to the end. counts is false for a fresh playback
+// that may still be starting. A watch whose session is still open counts as
+// followed until sessionGap has passed.
+func watchWeight(entry watch, followed bool, sinceUpdate time.Duration) (weight float64, counts bool) {
+	if isEarlyAbandon(entry.progressSeconds, entry.durationSeconds) {
+		if sinceUpdate < abandonGrace {
+			return 0, false
+		}
+		return weightEarlyAbandon, true
+	}
+	sessionEnded := !followed && sinceUpdate >= sessionGap
+	if sessionEnded && entry.progressSeconds >= sessionEndMinimumSeconds {
+		return weightSessionEnd, true
+	}
+	if entry.completed || watchedFraction(entry.progressSeconds, entry.durationSeconds) >= completedFraction {
 		return weightCompletedWatch, true
 	}
-	if !isEarlyAbandon(progressSeconds, durationSeconds) {
-		return weightPartialWatch, true
-	}
-	if sinceUpdate < abandonGrace {
-		return 0, false
-	}
-	return weightEarlyAbandon, true
+	return weightPartialWatch, true
 }
 
 // watchedFraction is the share of the runtime reached; 0 when the runtime is
