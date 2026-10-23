@@ -161,3 +161,23 @@ func TestChoosePageEntities(t *testing.T) {
 		t.Fatalf("a tag that is the whole query = %+v", got)
 	}
 }
+
+// TestCreditPageEntityNamesPerformerOrStudio checks a scene listed on a
+// performer's page is matched against her name as a credited performer, one on
+// a studio's page against the studio, and a tag page adds nothing.
+func TestCreditPageEntityNamesPerformerOrStudio(t *testing.T) {
+	performer := searchrank.EntityMatch{Entity: searchrank.Entity{Kind: searchrank.KindPerformer, Name: "Mia Khalifa"}}
+	studio := searchrank.EntityMatch{Entity: searchrank.Entity{Kind: searchrank.KindStudio, Name: "Blue Films"}}
+	tag := searchrank.EntityMatch{Entity: searchrank.Entity{Kind: searchrank.KindTag, Name: "Hotel"}}
+
+	var hit searchrank.Hit
+	creditPageEntity(&hit, performer)
+	creditPageEntity(&hit, studio)
+	creditPageEntity(&hit, tag)
+	if len(hit.Performers) != 1 || hit.Performers[0] != "Mia Khalifa" || hit.Studio != "Blue Films" {
+		t.Fatalf("hit = %+v", hit)
+	}
+	if score := searchrank.MatchHit("mia khalifa", hit); score <= 0 {
+		t.Fatalf("credited page scene should match her name, got %v", score)
+	}
+}
