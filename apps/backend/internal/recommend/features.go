@@ -21,11 +21,16 @@ type sceneFeatures struct {
 	site string
 	// publishedAt is the site's release date; zero when the site gave none.
 	publishedAt time.Time
+	// viewCount and rating (0..10, valid when rated) are what the site
+	// reported about the scene.
+	viewCount int
+	rating    float64
+	rated     bool
 }
 
 // featureQuery reads the features of the scenes in $ids.
 const featureQuery = `SELECT scene.id, scene.tags, scene.performers, scene.studio,
-	scene.date,
+	scene.date, scene.view_count, scene.rating,
 	coalesce(
 		(SELECT performer.name FROM json_each(scene.performers) AS credited
 		 JOIN performer ON performer.id = credited.value ORDER BY credited.key LIMIT 1),
@@ -61,6 +66,9 @@ func featuresFromRow(row db.Row) *sceneFeatures {
 		credit:      rowString(row, "credit"),
 		site:        rowString(row, "site"),
 		publishedAt: publishedAt(row),
+		viewCount:   rowInt(row, "view_count"),
+		rating:      rowFloat(row, "rating"),
+		rated:       row["rating"] != nil,
 	}
 }
 

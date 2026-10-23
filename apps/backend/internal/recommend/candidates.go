@@ -80,7 +80,9 @@ func (e *Engine) generateCandidates(ctx context.Context, state *snapshot) (*cand
 		e.affinityCandidates,
 		e.tasteCandidates,
 		e.adjacentTagCandidates,
+		e.exploreSiteCandidates,
 		e.catalogCandidates,
+		e.popularCandidates,
 		e.randomCandidates,
 		e.searchCandidates,
 		e.newestCandidates,
@@ -302,17 +304,31 @@ func (e *Engine) searchResultIDs(ctx context.Context, searchedAt time.Time) ([]s
 		})
 }
 
-// tasteCandidates proposes what the feeder found on the site pages of
-// top-affinity performers, studios and tags, each entity's prior scaled by its
-// current affinity (an entity that has since lost favour drops out).
-func (e *Engine) tasteCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+// feedFinds reads the feeder's recent finds of one kind (feed_discovery
+// source), at most perEntity per entity, newest listing first and in the
+// site's order within it.
+func (e *Engine) feedFinds(ctx context.Context, state *snapshot, source string, perEntity, limit int) ([]db.Row, error) {
 	rows, err := e.database.Query(ctx,
 		`SELECT scene, entity, rank FROM feed_discovery
-		 WHERE source = 'taste' AND found_at >= $since
+		 WHERE source = $source AND found_at >= $since AND rank < $perEntity
 		 ORDER BY found_at DESC, rank LIMIT $limit`,
-		db.Vars{"since": db.FormatTime(state.now.Add(-feedDiscoveryWindow)), "limit": tasteCandidateLimit})
+		db.Vars{"source": source, "since": db.FormatTime(state.now.Add(-feedDiscoveryWindow)), "perEntity": perEntity, "limit": limit})
 	if err != nil {
-		return nil, fmt.Errorf("taste candidates: %w", err)
+		return nil, fmt.Errorf("%s finds: %w", source, err)
+	}
+	return rows, nil
+}
+
+// tasteCandidates proposes what the feeder found on the site pages of
+// top-affinity performers, studios and tags, each entity's prior scaled by its
+// current affinity (an entity that has since lost favour drops out). The
+// affinity only scales the prior down to tasteAffinityFloor: the finds exist
+// because the entity is liked, and a thin profile's small affinities must not
+// sink them below the catalog.
+func (e *Engine) tasteCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+	rows, err := e.feedFinds(ctx, state, "taste", tastePerEntityLimit, tasteCandidateLimit)
+	if err != nil {
+		return nil, err
 	}
 	out := make([]candidate, 0, len(rows))
 	for _, row := range rows {
@@ -320,11 +336,36 @@ func (e *Engine) tasteCandidates(ctx context.Context, state *snapshot) ([]candid
 		if affinity <= 0 {
 			continue
 		}
+		scaled := sourcePriors[SourceTaste] * (tasteAffinityFloor + (1-tasteAffinityFloor)*affinity)
 		out = append(out, candidate{
 			sceneID: rowString(row, "scene"),
 			source:  SourceTaste,
-			prior:   rankedPrior(sourcePriors[SourceTaste]*affinity, rowInt(row, "rank")),
+			prior:   rankedPrior(scaled, rowInt(row, "rank")),
 			reason:  Reason{Kind: kind, EntityID: rowString(row, "entity")},
+		})
+	}
+	return out, nil
+}
+
+// exploreSiteCandidates proposes what the feeder found on the site pages of
+// the profile's adjacent tags: exploration drawn from the sites' catalogs
+// rather than from the scenes already stored. A tag the user has since
+// disliked or blocked drops out.
+func (e *Engine) exploreSiteCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+	rows, err := e.feedFinds(ctx, state, "explore", explorePerEntityLimit, exploreSiteCandidateLimit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]candidate, 0, len(rows))
+	for _, row := range rows {
+		if _, affinity := state.profile.entityAffinity(rowString(row, "entity")); affinity < 0 {
+			continue
+		}
+		out = append(out, candidate{
+			sceneID: rowString(row, "scene"),
+			source:  SourceExploreSite,
+			prior:   rankedPrior(sourcePriors[SourceExploreSite], rowInt(row, "rank")),
+			reason:  Reason{Kind: ReasonExplore, EntityID: rowString(row, "entity")},
 		})
 	}
 	return out, nil
@@ -334,24 +375,36 @@ func (e *Engine) tasteCandidates(ctx context.Context, state *snapshot) ([]candid
 // catalog, in the site's own order: the feed's material before any search or
 // signal exists.
 func (e *Engine) catalogCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
-	rows, err := e.database.Query(ctx,
-		`SELECT scene, entity, rank FROM feed_discovery
-		 WHERE source = 'catalog' AND found_at >= $since AND rank < $perPlugin
-		 ORDER BY found_at DESC, rank`,
-		db.Vars{"since": db.FormatTime(state.now.Add(-feedDiscoveryWindow)), "perPlugin": catalogPerPluginLimit})
+	rows, err := e.feedFinds(ctx, state, "catalog", catalogPerPluginLimit, catalogCandidateLimit)
 	if err != nil {
-		return nil, fmt.Errorf("catalog candidates: %w", err)
+		return nil, err
 	}
+	return listingCandidates(rows, SourceCatalog, ReasonCatalog), nil
+}
+
+// popularCandidates proposes the scenes the feeder listed from the sites'
+// most-viewed pages, in the site's order.
+func (e *Engine) popularCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
+	rows, err := e.feedFinds(ctx, state, "popular", popularPerSiteLimit, popularCandidateLimit)
+	if err != nil {
+		return nil, err
+	}
+	return listingCandidates(rows, SourcePopular, ReasonPopular), nil
+}
+
+// listingCandidates turns the feeder's finds of a site listing into
+// candidates named after the listing's site.
+func listingCandidates(rows []db.Row, source, reasonKind string) []candidate {
 	out := make([]candidate, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, candidate{
 			sceneID: rowString(row, "scene"),
-			source:  SourceCatalog,
-			prior:   rankedPrior(sourcePriors[SourceCatalog], rowInt(row, "rank")),
-			reason:  Reason{Kind: ReasonCatalog, EntityName: rowString(row, "entity")},
+			source:  source,
+			prior:   rankedPrior(sourcePriors[source], rowInt(row, "rank")),
+			reason:  Reason{Kind: reasonKind, EntityName: rowString(row, "entity")},
 		})
 	}
-	return out, nil
+	return out
 }
 
 // newestCandidates proposes the most recently stored scenes: the cold-start

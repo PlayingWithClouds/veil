@@ -1,7 +1,5 @@
 package recommend
 
-import "strings"
-
 // Candidate source names. Every recommended item carries the one it was
 // served from, and impressions echo it back.
 const (
@@ -22,6 +20,12 @@ const (
 	// entities, and the plugins' catalog listings.
 	SourceTaste   = "discover:taste"
 	SourceCatalog = "discover:catalog"
+	// SourcePopular is the feeder's listing of a site's most-viewed page.
+	SourcePopular = "discover:popular"
+	// SourceExploreSite is what the feeder found on the site pages of the
+	// profile's adjacent tags: exploration drawn from the sites, not from
+	// the library.
+	SourceExploreSite = "explore:site"
 )
 
 // Reason kinds: why an item was recommended, and what Reason.EntityID points at.
@@ -36,6 +40,7 @@ const (
 	ReasonSearch       = "search"       // none; EntityName is the query
 	ReasonNewest       = "newest"       // none
 	ReasonCatalog      = "catalog"      // none; EntityName is the plugin
+	ReasonPopular      = "popular"      // none; EntityName is the site
 )
 
 // Reason explains one recommendation, e.g. "Because you watched X".
@@ -90,12 +95,6 @@ type Impression struct {
 	Clicked  bool
 }
 
-// isExploration reports whether items from source fill the reserved
-// exploration slots.
-func isExploration(source string) bool {
-	return strings.HasPrefix(source, "explore:")
-}
-
 // describe fills the reason's human-readable text from its kind and entity name.
 func (reason *Reason) describe() {
 	switch reason.Kind {
@@ -118,6 +117,8 @@ func (reason *Reason) describe() {
 		reason.Text = "From your search “" + reason.EntityName + "”"
 	case ReasonCatalog:
 		reason.Text = "Fresh on " + reason.EntityName
+	case ReasonPopular:
+		reason.Text = "Popular on " + reason.EntityName
 	default:
 		reason.Text = "Newly added"
 	}

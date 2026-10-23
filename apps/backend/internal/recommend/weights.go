@@ -78,7 +78,15 @@ const (
 	// were last listed; catalog finds are capped per plugin.
 	feedDiscoveryWindow   = 14 * 24 * time.Hour
 	catalogPerPluginLimit = 40
-	tasteCandidateLimit   = 120
+	// Taste and explore finds are capped per entity, so the newest run's
+	// entity cannot fill the whole pool.
+	tastePerEntityLimit       = 20
+	tasteCandidateLimit       = 160
+	exploreSiteCandidateLimit = 90
+	explorePerEntityLimit     = 30
+	popularPerSiteLimit       = 40
+	catalogCandidateLimit     = 2000
+	popularCandidateLimit     = 200
 	// lowPoolThreshold is how few unwatched, not yet shown candidates a
 	// ranking may have before it asks the feeder for a top-up.
 	lowPoolThreshold = 100
@@ -108,6 +116,8 @@ var sourcePriors = map[string]float64{
 	SourceSearch:           0.4,
 	SourceAdjacentTag:      0.3,
 	SourceCatalog:          0.3,
+	SourcePopular:          0.3,
+	SourceExploreSite:      0.3,
 	SourceRandom:           0.2,
 	SourceNewest:           0.1,
 }
@@ -123,13 +133,21 @@ const (
 	// same scene; newest proposes whatever was stored last and corroborates
 	// nothing.
 	multiSourceBonus = 0.1
+	// tasteAffinityFloor is the share of the taste prior a find keeps however
+	// thin the profile: a taste find's entity has positive affinity by
+	// construction, and with few signals the affinity alone (~0.2) would put
+	// every find below the catalog.
+	tasteAffinityFloor = 0.5
 )
 
-// Ranking: score = affinity + prior + freshness − penalties.
+// Ranking: score = affinity + prior + freshness + popularity − penalties.
 const (
 	rankWeightAffinity    = 1.0
 	rankWeightSourcePrior = 0.6
 	rankWeightFreshness   = 0.2
+	// rankWeightPopularity scales the site-popularity term in [0, 1]; it
+	// decides between candidates the profile has no opinion on.
+	rankWeightPopularity = 0.35
 	// freshnessHalfLife is the age at which a scene's freshness halves.
 	freshnessHalfLife = 30 * 24 * time.Hour
 	// undatedFreshnessDefault is an undated scene's freshness when no ranked
@@ -143,6 +161,21 @@ const (
 	fatigueFreeShows      = 1
 	// penaltyDislikedNeighbor hits scenes a disliked scene lists as related.
 	penaltyDislikedNeighbor = 0.5
+)
+
+// Popularity: how a scene's standing on its own site is read. Views and
+// ratings are compared to the site's other scenes (sites count views and
+// rate on very different scales), then blended.
+const (
+	// popularityViewShare is the views' share of the blend when a scene has
+	// both views and a rating.
+	popularityViewShare = 0.7
+	// popularityNeutral is the popularity of a scene the site gave neither
+	// views nor a rating, or whose site has too few to compare with.
+	popularityNeutral = 0.5
+	// popularityMinSample is how many scenes of a site must carry a value
+	// before percentiles against them mean anything.
+	popularityMinSample = 20
 )
 
 // Affinity match: how a scene's features mix into one [-1, 1] value.
@@ -166,9 +199,42 @@ const (
 	maxSameSiteRun = 2
 	// maxSameSourceRun is how many items from one source may follow each other.
 	maxSameSourceRun = 2
-	// explorationEvery reserves every seventh slot (~15%) for exploration.
-	explorationEvery = 7
 )
+
+// Source kinds: the groups of sources that share page slots.
+const (
+	// kindPersonal is what the user's own signals point at: the related
+	// lists of watched scenes, top performers/studios/tags, subscriptions.
+	kindPersonal = "personal"
+	// kindTaste is the feeder's finds on the site pages of top entities.
+	kindTaste = "taste"
+	// kindCatalog is the feeder's catalog and most-viewed listings.
+	kindCatalog = "catalog"
+	// kindExplore is everything meant to widen the profile.
+	kindExplore = "explore"
+	// kindSearch is the unvisited stubs of recent searches.
+	kindSearch = "search"
+	// kindFiller is newest and anything unclassified: it only fills what the
+	// other kinds leave open.
+	kindFiller = "filler"
+)
+
+// kindQuotas is how many of a page's pageSize slots each kind may fill, in the
+// order the page is described. Filler has no quota. A kind with fewer items
+// than slots hands the rest to the best remaining items overall, and search
+// is the last kind to take such leftovers.
+var kindQuotas = map[string]int{
+	kindPersonal: 8,
+	kindTaste:    5,
+	kindCatalog:  5,
+	kindExplore:  4,
+	kindSearch:   2,
+}
+
+// paceLookahead is how many slots ahead of an even spread over the page a
+// kind may run, so the best items of the strongest kinds still lead the page
+// while no kind takes it in one block.
+const paceLookahead = 2
 
 // Output shaping.
 const (

@@ -39,14 +39,15 @@ func sortByScore(items []scoredItem) {
 	})
 }
 
-// score is the transparent ranking formula: affinity match, source prior and
-// freshness, minus the penalties. undated is the freshness a scene without a
+// score is the transparent ranking formula: affinity match, source prior,
+// freshness and site popularity, minus the penalties. undated is the freshness a scene without a
 // release date gets.
 func score(proposed *candidate, scene *sceneFeatures, state *snapshot, undated float64) float64 {
 	prior := proposed.prior + multiSourceBonus*float64(proposed.sourceCount-1)
 	total := rankWeightAffinity * affinityMatch(scene, state.profile)
 	total += rankWeightSourcePrior * prior
 	total += rankWeightFreshness * sceneFreshness(scene, state.now, undated)
+	total += rankWeightPopularity * state.popularity.of(scene)
 	return total - penalties(proposed.sceneID, state)
 }
 
