@@ -29,6 +29,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/livebuffer"
 	"github.com/playingwithclouds/veil/internal/media"
+	"github.com/playingwithclouds/veil/internal/mediakeep"
 	"github.com/playingwithclouds/veil/internal/netdns"
 	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/pipeline"
@@ -291,6 +292,9 @@ func main() {
 	registry.RestoreDisabled(cfg.DisabledPlugins)
 	orch.SetRegistry(registry)
 	orch.SetProfileCache(cacheClient)
+	mediaKeeper := mediakeep.New(database, storeClient, registry)
+	ingestSvc.SetStubObserver(mediaKeeper)
+	go mediaKeeper.Run(ctx)
 	go profilePerformers(ctx, orch)
 	go pluginStore.Run(ctx, pluginUpdateInterval)
 

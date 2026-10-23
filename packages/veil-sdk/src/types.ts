@@ -75,6 +75,12 @@ export interface PluginMeta {
    * configured (e.g. embedded on a phone).
    */
   requires_solver?: boolean;
+  /**
+   * The site signs poster and preview URLs with an expiry, so the backend
+   * stores a copy of each stub's poster and refreshes the preview URL whenever
+   * a listing shows the scene again.
+   */
+  expiring_media?: boolean;
 }
 
 // ---------------------------------------------------------------------------

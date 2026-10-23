@@ -174,6 +174,10 @@ type PluginMeta struct {
 	// RequiresSolver marks plugins whose site sits behind a Cloudflare
 	// challenge and only works through FlareSolverr.
 	RequiresSolver bool `json:"requires_solver,omitempty"`
+	// ExpiringMedia marks plugins whose site signs poster and preview URLs
+	// with an expiry, so the backend keeps a copy of stub posters
+	// (internal/mediakeep) instead of storing a URL that soon stops working.
+	ExpiringMedia bool `json:"expiring_media,omitempty"`
 }
 
 // ResolveArgs is passed to a plugin's resolve capability.
