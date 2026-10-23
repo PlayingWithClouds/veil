@@ -233,18 +233,23 @@ func (s *searchSession) startExtras(running *sync.WaitGroup, options discovery.O
 	}
 }
 
-// pageEntities picks the recognised entities whose site page is listed: up
-// to searchrank.MaxEntityPages exactly spelled performers and studios, plus a
-// tag only when it is the whole query (otherwise the keyword search already
-// covers the topic).
+// pageEntities picks the recognised entities whose site page is listed, none
+// without the means to list them.
 func (s *searchSession) pageEntities() []searchrank.EntityMatch {
 	if s.handler.pages == nil || s.handler.repo == nil {
 		return nil
 	}
-	wordCount := len(searchrank.QueryWords(s.query))
+	return choosePageEntities(s.matches, len(searchrank.QueryWords(s.query)))
+}
+
+// choosePageEntities picks up to searchrank.MaxEntityPages of the matches,
+// performers before studios before tags: exactly spelled ones only (a guess
+// would list the wrong page), and a tag only when it is the whole query
+// (otherwise the keyword search already covers the topic).
+func choosePageEntities(matches []searchrank.EntityMatch, wordCount int) []searchrank.EntityMatch {
 	var picked []searchrank.EntityMatch
 	for _, kind := range []searchrank.EntityKind{searchrank.KindPerformer, searchrank.KindStudio, searchrank.KindTag} {
-		for _, match := range s.matches {
+		for _, match := range matches {
 			wholeQuery := match.End-match.Start == wordCount
 			if match.Kind != kind || match.Fuzzy || (kind == searchrank.KindTag && !wholeQuery) {
 				continue

@@ -176,3 +176,86 @@ func TestPersonalNeverOutweighsRelevance(t *testing.T) {
 		t.Fatalf("taste %v outweighed relevance %v", got.Score, relevant.Score)
 	}
 }
+
+// TestVariantMatchesScoreBelowTheQueryAsTyped checks a result matching the
+// rewritten query is found, but one matching what was typed wins.
+func TestVariantMatchesScoreBelowTheQueryAsTyped(t *testing.T) {
+	typed := New("mia k", 0).Add(sceneHit("alpha", "Mia K at the pool", "https://a/1", 100))
+
+	withVariant := New("mia k", 0)
+	withVariant.SetVariants("mia khalifa")
+	spelledOut := withVariant.Add(sceneHit("alpha", "Mia Khalifa at the pool", "https://a/2", 200))
+	withoutVariant := New("mia k", 0).Add(sceneHit("alpha", "Mia Khalifa at the pool", "https://a/2", 200))
+
+	if spelledOut.Score < withoutVariant.Score {
+		t.Fatalf("variant must not lower a score: %v < %v", spelledOut.Score, withoutVariant.Score)
+	}
+	if spelledOut.Score >= typed.Score {
+		t.Fatalf("variant match %v should score below the typed query's %v", spelledOut.Score, typed.Score)
+	}
+}
+
+// TestEntityCreditLiftsCreditedResults checks the entity term adds
+// WeightEntity times the credit.
+func TestEntityCreditLiftsCreditedResults(t *testing.T) {
+	plain := sceneHit("alpha", "Garden", "https://a/1", 100)
+	credited := sceneHit("alpha", "Garden", "https://a/2", 200)
+	credited.EntityCredit = 1
+	base := New("garden", 0).Add(plain).Score
+	lifted := New("garden", 0).Add(credited).Score
+	if diff := lifted - base; diff < WeightEntity-0.001 || diff > WeightEntity+0.001 {
+		t.Fatalf("entity term = %v, want %v", diff, WeightEntity)
+	}
+}
+
+// TestLearnedClickMemoryAndSourceShare checks a remembered scene is lifted by
+// WeightClickMemory times its memory and a favoured site's rank share scales.
+func TestLearnedClickMemoryAndSourceShare(t *testing.T) {
+	remembered := sceneHit("alpha", "Garden", "https://a/1", 100)
+	remembered.ID = "scene:one"
+	ranker := New("garden", 0)
+	ranker.SetLearned(Learned{ClickMemory: map[string]float64{"scene:one": 0.5}})
+	lifted := ranker.Add(remembered).Score
+	base := New("garden", 0).Add(remembered).Score
+	if diff := lifted - base; diff < 0.5*WeightClickMemory-0.001 || diff > 0.5*WeightClickMemory+0.001 {
+		t.Fatalf("memory term = %v", diff)
+	}
+
+	favoured := New("garden", 0)
+	favoured.SetLearned(Learned{SourceShares: map[string]float64{"alpha": 1.5}})
+	boosted := favoured.Add(sceneHit("alpha", "Garden", "https://a/3", 300)).Score
+	plain := New("garden", 0).Add(sceneHit("alpha", "Garden", "https://a/3", 300)).Score
+	if diff := boosted - plain; diff < 0.5*WeightSiteRank-0.001 || diff > 0.5*WeightSiteRank+0.001 {
+		t.Fatalf("source share term = %v", diff)
+	}
+}
+
+// TestPersonalWeightIsSetPerQuery checks the same affinity moves a broad
+// query's results further than a specific one's.
+func TestPersonalWeightIsSetPerQuery(t *testing.T) {
+	liked := sceneHit("alpha", "Garden", "https://a/1", 100)
+	liked.Personal = 1
+	broad := New("garden", 0)
+	broad.SetPersonalWeight(PersonalWeight(0))
+	specific := New("garden", 0)
+	specific.SetPersonalWeight(PersonalWeight(1))
+	broadScore, specificScore := broad.Add(liked).Score, specific.Add(liked).Score
+	base := New("garden", 0).Add(sceneHit("alpha", "Garden", "https://a/1", 100)).Score
+	if !(broadScore-base > specificScore-base && specificScore-base > 0) {
+		t.Fatalf("broad +%v, specific +%v", broadScore-base, specificScore-base)
+	}
+}
+
+// TestSeparateListsKeepTheirOwnPlaces checks an entity's page list and the
+// keyword list of one plugin each start at first place.
+func TestSeparateListsKeepTheirOwnPlaces(t *testing.T) {
+	ranker := New("garden", 0)
+	ranker.Add(sceneHit("alpha", "Garden one", "https://a/1", 100))
+	page := sceneHit("alpha", "Garden two", "https://a/2", 200)
+	page.List = "page:performer:x"
+	pageScore := ranker.Add(page).Score
+	keyword := New("garden", 0).Add(sceneHit("alpha", "Garden two", "https://a/2", 200)).Score
+	if pageScore != keyword {
+		t.Fatalf("page list score %v should equal a first place's %v", pageScore, keyword)
+	}
+}
