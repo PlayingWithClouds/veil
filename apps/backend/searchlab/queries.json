@@ -1,11 +1,46 @@
 {
-  "plugins": ["eporner", "txxx-network", "missav", "hqporner"],
+  "plugins": [
+    "eporner",
+    "txxx-network",
+    "missav",
+    "hqporner"
+  ],
   "limit": 20,
   "queries": [
-    {"id": "1-performer", "text": "riley reid", "note": "Easy: one famous performer, exact name. Sites with performer pages should nail it."},
-    {"id": "2-tag", "text": "redhead", "note": "Easy-medium: one common category word; titles often don't say it."},
-    {"id": "3-combo", "text": "lesbian massage", "note": "Medium: two concepts, both must hold; one alone is only loosely related."},
-    {"id": "4-scenario", "text": "stepmom caught masturbating", "note": "Hard: a scenario described in many wordings; titles rarely use the exact words."},
-    {"id": "5-vague", "text": "amateur couple morning sex", "note": "Hardest: vague amateur intent, many words, weak site search; looks and mood matter more than keywords."}
+    {
+      "id": "1-performer",
+      "text": "riley reid",
+      "note": "Easy: one famous performer, exact name. Sites with performer pages should nail it."
+    },
+    {
+      "id": "2-tag",
+      "text": "redhead",
+      "note": "Easy-medium: one common category word; titles often don't say it."
+    },
+    {
+      "id": "3-combo",
+      "text": "lesbian massage",
+      "note": "Medium: two concepts, both must hold; one alone is only loosely related."
+    },
+    {
+      "id": "4-scenario",
+      "text": "stepmom caught masturbating",
+      "note": "Hard: a scenario described in many wordings; titles rarely use the exact words."
+    },
+    {
+      "id": "5-vague",
+      "text": "amateur couple morning sex",
+      "note": "Hardest: vague amateur intent, many words, weak site search; looks and mood matter more than keywords."
+    },
+    {
+      "id": "6-name",
+      "text": "nate thai",
+      "note": "A less known name: few sites know it, titles may or may not carry it."
+    },
+    {
+      "id": "7-handle",
+      "text": "party_starts deepthroat",
+      "note": "An uploader handle written with an underscore plus an act: tests tokenising handles and creator-as-entity."
+    }
   ]
 }
