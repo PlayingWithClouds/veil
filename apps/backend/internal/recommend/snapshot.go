@@ -27,6 +27,8 @@ type snapshot struct {
 	// excluded holds blocked scenes and unfetched stubs of inactive plugins.
 	excluded          map[string]bool
 	dislikedNeighbors map[string]bool
+	// popularity places a scene among its site's scenes by views and rating.
+	popularity *popularityIndex
 }
 
 // watchStateQuery reads every scene watch with its furthest position.
@@ -69,7 +71,12 @@ func (e *Engine) takeSnapshot(ctx context.Context, disabledPlugins []string) (*s
 	if err != nil {
 		return nil, err
 	}
+	popularity, err := e.loadPopularity(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &snapshot{
+		popularity:        popularity,
 		now:               now,
 		profile:           profile,
 		ignored:           ignored,

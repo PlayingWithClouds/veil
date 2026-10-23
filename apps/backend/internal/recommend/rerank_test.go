@@ -15,7 +15,7 @@ func syntheticItem(sceneID, source, performer string, score float64) scoredItem 
 	}
 }
 
-func TestRerankCapsPerformersAndReservesExploration(t *testing.T) {
+func TestRerankCapsPerformersPerPage(t *testing.T) {
 	scored := []scoredItem{}
 	for index := range 6 {
 		scored = append(scored, syntheticItem(fmt.Sprintf("scene:star%d", index), SourcePerformer, "performer:star", float64(10-index)))
@@ -23,9 +23,6 @@ func TestRerankCapsPerformersAndReservesExploration(t *testing.T) {
 	for index := range 6 {
 		scored = append(scored, syntheticItem(fmt.Sprintf("scene:other%d", index), SourceTag, fmt.Sprintf("performer:other%d", index), float64(4-index)))
 	}
-	scored = append(scored,
-		syntheticItem("scene:explore0", SourceAdjacentTag, "performer:x0", -5),
-		syntheticItem("scene:explore1", SourceRandom, "performer:x1", -6))
 
 	ranked := rerank(scored)
 	if len(ranked) != len(scored) {
@@ -40,11 +37,109 @@ func TestRerankCapsPerformersAndReservesExploration(t *testing.T) {
 	if stars > maxPerPerformerPerPage {
 		t.Errorf("%d scenes of one performer in the first slots, cap is %d", stars, maxPerPerformerPerPage)
 	}
-	if !isExploration(ranked[explorationEvery-1].Source) {
-		t.Errorf("slot %d is reserved for exploration, got %s", explorationEvery-1, ranked[explorationEvery-1].Source)
-	}
 	if ranked[0].SceneID != "scene:star0" {
 		t.Errorf("the best item still leads, got %s", ranked[0].SceneID)
+	}
+}
+
+// kindItems builds count items of one source on distinct performers, scored
+// from top downwards, spread over several sites so no diversity cap binds.
+func kindItems(prefix, source string, count int, top float64) []scoredItem {
+	items := []scoredItem{}
+	for index := range count {
+		item := siteItem(fmt.Sprintf("scene:%s%d", prefix, index), source, fmt.Sprintf("site%d", index%7), top-float64(index)*0.01)
+		items = append(items, item)
+	}
+	return items
+}
+
+// kindCountsOf counts the items of ranked per source kind.
+func kindCountsOf(ranked []Item) map[string]int {
+	counts := map[string]int{}
+	for _, item := range ranked {
+		counts[sourceKind(item.Source)]++
+	}
+	return counts
+}
+
+func TestRerankSharesEveryPageByKind(t *testing.T) {
+	scored := kindItems("related", SourceRelatedSite, 40, 9)
+	scored = append(scored, kindItems("taste", SourceTaste, 40, 5)...)
+	scored = append(scored, kindItems("catalog", SourceCatalog, 40, 4)...)
+	scored = append(scored, kindItems("explore", SourceAdjacentTag, 40, 3)...)
+	scored = append(scored, kindItems("search", SourceSearch, 40, 2)...)
+	scored = append(scored, kindItems("newest", SourceNewest, 40, 1)...)
+	sortByScore(scored)
+
+	ranked := rerank(scored)
+	for pageNumber := range 2 {
+		counts := kindCountsOf(ranked[pageNumber*pageSize : (pageNumber+1)*pageSize])
+		for kind, quota := range kindQuotas {
+			if counts[kind] != quota {
+				t.Errorf("page %d: %d %s items, quota is %d", pageNumber, counts[kind], kind, quota)
+			}
+		}
+		if counts[kindFiller] != 0 {
+			t.Errorf("page %d: %d filler items while every kind has enough", pageNumber, counts[kindFiller])
+		}
+	}
+	personalInFirstSlots := kindCountsOf(ranked[:4])[kindPersonal]
+	if personalInFirstSlots > 2 {
+		t.Errorf("the strongest kind took %d of the first 4 slots, it must spread over the page", personalInFirstSlots)
+	}
+	if ranked[0].SceneID != "scene:related0" {
+		t.Errorf("the best item still leads, got %s", ranked[0].SceneID)
+	}
+}
+
+func TestRerankGivesAnExhaustedKindsSlotsToTheBestRemaining(t *testing.T) {
+	scored := kindItems("related", SourceRelatedSite, 3, 9)
+	scored = append(scored, kindItems("taste", SourceTaste, 30, 1)...)
+	// Filler of several sources, so the source-run rule does not pull taste in.
+	scored = append(scored, kindItems("newest", SourceNewest, 10, 5)...)
+	scored = append(scored, kindItems("other", "other:a", 10, 5)...)
+	scored = append(scored, kindItems("another", "other:b", 10, 5)...)
+	sortByScore(scored)
+
+	counts := kindCountsOf(rerank(scored)[:pageSize])
+	if counts[kindPersonal] != 3 || counts[kindTaste] != kindQuotas[kindTaste] || counts[kindFiller] != pageSize-3-kindQuotas[kindTaste] {
+		t.Errorf("page kinds = %v: want the 3 personal, the taste quota, and the best of the rest (newest) after them", counts)
+	}
+}
+
+func TestRerankKeepsSearchBeyondItsQuotaForLast(t *testing.T) {
+	scored := kindItems("search", SourceSearch, 10, 9)
+	scored = append(scored, kindItems("newest", SourceNewest, 5, 1)...)
+	sortByScore(scored)
+
+	ranked := rerank(scored)
+	counts := kindCountsOf(ranked[:kindQuotas[kindSearch]+5])
+	if counts[kindSearch] != kindQuotas[kindSearch] || counts[kindFiller] != 5 {
+		t.Errorf("first slots hold %v: want the search quota, then newest before more search", counts)
+	}
+	if len(ranked) != len(scored) {
+		t.Errorf("re-ranking must not drop items: %d of %d", len(ranked), len(scored))
+	}
+}
+
+func TestSourceKindGroupsEverySource(t *testing.T) {
+	want := map[string]string{
+		SourceRelatedSite: kindPersonal, SourceRelatedPerformer: kindPersonal, SourceRelatedTag: kindPersonal,
+		SourceRelatedTitle: kindPersonal, SourceSubscription: kindPersonal, SourcePerformer: kindPersonal,
+		SourceStudio: kindPersonal, SourceTag: kindPersonal,
+		SourceTaste: kindTaste, SourceCatalog: kindCatalog, SourcePopular: kindCatalog,
+		SourceAdjacentTag: kindExplore, SourceRandom: kindExplore, SourceExploreSite: kindExplore,
+		SourceSearch: kindSearch, SourceNewest: kindFiller, "unknown": kindFiller,
+	}
+	for source, kind := range want {
+		if got := sourceKind(source); got != kind {
+			t.Errorf("sourceKind(%q) = %q, want %q", source, got, kind)
+		}
+	}
+	for source := range sourcePriors {
+		if _, known := want[source]; !known {
+			t.Errorf("source %q has a prior but no kind in this test", source)
+		}
 	}
 }
 
@@ -72,7 +167,7 @@ func TestRerankSpreadsSites(t *testing.T) {
 	scored := []scoredItem{}
 	// A fresh scrape: one site outscores everything else.
 	for index := range 20 {
-		scored = append(scored, siteItem(fmt.Sprintf("scene:fresh%d", index), SourceNewest, "freshsite", float64(100-index)))
+		scored = append(scored, siteItem(fmt.Sprintf("scene:fresh%d", index), SourceCatalog, "freshsite", float64(100-index)))
 	}
 	for index := range 10 {
 		source := SourceTag
