@@ -26,6 +26,19 @@ import (
 // Service handles writing observations, matching, and merging.
 type Service struct {
 	database *db.DB
+	// stubObserver, when set, hears of every ingested listing stub.
+	stubObserver StubObserver
+}
+
+// StubObserver is told about each listing stub after it is ingested, with its
+// canonical id (mediakeep.Keeper keeps expiring posters this way).
+type StubObserver interface {
+	StubIngested(pluginName, canonicalID string, item plugins.DiscoveredItem)
+}
+
+// SetStubObserver registers the observer of ingested stubs.
+func (s *Service) SetStubObserver(observer StubObserver) {
+	s.stubObserver = observer
 }
 
 func New(database *db.DB) *Service {
@@ -826,6 +839,9 @@ func (s *Service) IngestDiscoveredItem(ctx context.Context, pluginName string, i
 	ingestResult, err := s.IngestScrapeResults(ctx, pluginName, item.SourceURL, results)
 	if err != nil {
 		return "", err
+	}
+	if s.stubObserver != nil {
+		s.stubObserver.StubIngested(pluginName, ingestResult.CanonicalID, item)
 	}
 	return ingestResult.CanonicalID, nil
 }

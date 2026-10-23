@@ -46,6 +46,7 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 | `internal/stream/` | HLS/MP4 proxy + write-through blob cache; live sessions (cams) bypass the cache |
 | `internal/resolve/` | Stream resolution chain (cache → domain plugin → wildcard → direct) |
 | `internal/searchrank/` | Live search scoring: text match, reciprocal-rank-fused site ranks, quality and taste terms (all weights in `weights.go`), cross-site duplicate collapse |
+| `internal/mediakeep/` | Keeps the posters of `expiring_media` plugins' stubs in the blob store and refreshes their preview URLs |
 | `internal/alike/` | Cross-plugin alternate-source matching (pHash + performer/duration score) |
 | `internal/cams/` | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL, recorder (`recorder.go`, `recording_scene.go`) and auto-record watcher (`autorecord.go`) |
 | `internal/recommend/` | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go` |
@@ -116,6 +117,8 @@ Plugins may send the site's own `rating` (0..10) and `view_count` on `Scene` and
 - `scene:find` should fill `Scene.related` with the page's related-videos list as `DiscoveredItem`s, using the same external_id scheme as the plugin's listings (reuse the listing card parser).
 
 **FlareSolverr:** set `meta.requires_solver: true` when the site answers plain requests with a Cloudflare challenge, and fetch through `fetchHtmlSmart`. Without `FLARESOLVERR_URL` (e.g. embedded on a phone) the registry treats such plugins as unavailable: they drop out of search/browse, their stubs are hidden, visits skip them. Currently: missav, spankbang.
+
+**Expiring media:** set `meta.expiring_media: true` when the site signs poster/preview URLs with an expiry (sxyprn: valid until the next full hour). `internal/mediakeep` then copies each listed stub's poster into `posters/` in the background (unless it is already a blob or comes from another site) and swaps in the listing's fresh `preview_video` whenever the scene is listed again; stubs whose URL had already expired are repaired the next time a listing shows them. Preview clips are not copied, so an old stub's clip only works after it is listed again.
 
 **Current plugins:** aylo (pornhub, redtube, youporn, tube8), eporner (API + enrich), hqporner, kvs (37 Kernel Video Sharing sites from one config list), missav, xhamster, spankbang, tnaflix, txxx-network (scenes); pornpics (galleries); pornstarbyface, facedigger (`face:identify` only); chaturbate (live cams: `/api/ts/roomlist/room-list/` and `get_edge_hls_url_ajax`, both need the `X-Requested-With: XMLHttpRequest` header). Stripchat is not supported: its room list is open but its HLS playlists are gated by Mouflon and serve only an ad loop without the player's key.
 

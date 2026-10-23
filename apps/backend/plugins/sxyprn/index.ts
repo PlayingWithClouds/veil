@@ -15,6 +15,7 @@ runPlugin({
     version: packageJson.version,
     capabilities: ["scene:find", "scene:list", "scene:list:page", "stream:resolve", "search:suggest"],
     domains: [SITE_HOST],
+    expiring_media: true,
   },
   find: (url) => scrapeScene(url),
   sceneList,
