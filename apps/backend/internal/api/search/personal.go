@@ -26,11 +26,28 @@ func (h *Handler) tasteProfile(ctx context.Context) *recommend.Profile {
 	return profile
 }
 
+// storedRecord loads the canonical record a hit was stored as, nil for a hit
+// that was not stored, for other media types than scenes and galleries, and on
+// failure.
+func (h *Handler) storedRecord(ctx context.Context, hit searchrank.Hit) map[string]any {
+	if hit.ID == "" || h.ingestSvc == nil {
+		return nil
+	}
+	if hit.Item.MediaType != plugins.MediaTypeScene && hit.Item.MediaType != plugins.MediaTypeGallery {
+		return nil
+	}
+	record, err := h.ingestSvc.GetByID(ctx, hit.ID)
+	if err != nil {
+		return nil
+	}
+	return record
+}
+
 // personalAffinity is how much the taste profile likes a scene hit, in
 // [-1, 1]: its stored performers, tags and studio (a stub without them counts
-// for nothing) and the site that listed it. Zero for other media types and
-// without a profile.
-func (h *Handler) personalAffinity(ctx context.Context, profile *recommend.Profile, hit searchrank.Hit) float64 {
+// for nothing, record is nil for one that was not stored) and the site that
+// listed it. Zero for other media types and without a profile.
+func (h *Handler) personalAffinity(profile *recommend.Profile, hit searchrank.Hit, record map[string]any) float64 {
 	if profile == nil || hit.Item.MediaType != plugins.MediaTypeScene {
 		return 0
 	}
@@ -38,17 +55,14 @@ func (h *Handler) personalAffinity(ctx context.Context, profile *recommend.Profi
 	if hit.Source != searchrank.LibrarySource {
 		affinities.Site = profile.Sites[hit.Source]
 	}
-	if hit.ID != "" {
-		h.addStoredAffinities(ctx, profile, hit.ID, &affinities)
-	}
+	addStoredAffinities(profile, record, &affinities)
 	return searchrank.Personal(affinities)
 }
 
 // addStoredAffinities fills the performer, tag and studio affinities of a
 // stored scene.
-func (h *Handler) addStoredAffinities(ctx context.Context, profile *recommend.Profile, sceneID string, affinities *searchrank.Affinities) {
-	scene, err := h.ingestSvc.GetByID(ctx, sceneID)
-	if err != nil || scene == nil {
+func addStoredAffinities(profile *recommend.Profile, scene map[string]any, affinities *searchrank.Affinities) {
+	if scene == nil {
 		return
 	}
 	for _, id := range idList(scene["performers"]) {
@@ -60,6 +74,24 @@ func (h *Handler) addStoredAffinities(ctx context.Context, profile *recommend.Pr
 	if studio, ok := scene["studio"].(string); ok {
 		affinities.Studio = profile.Studios[studio]
 	}
+}
+
+// creditedIDs is the set of performer, studio and tag ids a stored record is
+// credited to.
+func creditedIDs(record map[string]any) map[string]bool {
+	credited := map[string]bool{}
+	if record == nil {
+		return credited
+	}
+	for _, field := range []string{"performers", "tags"} {
+		for _, id := range idList(record[field]) {
+			credited[id] = true
+		}
+	}
+	if studio, ok := record["studio"].(string); ok && studio != "" {
+		credited[studio] = true
+	}
+	return credited
 }
 
 // idList reads a JSON link column ("table:id" strings).

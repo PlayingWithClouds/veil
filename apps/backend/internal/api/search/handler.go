@@ -2,11 +2,10 @@ package search
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/db"
@@ -24,24 +23,35 @@ import (
 //
 // Events:
 //
+//	event: matched
+//	data: {"entities":[{"kind":"performer","id":"performer:x","name":"...","alias":false,"fuzzy":false}],"rewritten":"..."}
+//
 //	event: result
 //	data: {"source":"db"|"<pluginName>","id":"...","score":1.7,"replaces":"<source url>","item":{...DiscoveredItem}}
 //
 //	event: done
 //	data: {}
 //
-// Library results arrive first, ranked by bm25 over title, performers, studio
-// and tags; plugin results stream in as each plugin finishes. Every result
-// carries a relevance score (see package searchrank) that clients order by:
-// streaming order is only arrival order. Copies of one video on several sites
-// are collapsed: later copies that score no better are not sent, and one that
-// scores better is sent with `replaces` naming the source URL of the copy it
-// supersedes.
+// matched comes first, only when the query names performers, studios or tags
+// of the library (by name, alias or a near-miss spelling); rewritten is the
+// query with the ones named by alias or misspelled spelled out, which is
+// searched as well. Library results follow, ranked by bm25 over title,
+// performers, studio and tags (with a typo-tolerant fallback when few match);
+// plugin results stream in as each plugin finishes, beside the pages of the
+// recognised performers and studios on the sites that can list them. Every
+// result carries a relevance score (see package searchrank) that clients order
+// by: streaming order is only arrival order. Copies of one video on several
+// sites are collapsed: later copies that score no better are not sent, and one
+// that scores better is sent with `replaces` naming the source URL of the copy
+// it supersedes (possibly its own).
 type Handler struct {
 	ingestSvc *ingest.Service
 	discovery *discovery.Service
 	repo      *media.Repository
 	taste     TasteSource
+	entities  *entityDirectory
+	history   *searchrank.History
+	pages     EntityPages
 }
 
 // TasteSource provides the user's taste profile (recommend.Engine); nil
@@ -50,10 +60,25 @@ type TasteSource interface {
 	Profile(ctx context.Context) (*recommend.Profile, error)
 }
 
+// EntityPages names the plugins able to list an entity's own page on their
+// site (updater.Scheduler); nil disables listing those pages.
+type EntityPages interface {
+	PagePlugins(origin *media.EntityOrigin) []*plugins.Plugin
+}
+
 // New creates the search handler. taste may be nil.
 func New(ingestSvc *ingest.Service, discoverySvc *discovery.Service, repo *media.Repository, taste TasteSource) *Handler {
-	return &Handler{ingestSvc: ingestSvc, discovery: discoverySvc, repo: repo, taste: taste}
+	return &Handler{
+		ingestSvc: ingestSvc, discovery: discoverySvc, repo: repo, taste: taste,
+		entities: newEntityDirectory(ingestSvc),
+	}
 }
+
+// SetHistory lets the ranking learn from the clicks the search page logged.
+func (h *Handler) SetHistory(history *searchrank.History) { h.history = history }
+
+// SetEntityPages lets a search list the site pages of recognised entities.
+func (h *Handler) SetEntityPages(pages EntityPages) { h.pages = pages }
 
 type resultEvent struct {
 	Source string  `json:"source"`
@@ -82,8 +107,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	// An explicit offset makes the plugin phase paginate its listing — used by
-	// the galleries feed for infinite scroll. Absent offset keeps the default
+	// An explicit offset makes the plugin phase paginate its listing — used
+	// by the galleries feed for infinite scroll. Absent offset keeps the default
 	// keyword-search behaviour untouched.
 	offset := 0
 	paginate := false
@@ -100,36 +125,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	ctx := r.Context()
-	resultCount := 0
-	write := func(eventType string, v any) {
-		data, err := json.Marshal(v)
-		if err != nil {
-			return
-		}
-		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, data)
-		flusher.Flush()
+	stream := &eventStream{writer: w, flusher: flusher}
+	session := h.newSession(ctx, q, offset, stream)
+	firstPage := !paginate || offset == 0
+	if firstPage && len(session.matches) > 0 {
+		stream.write("matched", session.matchedEvent())
 	}
-
-	// Blocklist sets: scenes carrying a blocked entity, and the blocked entities
-	// themselves (to drop blocked performers/studios from results).
-	blockedScenes := h.blockedSceneIDSet(ctx)
-	blockedTargets := h.blockedTargetIDSet(ctx)
-
-	ranker := searchrank.New(q, offset)
-	send := func(source, id string, hit searchrank.Hit) {
-		verdict := ranker.Add(hit)
-		if !verdict.Emit {
-			return
-		}
-		write("result", resultEvent{Source: source, ID: id, Score: verdict.Score, Replaces: verdict.Replaces, Item: hit.Item})
-		resultCount++
-	}
-	profile := h.tasteProfile(ctx)
 
 	// 1. Library results (immediate). Later pages of a paginated search list
 	// the sites only: the library matches were sent with the first.
-	if !paginate || offset == 0 {
-		h.sendLibraryHits(ctx, q, limit, blockedScenes, blockedTargets, profile, send)
+	if firstPage {
+		session.sendLibrary(limit)
 	}
 
 	// 2. Plugin search (concurrent, results streamed per plugin, each ingested
@@ -141,20 +147,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pluginNames = append(pluginNames, plugin.Meta.Name)
 	}
 	// Record the search as a recommendation signal once the stream completes.
-	defer h.logSearch(q, pluginNames, &resultCount)
+	defer h.logSearch(q, pluginNames, &session.resultCount)
 
 	options := discovery.Options{Query: q, Limit: limit, Offset: offset, Paginate: paginate}
+	var running sync.WaitGroup
+	if firstPage {
+		session.startExtras(&running, options, searchPlugins)
+	}
 	// Plugin failures are already logged; the stream just carries what worked.
-	_ = h.discovery.Run(ctx, options, searchPlugins, func(found discovery.Hit) {
-		hit := searchrank.Hit{Source: found.Plugin, ID: found.ID, Item: found.Item}
-		hit.Personal = h.personalAffinity(ctx, profile, hit)
-		send(found.Plugin, found.ID, hit)
-	})
+	_ = h.discovery.Run(ctx, options, searchPlugins, session.pluginHit(""))
+	running.Wait()
 	if ctx.Err() != nil {
 		return
 	}
 
-	write("done", struct{}{})
+	stream.write("done", struct{}{})
 }
 
 // logSearch records the completed search as a recommendation signal, mirroring

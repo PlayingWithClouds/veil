@@ -217,6 +217,7 @@ type ImpressionInput struct {
 	Surface  *string `json:"surface,omitempty"`
 	Position *int    `json:"position,omitempty"`
 	Clicked  *bool   `json:"clicked,omitempty"`
+	Query    *string `json:"query,omitempty"`
 }
 
 type Job struct {

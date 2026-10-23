@@ -55,7 +55,9 @@ func wordCredit(word string, title, performers, studio, tags []string) float64 {
 
 // fieldCredit is the credit of a word against one field's words: wordCredit
 // for an equal word, prefixCredit for a word starting with it, insideCredit for
-// one containing it (zero disables that level).
+// one containing it (zero disables that level). A word that matches in none of
+// those ways but is a typo or two away from a field word earns the whole-word
+// credit scaled by FuzzyCreditFactor, so an exact match always scores higher.
 func fieldCredit(word string, fieldWords []string, wholeCredit, prefixCredit, insideCredit float64) float64 {
 	best := 0.0
 	for _, fieldWord := range fieldWords {
@@ -68,7 +70,15 @@ func fieldCredit(word string, fieldWords []string, wholeCredit, prefixCredit, in
 			best = max(best, insideCredit)
 		}
 	}
-	return best
+	if best > 0 {
+		return best
+	}
+	for _, fieldWord := range fieldWords {
+		if WithinTypos(word, fieldWord) {
+			return wholeCredit * FuzzyCreditFactor
+		}
+	}
+	return 0
 }
 
 // phraseBonus rewards a title that holds the query words as consecutive words:
