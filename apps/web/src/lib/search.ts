@@ -193,6 +193,38 @@ interface StreamResultEvent {
 	item: StreamItem;
 }
 
+/** A performer, studio or tag of the library that a search query names. */
+export interface SearchMatchedEntity {
+	kind: 'performer' | 'studio' | 'tag';
+	id: string;
+	name: string;
+	/** The query used one of the record's aliases. */
+	alias: boolean;
+	/** The query only came close to the name (a likely typo). */
+	fuzzy: boolean;
+}
+
+interface StreamMatchedEvent {
+	entities: {
+		kind: SearchMatchedEntity['kind'];
+		id: string;
+		name: string;
+		alias?: boolean;
+		fuzzy?: boolean;
+	}[];
+}
+
+/** Reads the entities of a `matched` event. */
+function streamEventToEntities(event: StreamMatchedEvent): SearchMatchedEntity[] {
+	return event.entities.map((entity) => ({
+		kind: entity.kind,
+		id: entity.id,
+		name: entity.name,
+		alias: entity.alias === true,
+		fuzzy: entity.fuzzy === true
+	}));
+}
+
 function streamEventToResult(event: StreamResultEvent): PluginSearchResult {
 	const isDbHit = event.source === 'db';
 	return {
@@ -229,7 +261,12 @@ export function pluginSearchStream(
 	sources: string[],
 	onResult: (result: PluginSearchResult) => void,
 	onDone: () => void,
-	options?: { offset?: number; limit?: number }
+	options?: {
+		offset?: number;
+		limit?: number;
+		/** Called with the library entities the query names, before any result. */
+		onMatched?: (entities: SearchMatchedEntity[]) => void;
+	}
 ): SearchStream {
 	const url = new URL(`${apiBase()}/api/search`);
 	url.searchParams.set('q', query);
@@ -251,6 +288,15 @@ export function pluginSearchStream(
 		try {
 			const parsed = JSON.parse((event as MessageEvent).data) as StreamResultEvent;
 			onResult(streamEventToResult(parsed));
+		} catch {
+			// malformed event — ignore
+		}
+	});
+
+	source.addEventListener('matched', (event) => {
+		try {
+			const parsed = JSON.parse((event as MessageEvent).data) as StreamMatchedEvent;
+			options?.onMatched?.(streamEventToEntities(parsed));
 		} catch {
 			// malformed event — ignore
 		}

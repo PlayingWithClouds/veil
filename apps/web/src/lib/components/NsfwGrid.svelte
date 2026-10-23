@@ -17,6 +17,8 @@
 		onleftedge?: () => void;
 		/** The items are stored on the backend: hovering plays them almost at once. */
 		instantHover?: boolean;
+		/** Called with a result and its place in the list when the user opens it. */
+		onopen?: (result: PluginSearchResult, position: number) => void;
 	}
 
 	let {
@@ -24,7 +26,8 @@
 		loading = false,
 		ariaLabel = 'Adult content',
 		onleftedge,
-		instantHover = false
+		instantHover = false,
+		onopen
 	}: Props = $props();
 
 	const GRID_CLASS = 'grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
@@ -40,6 +43,7 @@
 	// Adult results aren't library records yet: scrape the source into a canonical
 	// record on select, then open its detail page.
 	async function openResult(result: PluginSearchResult) {
+		onopen?.(result, items.indexOf(result));
 		// Locally-stored scenes are already ingested: open the detail page directly.
 		if (result.sceneId) {
 			goto(`/scene/${result.sceneId}`);
@@ -82,11 +86,7 @@
 	>
 		{#snippet item(entry)}
 			<div class="relative">
-				<SceneCard
-					item={toSceneCard(entry)}
-					onclick={() => openResult(entry)}
-					{instantHover}
-				/>
+				<SceneCard item={toSceneCard(entry)} onclick={() => openResult(entry)} {instantHover} />
 				{#if openingUrl === entry.sourceUrl}
 					<div
 						class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/60"
