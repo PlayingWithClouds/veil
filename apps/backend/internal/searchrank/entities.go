@@ -1,8 +1,10 @@
 package searchrank
 
 import (
+	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/playingwithclouds/veil/internal/names"
 )
@@ -18,6 +20,13 @@ const (
 
 // maximumEntityWords is the longest name looked for in a query.
 const maximumEntityWords = 5
+
+// maximumFuzzyQueryWords is the longest query whose words are tried as a
+// near-miss spelling of a name: longer queries are titles, not names.
+const maximumFuzzyQueryWords = 6
+
+// possessive matches the 's ending of "Mia Khalifa's", which titles add to a name.
+var possessive = regexp.MustCompile(`['’]s\b`)
 
 // Entity is a library record the query may name.
 type Entity struct {
@@ -109,16 +118,26 @@ func (index *EntityIndex) recordFor(entity Entity) *indexedRecord {
 // overlapping; where several names start at the same word the longest wins
 // (a performer before a studio before a tag on a tie). A single-word name is
 // recognised for studios and tags anywhere, for performers only when it is the
-// whole query ("Anna" in a longer query is just a word). When nothing matches
-// exactly, a near-miss spelling of a name covering the whole query is returned
-// as a Fuzzy match.
+// whole query ("Anna" in a longer query is just a word). Words no exact name
+// accounts for are then tried as a near-miss spelling of a longer name
+// (FuzzyEntityMinimumLength): such a match is flagged Fuzzy and displaces the
+// exact matches it overlaps.
 func (index *EntityIndex) Find(query string) []EntityMatch {
 	words := strings.Fields(names.Key(query))
-	found := index.findExact(words)
-	if len(found) == 0 {
-		return index.findFuzzy(words)
+	exact := index.findExact(words)
+	if coveredWords(exact) == len(words) || len(words) > maximumFuzzyQueryWords {
+		return exact
 	}
-	return found
+	return mergeMatches(exact, index.findFuzzy(words))
+}
+
+// coveredWords counts the query words the matches cover.
+func coveredWords(matches []EntityMatch) int {
+	covered := 0
+	for _, match := range matches {
+		covered += match.End - match.Start
+	}
+	return covered
 }
 
 // findExact scans the words for names spelled exactly (modulo Key).
@@ -163,23 +182,61 @@ func (index *EntityIndex) recognisable(kind EntityKind, nameWords, queryWords in
 	return queryWords == 1
 }
 
-// findFuzzy looks for one name within a typo of the whole query: same
-// length class, same first letter, at most FuzzyEntityAllowance edits. Names
-// of fewer than FuzzyEntityMinimumLength letters are never guessed.
+// findFuzzy looks, longest span first, for runs of query words that are a
+// typo or two away from a known name: two words or more, or the whole query
+// when it is one word. Spans that are names themselves are left to the exact
+// search.
 func (index *EntityIndex) findFuzzy(words []string) []EntityMatch {
-	query := strings.Join(words, " ")
-	allowance := fuzzyEntityAllowance(query)
-	if allowance == 0 || len(words) == 0 {
-		return nil
+	var found []EntityMatch
+	minimumSpan := 2
+	if len(words) == 1 {
+		minimumSpan = 1
 	}
+	for length := min(maximumEntityWords, len(words)); length >= minimumSpan; length-- {
+		for start := 0; start+length <= len(words); start++ {
+			if overlapsAny(found, start, start+length) {
+				continue
+			}
+			span := strings.Join(words[start:start+length], " ")
+			if _, exact := index.byKey[span]; exact {
+				continue
+			}
+			if match, near := index.nearestName(span, len(words)); near {
+				match.Start, match.End = start, start+length
+				found = append(found, match)
+			}
+		}
+	}
+	return found
+}
+
+// overlapsAny reports whether the word range [start, end) overlaps a match.
+func overlapsAny(matches []EntityMatch, start, end int) bool {
+	for _, match := range matches {
+		if start < match.End && match.Start < end {
+			return true
+		}
+	}
+	return false
+}
+
+// nearestName returns the known name closest to the span within the typo
+// allowance of its length, the closest real name before an alias and the
+// alphabetically first key on a tie, so the answer does not depend on map
+// order.
+func (index *EntityIndex) nearestName(span string, queryWords int) (EntityMatch, bool) {
+	allowance := fuzzyEntityAllowance(span)
+	if allowance == 0 {
+		return EntityMatch{}, false
+	}
+	spanRunes := []rune(span)
 	var best *indexedName
-	bestDistance := allowance + 1
-	bestKey := ""
+	bestDistance, bestKey := allowance+1, ""
 	for key, name := range index.byKey {
-		if !index.recognisable(name.record.entity.Kind, len(strings.Fields(key)), len(words)) {
+		if !index.recognisable(name.record.entity.Kind, strings.Count(key, " ")+1, queryWords) {
 			continue
 		}
-		distance, near := nearKey(query, key, allowance)
+		distance, near := nearKey(spanRunes, key, allowance)
 		if !near || distance > bestDistance || (distance == bestDistance && !preferName(name, key, best, bestKey)) {
 			continue
 		}
@@ -187,22 +244,34 @@ func (index *EntityIndex) findFuzzy(words []string) []EntityMatch {
 		best, bestDistance, bestKey = &candidate, distance, key
 	}
 	if best == nil {
-		return nil
+		return EntityMatch{}, false
 	}
-	return []EntityMatch{{
+	return EntityMatch{
 		Entity:   best.record.entity,
-		Start:    0,
-		End:      len(words),
 		ViaAlias: best.isAlias,
 		Fuzzy:    true,
 		Keys:     slices.Clone(best.record.keys),
-	}}
+	}, true
 }
 
-// fuzzyEntityAllowance is the typos tolerated in a whole-query name: one from
-// FuzzyEntityMinimumLength letters, two from twice that.
-func fuzzyEntityAllowance(query string) int {
-	length := len([]rune(query))
+// mergeMatches combines exact and fuzzy matches in query order; an exact match
+// overlapping a fuzzy one is dropped (the fuzzy span is the longer reading).
+func mergeMatches(exact, fuzzy []EntityMatch) []EntityMatch {
+	merged := slices.Clone(fuzzy)
+	for _, match := range exact {
+		if !overlapsAny(fuzzy, match.Start, match.End) {
+			merged = append(merged, match)
+		}
+	}
+	slices.SortFunc(merged, func(first, second EntityMatch) int { return first.Start - second.Start })
+	return merged
+}
+
+// fuzzyEntityAllowance is the typos tolerated in a name of that many letters
+// (spaces included): none below FuzzyEntityMinimumLength, one from there, two
+// from twice that.
+func fuzzyEntityAllowance(span string) int {
+	length := utf8.RuneCountInString(span)
 	switch {
 	case length < FuzzyEntityMinimumLength:
 		return 0
@@ -212,15 +281,19 @@ func fuzzyEntityAllowance(query string) int {
 	return 2
 }
 
-// nearKey reports the edit distance of a key to the query when it is within
+// nearKey reports the edit distance of a key to the span when it is within
 // the allowance and starts with the same letter.
-func nearKey(query, key string, allowance int) (int, bool) {
-	queryRunes, keyRunes := []rune(query), []rune(key)
-	if queryRunes[0] != keyRunes[0] || abs(len(queryRunes)-len(keyRunes)) > allowance || query == key {
+func nearKey(span []rune, key string, allowance int) (int, bool) {
+	keyLength := utf8.RuneCountInString(key)
+	if abs(len(span)-keyLength) > allowance {
 		return 0, false
 	}
-	distance := editDistance(queryRunes, keyRunes, allowance)
-	return distance, distance <= allowance
+	first, _ := utf8.DecodeRuneInString(key)
+	if first != span[0] {
+		return 0, false
+	}
+	distance := editDistance(span, []rune(key), allowance)
+	return distance, distance > 0 && distance <= allowance
 }
 
 // preferName breaks a distance tie between two fuzzy candidates in a way that
@@ -279,7 +352,7 @@ func Rewrite(query string, matches []EntityMatch) string {
 // MentionedIn reports whether the text names the entity (its name or any
 // alias) as whole words, ignoring case, accents and punctuation.
 func (match EntityMatch) MentionedIn(text string) bool {
-	padded := " " + names.Key(text) + " "
+	padded := " " + names.Key(possessive.ReplaceAllString(text, "")) + " "
 	for _, key := range match.Keys {
 		if strings.Contains(padded, " "+key+" ") {
 			return true

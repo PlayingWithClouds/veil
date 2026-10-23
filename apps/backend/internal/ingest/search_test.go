@@ -114,3 +114,80 @@ func TestFullTextQuery(t *testing.T) {
 		t.Fatal("no words must give an empty query")
 	}
 }
+
+// TestSearchSceneCandidatesFindMisspelledWords checks the trigram index offers
+// a scene for a misspelled word, follows renames through the triggers, and that
+// the exact index count stays zero for the misspelling.
+func TestSearchSceneCandidatesFindMisspelledWords(t *testing.T) {
+	service, database, ctx := openTestService(t)
+	ingestScene(t, ctx, service, "alpha", &plugins.Scene{
+		Type: plugins.MediaTypeScene, SourceURL: "https://a.test/1", Title: "Hotel night",
+		Performers: []plugins.ScenePerformer{{Name: "Mia Khalifa"}},
+	})
+	ingestScene(t, ctx, service, "alpha", &plugins.Scene{
+		Type: plugins.MediaTypeScene, SourceURL: "https://a.test/2", Title: "Garden party",
+	})
+
+	if got := searchTitles(t, service, "scene", "mia khalfia"); len(got) != 0 {
+		t.Fatalf("exact index found the misspelling: %v", got)
+	}
+	count, err := service.CountSceneMatches(ctx, "mia khalfia", 100)
+	if err != nil || count != 0 {
+		t.Fatalf("exact count = %d, %v", count, err)
+	}
+	if count, err := service.CountSceneMatches(ctx, "mia khalifa", 100); err != nil || count != 1 {
+		t.Fatalf("exact count of the right spelling = %d, %v", count, err)
+	}
+
+	candidates, err := service.SearchSceneCandidates(ctx, "mia khalfia")
+	if err != nil || len(candidates) == 0 || candidates[0]["title"] != "Hotel night" {
+		t.Fatalf("candidates = %v, %v", candidates, err)
+	}
+	if performers, _ := candidates[0]["search_performers"].(string); performers != "Mia Khalifa" {
+		t.Fatalf("candidate performers = %q", performers)
+	}
+
+	if _, err := database.Exec(ctx, `UPDATE performer SET name = 'Zoe Lane' WHERE name = 'Mia Khalifa'`, nil); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	candidates, err = service.SearchSceneCandidates(ctx, "zoe lanne")
+	if err != nil || len(candidates) == 0 || candidates[0]["title"] != "Hotel night" {
+		t.Fatalf("after rename = %v, %v", candidates, err)
+	}
+	if _, err := database.Exec(ctx, `DELETE FROM scene WHERE title = 'Hotel night'`, nil); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if after, _ := service.SearchSceneCandidates(ctx, "zoe lanne"); len(after) != 0 {
+		t.Fatalf("deleted scene still offered: %v", after)
+	}
+}
+
+// TestTrigramQueryUsesPiecesOfLongWords checks the expression holds every
+// three-letter piece and skips words that are too short.
+func TestTrigramQueryUsesPiecesOfLongWords(t *testing.T) {
+	if got := TrigramQuery("Mia Köln"); got != `"mia" OR "kol" OR "oln"` {
+		t.Fatalf("query = %s", got)
+	}
+	if got := TrigramQuery("to be"); got != "" {
+		t.Fatalf("short words = %q", got)
+	}
+}
+
+// TestNamedRecordsListsAliases checks the entity listing carries names and
+// aliases and refuses other tables.
+func TestNamedRecordsListsAliases(t *testing.T) {
+	service, database, ctx := openTestService(t)
+	if _, err := database.Insert(ctx, "tag", db.Vars{"name": "Blonde", "aliases": []string{"Blond"}}); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	records, err := service.NamedRecords(ctx, "tag")
+	if err != nil || len(records) != 1 || records[0]["name"] != "Blonde" {
+		t.Fatalf("records = %v, %v", records, err)
+	}
+	if aliases, _ := records[0]["aliases"].([]any); len(aliases) != 1 || aliases[0] != "Blond" {
+		t.Fatalf("aliases = %v", records[0]["aliases"])
+	}
+	if _, err := service.NamedRecords(ctx, "scene"); err == nil {
+		t.Fatal("scene is not a named table")
+	}
+}
