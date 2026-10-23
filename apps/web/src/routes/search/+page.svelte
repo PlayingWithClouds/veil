@@ -24,6 +24,14 @@
 		type SearchPlugin,
 		type SearchStream
 	} from '$lib/search';
+	import {
+		FIRST_RESULTS_WINDOW_MS,
+		FROZEN_VISIBLE_COUNT,
+		SORT_OPTIONS,
+		insertArrival,
+		sortResults,
+		type SortMode
+	} from '$lib/searchOrder';
 
 	// Search-capable source plugins for the badges. Toggling one excludes it.
 	let searchPlugins = $state<SearchPlugin[]>([]);
@@ -65,6 +73,58 @@
 	let seen = new Set<string>();
 	let liveDone = $state(false);
 	let dbDone = $state(false);
+
+	// Ordering of the live results. The server scores every result as it
+	// streams in; the first second of arrivals is held back and sorted
+	// together, so the grid opens in order. From then on a late result is
+	// sorted in below the first FROZEN_VISIBLE_COUNT results (and below
+	// everything shown when a further page loads), so the screen never
+	// reshuffles under the reader's eyes.
+	let sortMode = $state<SortMode>('relevance');
+	let heldResults: PluginSearchResult[] = [];
+	let firstResultsTimer: ReturnType<typeof setTimeout> | null = null;
+	let firstResultsShown = false;
+	let frozenCount = 0;
+
+	/** Shows the held first results, sorted. */
+	function showFirstResults() {
+		if (firstResultsTimer) clearTimeout(firstResultsTimer);
+		firstResultsTimer = null;
+		if (firstResultsShown) return;
+		firstResultsShown = true;
+		results = sortResults([...results, ...heldResults], sortMode);
+		heldResults = [];
+		frozenCount = Math.min(results.length, FROZEN_VISIBLE_COUNT);
+	}
+
+	/** Takes one streamed result: held during the first second, then sorted in. */
+	function receiveResult(result: PluginSearchResult) {
+		if (!firstResultsShown) {
+			heldResults.push(result);
+			applyReplacement(result);
+			if (!firstResultsTimer) {
+				firstResultsTimer = setTimeout(showFirstResults, FIRST_RESULTS_WINDOW_MS);
+			}
+			return;
+		}
+		results = insertArrival(results, result, sortMode, frozenCount);
+	}
+
+	/** Drops a held result that a better copy of the same video supersedes. */
+	function applyReplacement(result: PluginSearchResult) {
+		if (!result.replaces) return;
+		heldResults = heldResults.filter(
+			(held) => held === result || held.sourceUrl !== result.replaces
+		);
+	}
+
+	/** Re-sorts everything shown when the reader picks another order. */
+	function changeSort(mode: SortMode) {
+		sortMode = mode;
+		results = sortResults(results, mode);
+		heldResults = sortResults(heldResults, mode);
+		frozenCount = Math.min(results.length, FROZEN_VISIBLE_COUNT);
+	}
 
 	// Advanced DB filters. When a structured dimension is set, the page switches
 	// from live plugin search to DB-backed filtered results.
@@ -129,6 +189,11 @@
 			return;
 		}
 		results = [];
+		heldResults = [];
+		if (firstResultsTimer) clearTimeout(firstResultsTimer);
+		firstResultsTimer = null;
+		firstResultsShown = false;
+		frozenCount = 0;
 		seen = new Set();
 		liveOffset = 0;
 		liveDone = false;
@@ -138,6 +203,8 @@
 	/** Streams the sites' next page of results; a page adding nothing ends the list. */
 	function streamNextPage(text: string, token: number) {
 		loading = true;
+		// A further page is below what the reader has scrolled through.
+		frozenCount = results.length;
 		let added = 0;
 		currentStream = pluginSearchStream(
 			text,
@@ -147,10 +214,11 @@
 				if (seen.has(result.externalId)) return;
 				seen.add(result.externalId);
 				added++;
-				results = [...results, result];
+				receiveResult(result);
 			},
 			() => {
 				if (token !== requestToken) return;
+				showFirstResults();
 				loading = false;
 				currentStream = null;
 				if (added === 0) liveDone = true;
@@ -298,6 +366,23 @@
 					<p>Type to search, or set a filter.</p>
 				</div>
 			{:else}
+				<!-- Sort order of the live results; relevance is the server's score. -->
+				<div class="mb-4 flex flex-wrap items-center gap-2">
+					<span class="text-base-content/40 text-xs font-medium uppercase">Sort</span>
+					{#each SORT_OPTIONS as option (option.mode)}
+						<button
+							type="button"
+							onclick={() => changeSort(option.mode)}
+							aria-pressed={sortMode === option.mode}
+							class="rounded-full border px-3 py-1 text-sm font-medium transition-colors
+								{sortMode === option.mode
+								? 'border-primary bg-primary/15 text-primary'
+								: 'border-base-300 text-base-content/40 hover:text-base-content/70'}"
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
 				<NsfwGrid
 					bind:this={grid}
 					items={results}
