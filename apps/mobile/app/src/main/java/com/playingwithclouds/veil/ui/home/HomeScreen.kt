@@ -34,6 +34,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.RecommendedScene
 import com.playingwithclouds.veil.data.SceneSummary
 import com.playingwithclouds.veil.ui.AppNavigator
@@ -221,6 +222,8 @@ private fun HomeShelfRow(shelf: HomeShelf, navigator: AppNavigator, onMenu: (Sce
             onOpen = { scene -> navigator.openScene(scene.id) },
             onLongPress = onMenu,
             edgeToEdge = true,
+            impressionSurface = ImpressionSurface.ROW,
+            sources = shelf.sources,
         )
         is HomeShelf.Performers -> AvatarShelf("Performers for you", shelf.performers, onOpen = { performer -> navigator.openPerformer(performer.id) })
         is HomeShelf.Studios -> AvatarShelf("Studios for you", shelf.studios, onOpen = { studio -> navigator.openStudio(studio.id) })

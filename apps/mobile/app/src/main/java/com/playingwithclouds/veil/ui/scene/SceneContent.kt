@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 import com.playingwithclouds.veil.data.EntityRef
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.SceneDetail
 import com.playingwithclouds.veil.data.SceneMarker
 import com.playingwithclouds.veil.data.StreamGroup
@@ -40,8 +43,10 @@ import com.playingwithclouds.veil.data.qualityLabel
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
+import com.playingwithclouds.veil.ui.components.LogShownScenes
 import com.playingwithclouds.veil.ui.components.ReactionButton
 import com.playingwithclouds.veil.ui.components.ReactionRowInset
+import com.playingwithclouds.veil.ui.components.logSceneClicked
 import com.playingwithclouds.veil.ui.components.dislikeIcon
 import com.playingwithclouds.veil.ui.components.likeIcon
 import com.playingwithclouds.veil.ui.components.RemoteImage
@@ -84,7 +89,9 @@ fun SceneContent(
     var dialog by remember { mutableStateOf<SceneDialog?>(null) }
     SceneDialogs(dialog, detail, viewModel, player, onDismiss = { dialog = null })
 
-    LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.large)) {
+    val listState = rememberLazyListState()
+    LogShownScenes(listState, ImpressionSurface.RELATED, state.related.map { scene -> scene.id })
+    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = VeilSpacing.large)) {
         item { SceneTitleBlock(detail, state) }
         item { MarkerChips(state.markers, player, Modifier.padding(bottom = VeilSpacing.small)) }
         item {
@@ -108,10 +115,13 @@ fun SceneContent(
         item { MarkerSection(state.markers, player, viewModel, onAdd = { dialog = SceneDialog.Marker }) }
         if (state.related.isNotEmpty()) {
             item { SectionHeading("Related", Modifier.gutterPadding()) }
-            items(state.related, key = { scene -> scene.id }) { scene ->
+            itemsIndexed(state.related, key = { _, scene -> scene.id }) { position, scene ->
                 SceneCard(
                     scene,
-                    onClick = { navigator.openScene(scene.id) },
+                    onClick = {
+                        logSceneClicked(ImpressionSurface.RELATED, scene.id, position)
+                        navigator.openScene(scene.id)
+                    },
                     modifier = Modifier.gutterPadding().padding(bottom = VeilSpacing.cardGap),
                 )
             }

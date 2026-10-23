@@ -70,6 +70,28 @@ class ImpressionLoggerTest {
     }
 
     @Test
+    fun resettingASurfaceKeepsTheOthers() = runTest {
+        val logger = logger()
+        logger.recordShown("scene:1", null, ImpressionSurface.HOME, 0)
+        logger.recordShown("scene:1", null, ImpressionSurface.TAG, 0)
+        advanceUntilIdle()
+        logger.resetShown(ImpressionSurface.TAG)
+        logger.recordShown("scene:1", null, ImpressionSurface.HOME, 0)
+        logger.recordShown("scene:1", null, ImpressionSurface.TAG, 0)
+        advanceUntilIdle()
+        assertEquals(listOf(ImpressionSurface.TAG), batches[1].map { impression -> impression.surface })
+    }
+
+    @Test
+    fun everyImpressionCarriesItsPosition() = runTest {
+        val logger = logger()
+        logger.recordShown("scene:1", null, ImpressionSurface.RELATED, 7)
+        logger.recordClicked("scene:1", null, ImpressionSurface.RELATED, 7)
+        runCurrent()
+        assertEquals(listOf(7, 7), batches.single().map { impression -> impression.position })
+    }
+
+    @Test
     fun aClickIsSentRightAway() = runTest {
         val logger = logger()
         logger.recordShown("scene:1", "affinity:tag", "feed", 4)

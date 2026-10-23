@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,7 +26,8 @@ private val ShelfCardWidth = 240.dp
  * A headed, horizontally scrolling row of scene cards. In a grid that pads with the gutter the row
  * bleeds to the screen edges while its first card lines up with the heading; in a list without
  * side padding set [edgeToEdge] so the heading takes the gutter itself instead. The heading opens
- * the full list when [onSeeAll] is set.
+ * the full list when [onSeeAll] is set. With an [impressionSurface] the shelf logs which cards were
+ * shown and opened (position = index in the row), with the candidate [sources] of the scenes.
  */
 @Composable
 fun SceneShelf(
@@ -35,9 +38,16 @@ fun SceneShelf(
     onSeeAll: (() -> Unit)? = null,
     onLongPress: ((SceneSummary) -> Unit)? = null,
     edgeToEdge: Boolean = false,
+    impressionSurface: String? = null,
+    sources: Map<String, String> = emptyMap(),
 ) {
     if (scenes.isEmpty()) {
         return
+    }
+    val rowState = rememberLazyListState()
+    if (impressionSurface != null) {
+        // Several shelves share a surface, so one starting must not make the others log again.
+        LogShownScenes(rowState, impressionSurface, scenes.map { scene -> scene.id }, sources, forgetShown = false)
     }
     var headingModifier = Modifier.gutterPadding()
     var rowModifier = Modifier.fillMaxWidth()
@@ -49,15 +59,22 @@ fun SceneShelf(
         SectionHeading(title, modifier = headingModifier, onClick = onSeeAll)
         LazyRow(
             rowModifier,
+            state = rowState,
             contentPadding = GutterRowPadding,
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
         ) {
-            items(scenes, key = { scene -> scene.id }) { scene ->
+            itemsIndexed(scenes, key = { _, scene -> scene.id }) { position, scene ->
                 var longPress: (() -> Unit)? = null
                 if (onLongPress != null) {
                     longPress = { onLongPress(scene) }
                 }
-                SceneCard(scene, onClick = { onOpen(scene) }, modifier = Modifier.width(ShelfCardWidth), onLongClick = longPress)
+                val open = {
+                    if (impressionSurface != null) {
+                        logSceneClicked(impressionSurface, scene.id, position, sources[scene.id])
+                    }
+                    onOpen(scene)
+                }
+                SceneCard(scene, onClick = open, modifier = Modifier.width(ShelfCardWidth), onLongClick = longPress)
             }
         }
     }

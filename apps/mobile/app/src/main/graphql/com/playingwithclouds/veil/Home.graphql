@@ -52,6 +52,7 @@ query HomeRows($rowLimit: Int, $perRow: Int) {
     key
     title
     items {
+      source
       scene {
         ...SceneCardFields
       }

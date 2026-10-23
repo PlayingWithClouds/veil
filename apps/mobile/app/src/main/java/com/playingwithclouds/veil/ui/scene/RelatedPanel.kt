@@ -23,7 +23,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -34,8 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.SceneSummary
+import com.playingwithclouds.veil.ui.components.LogShownScenes
 import com.playingwithclouds.veil.ui.components.SceneCard
+import com.playingwithclouds.veil.ui.components.logSceneClicked
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilShapes
@@ -104,12 +108,23 @@ private fun PanelContent(related: List<SceneSummary>, onDismiss: () -> Unit, onO
     ) {
         // SectionHeading brings its own space above and below.
         SectionHeading("Related", Modifier.padding(horizontal = VeilSpacing.large))
+        val rowState = rememberLazyListState()
+        // The scene page's inline list logs the same scenes on this surface; don't forget its impressions.
+        LogShownScenes(rowState, ImpressionSurface.RELATED, related.map { scene -> scene.id }, forgetShown = false)
         LazyRow(
+            state = rowState,
             contentPadding = PaddingValues(horizontal = VeilSpacing.large),
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
         ) {
-            items(related, key = { scene -> scene.id }) { scene ->
-                SceneCard(scene, onClick = { onOpenScene(scene) }, modifier = Modifier.width(PanelCardWidth))
+            itemsIndexed(related, key = { _, scene -> scene.id }) { position, scene ->
+                SceneCard(
+                    scene,
+                    onClick = {
+                        logSceneClicked(ImpressionSurface.RELATED, scene.id, position)
+                        onOpenScene(scene)
+                    },
+                    modifier = Modifier.width(PanelCardWidth),
+                )
             }
         }
     }

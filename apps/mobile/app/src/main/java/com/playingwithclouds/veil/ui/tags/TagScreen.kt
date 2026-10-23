@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.ui.tags
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,19 +17,23 @@ import com.playingwithclouds.veil.data.EntityFilter
 import com.playingwithclouds.veil.data.EntityRepository
 import com.playingwithclouds.veil.data.FollowKind
 import com.playingwithclouds.veil.data.GallerySummary
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.PerformerSummary
 import com.playingwithclouds.veil.data.StudioSummary
 import com.playingwithclouds.veil.data.TagDetail
+import com.playingwithclouds.veil.data.TaggedScene
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FollowButton
 import com.playingwithclouds.veil.ui.components.LoadStateContent
+import com.playingwithclouds.veil.ui.components.LogShownScenes
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.MergeKind
 import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.logSceneClicked
 import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.entity.CollectionRow
@@ -128,18 +133,22 @@ fun TagScreen(id: String, navigator: AppNavigator) {
         },
     ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { tag ->
+            val gridState = rememberLazyGridState()
+            val loadedScenes by viewModel.scenes.state.collectAsStateWithLifecycle()
+            LogShownScenes(gridState, ImpressionSurface.TAG, loadedScenes.items.map { tagged -> tagged.scene.id })
             PagedGrid(
                 paged = viewModel.scenes,
                 keyOf = { tagged -> tagged.scene.id },
+                gridState = gridState,
                 emptyText = "No videos with this tag yet.",
                 modifier = Modifier.padding(padding),
                 header = {
                     fullWidthItem("header") { TagHeader(tag, relations, navigator) }
                     fullWidthItem("scenes-title") { SectionHeading("Videos") }
                 },
-            ) { _, tagged ->
+            ) { position, tagged ->
                 Box {
-                    SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })
+                    SceneCard(tagged.scene, onClick = { openScene(tagged, position, navigator) })
                     if (tagged.inherited) {
                         Badge("via studio or performer", Modifier.align(Alignment.TopEnd).padding(VeilSpacing.small))
                     }
@@ -164,4 +173,10 @@ private fun TagHeader(tag: TagDetail, relations: TagRelations, navigator: AppNav
     StudioRow("Studios", relations.studios, navigator::openStudio)
     GalleryRow("Galleries", relations.galleries, navigator::openGallery)
     CollectionRow("Collections", relations.collections, navigator::openCollection)
+}
+
+/** Opens a scene of the page, logging the click with its place in the list. */
+private fun openScene(tagged: TaggedScene, position: Int, navigator: AppNavigator) {
+    logSceneClicked(ImpressionSurface.TAG, tagged.scene.id, position)
+    navigator.openScene(tagged.scene.id)
 }

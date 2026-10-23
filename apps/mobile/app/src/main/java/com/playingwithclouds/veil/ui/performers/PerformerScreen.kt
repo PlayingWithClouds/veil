@@ -1,5 +1,6 @@
 package com.playingwithclouds.veil.ui.performers
 
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,11 +15,14 @@ import com.playingwithclouds.veil.data.EntityFilter
 import com.playingwithclouds.veil.data.EntityRepository
 import com.playingwithclouds.veil.data.FollowKind
 import com.playingwithclouds.veil.data.GallerySummary
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.PerformerDetail
+import com.playingwithclouds.veil.data.TaggedScene
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FollowButton
 import com.playingwithclouds.veil.ui.components.LoadStateContent
+import com.playingwithclouds.veil.ui.components.LogShownScenes
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
@@ -26,6 +30,7 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.MergeKind
 import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.logSceneClicked
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.bleed
@@ -161,9 +166,13 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
         },
     ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { performer ->
+            val gridState = rememberLazyGridState()
+            val loadedScenes by viewModel.scenes.state.collectAsStateWithLifecycle()
+            LogShownScenes(gridState, ImpressionSurface.PERFORMER, loadedScenes.items.map { tagged -> tagged.scene.id })
             PagedGrid(
                 paged = viewModel.scenes,
                 keyOf = { tagged -> tagged.scene.id },
+                gridState = gridState,
                 emptyText = "No videos for this performer yet.",
                 modifier = Modifier.padding(padding),
                 header = {
@@ -172,8 +181,8 @@ fun PerformerScreen(id: String, navigator: AppNavigator) {
                     fullWidthItem("sort") { ChannelSortBar(sort, viewModel::setSort) }
                     fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
-            ) { _, tagged ->
-                SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })
+            ) { position, tagged ->
+                SceneCard(tagged.scene, onClick = { openScene(tagged, position, navigator) })
             }
         }
     }
@@ -232,4 +241,10 @@ private fun formatBirthdate(birthdate: String?): String? {
         return null
     }
     return birthdate.take(10)
+}
+
+/** Opens a scene of the page, logging the click with its place in the list. */
+private fun openScene(tagged: TaggedScene, position: Int, navigator: AppNavigator) {
+    logSceneClicked(ImpressionSurface.PERFORMER, tagged.scene.id, position)
+    navigator.openScene(tagged.scene.id)
 }

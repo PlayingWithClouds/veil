@@ -10,8 +10,13 @@ sealed interface HomeShelf {
     /** Stable identity of the row, for list keys. */
     val key: String
 
-    /** A titled row of scenes ("Because you watched X"). */
-    data class Scenes(override val key: String, val title: String, val scenes: List<SceneSummary>) : HomeShelf
+    /** A titled row of scenes ("Because you watched X"); [sources] is each scene's candidate source. */
+    data class Scenes(
+        override val key: String,
+        val title: String,
+        val scenes: List<SceneSummary>,
+        val sources: Map<String, String> = emptyMap(),
+    ) : HomeShelf
 
     /** The performers credited most in the feed. */
     data class Performers(val performers: List<EntityRef>) : HomeShelf {
@@ -38,7 +43,7 @@ private const val MAXIMUM_ENTITIES = 14
  * in [feedScenes]; rows too thin to be worth a shelf are left out.
  */
 fun buildShelves(rows: List<SceneRow>, feedScenes: List<SceneSummary>): List<HomeShelf> {
-    val sceneShelves = rows.map { row -> HomeShelf.Scenes(row.key, row.title, row.scenes) }
+    val sceneShelves = rows.map { row -> HomeShelf.Scenes(row.key, row.title, row.scenes, row.sources) }
     val performers = mostCredited(feedScenes.flatMap { scene -> scene.performers }.filter { performer -> performer.imagePath != null })
     val studios = mostCredited(feedScenes.mapNotNull { scene -> scene.studio })
     val shelves = mutableListOf<HomeShelf>()

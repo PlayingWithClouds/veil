@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.DiscoveryRepository
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.RecommendedScene
 import com.playingwithclouds.veil.data.TagFilter
 import com.playingwithclouds.veil.ui.paging.PagedList
@@ -47,7 +48,7 @@ class PreviewFeedViewModel : ViewModel() {
     /** Applies a new tag filter and reloads the feed from the top. */
     fun setTagFilter(filter: TagFilter) {
         mutableTagFilter.value = TagFilter(exclude = filter.exclude)
-        AppServices.impressions.resetShown()
+        AppServices.impressions.resetShown(ImpressionSurface.PREVIEW_FEED)
         feed.refresh()
     }
 
@@ -68,6 +69,6 @@ class PreviewFeedViewModel : ViewModel() {
 
     companion object {
         private const val PAGE_SIZE = 24
-        private const val SURFACE = "preview-feed"
+        private const val SURFACE = ImpressionSurface.PREVIEW_FEED
     }
 }

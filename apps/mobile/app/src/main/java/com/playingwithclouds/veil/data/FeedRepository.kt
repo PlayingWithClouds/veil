@@ -25,8 +25,8 @@ data class WatchHistoryEntry(
     val scene: SceneSummary?,
 )
 
-/** A titled row of scenes the recommender grouped by reason. */
-data class SceneRow(val key: String, val title: String, val scenes: List<SceneSummary>)
+/** A titled row of scenes the recommender grouped by reason; [sources] is each scene's candidate source. */
+data class SceneRow(val key: String, val title: String, val scenes: List<SceneSummary>, val sources: Map<String, String> = emptyMap())
 
 /** A runtime window in seconds; a null bound is open. */
 data class RuntimeWindow(val minSeconds: Int?, val maxSeconds: Int?) {
@@ -95,7 +95,12 @@ object FeedRepository {
     suspend fun recommendedRows(rowLimit: Int, perRow: Int): List<SceneRow> {
         val data = VeilApi.client.query(HomeRowsQuery(Optional.present(rowLimit), Optional.present(perRow))).execute().dataOrThrow()
         return data.recommendedRows.map { row ->
-            SceneRow(row.key, row.title, row.items.map { item -> item.scene.sceneCardFields.toSummary() })
+            SceneRow(
+                row.key,
+                row.title,
+                row.items.map { item -> item.scene.sceneCardFields.toSummary() },
+                row.items.associate { item -> item.scene.sceneCardFields.id to item.source },
+            )
         }
     }
 
