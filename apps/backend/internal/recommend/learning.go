@@ -38,6 +38,8 @@ type learnedPolicy struct {
 	pooledRate float64
 	// rates is each source's observed reward per showing, for the log only.
 	rates map[string]float64
+	// examination describes the fitted position model, for the log only.
+	examination string
 }
 
 // multiplier is the factor on the source's hand-set prior; 1 when nothing
@@ -61,18 +63,77 @@ func (policy *learnedPolicy) pageQuotas() map[string]int {
 	return policy.quotas
 }
 
-// outcomeQuery counts, per source and day, the showings from learnWindow
-// that are old enough to have an outcome, the opened ones and their reward.
-// A showing is opened when a logged click or a first visit of the scene
-// follows within the attribution window and no later showing of the scene
-// came in between (that one gets the credit). Of the opened ones, a watch
-// that ended the session (see watchWeight) or a like within the downstream
-// window adds to the reward.
-const outcomeQuery = `SELECT source, substr(shown_at, 1, 10) AS day,
+// Position-bias model of the learned priors. A showing deep in a list is
+// examined less than one at the top, so a source that mostly fills deep
+// positions would look worse than it is. Rewards are therefore divided by the
+// examination propensity of the position they were shown at (inverse
+// propensity weighting), estimated per surface from the logged positions.
+const (
+	// positionBucketCount is the number of position buckets; bucket i holds
+	// the positions below positionBucketBounds[i], the last one the rest.
+	positionBucketCount = 7
+	// unknownPositionBucket marks showings logged before positions were sent.
+	unknownPositionBucket = -1
+	// positionPriorSlope shapes the examination curve assumed before the
+	// data says otherwise: 1 / (1 + slope * bucket).
+	positionPriorSlope = 0.5
+	// positionPriorStrength is the weight of that curve in the estimate, in
+	// pseudo-rewards: the data overrides it once a bucket has earned about
+	// this many rewards.
+	positionPriorStrength = 5.0
+	// positionMinExposure floors a bucket's examination propensity (before
+	// 1/propensity weighting), so a sparse bucket cannot multiply a reward by
+	// more than 1/positionMinExposure.
+	positionMinExposure = 0.25
+	// positionFitIterations is how often source quality and examination are
+	// re-estimated from each other.
+	positionFitIterations = 8
+)
+
+// positionBucketBounds are the upper bounds (exclusive) of the first
+// positionBucketCount-1 buckets: positions 0 | 1-2 | 3-6 | 7-14 | 15-30 |
+// 31-62 | 63+.
+var positionBucketBounds = []int{1, 3, 7, 15, 31, 63}
+
+// positionBucket is the bucket a 0-based position falls into.
+func positionBucket(position int) int {
+	for bucket, bound := range positionBucketBounds {
+		if position < bound {
+			return bucket
+		}
+	}
+	return len(positionBucketBounds)
+}
+
+// positionBucketSQL renders positionBucket for the column holding a
+// position: the unknown bucket for NULL.
+func positionBucketSQL(column string) string {
+	var cases strings.Builder
+	fmt.Fprintf(&cases, "CASE WHEN %s IS NULL THEN %d", column, unknownPositionBucket)
+	for bucket, bound := range positionBucketBounds {
+		fmt.Fprintf(&cases, " WHEN %s < %d THEN %d", column, bound, bucket)
+	}
+	fmt.Fprintf(&cases, " ELSE %d END", len(positionBucketBounds))
+	return cases.String()
+}
+
+// outcomeQuery counts, per source, day, surface and position bucket, the
+// showings from learnWindow that are old enough to have an outcome, the opened
+// ones and their reward. Only showings on the recommendation surfaces count
+// (see recommendationSurfaces): a scene shown on a performer page or in
+// search results was not a choice of the engine. A showing is opened when a
+// logged click or a first visit of the scene follows within the attribution
+// window and no later showing of the scene (on any surface) came in between
+// (that one gets the credit). Of the opened ones, a watch that ended the
+// session (see watchWeight) or a like within the downstream window adds to
+// the reward.
+var outcomeQuery = strings.Replace(outcomeQueryTemplate, "$positionBucket", positionBucketSQL("shown.position"), 1)
+
+const outcomeQueryTemplate = `SELECT source, substr(shown_at, 1, 10) AS day, surface, bucket,
 	count(*) AS shows, sum(opened) AS clicks,
 	sum(opened * min(1.0, $rewardClick + $rewardSessionEnd * ended_session + $rewardLiked * liked)) AS reward
 	FROM (
-	  SELECT shown.source, shown.shown_at,
+	  SELECT shown.source, shown.shown_at, shown.surface, $positionBucket AS bucket,
 	    EXISTS (SELECT 1 FROM (
 	        SELECT media, shown_at AS at FROM recommendation_impression WHERE kind = 'click'
 	        UNION ALL
@@ -101,11 +162,22 @@ const outcomeQuery = `SELECT source, substr(shown_at, 1, 10) AS day,
 	        AND user_rating.updated_at <= strftime('%Y-%m-%dT%H:%M:%fZ', shown.shown_at, $downstream)) AS liked
 	  FROM recommendation_impression AS shown
 	  WHERE shown.kind = 'shown' AND shown.source != ''
+	    AND shown.surface IN (SELECT value FROM json_each($surfaces))
 	    AND shown.shown_at >= $since AND shown.shown_at <= $until
-	) GROUP BY source, day`
+	) GROUP BY source, day, surface, bucket`
 
-// sourceOutcomes reads the decayed showings and rewards of every source.
-func (e *Engine) sourceOutcomes(ctx context.Context, now time.Time) (map[string]outcomeCounts, error) {
+// outcomeCell is where showings are counted for the position model: a
+// source's showings at one position bucket of one surface.
+type outcomeCell struct {
+	source  string
+	surface string
+	bucket  int
+}
+
+// sourceOutcomes reads the decayed showings and rewards of every source, the
+// rewards corrected for the examination of the positions they were shown at.
+// The fitted examination model comes back for the log.
+func (e *Engine) sourceOutcomes(ctx context.Context, now time.Time) (map[string]outcomeCounts, *examinationModel, error) {
 	rows, err := e.database.Query(ctx, outcomeQuery, db.Vars{
 		"rewardClick":       learnRewardClick,
 		"rewardSessionEnd":  learnRewardSessionEnd,
@@ -116,13 +188,14 @@ func (e *Engine) sourceOutcomes(ctx context.Context, now time.Time) (map[string]
 		"neutral":           ratingNeutral,
 		"attribution":       fmt.Sprintf("+%d seconds", int(learnAttributionWindow.Seconds())),
 		"downstream":        fmt.Sprintf("+%d seconds", int(learnDownstreamWindow.Seconds())),
+		"surfaces":          recommendationSurfaces,
 		"since":             db.FormatTime(now.Add(-learnWindow)),
 		"until":             db.FormatTime(now.Add(-learnAttributionWindow)),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("read source outcomes: %w", err)
+		return nil, nil, fmt.Errorf("read source outcomes: %w", err)
 	}
-	out := map[string]outcomeCounts{}
+	cells := map[outcomeCell]outcomeCounts{}
 	for _, row := range rows {
 		day, err := time.Parse("2006-01-02", rowString(row, "day"))
 		if err != nil {
@@ -130,24 +203,31 @@ func (e *Engine) sourceOutcomes(ctx context.Context, now time.Time) (map[string]
 		}
 		// A day's showings are dated at its middle.
 		weight := decayFactor(now.Sub(day.Add(12*time.Hour)), AffinityHalfLife)
-		source := rowString(row, "source")
-		counts := out[source]
+		cell := outcomeCell{source: rowString(row, "source"), surface: canonicalSurface(rowString(row, "surface")), bucket: rowInt(row, "bucket")}
+		counts := cells[cell]
 		counts.shows += weight * float64(rowInt(row, "shows"))
 		counts.clicks += weight * float64(rowInt(row, "clicks"))
 		counts.reward += weight * rowFloat(row, "reward")
-		out[source] = counts
+		cells[cell] = counts
 	}
-	return out, nil
+	model := fitExamination(cells)
+	return model.correctedBySource(cells), model, nil
 }
 
 // learnPolicy reads the outcomes and draws this ranking's policy; nil (the
 // hand-set values) while there is too little data.
 func (e *Engine) learnPolicy(ctx context.Context, now time.Time) (*learnedPolicy, error) {
-	outcomes, err := e.sourceOutcomes(ctx, now)
+	if e.learningDisabled {
+		return nil, nil
+	}
+	outcomes, model, err := e.sourceOutcomes(ctx, now)
 	if err != nil {
 		return nil, err
 	}
 	policy := learnFrom(outcomes, e.random)
+	if policy != nil {
+		policy.examination = model.describe()
+	}
 	e.logPolicy(policy, now)
 	return policy, nil
 }
@@ -170,7 +250,7 @@ func learnFrom(bySource map[string]outcomeCounts, random sampler) *learnedPolicy
 	if total.shows < learnMinShows {
 		return nil
 	}
-	pooledRate := math.Max(total.reward/total.shows, learnMinPooledRate)
+	pooledRate := clampFloat(total.reward/total.shows, learnMinPooledRate, learnMaxPooledRate)
 	policy := &learnedPolicy{multipliers: map[string]float64{}, pooledRate: pooledRate, rates: map[string]float64{}}
 	for _, source := range sortedKeys(bySource) {
 		counts := bySource[source]
@@ -360,8 +440,8 @@ func (e *Engine) logPolicy(policy *learnedPolicy, now time.Time) {
 	for _, kind := range sortedKeys(policy.quotas) {
 		quotas = append(quotas, fmt.Sprintf("%s=%d", kind, policy.quotas[kind]))
 	}
-	log.Printf("recommend: learned priors (pooled reward rate %.2f%%): %s; quotas: %s",
-		100*policy.pooledRate, strings.Join(sources, " "), strings.Join(quotas, " "))
+	log.Printf("recommend: learned priors (pooled reward rate %.2f%%): %s; quotas: %s; position examination: %s",
+		100*policy.pooledRate, strings.Join(sources, " "), strings.Join(quotas, " "), policy.examination)
 }
 
 // clampFloat limits value to [low, high].

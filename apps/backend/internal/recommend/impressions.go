@@ -8,6 +8,25 @@ import (
 	"github.com/playingwithclouds/veil/internal/db"
 )
 
+// recommendationSurfaces are the surfaces whose showings were a choice of the
+// engine: Home ("home", "feed" before Android used the same name), Home's
+// shelves ("row"), the preview feed, and the empty surface of impressions
+// logged before surfaces existed (they all came from Home). Their source
+// labels are candidate sources, so only they teach the source priors and only
+// they count as "shown but not clicked". Showings on other surfaces (the
+// scene page's related list, performer/studio/tag pages, search results) are
+// logged for analysis: the user chose the page or the query there, so
+// passing a scene by says nothing against what the engine would have picked.
+var recommendationSurfaces = []string{"", "home", "feed", "row", "preview-feed"}
+
+// canonicalSurface folds the legacy Home names into "home".
+func canonicalSurface(surface string) string {
+	if surface == "" || surface == "feed" {
+		return "home"
+	}
+	return surface
+}
+
 // ignoredImpression counts the showings of one scene that no click or
 // playback followed.
 type ignoredImpression struct {
@@ -15,11 +34,13 @@ type ignoredImpression struct {
 	lastShown time.Time
 }
 
-// ignoredImpressionQuery counts, per scene, the showings since $since that the
-// user never engaged with afterwards: no logged click, first visit or playback.
+// ignoredImpressionQuery counts, per scene, the showings on the recommendation
+// surfaces since $since that the user never engaged with afterwards (on any
+// surface): no logged click, first visit or playback.
 const ignoredImpressionQuery = `SELECT impression.media, count(*) AS ignored, max(impression.shown_at) AS last_shown
 	FROM recommendation_impression AS impression
 	WHERE impression.kind = 'shown' AND impression.shown_at >= $since
+	  AND impression.surface IN (SELECT value FROM json_each($surfaces))
 	  AND NOT EXISTS (SELECT 1 FROM recommendation_impression AS click
 	    WHERE click.media = impression.media AND click.kind = 'click' AND click.shown_at >= impression.shown_at)
 	  AND NOT EXISTS (SELECT 1 FROM scene
@@ -80,7 +101,7 @@ func insertImpression(ctx context.Context, tx *db.DB, impression Impression, now
 // ignoredImpressions reads the "shown but not clicked" counts per scene.
 func (e *Engine) ignoredImpressions(ctx context.Context, now time.Time) (map[string]ignoredImpression, error) {
 	rows, err := e.database.Query(ctx, ignoredImpressionQuery,
-		db.Vars{"since": db.FormatTime(now.Add(-ignoredImpressionWindow))})
+		db.Vars{"since": db.FormatTime(now.Add(-ignoredImpressionWindow)), "surfaces": recommendationSurfaces})
 	if err != nil {
 		return nil, fmt.Errorf("read ignored impressions: %w", err)
 	}

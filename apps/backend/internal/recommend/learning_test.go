@@ -2,10 +2,13 @@ package recommend
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/playingwithclouds/veil/internal/db"
 )
 
 // seededRandom is a reproducible random source.
@@ -289,7 +292,7 @@ func TestSourceOutcomesAttributeOpensToTheLatestShowing(t *testing.T) {
 	insertRow(t, database, "recommendation_impression", "recommendation_impression:young",
 		map[string]any{"media": "scene:young", "kind": "shown", "source": "src:young", "shown_at": ago(time.Hour)})
 
-	outcomes, err := engine.sourceOutcomes(ctx, testNow)
+	outcomes, _, err := engine.sourceOutcomes(ctx, testNow)
 	if err != nil {
 		t.Fatalf("source outcomes: %v", err)
 	}
@@ -311,5 +314,169 @@ func TestSourceOutcomesAttributeOpensToTheLatestShowing(t *testing.T) {
 		assertClose(t, source+" shows", got.shows, expected.shows)
 		assertClose(t, source+" clicks", got.clicks, expected.clicks)
 		assertClose(t, source+" reward", got.reward, expected.reward)
+	}
+}
+
+func TestPositionBucketSQLMatchesGo(t *testing.T) {
+	engine, _, _ := newTestEngine(t)
+	for position := 0; position <= 200; position++ {
+		got, err := engine.database.Int(context.Background(),
+			`SELECT `+positionBucketSQL("position")+` FROM (SELECT $position AS position)`, map[string]any{"position": position})
+		if err != nil {
+			t.Fatalf("bucket of %d: %v", position, err)
+		}
+		if got != positionBucket(position) {
+			t.Fatalf("bucket of position %d: SQL %d, Go %d", position, got, positionBucket(position))
+		}
+	}
+	nullBucket, err := engine.database.Int(context.Background(), `SELECT `+positionBucketSQL("position")+` FROM (SELECT NULL AS position)`, nil)
+	if err != nil || nullBucket != unknownPositionBucket {
+		t.Errorf("bucket of NULL = %d (%v), want %d", nullBucket, err, unknownPositionBucket)
+	}
+}
+
+// cell builds an outcome cell with its showings and earned reward.
+func cell(source, surface string, bucket int, shows, reward float64) (outcomeCell, outcomeCounts) {
+	return outcomeCell{source: source, surface: surface, bucket: bucket}, outcomeCounts{shows: shows, reward: reward}
+}
+
+func TestExaminationIsRecoveredFromSourcesSharedAcrossPositions(t *testing.T) {
+	// Qualities 0.10 (A), 0.10 (B), 0.05 (C); true examination 1 at the top
+	// bucket and 0.25 at bucket 2. A only ever sits at the top and B only at
+	// bucket 2, so only C, which is at both, tells position from quality.
+	cells := map[outcomeCell]outcomeCounts{}
+	for _, entry := range []struct {
+		source string
+		bucket int
+		reward float64
+	}{{"A", 0, 100}, {"B", 2, 25}, {"C", 0, 50}, {"C", 2, 12.5}} {
+		key, counts := cell(entry.source, "home", entry.bucket, 1000, entry.reward)
+		cells[key] = counts
+	}
+	model := fitExamination(cells)
+	if got := model.of("home", 2); math.Abs(got-0.25) > 0.04 {
+		t.Errorf("fitted examination of bucket 2 = %.3f, want about 0.25", got)
+	}
+	corrected := model.correctedBySource(cells)
+	rateA := corrected["A"].reward / corrected["A"].shows
+	rateB := corrected["B"].reward / corrected["B"].shows
+	if math.Abs(rateA-rateB)/rateA > 0.15 {
+		t.Errorf("equal-quality sources A and B differ after correction: %.4f vs %.4f", rateA, rateB)
+	}
+	if raw := cells[outcomeCell{source: "B", surface: "home", bucket: 2}]; raw.reward/raw.shows > 0.5*rateA {
+		t.Errorf("uncorrected B should look much worse than A, got rate %.4f against %.4f", raw.reward/raw.shows, rateA)
+	}
+}
+
+func TestExaminationNeverBoostsMoreThanTheFloorAllows(t *testing.T) {
+	key, counts := cell("A", "home", 6, 1000, 0)
+	other, otherCounts := cell("A", "home", 0, 1000, 100)
+	model := fitExamination(map[outcomeCell]outcomeCounts{key: counts, other: otherCounts})
+	if got := model.of("home", 6); got < positionMinExposure {
+		t.Errorf("examination %.3f is under the floor %.3f", got, positionMinExposure)
+	}
+	if got := model.of("home", 0); got != 1 {
+		t.Errorf("the best-placed bucket must be 1, got %.3f", got)
+	}
+}
+
+func TestExaminationFallsBackWhenPositionsAreMissing(t *testing.T) {
+	// Showings logged before positions existed change nothing.
+	key, counts := cell("A", "home", unknownPositionBucket, 500, 20)
+	cells := map[outcomeCell]outcomeCounts{key: counts}
+	corrected := fitExamination(cells).correctedBySource(cells)
+	assertClose(t, "reward without positions", corrected["A"].reward, 20)
+
+	// Next to known positions they take the surface's average examination.
+	known, knownCounts := cell("A", "home", 0, 500, 20)
+	deep, deepCounts := cell("A", "home", 3, 500, 5)
+	cells[known], cells[deep] = knownCounts, deepCounts
+	model := fitExamination(cells)
+	mean := (model.of("home", 0) + model.of("home", 3)) / 2
+	assertClose(t, "unknown-position examination", model.of("home", unknownPositionBucket), mean)
+}
+
+func TestLegacySurfaceNamesFoldIntoHome(t *testing.T) {
+	for _, name := range []string{"", "feed", "home"} {
+		if canonicalSurface(name) != "home" {
+			t.Errorf("canonicalSurface(%q) = %q", name, canonicalSurface(name))
+		}
+	}
+	if canonicalSurface("row") != "row" {
+		t.Error("row must stay row")
+	}
+}
+
+func TestOnlyRecommendationSurfacesTeachSourcesAndCountAsIgnored(t *testing.T) {
+	engine, database, _ := newTestEngine(t)
+	ctx := context.Background()
+	for _, id := range []string{"scene:home", "scene:tag", "scene:search", "scene:related"} {
+		insertScene(t, database, id, map[string]any{})
+	}
+	for index, entry := range []struct{ media, surface string }{
+		{"scene:home", "home"}, {"scene:tag", "tag"}, {"scene:search", "search"}, {"scene:related", "related"},
+	} {
+		insertRow(t, database, "recommendation_impression", fmt.Sprintf("recommendation_impression:%d", index), map[string]any{
+			"media": entry.media, "kind": "shown", "source": "src:" + entry.surface, "surface": entry.surface,
+			"position": index, "shown_at": ago(48 * time.Hour),
+		})
+	}
+	outcomes, _, err := engine.sourceOutcomes(ctx, testNow)
+	if err != nil {
+		t.Fatalf("source outcomes: %v", err)
+	}
+	if len(outcomes) != 1 || outcomes["src:home"].shows <= 0 {
+		t.Errorf("only the Home showing may count as a source showing, got %v", outcomes)
+	}
+	ignored, err := engine.ignoredImpressions(ctx, testNow)
+	if err != nil {
+		t.Fatalf("ignored impressions: %v", err)
+	}
+	if len(ignored) != 1 || ignored["scene:home"].count != 1 {
+		t.Errorf("only the Home showing may count as ignored, got %v", ignored)
+	}
+}
+
+func TestShowingsAtDeepPositionsAreLiftedByTheirExamination(t *testing.T) {
+	engine, database, _ := newTestEngine(t)
+	ctx := context.Background()
+	day := testNow.Add(-3 * 24 * time.Hour).Truncate(24 * time.Hour)
+	counter := 0
+	// show logs a showing at a position; the clicked ones are opened by a first visit a minute later.
+	show := func(source string, position int, opened bool) {
+		counter++
+		media := fmt.Sprintf("scene:%d", counter)
+		insertScene(t, database, media, map[string]any{})
+		shownAt := day.Add(time.Duration(counter) * time.Second)
+		insertRow(t, database, "recommendation_impression", fmt.Sprintf("recommendation_impression:%d", counter), map[string]any{
+			"media": media, "kind": "shown", "source": source, "surface": "home", "position": position,
+			"shown_at": db.FormatTime(shownAt),
+		})
+		if opened {
+			if _, err := database.Exec(ctx, `UPDATE scene SET detail_fetched_at = $at WHERE id = $id`,
+				map[string]any{"at": db.FormatTime(shownAt.Add(time.Minute)), "id": media}); err != nil {
+				t.Fatalf("open %s: %v", media, err)
+			}
+		}
+	}
+	// Source "top" sits at position 0, "deep" at position 8 and "both" at each; the
+	// deep position is examined a quarter as often.
+	for index := 0; index < 400; index++ {
+		show("top", 0, index%10 < 2)
+		show("deep", 8, index%40 < 2)
+		show("both", 0, index%10 < 1)
+		show("both", 8, index%40 < 1)
+	}
+	outcomes, model, err := engine.sourceOutcomes(ctx, testNow)
+	if err != nil {
+		t.Fatalf("source outcomes: %v", err)
+	}
+	topRate := outcomes["top"].reward / outcomes["top"].shows
+	deepRate := outcomes["deep"].reward / outcomes["deep"].shows
+	if math.Abs(topRate-deepRate)/topRate > 0.25 {
+		t.Errorf("same quality at different positions: top %.4f, deep %.4f", topRate, deepRate)
+	}
+	if got := model.of("home", positionBucket(8)); math.Abs(got-0.25) > 0.07 {
+		t.Errorf("examination of position 8 = %.3f, want about 0.25", got)
 	}
 }
