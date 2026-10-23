@@ -166,6 +166,7 @@
       if (list.query_id !== state.query) continue;
       const heading = document.createElement('h2');
       heading.textContent = list.plugin + ' — ' + (list.items || []).length + ' results ';
+      if (list.kind === 'related') heading.textContent = list.plugin + ' — related to “' + list.seed_title + '” — ' + (list.items || []).length + ' results ';
       if (list.error) {
         const error = document.createElement('span');
         error.className = 'error';

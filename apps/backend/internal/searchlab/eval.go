@@ -48,6 +48,9 @@ type ListScore struct {
 	MeanGrade   float64 `json:"mean_grade"`
 	ListFit     float64 `json:"list_fit"`
 	Error       string  `json:"error,omitempty"`
+	// Kind and Seed tell a related list (see Expand) from a keyword list.
+	Kind string `json:"kind,omitempty"`
+	Seed string `json:"seed,omitempty"`
 }
 
 // Report is the whole evaluation.
@@ -65,6 +68,9 @@ type Report struct {
 func Evaluate(config *Config, snapshot *Snapshot, labels *Labels) *Report {
 	report := &Report{}
 	for _, theory := range Theories {
+		if theory.Rank == nil {
+			theory.Rank = siteTrustTheory(config, snapshot, labels)
+		}
 		report.Theories = append(report.Theories, scoreTheory(theory, config, snapshot, labels))
 	}
 	for _, query := range config.Queries {
@@ -163,7 +169,8 @@ func precision(grades []int, cutoff int) float64 {
 
 // scoreList grades one site's own list.
 func scoreList(query Query, list List, labels *Labels) ListScore {
-	score := ListScore{QueryID: query.ID, Plugin: list.Plugin, Results: len(list.Items), ListFit: ListFit(query, list), Error: list.Error}
+	score := ListScore{QueryID: query.ID, Plugin: list.Plugin, Results: len(list.Items), ListFit: ListFit(query, list), Error: list.Error,
+		Kind: list.Kind, Seed: list.SeedTitle}
 	grades := []int{}
 	gradeTotal := 0
 	for _, item := range list.Items {
@@ -194,7 +201,7 @@ func labelledCount(queryID string, items []plugins.DiscoveredItem, labels *Label
 func listFitCorrelation(lists []ListScore) float64 {
 	fits, precisions := []float64{}, []float64{}
 	for _, list := range lists {
-		if list.Results == 0 {
+		if list.Results == 0 || list.Kind != KindKeyword {
 			continue
 		}
 		fits = append(fits, list.ListFit)
@@ -268,9 +275,16 @@ func (report *Report) Print(writer io.Writer, config *Config) {
 		}
 		fmt.Fprintln(writer)
 	}
-	fmt.Fprintf(writer, "\n%-12s %-14s %7s %6s %10s %8s\n", "query", "plugin", "results", "P@10", "mean grade", "list fit")
+	fmt.Fprintf(writer, "\n%-12s %-22s %7s %6s %10s %8s\n", "query", "plugin", "results", "P@10", "mean grade", "list fit")
 	for _, list := range report.Lists {
-		line := fmt.Sprintf("%-12s %-14s %7d %6.2f %10.2f %8.2f", truncate(list.QueryID, 12), list.Plugin, list.Results, list.Precision10, list.MeanGrade, list.ListFit)
+		plugin := list.Plugin
+		if list.Kind != KindKeyword {
+			plugin += "/" + list.Kind
+		}
+		line := fmt.Sprintf("%-12s %-22s %7d %6.2f %10.2f %8.2f", truncate(list.QueryID, 12), truncate(plugin, 22), list.Results, list.Precision10, list.MeanGrade, list.ListFit)
+		if list.Seed != "" {
+			line += "  of: " + truncate(list.Seed, 50)
+		}
 		if list.Error != "" {
 			line += "  error: " + truncate(list.Error, 60)
 		}

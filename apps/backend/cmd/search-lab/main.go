@@ -4,6 +4,7 @@
 // against the grades.
 //
 //	go run ./cmd/search-lab fetch [-plugins DIR]
+//	go run ./cmd/search-lab expand [-plugins DIR]
 //	go run ./cmd/search-lab label [-addr 127.0.0.1:8099]
 //	go run ./cmd/search-lab eval [-json]
 package main
@@ -40,6 +41,8 @@ func main() {
 	switch command {
 	case "fetch":
 		runFetch(*directory, *pluginDir, config)
+	case "expand":
+		runExpand(*directory, *pluginDir, config)
 	case "label":
 		runLabel(*directory, *address, config)
 	case "eval":
@@ -64,6 +67,23 @@ func runFetch(directory, pluginDir string, config *searchlab.Config) {
 	labels, err := searchlab.LoadLabels(directory)
 	if err != nil {
 		log.Fatalf("labels: %v", err)
+	}
+	if err := searchlab.SaveSnapshot(directory, snapshot); err != nil {
+		log.Fatalf("save snapshot: %v", err)
+	}
+	if err := searchlab.SaveLabels(directory, snapshot, labels); err != nil {
+		log.Fatalf("save labels: %v", err)
+	}
+}
+
+// runExpand adds the related lists of niche queries' confident hits to the
+// snapshot and lists them in labels.tsv, keeping every grade.
+func runExpand(directory, pluginDir string, config *searchlab.Config) {
+	netdns.Configure(os.Getenv("DNS_SERVERS"), os.Getenv("DNS_SERVERS_FILE"))
+	snapshot, labels := loadSnapshotAndLabels(directory)
+	solver := strings.TrimSpace(os.Getenv("FLARESOLVERR_URL")) != ""
+	if err := searchlab.Expand(context.Background(), config, snapshot, pluginDir, solver); err != nil {
+		log.Fatalf("expand: %v", err)
 	}
 	if err := searchlab.SaveSnapshot(directory, snapshot); err != nil {
 		log.Fatalf("save snapshot: %v", err)
@@ -107,6 +127,6 @@ func loadSnapshotAndLabels(directory string) (*searchlab.Snapshot, *searchlab.La
 
 // usage explains the commands and exits.
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: search-lab fetch|label|eval [-dir searchlab] [-plugins data/plugins] [-addr 127.0.0.1:8099] [-json]")
+	fmt.Fprintln(os.Stderr, "usage: search-lab fetch|expand|label|eval [-dir searchlab] [-plugins data/plugins] [-addr 127.0.0.1:8099] [-json]")
 	os.Exit(2)
 }
