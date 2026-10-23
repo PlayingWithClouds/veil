@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand/v2"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/discovery"
+	"github.com/playingwithclouds/veil/internal/media"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/recommend"
 )
@@ -34,13 +37,39 @@ const (
 	tastePerformerLimit = 3
 	tasteStudioLimit    = 2
 	tasteTagLimit       = 3
+	// exploreTagLimit is how many of the profile's adjacent tags get their
+	// site pages pulled per run (a random pick, so every adjacent tag comes
+	// up over a few runs).
+	exploreTagLimit = 3
+	// popularPagesPerRun is how many of the most-viewed pages are listed per
+	// run, taking turns through popularPages.
+	popularPagesPerRun = 2
 	// feedRetention is how long a find is kept after it was last listed.
 	feedRetention = 30 * 24 * time.Hour
 
 	feedLastRunKey = "feeder:last-run"
 	// feedCatalogPageKey + plugin name holds the catalog page it lists next.
 	feedCatalogPageKey = "feeder:catalog-page:"
+	// feedPopularIndexKey holds the position in popularPages the next run
+	// starts at.
+	feedPopularIndexKey = "feeder:popular-index"
 )
+
+// defaultPopularPages are the most-viewed listings the feeder pulls. No plugin
+// capability asks a site for its popular videos, so these are pages of the
+// sites themselves, listed through scene:list:page by the plugin that serves
+// their host (today the kvs sites; eporner's page listing only follows
+// channels, pornstars, categories and profiles, so its "best videos" page
+// needs a plugin change first). Each was checked to list through kvs.
+var defaultPopularPages = []string{
+	"https://www.pornhat.com/most-popular/",
+	"https://ok.xxx/popular/",
+	"https://www.porngo.com/most-popular/",
+	"https://www.xozilla.com/most-popular/",
+	"https://www.perfectgirls.xxx/most-popular/",
+	"https://www.porntrex.com/most-popular/",
+	"https://xcafe.com/most-popular/",
+}
 
 // TasteSource is what the feeder needs from the recommendation engine.
 type TasteSource interface {
@@ -50,13 +79,18 @@ type TasteSource interface {
 // Feeder keeps the recommendation feed supplied without the user searching:
 // it lists each scene plugin's catalog and the site pages of the top-affinity
 // performers, studios and tags, ingests the scenes as stubs and records them
-// in feed_discovery, where the engine's discover:* sources read them. It runs
-// every feedInterval, and sooner when the engine reports a short pool.
+// in feed_discovery, where the engine's discover:* and explore:site sources
+// read them. Beyond the user's taste it lists the site pages of the profile's
+// adjacent tags (exploration from the sites rather than the library) and a few
+// most-viewed pages. It runs every feedInterval, and sooner when the engine
+// reports a short pool.
 type Feeder struct {
 	scheduler *Scheduler
 	database  *db.DB
 	taste     TasteSource
 	marks     FetchMarks
+	// popularPages are the most-viewed listings taken turns through.
+	popularPages []string
 	// onFed is called after a run that stored scenes.
 	onFed func()
 
@@ -67,7 +101,7 @@ type Feeder struct {
 
 // NewFeeder creates a feeder on top of the scheduler's discovery; onFed may be nil.
 func NewFeeder(scheduler *Scheduler, database *db.DB, taste TasteSource, marks FetchMarks, onFed func()) *Feeder {
-	return &Feeder{scheduler: scheduler, database: database, taste: taste, marks: marks, onFed: onFed}
+	return &Feeder{scheduler: scheduler, database: database, taste: taste, marks: marks, popularPages: defaultPopularPages, onFed: onFed}
 }
 
 // Start runs whenever the last successful run is older than feedInterval,
@@ -139,25 +173,37 @@ func (f *Feeder) release() {
 	f.running = false
 }
 
-// Run pulls the catalog and taste pages once and returns how many scenes it
-// recorded. A run that stored anything counts as the interval's run; one
-// that found nothing (no plugins installed yet, offline) is retried at the
-// next check. Listing failures are joined into the error.
+// Run pulls the catalog, taste, explore and popular pages once and returns how
+// many scenes it recorded. A run that stored anything counts as the
+// interval's run; one that found nothing (no plugins installed yet, offline)
+// is retried at the next check. Listing failures are joined into the error.
 func (f *Feeder) Run(ctx context.Context) (int, error) {
 	catalogStored, catalogErr := f.feedCatalog(ctx, f.scheduler.discovery.Plugins(nil))
-	tasteStored, tasteErr := f.feedTaste(ctx)
-	stored := catalogStored + tasteStored
+	profile, profileErr := f.taste.Profile(ctx)
+	stored := catalogStored
+	failures := []error{catalogErr}
+	if profileErr != nil {
+		failures = append(failures, fmt.Errorf("taste profile: %w", profileErr))
+	} else {
+		tasteStored, tasteErr := f.feedTaste(ctx, profile)
+		exploreStored, exploreErr := f.feedExplore(ctx, profile)
+		stored += tasteStored + exploreStored
+		failures = append(failures, tasteErr, exploreErr)
+	}
+	popularStored, popularErr := f.feedPopular(ctx)
+	stored += popularStored
+	failures = append(failures, popularErr)
 	recordContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
 	defer cancel()
-	pruneErr := f.prune(recordContext)
+	failures = append(failures, f.prune(recordContext))
 	if stored == 0 {
-		return 0, errors.Join(catalogErr, tasteErr, pruneErr)
+		return 0, errors.Join(failures...)
 	}
-	markErr := f.marks.Set(recordContext, feedLastRunKey, db.FormatTime(time.Now()), feedInterval)
+	failures = append(failures, f.marks.Set(recordContext, feedLastRunKey, db.FormatTime(time.Now()), feedInterval))
 	if f.onFed != nil {
 		f.onFed()
 	}
-	return stored, errors.Join(catalogErr, tasteErr, pruneErr, markErr)
+	return stored, errors.Join(failures...)
 }
 
 // FeedSites lists the next catalog page of the named plugins right away and
@@ -231,18 +277,26 @@ func (f *Feeder) nextCatalogPage(ctx context.Context, pluginName string) int {
 
 // feedTaste pulls the scenes of the profile's top performers, studios and
 // tags, one entity after another to stay gentle on the sites.
-func (f *Feeder) feedTaste(ctx context.Context) (int, error) {
-	profile, err := f.taste.Profile(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("taste profile: %w", err)
-	}
+func (f *Feeder) feedTaste(ctx context.Context, profile *recommend.Profile) (int, error) {
+	return f.feedEntities(ctx, "taste", tasteEntities(profile))
+}
+
+// feedExplore pulls the site pages of a few of the profile's adjacent tags:
+// subjects close to what the user likes that they have not seen much of.
+func (f *Feeder) feedExplore(ctx context.Context, profile *recommend.Profile) (int, error) {
+	return f.feedEntities(ctx, "explore", exploreTags(profile))
+}
+
+// feedEntities fetches each entity's scenes in turn and records them under
+// source.
+func (f *Feeder) feedEntities(ctx context.Context, source string, entityIDs []string) (int, error) {
 	stored := 0
 	var failures []error
-	for _, entityID := range tasteEntities(profile) {
+	for _, entityID := range entityIDs {
 		if ctx.Err() != nil {
 			break
 		}
-		count, err := f.feedEntity(ctx, entityID)
+		count, err := f.feedEntity(ctx, source, entityID)
 		stored += count
 		if err != nil {
 			failures = append(failures, fmt.Errorf("%s: %w", entityID, err))
@@ -258,13 +312,81 @@ func tasteEntities(profile *recommend.Profile) []string {
 	return append(entities, recommend.TopEntities(profile.Tags, tasteTagLimit)...)
 }
 
-// feedEntity fetches one entity's scenes and records them.
-func (f *Feeder) feedEntity(ctx context.Context, entityID string) (int, error) {
+// exploreTags picks up to exploreTagLimit of the profile's adjacent tags at
+// random.
+func exploreTags(profile *recommend.Profile) []string {
+	tagIDs := append([]string(nil), profile.AdjacentTags...)
+	rand.Shuffle(len(tagIDs), func(first, second int) { tagIDs[first], tagIDs[second] = tagIDs[second], tagIDs[first] })
+	if len(tagIDs) > exploreTagLimit {
+		tagIDs = tagIDs[:exploreTagLimit]
+	}
+	return tagIDs
+}
+
+// feedEntity fetches one entity's scenes and records them under source.
+func (f *Feeder) feedEntity(ctx context.Context, source, entityID string) (int, error) {
 	fetchContext, cancel := context.WithTimeout(ctx, feedListTimeout)
 	defer cancel()
 	sceneIDs, fetchErr := f.scheduler.fetchEntity(fetchContext, entityID)
-	count, err := f.record(ctx, "taste", entityID, onlyScenes(sceneIDs))
+	count, err := f.record(ctx, source, entityID, onlyScenes(sceneIDs))
 	return count, errors.Join(fetchErr, err)
+}
+
+// feedPopular lists the next popularPagesPerRun most-viewed pages, taking
+// turns through popularPages across runs, and records each under its host.
+func (f *Feeder) feedPopular(ctx context.Context) (int, error) {
+	stored := 0
+	var failures []error
+	for _, pageURL := range f.nextPopularPages(ctx) {
+		if ctx.Err() != nil {
+			break
+		}
+		count, err := f.feedPopularPage(ctx, pageURL)
+		stored += count
+		if err != nil {
+			failures = append(failures, fmt.Errorf("%s: %w", pageURL, err))
+		}
+	}
+	return stored, errors.Join(failures...)
+}
+
+// nextPopularPages returns the pages this run lists and stores where the next
+// run continues.
+func (f *Feeder) nextPopularPages(ctx context.Context) []string {
+	if len(f.popularPages) == 0 {
+		return nil
+	}
+	start := 0
+	if value, err := f.marks.Get(ctx, feedPopularIndexKey); err == nil {
+		start, _ = strconv.Atoi(value)
+	}
+	count := min(popularPagesPerRun, len(f.popularPages))
+	pages := make([]string, 0, count)
+	for offset := range count {
+		pages = append(pages, f.popularPages[(start+offset)%len(f.popularPages)])
+	}
+	next := (start + count) % len(f.popularPages)
+	if err := f.marks.Set(ctx, feedPopularIndexKey, strconv.Itoa(next), 0); err != nil {
+		log.Printf("feeder: store popular index: %v", err)
+	}
+	return pages
+}
+
+// feedPopularPage lists one most-viewed page through the plugin serving its
+// host and records its scenes under that host. A page no installed plugin
+// serves is skipped.
+func (f *Feeder) feedPopularPage(ctx context.Context, pageURL string) (int, error) {
+	parsed, err := url.Parse(pageURL)
+	if err != nil {
+		return 0, err
+	}
+	listContext, cancel := context.WithTimeout(ctx, feedListTimeout)
+	defer cancel()
+	mediaIDs, listed, listErr := f.scheduler.listEntityPage(listContext, &media.EntityOrigin{SourceURL: pageURL})
+	if !listed {
+		return 0, listErr
+	}
+	return f.record(ctx, "popular", parsed.Host, onlyScenes(mediaIDs))
 }
 
 // onlyScenes keeps the scene ids of a mixed media id list.
