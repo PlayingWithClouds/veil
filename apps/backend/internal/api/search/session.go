@@ -185,15 +185,36 @@ func (s *searchSession) send(source, id string, hit searchrank.Hit) {
 // list named list (empty for the plain keyword search). pageEntityID is the
 // entity whose site page the list is, if any.
 func (s *searchSession) pluginHit(list string) func(discovery.Hit) {
-	return s.pageHit(list, "")
+	return s.pageHit(list, nil)
 }
 
-// pageHit is pluginHit for a list that is an entity's site page.
-func (s *searchSession) pageHit(list, pageEntityID string) func(discovery.Hit) {
+// pageHit is pluginHit for a list that is an entity's site page (page is that
+// entity, nil for other lists). A scene on a performer's or studio's page is
+// hers by definition, but the listing does not say so: the hit is given her
+// name as credit, so it scores as the credited scene it is.
+func (s *searchSession) pageHit(list string, page *searchrank.EntityMatch) func(discovery.Hit) {
 	return func(found discovery.Hit) {
 		hit := searchrank.Hit{Source: found.Plugin, ID: found.ID, Item: found.Item, List: list}
+		pageEntityID := ""
+		if page != nil {
+			pageEntityID = page.ID
+			creditPageEntity(&hit, *page)
+		}
 		s.annotate(&hit, pageEntityID)
 		s.send(found.Plugin, found.ID, hit)
+	}
+}
+
+// creditPageEntity names the performer or studio whose page listed the hit
+// among the names its text is matched against.
+func creditPageEntity(hit *searchrank.Hit, page searchrank.EntityMatch) {
+	switch page.Kind {
+	case searchrank.KindPerformer:
+		hit.Performers = append(hit.Performers, page.Name)
+	case searchrank.KindStudio:
+		if hit.Studio == "" {
+			hit.Studio = page.Name
+		}
 	}
 }
 
@@ -270,7 +291,7 @@ func (s *searchSession) listPage(match searchrank.EntityMatch, limit int) {
 		log.Printf("search: entity origin %s: %v", match.ID, err)
 		return
 	}
-	onHit := s.pageHit("page:"+match.ID, match.ID)
+	onHit := s.pageHit("page:"+match.ID, &match)
 	for _, plugin := range s.handler.pages.PagePlugins(origin) {
 		listed := 0
 		err := s.handler.discovery.ListPage(s.ctx, plugin, origin.SourceURL, limit, func(found discovery.Hit) {
