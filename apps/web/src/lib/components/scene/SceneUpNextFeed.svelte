@@ -12,6 +12,8 @@
 	import { sceneUrl } from '$lib/routes';
 	import type { PerformerRef } from '$lib/sceneDetail';
 	import type { RelatedFeed } from './relatedFeed.svelte';
+	import { impression, recordClicked, type ShownEvent } from '$lib/recommendations';
+	import { relatedImpression } from './relatedImpressions';
 
 	type Source = 'all' | 'related' | 'forYou' | 'performer';
 
@@ -22,6 +24,8 @@
 		sourceUrl: string;
 		// Stored in the library; site results aren't until opened.
 		actionable: boolean;
+		// The card's impression at a position of the list.
+		impressionAt: (position: number) => ShownEvent;
 		open: () => void;
 	};
 
@@ -118,6 +122,7 @@
 			scene: feedItemToSceneHit(item),
 			sourceUrl: item.sourceUrl,
 			actionable: Boolean(item.sceneId || item.dbId),
+			impressionAt: (position) => relatedImpression(item, position),
 			open: () => onopen(item)
 		};
 	}
@@ -129,8 +134,15 @@
 			scene: hit,
 			sourceUrl: hit.sourceUrl,
 			actionable: true,
+			impressionAt: (position) => ({ mediaId: hit.id, surface: 'related', position }),
 			open: () => goto(sceneUrl(hit.id))
 		};
+	}
+
+	/** Logs the click with the card's place in the list, then opens it. */
+	function openCard(card: Card, position: number) {
+		recordClicked(card.impressionAt(position));
+		card.open();
 	}
 
 	/** The chips; the performer's only when the scene credits one. */
@@ -180,14 +192,16 @@
 		<p class="text-base-content/40 py-6 text-sm">Nothing here yet.</p>
 	{/if}
 	<div class="flex flex-col gap-6">
-		{#each cards as card (card.key)}
-			<ExploreSceneCard
-				scene={card.scene}
-				site={pluginForUrl(card.sourceUrl, sites)}
-				actionable={card.actionable}
-				opening={openingUrl === card.sourceUrl}
-				onclick={card.open}
-			/>
+		{#each cards as card, position (card.key)}
+			<div use:impression={card.impressionAt(position)}>
+				<ExploreSceneCard
+					scene={card.scene}
+					site={pluginForUrl(card.sourceUrl, sites)}
+					actionable={card.actionable}
+					opening={openingUrl === card.sourceUrl}
+					onclick={() => openCard(card, position)}
+				/>
+			</div>
 		{/each}
 	</div>
 	{#if loading && cards.length > 0}

@@ -5,6 +5,8 @@
 	import { fetchSearchPlugins, pluginForUrl, type PluginSearchResult, type SearchPlugin } from '$lib/search';
 	import type { RelatedFeed } from './relatedFeed.svelte';
 	import RailCard from './RailCard.svelte';
+	import { relatedImpression } from './relatedImpressions';
+	import { impression, recordClicked } from '$lib/recommendations';
 
 	type Direction = 'left' | 'right' | 'up' | 'down';
 
@@ -26,6 +28,12 @@
 
 	let list = $state<{ focusFirst: () => void } | undefined>();
 	let sentinel = $state<HTMLElement | null>(null);
+
+	/** Logs the click with the item's place in the rail, then opens it. */
+	function openItem(item: PluginSearchResult, position: number) {
+		recordClicked(relatedImpression(item, position));
+		onopen(item);
+	}
 
 	/** Moves D-pad focus onto the first rail card. */
 	export function focusFirst() {
@@ -66,15 +74,17 @@
 		orientation="vertical"
 		ariaLabel="Up next"
 		class="[--tv-gap:0.5rem]"
-		onselect={(item) => onopen(item)}
+		onselect={openItem}
 		onedge={handleEdge}
 	>
-		{#snippet item(entry)}
-			<RailCard
-				item={entry}
-				site={pluginForUrl(entry.sourceUrl, sites)}
-				opening={openingUrl === entry.sourceUrl}
-			/>
+		{#snippet item(entry, position)}
+			<div use:impression={relatedImpression(entry, position)}>
+				<RailCard
+					item={entry}
+					site={pluginForUrl(entry.sourceUrl, sites)}
+					opening={openingUrl === entry.sourceUrl}
+				/>
+			</div>
 		{/snippet}
 	</FocusList>
 	{#if feed.loading}

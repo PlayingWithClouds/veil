@@ -26,7 +26,13 @@
 		supportsMediaFilter,
 		type SearchPlugin
 	} from '$lib/search';
-	import { impression, recordClicked, resetShownImpressions } from '$lib/recommendations';
+	import {
+		impression,
+		recordClicked,
+		resetShownImpressions,
+		type ImpressionSurface,
+		type ShownEvent
+	} from '$lib/recommendations';
 	import {
 		searchPerformers,
 		searchStudios,
@@ -57,7 +63,7 @@
 	// Placeholder cards while the first page loads.
 	const SKELETON_CARDS = 6;
 	// Impression surface for recommendation-engine feedback.
-	const IMPRESSION_SURFACE = 'home';
+	const IMPRESSION_SURFACE: ImpressionSurface = 'home';
 
 	// The query lives in the top bar. It is seeded from the URL so returning here
 	// (back button, or Enter from another page) restores that search.
@@ -96,6 +102,8 @@
 	// Candidate source of each recommended scene, keyed by scene id, for the
 	// impressions sent back to the engine. Empty while searching.
 	let recommendationSources = new Map<string, string>();
+	// Place of each recommended scene in the feed (0-based, across pages).
+	let recommendationPositions = new Map<string, number>();
 	// When the engine ranked the feed on screen; the cache expires from here.
 	let feedBuiltAt = 0;
 	// Set by the refresh button: the next first page asks the engine to re-rank
@@ -151,6 +159,7 @@
 		gridItems = [];
 		shownKeys = new Set();
 		recommendationSources = new Map();
+		recommendationPositions = new Map();
 		resetShownImpressions();
 		sceneOffset = 0;
 		galleryOffset = 0;
@@ -193,9 +202,12 @@
 			refresh,
 			activeSources
 		);
+		recommended.forEach((entry, index) => {
+			recommendationSources.set(entry.scene.id, entry.source);
+			recommendationPositions.set(entry.scene.id, sceneOffset + index);
+		});
 		sceneOffset += recommended.length;
 		sceneFeedDone = recommended.length < SCENE_PAGE_SIZE;
-		for (const entry of recommended) recommendationSources.set(entry.scene.id, entry.source);
 		return recommended.map((entry) => entry.scene);
 	}
 
@@ -222,6 +234,7 @@
 		studios = [];
 		feedBuiltAt = cached.savedAt;
 		recommendationSources = new Map(cached.recommendationSources);
+		recommendationPositions = new Map(cached.recommendationPositions);
 		sceneOffset = cached.sceneOffset;
 		galleryOffset = cached.galleryOffset;
 		sceneFeedDone = cached.sceneFeedDone;
@@ -250,6 +263,7 @@
 			sceneFeedDone,
 			galleryFeedDone,
 			recommendationSources,
+			recommendationPositions,
 			scrollTop: scrollContainer()?.scrollTop ?? 0
 		});
 	});
@@ -414,10 +428,13 @@
 	}
 
 	/** The impression for a recommended scene card; empty id (skipped) while searching. */
-	function impressionFor(scene: SceneHit) {
+	function impressionFor(scene: SceneHit): ShownEvent {
 		const source = recommendationSources.get(scene.id);
-		if (source === undefined) return { mediaId: '' };
-		return { mediaId: scene.id, source, surface: IMPRESSION_SURFACE };
+		const position = recommendationPositions.get(scene.id);
+		if (source === undefined || position === undefined) {
+			return { mediaId: '', surface: IMPRESSION_SURFACE, position: 0 };
+		}
+		return { mediaId: scene.id, source, surface: IMPRESSION_SURFACE, position };
 	}
 
 	/** Opens a scene, telling the engine when it was a recommendation. */

@@ -16,6 +16,8 @@ export interface HomeFeedSnapshot {
 	sceneFeedDone: boolean;
 	galleryFeedDone: boolean;
 	recommendationSources: Map<string, string>;
+	// Place of each recommended scene in the feed, for its impression.
+	recommendationPositions: Map<string, number>;
 	scrollTop: number;
 }
 
