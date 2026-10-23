@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search lab — labelling</title>
+<style>
+  :root { color-scheme: dark; --accent: #e5484d; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #111; color: #ddd; }
+  header { position: sticky; top: 0; z-index: 2; background: #181818; border-bottom: 1px solid #333; padding: 10px 16px; }
+  header .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tab { background: #262626; border: 1px solid #333; color: #ddd; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .tab.active { border-color: var(--accent); color: #fff; }
+  .tab small { color: #888; margin-left: 6px; }
+  .help { color: #888; margin-top: 6px; font-size: 12px; }
+  .note { color: #aaa; margin-top: 4px; }
+  main { padding: 16px; }
+  h2 { font-size: 15px; margin: 20px 0 8px; color: #fff; }
+  h2 .error { color: var(--accent); font-weight: normal; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card { background: #1c1c1c; border: 2px solid transparent; border-radius: 10px; overflow: hidden; cursor: pointer; }
+  .card.focused { border-color: #888; }
+  .card[data-grade="0"] { border-color: #555; opacity: 0.55; }
+  .card[data-grade="1"] { border-color: #a37b2c; }
+  .card[data-grade="2"] { border-color: #3a8f52; }
+  .card[data-grade="3"] { border-color: #3fd07a; }
+  .thumb { position: relative; aspect-ratio: 16 / 9; background: #000; }
+  .thumb img, .thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .badge { position: absolute; left: 6px; top: 6px; background: #000a; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .duration { left: auto; right: 6px; }
+  .title { padding: 6px 8px 0; height: 3.9em; overflow: hidden; }
+  .grades { display: flex; gap: 4px; padding: 6px 8px 8px; align-items: center; }
+  .grades button { flex: 1; background: #262626; border: 1px solid #333; color: #ccc; border-radius: 6px; padding: 3px 0; cursor: pointer; }
+  .grades button.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .grades a { color: #888; font-size: 12px; margin-left: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row" id="tabs"></div>
+  <div class="note" id="note"></div>
+  <div class="help">Grade: 0 wrong · 1 loosely related · 2 fits · 3 exactly it. Keys: 0–3 grade the focused card and move on, ← → move, Backspace clears, o opens the page. Hover plays the preview.</div>
+</header>
+<main id="main"></main>
+<script>
+  const state = { data: null, query: null, cards: [], focus: 0 };
+  const labels = ['wrong', 'loose', 'fits', 'exactly'];
+
+  async function load() {
+    state.data = await (await fetch('/api/data')).json();
+    state.data.grades = state.data.grades || {};
+    state.query = state.data.queries[0].id;
+    render();
+  }
+
+  function gradeOf(queryId, key) {
+    const grades = state.data.grades[queryId];
+    if (!grades || !(key in grades)) return null;
+    return grades[key];
+  }
+
+  function progress(queryId) {
+    let total = 0, done = 0;
+    for (const list of state.data.lists) {
+      if (list.query_id !== queryId) continue;
+      for (const item of list.items || []) {
+        total++;
+        if (gradeOf(queryId, item.source_url) !== null) done++;
+      }
+    }
+    return done + '/' + total;
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('tabs');
+    tabs.innerHTML = '';
+    for (const query of state.data.queries) {
+      const tab = document.createElement('button');
+      tab.className = 'tab';
+      tab.classList.toggle('active', query.id === state.query);
+      tab.textContent = query.text;
+      const count = document.createElement('small');
+      count.textContent = progress(query.id);
+      tab.append(count);
+      tab.onclick = () => { state.query = query.id; state.focus = 0; render(); };
+      tabs.append(tab);
+    }
+    const current = state.data.queries.find((query) => query.id === state.query);
+    document.getElementById('note').textContent = current.note || '';
+  }
+
+  function formatDuration(seconds) {
+    if (!seconds) return '';
+    const minutes = Math.floor(seconds / 60);
+    return minutes + ':' + String(seconds % 60).padStart(2, '0');
+  }
+
+  function cardFor(item, list, index) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const grade = gradeOf(state.query, item.source_url);
+    if (grade !== null) card.dataset.grade = grade;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const image = document.createElement('img');
+    image.src = item.poster_path || '';
+    image.loading = 'lazy';
+    image.referrerPolicy = 'no-referrer';
+    thumb.append(image);
+    const place = document.createElement('span');
+    place.className = 'badge';
+    place.textContent = list.plugin + ' #' + (index + 1);
+    thumb.append(place);
+    if (item.duration_seconds) {
+      const duration = document.createElement('span');
+      duration.className = 'badge duration';
+      duration.textContent = formatDuration(item.duration_seconds);
+      thumb.append(duration);
+    }
+    if (item.preview_video) {
+      card.addEventListener('mouseenter', () => {
+        const video = document.createElement('video');
+        video.src = item.preview_video;
+        video.muted = true; video.autoplay = true; video.loop = true; video.playsInline = true;
+        video.onerror = () => video.remove();
+        thumb.append(video);
+      });
+      card.addEventListener('mouseleave', () => thumb.querySelectorAll('video').forEach((video) => video.remove()));
+    }
+    card.append(thumb);
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = item.title;
+    card.append(title);
+
+    const buttons = document.createElement('div');
+    buttons.className = 'grades';
+    for (let value = 0; value <= 3; value++) {
+      const button = document.createElement('button');
+      button.textContent = value;
+      button.title = labels[value];
+      button.classList.toggle('chosen', grade === value);
+      button.onclick = (event) => { event.stopPropagation(); setGrade(item.source_url, value); };
+      buttons.append(button);
+    }
+    const open = document.createElement('a');
+    open.href = item.source_url; open.target = '_blank'; open.rel = 'noreferrer'; open.textContent = 'open';
+    open.onclick = (event) => event.stopPropagation();
+    buttons.append(open);
+    card.append(buttons);
+
+    const cardIndex = state.cards.length;
+    card.onclick = () => focusCard(cardIndex);
+    card.addEventListener('mouseenter', () => focusCard(cardIndex, false));
+    state.cards.push({ element: card, key: item.source_url });
+    return card;
+  }
+
+  function render() {
+    renderTabs();
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    state.cards = [];
+    for (const list of state.data.lists) {
+      if (list.query_id !== state.query) continue;
+      const heading = document.createElement('h2');
+      heading.textContent = list.plugin + ' — ' + (list.items || []).length + ' results ';
+      if (list.error) {
+        const error = document.createElement('span');
+        error.className = 'error';
+        error.textContent = list.error;
+        heading.append(error);
+      }
+      main.append(heading);
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      (list.items || []).forEach((item, index) => grid.append(cardFor(item, list, index)));
+      main.append(grid);
+    }
+    focusCard(Math.min(state.focus, state.cards.length - 1), false);
+  }
+
+  function focusCard(index, scroll = true) {
+    if (index < 0 || index >= state.cards.length) return;
+    state.cards[state.focus]?.element.classList.remove('focused');
+    state.focus = index;
+    const card = state.cards[index].element;
+    card.classList.add('focused');
+    if (scroll) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  async function setGrade(key, grade) {
+    const response = await fetch('/api/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: state.query, key, grade }),
+    });
+    if (!response.ok) { alert('Saving failed: ' + await response.text()); return; }
+    state.data.grades[state.query] = state.data.grades[state.query] || {};
+    if (grade < 0) delete state.data.grades[state.query][key];
+    else state.data.grades[state.query][key] = grade;
+    const focus = state.focus;
+    render();
+    if (grade >= 0) focusCard(focus + 1);
+  }
+
+  document.addEventListener('keydown', (event) => {
+    const card = state.cards[state.focus];
+    if (!card) return;
+    if (event.key >= '0' && event.key <= '3') setGrade(card.key, Number(event.key));
+    else if (event.key === 'Backspace') { event.preventDefault(); setGrade(card.key, -1); }
+    else if (event.key === 'ArrowRight') focusCard(state.focus + 1);
+    else if (event.key === 'ArrowLeft') focusCard(state.focus - 1);
+    else if (event.key === 'o') window.open(card.key, '_blank', 'noreferrer');
+  });
+
+  load();
+</script>
+</body>
+</html>
