@@ -19,22 +19,52 @@ func TestWatchWeightClassifiesWatches(t *testing.T) {
 		progress    int
 		duration    int
 		completed   bool
+		followed    bool
 		sinceUpdate time.Duration
 		wantWeight  float64
 		wantCounts  bool
 	}{
-		{"flagged completed", 30, 600, true, time.Hour, weightCompletedWatch, true},
-		{"reached 80%", 480, 600, false, time.Hour, weightCompletedWatch, true},
-		{"partial", 200, 600, false, time.Hour, weightPartialWatch, true},
-		{"under ten seconds", 8, 600, false, time.Hour, weightEarlyAbandon, true},
-		{"under five percent", 20, 600, false, time.Hour, weightEarlyAbandon, true},
-		{"unknown runtime, past ten seconds", 20, 0, false, time.Hour, weightPartialWatch, true},
-		{"just started", 2, 600, false, time.Minute, 0, false},
+		{"ended the session mid-video", 300, 1200, false, false, time.Hour, weightSessionEnd, true},
+		{"ended the session at the end", 1200, 1200, true, false, time.Hour, weightSessionEnd, true},
+		{"completed, then another", 1200, 1200, true, true, time.Hour, weightCompletedWatch, true},
+		{"reached 80%, then another", 1000, 1200, false, true, time.Hour, weightCompletedWatch, true},
+		{"partial, then another", 300, 1200, false, true, time.Hour, weightPartialWatch, true},
+		{"session still open", 300, 1200, false, false, 10 * time.Minute, weightPartialWatch, true},
+		{"last, but under a minute", 40, 600, false, false, time.Hour, weightPartialWatch, true},
+		{"under ten seconds", 8, 600, false, false, time.Hour, weightEarlyAbandon, true},
+		{"under five percent", 20, 600, false, true, time.Hour, weightEarlyAbandon, true},
+		{"unknown runtime, then another", 20, 0, false, true, time.Hour, weightPartialWatch, true},
+		{"just started", 2, 600, false, false, time.Minute, 0, false},
 	}
 	for _, testCase := range cases {
-		weight, counts := watchWeight(testCase.progress, testCase.duration, testCase.completed, testCase.sinceUpdate)
+		entry := watch{progressSeconds: testCase.progress, durationSeconds: testCase.duration, completed: testCase.completed}
+		weight, counts := watchWeight(entry, testCase.followed, testCase.sinceUpdate)
 		if weight != testCase.wantWeight || counts != testCase.wantCounts {
 			t.Errorf("%s: got (%v, %v), want (%v, %v)", testCase.name, weight, counts, testCase.wantWeight, testCase.wantCounts)
+		}
+	}
+}
+
+func TestFollowedWatchesFindsTheSessionsLastWatch(t *testing.T) {
+	base := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	minutes := func(count int) time.Time { return base.Add(time.Duration(count) * time.Minute) }
+	watches := []watch{
+		// Followed by "second", which starts ten minutes after it stopped.
+		{sceneID: "scene:first", startedAt: minutes(0), lastActivityAt: minutes(20)},
+		// Last of the evening.
+		{sceneID: "scene:second", startedAt: minutes(30), lastActivityAt: minutes(50)},
+		// The next day: too late to follow "second".
+		{sceneID: "scene:tomorrow", startedAt: minutes(24 * 60), lastActivityAt: minutes(24*60 + 15)},
+		// A row reused by a replay: it was first started long ago, but its
+		// last activity follows "early" within the gap.
+		{sceneID: "scene:early", startedAt: minutes(-600), lastActivityAt: minutes(-590)},
+		{sceneID: "scene:replayed", startedAt: minutes(-2000), lastActivityAt: minutes(-570)},
+	}
+	got := followedWatches(watches)
+	want := []bool{true, false, false, true, false}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Errorf("%s: followed = %v, want %v", watches[index].sceneID, got[index], want[index])
 		}
 	}
 }

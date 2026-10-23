@@ -244,7 +244,7 @@ func TestSourceOutcomesAttributeOpensToTheLatestShowing(t *testing.T) {
 	day := testNow.Add(-3 * 24 * time.Hour).Truncate(24 * time.Hour)
 	at := func(offset time.Duration) string { return ago(testNow.Sub(day.Add(offset))) }
 
-	for _, id := range []string{"scene:clicked", "scene:reshown", "scene:ignored", "scene:visited", "scene:late", "scene:young"} {
+	for _, id := range []string{"scene:clicked", "scene:reshown", "scene:ignored", "scene:visited", "scene:late", "scene:young", "scene:followed", "scene:next"} {
 		insertScene(t, database, id, map[string]any{})
 	}
 	counter := 0
@@ -269,10 +269,18 @@ func TestSourceOutcomesAttributeOpensToTheLatestShowing(t *testing.T) {
 	visit("scene:reshown", 3*time.Hour+time.Minute)
 	// Never opened.
 	impression("scene:ignored", "shown", "src:ignored", 4*time.Hour)
-	// Opened by a first visit, then watched to the end and liked: full reward.
+	// Opened by a first visit, then watched until the session ended and liked: full reward.
 	impression("scene:visited", "shown", "src:visit", 5*time.Hour)
 	visit("scene:visited", 5*time.Hour+time.Minute)
-	insertRow(t, database, "watch_history", "watch_history:visited", map[string]any{"media": "scene:visited", "completed": true, "updated_at": at(6 * time.Hour)})
+	insertRow(t, database, "watch_history", "watch_history:visited", map[string]any{"media": "scene:visited", "max_progress_seconds": 600,
+		"started_at": at(5*time.Hour + 2*time.Minute), "updated_at": at(6 * time.Hour)})
+	// Opened and watched to the end, but another video followed: the open only.
+	impression("scene:followed", "shown", "src:followed", 8*time.Hour)
+	visit("scene:followed", 8*time.Hour+time.Minute)
+	insertRow(t, database, "watch_history", "watch_history:followed", map[string]any{"media": "scene:followed", "completed": true, "max_progress_seconds": 600,
+		"started_at": at(8*time.Hour + 2*time.Minute), "updated_at": at(9 * time.Hour)})
+	insertRow(t, database, "watch_history", "watch_history:next", map[string]any{"media": "scene:next", "max_progress_seconds": 30,
+		"started_at": at(9*time.Hour + 5*time.Minute), "updated_at": at(9*time.Hour + 6*time.Minute)})
 	insertRow(t, database, "user_rating", "user_rating:visited", map[string]any{"media": "scene:visited", "rating": 9.0, "updated_at": at(6 * time.Hour)})
 	// Opened only after the attribution window: not this showing's doing.
 	impression("scene:late", "shown", "src:late", 1*time.Hour)
@@ -287,12 +295,13 @@ func TestSourceOutcomesAttributeOpensToTheLatestShowing(t *testing.T) {
 	}
 	weight := decayFactor(testNow.Sub(day.Add(12*time.Hour)), AffinityHalfLife)
 	want := map[string]outcomeCounts{
-		"src:click":   {shows: weight, clicks: weight, reward: weight * learnRewardClick},
-		"src:first":   {shows: weight},
-		"src:second":  {shows: weight, clicks: weight, reward: weight * learnRewardClick},
-		"src:ignored": {shows: weight},
-		"src:visit":   {shows: weight, clicks: weight, reward: weight},
-		"src:late":    {shows: weight},
+		"src:click":    {shows: weight, clicks: weight, reward: weight * learnRewardClick},
+		"src:first":    {shows: weight},
+		"src:second":   {shows: weight, clicks: weight, reward: weight * learnRewardClick},
+		"src:ignored":  {shows: weight},
+		"src:visit":    {shows: weight, clicks: weight, reward: weight},
+		"src:late":     {shows: weight},
+		"src:followed": {shows: weight, clicks: weight, reward: weight * learnRewardClick},
 	}
 	if len(outcomes) != len(want) {
 		t.Errorf("outcomes %v, want sources %v only", outcomes, want)
