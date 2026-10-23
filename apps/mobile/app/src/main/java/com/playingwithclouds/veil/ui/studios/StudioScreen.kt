@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.ui.studios
 
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,11 +15,14 @@ import com.playingwithclouds.veil.data.EntityFilter
 import com.playingwithclouds.veil.data.EntityRepository
 import com.playingwithclouds.veil.data.FollowKind
 import com.playingwithclouds.veil.data.GallerySummary
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.StudioDetail
+import com.playingwithclouds.veil.data.TaggedScene
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FollowButton
 import com.playingwithclouds.veil.ui.components.LoadStateContent
+import com.playingwithclouds.veil.ui.components.LogShownScenes
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SceneCard
 import com.playingwithclouds.veil.ui.components.TagChips
@@ -26,6 +30,7 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.MergeKind
 import com.playingwithclouds.veil.ui.components.MergeMenuButton
 import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.logSceneClicked
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.entity.ChannelHeader
@@ -134,9 +139,13 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
         },
     ) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { studio ->
+            val gridState = rememberLazyGridState()
+            val loadedScenes by viewModel.scenes.state.collectAsStateWithLifecycle()
+            LogShownScenes(gridState, ImpressionSurface.STUDIO, loadedScenes.items.map { tagged -> tagged.scene.id })
             PagedGrid(
                 paged = viewModel.scenes,
                 keyOf = { tagged -> tagged.scene.id },
+                gridState = gridState,
                 emptyText = "No videos for this studio yet.",
                 modifier = Modifier.padding(padding),
                 header = {
@@ -145,8 +154,8 @@ fun StudioScreen(id: String, navigator: AppNavigator) {
                     fullWidthItem("galleries") { GalleryRow("Galleries", galleries, navigator::openGallery) }
                     fullWidthItem("site-fetch") { EntitySceneFetchBar(viewModel.siteFetch) }
                 },
-            ) { _, tagged ->
-                SceneCard(tagged.scene, onClick = { navigator.openScene(tagged.scene.id) })
+            ) { position, tagged ->
+                SceneCard(tagged.scene, onClick = { openScene(tagged, position, navigator) })
             }
         }
     }
@@ -172,4 +181,10 @@ private fun StudioHeader(studio: StudioDetail, viewModel: StudioViewModel, navig
         TextAction("Part of ${parent.name}", onClick = { navigator.openStudio(parent.id) }, modifier = Modifier.offset(x = -VeilSpacing.small))
     }
     TagChips(studio.tags, onClick = { tag -> navigator.openTag(tag.id) }, modifier = Modifier.bleed())
+}
+
+/** Opens a scene of the page, logging the click with its place in the list. */
+private fun openScene(tagged: TaggedScene, position: Int, navigator: AppNavigator) {
+    logSceneClicked(ImpressionSurface.STUDIO, tagged.scene.id, position)
+    navigator.openScene(tagged.scene.id)
 }

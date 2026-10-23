@@ -10,18 +10,55 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** One shown (or opened) recommendation, as the recordImpressions mutation takes it. */
+/**
+ * The surfaces impressions are logged under. The engine learns from [HOME], [ROW] and
+ * [PREVIEW_FEED], whose sources are the candidate sources of a ranking; the others are logged for
+ * analysis and never change a ranking.
+ */
+object ImpressionSurface {
+
+    /** The Home feed. */
+    const val HOME = "home"
+
+    /** A titled shelf between the Home cards. */
+    const val ROW = "row"
+
+    /** The Shorts-style preview feed. */
+    const val PREVIEW_FEED = "preview-feed"
+
+    /** The related scenes of a scene page, inline and over the fullscreen video. */
+    const val RELATED = "related"
+
+    /** The scenes of a performer page. */
+    const val PERFORMER = "performer"
+
+    /** The scenes of a studio page. */
+    const val STUDIO = "studio"
+
+    /** The scenes of a tag page. */
+    const val TAG = "tag"
+
+    /** Search results. */
+    const val SEARCH = "search"
+}
+
+/**
+ * One shown (or opened) scene, as the recordImpressions mutation takes it. [position] is the
+ * 0-based place in the list the user sees: the feed rank on Home, the index within a shelf or list
+ * elsewhere.
+ */
 data class Impression(
     val mediaId: String,
     val source: String?,
     val surface: String,
-    val position: Int?,
+    val position: Int,
     val clicked: Boolean,
 )
 
 /**
- * Recommendation impression logging: what was shown and what was opened, which feeds the
- * engine's fatigue penalty and "shown but not clicked" signal. Impressions go out in batches:
+ * Impression logging: what was shown and what was opened, on which surface and at which position.
+ * The engine learns from the recommendation surfaces (see [ImpressionSurface]): source priors,
+ * position bias and the "shown but not clicked" fatigue. Impressions go out in batches:
  * after a short quiet period, or at once when the batch fills up or something was opened.
  * Sending is best-effort; failures are dropped.
  */
@@ -41,7 +78,7 @@ class ImpressionLogger(
 
     /** Queues a "shown" impression, once per scene and surface until [resetShown]. */
     @Synchronized
-    fun recordShown(mediaId: String, source: String?, surface: String, position: Int?) {
+    fun recordShown(mediaId: String, source: String?, surface: String, position: Int) {
         val key = "$surface|$mediaId"
         if (!shownKeys.add(key)) {
             return
@@ -51,15 +88,22 @@ class ImpressionLogger(
 
     /** Logs that the user opened a recommendation, sending the batch right away. */
     @Synchronized
-    fun recordClicked(mediaId: String, source: String?, surface: String, position: Int?) {
+    fun recordClicked(mediaId: String, source: String?, surface: String, position: Int) {
         enqueue(Impression(mediaId, source, surface, position, clicked = true))
         flushNow()
     }
 
-    /** Forgets which scenes were logged as shown, e.g. when the feed is reloaded. */
+    /**
+     * Forgets which scenes were logged as shown on [surface], or on every surface without one,
+     * e.g. when the list is reloaded or the screen is opened again.
+     */
     @Synchronized
-    fun resetShown() {
-        shownKeys.clear()
+    fun resetShown(surface: String? = null) {
+        if (surface == null) {
+            shownKeys.clear()
+            return
+        }
+        shownKeys.removeAll { key -> key.startsWith("$surface|") }
     }
 
     /**
@@ -119,7 +163,7 @@ class ImpressionLogger(
                     mediaId = impression.mediaId,
                     source = Optional.presentIfNotNull(impression.source),
                     surface = Optional.present(impression.surface),
-                    position = Optional.presentIfNotNull(impression.position),
+                    position = Optional.present(impression.position),
                     clicked = Optional.present(impression.clicked),
                 )
             }

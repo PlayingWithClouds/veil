@@ -7,6 +7,7 @@ import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.EntityRef
 import com.playingwithclouds.veil.data.FeedRepository
 import com.playingwithclouds.veil.data.FilterPreset
+import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.RecommendedScene
 import com.playingwithclouds.veil.data.SavedFilterRepository
 import com.playingwithclouds.veil.data.SceneRepository
@@ -146,7 +147,8 @@ class HomeViewModel : ViewModel() {
         if (offset == 0) {
             firstPageLoaded = true
             filterChanged = false
-            AppServices.impressions.resetShown()
+            AppServices.impressions.resetShown(ImpressionSurface.HOME)
+            AppServices.impressions.resetShown(ImpressionSurface.ROW)
             refreshAroundFirstPage(current, page)
         }
         return page
@@ -217,7 +219,7 @@ class HomeViewModel : ViewModel() {
 
     companion object {
         private const val PAGE_SIZE = 24
-        private const val SURFACE = "feed"
+        private const val SURFACE = ImpressionSurface.HOME
 
         /** Source label of cards from the tag listing, which the recommender never served. */
         private const val LISTING_SOURCE = "listing"
