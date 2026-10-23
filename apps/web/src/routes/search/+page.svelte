@@ -21,9 +21,12 @@
 		pluginSearchStream,
 		fetchSearchPlugins,
 		type PluginSearchResult,
+		type SearchMatchedEntity,
 		type SearchPlugin,
 		type SearchStream
 	} from '$lib/search';
+	import { logSearchClick, logSearchShown, SHOWN_DWELL_MS } from '$lib/searchLog';
+	import { performerUrl, studioUrl, tagUrl } from '$lib/routes';
 	import {
 		FIRST_RESULTS_WINDOW_MS,
 		FROZEN_VISIBLE_COUNT,
@@ -85,6 +88,43 @@
 	let firstResultsTimer: ReturnType<typeof setTimeout> | null = null;
 	let firstResultsShown = false;
 	let frozenCount = 0;
+
+	// Performers, studios and tags of the library the query names, shown as
+	// chips that open them.
+	let matchedEntities = $state<SearchMatchedEntity[]>([]);
+
+	// Results count as shown once they stay put for SHOWN_DWELL_MS after the
+	// search settles, so queries still being typed log nothing.
+	let shownTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const ENTITY_LABELS: Record<SearchMatchedEntity['kind'], string> = {
+		performer: 'Performer',
+		studio: 'Studio',
+		tag: 'Tag'
+	};
+
+	/** The page of a recognised entity. */
+	function entityUrl(entity: SearchMatchedEntity): string {
+		switch (entity.kind) {
+			case 'performer':
+				return performerUrl(entity.id);
+			case 'studio':
+				return studioUrl(entity.id);
+			case 'tag':
+				return tagUrl(entity.id);
+		}
+	}
+
+	/** Schedules logging the top of the results as shown for the query. */
+	function scheduleShownLog(text: string) {
+		if (shownTimer) clearTimeout(shownTimer);
+		shownTimer = setTimeout(() => logSearchShown(text, results), SHOWN_DWELL_MS);
+	}
+
+	/** Logs that the user opened a result of the current search. */
+	function logOpened(result: PluginSearchResult, position: number) {
+		logSearchClick(query, result, position);
+	}
 
 	/** Shows the held first results, sorted. */
 	function showFirstResults() {
@@ -189,6 +229,9 @@
 			return;
 		}
 		results = [];
+		matchedEntities = [];
+		if (shownTimer) clearTimeout(shownTimer);
+		shownTimer = null;
 		heldResults = [];
 		if (firstResultsTimer) clearTimeout(firstResultsTimer);
 		firstResultsTimer = null;
@@ -222,8 +265,15 @@
 				loading = false;
 				currentStream = null;
 				if (added === 0) liveDone = true;
+				scheduleShownLog(text);
 			},
-			{ offset: liveOffset, limit: PER_PLUGIN }
+			{
+				offset: liveOffset,
+				limit: PER_PLUGIN,
+				onMatched: (entities) => {
+					if (token === requestToken) matchedEntities = entities;
+				}
+			}
 		);
 		liveOffset += PER_PLUGIN;
 	}
@@ -383,8 +433,23 @@
 						</button>
 					{/each}
 				</div>
+				{#if matchedEntities.length > 0}
+					<!-- Library entities the query names. -->
+					<div class="mb-4 flex flex-wrap items-center gap-2">
+						{#each matchedEntities as entity (entity.id)}
+							<a
+								href={entityUrl(entity)}
+								class="border-base-300 hover:border-primary hover:text-primary rounded-full border px-3 py-1 text-sm font-medium transition-colors"
+							>
+								{#if entity.fuzzy}<span class="text-base-content/40">Did you mean</span>{/if}
+								{ENTITY_LABELS[entity.kind]}: {entity.name}
+							</a>
+						{/each}
+					</div>
+				{/if}
 				<NsfwGrid
 					bind:this={grid}
+					onopen={logOpened}
 					items={results}
 					loading={loading && results.length === 0}
 					ariaLabel="Search results"
