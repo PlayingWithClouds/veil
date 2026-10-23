@@ -291,7 +291,8 @@ func (r *Repository) ListTags(ctx context.Context, filters EntityFilters, limit,
 		conditions = append(conditions, "category = $cat")
 	}
 	where := "WHERE " + joinAnd(conditions)
-	query := fmt.Sprintf("SELECT * FROM tag %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
+	order := searchOrder("name", vars["q"] != nil, "name ASC")
+	query := fmt.Sprintf("SELECT * FROM tag %s ORDER BY %s LIMIT $limit OFFSET $offset", where, order)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
@@ -345,7 +346,8 @@ func (r *Repository) ListStudios(ctx context.Context, filters EntityFilters, lim
 		conditions = append(conditions, jsonContains("studio.tags", "$tag"))
 	}
 	where := "WHERE " + joinAnd(conditions)
-	query := fmt.Sprintf("SELECT * FROM studio %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
+	order := searchOrder("name", vars["q"] != nil, "name ASC")
+	query := fmt.Sprintf("SELECT * FROM studio %s ORDER BY %s LIMIT $limit OFFSET $offset", where, order)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
 		return nil, fmt.Errorf("list studios: %w", err)
@@ -465,7 +467,8 @@ func (r *Repository) ListPerformers(ctx context.Context, filters EntityFilters, 
 		conditions = append(conditions, jsonContains("performer.tags", "$tag"))
 	}
 	where := "WHERE " + joinAnd(conditions)
-	query := fmt.Sprintf("SELECT * FROM performer %s ORDER BY name ASC LIMIT $limit OFFSET $offset", where)
+	order := searchOrder("name", vars["q"] != nil, "name ASC")
+	query := fmt.Sprintf("SELECT * FROM performer %s ORDER BY %s LIMIT $limit OFFSET $offset", where, order)
 	rows, err := r.database.Query(ctx, query, vars)
 	if err != nil {
 		return nil, fmt.Errorf("list performers: %w", err)
@@ -603,6 +606,20 @@ func jsonContains(column, parameter string) string {
 // rather than LIKE so % and _ in user input stay literal.
 func searchCondition(column string) string {
 	return "instr(lower(" + column + "), lower($q)) > 0"
+}
+
+// searchOrder ranks matches of the $q search by how well column answers it: an
+// exact match first, then a prefix, a word prefix, any other substring; shorter
+// values before longer ones, then alphabetical. fallback orders the listing
+// when there is no search.
+func searchOrder(column string, searching bool, fallback string) string {
+	if !searching {
+		return fallback
+	}
+	return "CASE WHEN lower(" + column + ") = lower($q) THEN 0" +
+		" WHEN instr(lower(" + column + "), lower($q)) = 1 THEN 1" +
+		" WHEN instr(lower(" + column + "), ' ' || lower($q)) > 0 THEN 2" +
+		" ELSE 3 END, length(" + column + "), " + column
 }
 
 // excludedIDCondition drops rows whose id is in the bound $hidden list.
