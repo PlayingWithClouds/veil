@@ -45,6 +45,7 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 | `internal/api/graphql/` | gqlgen resolvers; SDL in `schema/*.graphql` |
 | `internal/stream/` | HLS/MP4 proxy + write-through blob cache; live sessions (cams) bypass the cache |
 | `internal/resolve/` | Stream resolution chain (cache → domain plugin → wildcard → direct) |
+| `internal/searchrank/` | Live search scoring: text match, reciprocal-rank-fused site ranks, quality and taste terms (all weights in `weights.go`), cross-site duplicate collapse |
 | `internal/alike/` | Cross-plugin alternate-source matching (pHash + performer/duration score) |
 | `internal/cams/` | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL, recorder (`recorder.go`, `recording_scene.go`) and auto-record watcher (`autorecord.go`) |
 | `internal/recommend/` | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go` |
@@ -76,6 +77,10 @@ Tag search is inherited: `scenes(tagId)` matches the scene's own tags OR its stu
 - Stage names: `Orchestrator.ProfilePerformers` (start + every 6 h, 100 per run) searches the `freeones` plugin for performers without a profile and ingests the page that names them; its aliases are absorbed and any other performer whose name is one of them (full names only, two words or more) is merged in (`mergeAliasTwins`, also run by the startup repair). `mergeRecords(survivorId, mergedId)` merges two records by hand (web: ⋮ → "Merge into…" on performer/studio pages, a button on tag pages).
 - Migrations are append-only (`db.Open` applies them and tracks versions in `_migration`); never edit an applied migration, add a new numbered file.
 - Lists of links (`tags`, `performers`, `aliases`) are JSON columns; match them with `json_each`. Bind lists as `$param` and use `IN (SELECT value FROM json_each($param))`.
+
+## Search
+
+`/api/search` (SSE) sends library matches first, then each plugin's results as they arrive. The library part is an FTS5 index (`scene_search`, migration 030, trigger-maintained) over title + performer, studio and tag names ordered by bm25, with a title-substring fill (`ingest.SearchLibrary`); performers, studios, tags and galleries rank exact, prefix, word-prefix, substring (`media.searchOrder`). Every result event carries a `score` (`internal/searchrank`): text match + reciprocal-rank-fused place in its site list (library bm25 order counts as a list) + a small quality term (site rating, log view count) + a small taste term from `recommend.Engine.Profile`. Copies of one video on several sites (`alike.SameScene`, or the same record) collapse: a later copy is dropped unless it scores better, then it is sent with `replaces` (the old copy's source URL). The streaming order is arrival order, so clients sort by `score`: the web search page holds the first second of results, sorts them, and sorts later arrivals in below the first 12 (`src/lib/searchOrder.ts`), with a Relevance / Newest / Most viewed / Rating / Duration switch. The Android app and the other `pluginSearchStream` users still render in arrival order and ignore `score` and `replaces`.
 
 ## Recommendations
 

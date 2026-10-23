@@ -42,6 +42,13 @@ export interface PluginSearchResult {
 	// Channel/studio, known only for locally-stored scenes whose page was visited.
 	studioName?: string | null;
 	studioImagePath?: string | null;
+	// Live search only: the backend's relevance score (higher is better), the
+	// site's own rating (0..10) and view count, and the source URL of the
+	// earlier result this one supersedes (the same video, better placed).
+	score?: number;
+	rating?: number | null;
+	viewCount?: number | null;
+	replaces?: string;
 }
 
 export interface SearchPlugin {
@@ -172,12 +179,17 @@ interface StreamItem {
 	poster_path?: string;
 	preview_images?: string[];
 	preview_video?: string;
+	duration_seconds?: number;
+	rating?: number;
+	view_count?: number;
 	count?: number;
 }
 
 interface StreamResultEvent {
 	source: string;
 	id?: string;
+	score?: number;
+	replaces?: string;
 	item: StreamItem;
 }
 
@@ -194,6 +206,11 @@ function streamEventToResult(event: StreamResultEvent): PluginSearchResult {
 		previewImages: event.item.preview_images ?? [],
 		previewVideo: event.item.preview_video || null,
 		photoCount: event.item.count || null,
+		durationSeconds: event.item.duration_seconds || null,
+		rating: event.item.rating || null,
+		viewCount: event.item.view_count || null,
+		score: event.score,
+		replaces: event.replaces || undefined,
 		// DB hits are already-ingested scenes: open by id, no scrape needed.
 		sceneId: isDbHit ? event.id : undefined,
 		dbId: event.id
