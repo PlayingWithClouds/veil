@@ -36,13 +36,13 @@ func TestLibraryHitLabelsEntitiesByName(t *testing.T) {
 func TestPersonalAffinityNeedsProfile(t *testing.T) {
 	handler := &Handler{}
 	scene := plugins.DiscoveredItem{MediaType: plugins.MediaTypeScene}
-	if got := handler.personalAffinity(t.Context(), nil, libraryHit(plugins.MediaTypeScene, "", nil)); got != 0 {
+	if got := handler.personalAffinity(nil, libraryHit(plugins.MediaTypeScene, "", nil), nil); got != 0 {
 		t.Fatalf("no profile = %v", got)
 	}
 	profile := &recommend.Profile{Sites: map[string]float64{"alpha": 1}}
 	hit := libraryHit(plugins.MediaTypeScene, "", nil)
 	hit.Source, hit.Item = "alpha", scene
-	if got := handler.personalAffinity(t.Context(), profile, hit); got <= 0 {
+	if got := handler.personalAffinity(profile, hit, nil); got <= 0 {
 		t.Fatalf("liked site = %v", got)
 	}
 }

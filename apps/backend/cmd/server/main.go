@@ -37,6 +37,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/pluginstore"
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
+	"github.com/playingwithclouds/veil/internal/searchrank"
 	"github.com/playingwithclouds/veil/internal/settings"
 	"github.com/playingwithclouds/veil/internal/sitesuggest"
 	"github.com/playingwithclouds/veil/internal/storage"
@@ -383,6 +384,8 @@ func main() {
 	recommender.OnLowPool(feeder.TopUp)
 	go feeder.Start(ctx)
 	resolver.SetRecommender(recommender)
+	searchHistory := searchrank.NewHistory(database)
+	resolver.SetSearchHistory(searchHistory)
 	resolver.SetFeeder(feeder)
 	resolver.SetPluginStore(pluginStore)
 	// Search suggestions: build the name/phrase index now, not on the first keystroke.
@@ -395,7 +398,10 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/graphql", gqlHandler)
 	mux.Handle("/api/events", sseapi.New(hub))
-	mux.Handle("/api/search", searchapi.New(ingestSvc, discoverySvc, repo, recommender))
+	searchHandler := searchapi.New(ingestSvc, discoverySvc, repo, recommender)
+	searchHandler.SetHistory(searchHistory)
+	searchHandler.SetEntityPages(searchScheduler)
+	mux.Handle("/api/search", searchHandler)
 	mux.Handle("/api/img", imgHandler)
 	mux.Handle("/api/stream/", streamProxy)
 	mux.Handle(storage.RoutePrefix, storeClient.Handler())

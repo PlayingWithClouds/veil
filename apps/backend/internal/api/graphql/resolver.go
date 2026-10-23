@@ -12,6 +12,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/pluginstore"
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
+	"github.com/playingwithclouds/veil/internal/searchrank"
 	"github.com/playingwithclouds/veil/internal/settings"
 	"github.com/playingwithclouds/veil/internal/sitesuggest"
 	"github.com/playingwithclouds/veil/internal/storage"
@@ -24,28 +25,29 @@ import (
 // Resolver is the root gqlgen resolver. It holds every service dependency and is
 // split into query/mutation/subscription sub-resolvers by the generated code.
 type Resolver struct {
-	repo         *media.Repository
-	ingestSvc    *ingest.Service
-	queue        *jobs.Queue
-	registry     *plugins.Registry
-	runner       *plugins.Runner
-	orchestrator *pipeline.Orchestrator
-	hub          *subscriptions.Hub
-	streamSvc    *resolve.Service
-	settings     *settings.Service
-	streamProxy  *stream.Proxy
-	imgCache     *imgcache.Handler
-	searchRuns   *updater.Scheduler
-	entityScenes *updater.EntityScenes
-	recommender  *recommend.Engine
-	feeder       *updater.Feeder
-	pluginStore  *pluginstore.Store
-	suggestions  *suggest.Service
-	siteSuggest  *sitesuggest.Service
-	blobStore    *storage.Client
-	cams         *cams.Service
-	camRecorder  *cams.Recorder
-	faces        *face.Service
+	repo          *media.Repository
+	ingestSvc     *ingest.Service
+	queue         *jobs.Queue
+	registry      *plugins.Registry
+	runner        *plugins.Runner
+	orchestrator  *pipeline.Orchestrator
+	hub           *subscriptions.Hub
+	streamSvc     *resolve.Service
+	settings      *settings.Service
+	streamProxy   *stream.Proxy
+	imgCache      *imgcache.Handler
+	searchRuns    *updater.Scheduler
+	entityScenes  *updater.EntityScenes
+	recommender   *recommend.Engine
+	searchHistory *searchrank.History
+	feeder        *updater.Feeder
+	pluginStore   *pluginstore.Store
+	suggestions   *suggest.Service
+	siteSuggest   *sitesuggest.Service
+	blobStore     *storage.Client
+	cams          *cams.Service
+	camRecorder   *cams.Recorder
+	faces         *face.Service
 }
 
 // SetCams wires in the live cam service.
@@ -94,6 +96,9 @@ func (r *Resolver) SetEntityScenes(fetcher *updater.EntityScenes) { r.entityScen
 
 // SetRecommender wires in the recommendation engine.
 func (r *Resolver) SetRecommender(engine *recommend.Engine) { r.recommender = engine }
+
+// SetSearchHistory wires in the store of search clicks the ranking learns from.
+func (r *Resolver) SetSearchHistory(history *searchrank.History) { r.searchHistory = history }
 
 // SetFeeder wires in the feeder that pulls a short site-filtered feed's sites.
 func (r *Resolver) SetFeeder(feeder *updater.Feeder) { r.feeder = feeder }

@@ -5982,6 +5982,11 @@ input ImpressionInput {
   position: Int
   # true when the user opened it; absent/false when it was only shown.
   clicked: Boolean
+  # The search query the scene was shown or opened for (surface "search"). Such
+  # events also feed the search ranking: a click memory per query and scene, and
+  # each site's click rate per query word. ` + "`" + `source` + "`" + ` is then the plugin name of
+  # the result ("db" for the library).
+  query: String
 }
 
 type TasteProfile {
@@ -28452,7 +28457,7 @@ func (ec *executionContext) unmarshalInputImpressionInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"mediaId", "source", "surface", "position", "clicked"}
+	fieldsInOrder := [...]string{"mediaId", "source", "surface", "position", "clicked", "query"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -28494,6 +28499,13 @@ func (ec *executionContext) unmarshalInputImpressionInput(ctx context.Context, o
 				return it, err
 			}
 			it.Clicked = data
+		case "query":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("query"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Query = data
 		}
 	}
 	return it, nil

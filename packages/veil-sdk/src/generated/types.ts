@@ -2468,6 +2468,9 @@ export default {
             "clicked": [
                 4
             ],
+            "query": [
+                1
+            ],
             "__typename": [
                 1
             ]

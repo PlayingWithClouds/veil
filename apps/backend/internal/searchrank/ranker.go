@@ -25,6 +25,13 @@ type Hit struct {
 	// Personal is the affinity in [-1, 1] of the user's taste profile for this
 	// result; zero without a profile.
 	Personal float64
+	// EntityCredit is in [0, 1] how well the result belongs to the performers,
+	// studios and tags recognised in the query (see EntityCredit).
+	EntityCredit float64
+	// List tells apart lists of one source that run side by side (the keyword
+	// search, a rewritten query, an entity's site page): each has its own
+	// places. Empty for the plain keyword search.
+	List string
 }
 
 // Verdict says what to do with a hit after scoring.
@@ -42,6 +49,11 @@ type Verdict struct {
 // concurrent use: callers feed it from one goroutine.
 type Ranker struct {
 	queryWords []string
+	// variants are other spellings of the query (an alias spelled as the
+	// entity's name, a corrected typo) the text is also matched against.
+	variants       [][]string
+	personalWeight float64
+	learned        Learned
 	// rankOffset shifts every site rank when the search pages through the
 	// listings: page two starts where page one ended.
 	rankOffset int
@@ -66,19 +78,42 @@ type cluster struct {
 // each site list precede this page.
 func New(query string, rankOffset int) *Ranker {
 	return &Ranker{
-		queryWords: QueryWords(query),
-		rankOffset: rankOffset,
-		positions:  map[string]int{},
-		byRecord:   map[string]*cluster{},
-		byURL:      map[string]*cluster{},
+		queryWords:     QueryWords(query),
+		personalWeight: WeightPersonal,
+		rankOffset:     rankOffset,
+		positions:      map[string]int{},
+		byRecord:       map[string]*cluster{},
+		byURL:          map[string]*cluster{},
 	}
+}
+
+// SetVariants gives the ranker other spellings of the query that results may
+// match instead; they count SynonymTextFactor as much as the query itself.
+func (r *Ranker) SetVariants(queries ...string) {
+	r.variants = nil
+	for _, query := range queries {
+		if words := QueryWords(query); len(words) > 0 {
+			r.variants = append(r.variants, words)
+		}
+	}
+}
+
+// SetPersonalWeight sets the weight of the taste term (see PersonalWeight).
+func (r *Ranker) SetPersonalWeight(weight float64) {
+	r.personalWeight = weight
+}
+
+// SetLearned gives the ranker what the search history says about the query:
+// click memory per scene and rank-share factors per source.
+func (r *Ranker) SetLearned(learned Learned) {
+	r.learned = learned
 }
 
 // Add scores a hit, folds it into the copies seen so far and says whether to
 // send it. The hit's place in its list is the order of Add calls with the same
 // Source and media type, so feed a list's hits in the order the site gave them.
 func (r *Ranker) Add(hit Hit) Verdict {
-	share := rankShare(r.nextRank(hit))
+	share := rankShare(r.nextRank(hit)) * r.sourceShare(hit.Source)
 	own := r.ownScore(hit, share)
 
 	existing := r.findCluster(hit)
@@ -99,9 +134,19 @@ func (r *Ranker) Add(hit Hit) Verdict {
 
 // nextRank advances and returns the 1-based place of a hit in its list.
 func (r *Ranker) nextRank(hit Hit) int {
-	key := hit.Source + "|" + string(hit.Item.MediaType)
+	key := hit.Source + "|" + string(hit.Item.MediaType) + "|" + hit.List
 	r.positions[key]++
 	return r.rankOffset + r.positions[key]
+}
+
+// sourceShare is the factor the source's rank shares are multiplied by: what
+// the user's clicks say about that site for this query, 1 without history.
+func (r *Ranker) sourceShare(source string) float64 {
+	factor, known := r.learned.SourceShares[source]
+	if !known {
+		return 1
+	}
+	return factor
 }
 
 // rankShare is a list place's reciprocal-rank-fusion share, normalized so first
@@ -110,13 +155,26 @@ func rankShare(rank int) float64 {
 	return (RankFusionConstant + 1) / (RankFusionConstant + float64(rank))
 }
 
-// ownScore is the score of a hit counting only its own list place.
+// ownScore is the score of a hit counting only its own list place (share is
+// already scaled by what the history says about its source).
 func (r *Ranker) ownScore(hit Hit, share float64) float64 {
-	score := WeightText * TextMatch(r.queryWords, textFields(hit))
+	score := WeightText * r.textMatch(textFields(hit))
 	score += WeightSiteRank * share
 	score += WeightQuality * (Quality(hit.Item.Rating, hit.Item.ViewCount) - NeutralQuality)
-	score += WeightPersonal * hit.Personal
+	score += r.personalWeight * hit.Personal
+	score += WeightEntity * hit.EntityCredit
+	score += WeightClickMemory * r.learned.ClickMemory[hit.ID]
 	return score
+}
+
+// textMatch is the best of the match against the query as typed and against
+// each variant of it, a variant counting SynonymTextFactor as much.
+func (r *Ranker) textMatch(fields TextFields) float64 {
+	best := TextMatch(r.queryWords, fields)
+	for _, variant := range r.variants {
+		best = max(best, SynonymTextFactor*TextMatch(variant, fields))
+	}
+	return best
 }
 
 // clusterScore is the score of the cluster's best copy with the rank shares of
@@ -223,4 +281,10 @@ func candidateOf(hit Hit) alike.Candidate {
 		Performers:      hit.Performers,
 		DurationSeconds: hit.Item.DurationSeconds,
 	}
+}
+
+// MatchHit is the text match in [0, 1] of the query against a hit's title and
+// the names the library holds for it.
+func MatchHit(query string, hit Hit) float64 {
+	return TextMatch(QueryWords(query), textFields(hit))
 }

@@ -143,7 +143,7 @@ func (s *Scheduler) fetchEntity(ctx context.Context, entityID string) ([]string,
 // can list it until one succeeds. listed is false when none could.
 func (s *Scheduler) listEntityPage(ctx context.Context, origin *media.EntityOrigin) (mediaIDs []string, listed bool, err error) {
 	var failures []error
-	for _, plugin := range s.pagePlugins(origin) {
+	for _, plugin := range s.PagePlugins(origin) {
 		var found []string
 		listErr := s.discovery.ListPage(ctx, plugin, origin.SourceURL, resultLimit, collectHits(&found))
 		if listErr == nil {
@@ -154,10 +154,10 @@ func (s *Scheduler) listEntityPage(ctx context.Context, origin *media.EntityOrig
 	return nil, false, errors.Join(failures...)
 }
 
-// pagePlugins returns the active plugins that can list the entity's page:
+// PagePlugins returns the active plugins that can list the entity's page:
 // they declare scene:list:page and either serve its host or ingested the
 // entity themselves.
-func (s *Scheduler) pagePlugins(origin *media.EntityOrigin) []*plugins.Plugin {
+func (s *Scheduler) PagePlugins(origin *media.EntityOrigin) []*plugins.Plugin {
 	if origin.SourceURL == "" {
 		return nil
 	}

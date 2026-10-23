@@ -506,6 +506,7 @@ input ImpressionInput {
   surface: String
   position: Int
   clicked: Boolean
+  query: String
 }
 
 type TasteProfile {

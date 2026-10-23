@@ -122,6 +122,7 @@ func mediaRepointStatements(table string) []string {
 		`UPDATE o_event SET media = $survivor WHERE media = $merged`,
 		`UPDATE watch_history SET media = $survivor WHERE media = $merged`,
 		`UPDATE recommendation_impression SET media = $survivor WHERE media = $merged`,
+		`UPDATE search_event SET media = $survivor WHERE media = $merged`,
 		fmt.Sprintf(`DELETE FROM %s WHERE id = $merged`, table),
 	)
 	return statements

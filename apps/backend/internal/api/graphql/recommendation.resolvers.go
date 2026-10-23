@@ -22,7 +22,12 @@ func (r *mutationResolver) RecordRecommendationChoice(ctx context.Context, chose
 
 // RecordImpressions is the resolver for the recordImpressions field.
 func (r *mutationResolver) RecordImpressions(ctx context.Context, impressions []*model.ImpressionInput) (int, error) {
-	return r.recommender.RecordImpressions(ctx, impressionsFromInput(impressions))
+	stored, err := r.recommender.RecordImpressions(ctx, impressionsFromInput(impressions))
+	if err != nil {
+		return stored, err
+	}
+	r.recordSearchEvents(ctx, impressions)
+	return stored, nil
 }
 
 // Recommendations is the resolver for the recommendations field.

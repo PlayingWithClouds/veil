@@ -100,3 +100,66 @@ func FullTextQuery(text string) string {
 	terms[len(terms)-1] += "*"
 	return strings.Join(terms, " ")
 }
+
+// fuzzyCandidateLimit bounds how many trigram candidates are read before the
+// caller keeps the ones whose words really are within a typo of the query's.
+const fuzzyCandidateLimit = 300
+
+// maximumTrigramsPerWord bounds the pieces one query word contributes.
+const maximumTrigramsPerWord = 24
+
+// CountSceneMatches counts the scenes the exact index matches for the query,
+// stopping at ceiling; the library's idea of how broad the query is.
+func (s *Service) CountSceneMatches(ctx context.Context, query string, ceiling int) (int, error) {
+	match := FullTextQuery(query)
+	if match == "" {
+		return 0, nil
+	}
+	return s.database.Int(ctx, `SELECT count(*) FROM (
+			SELECT 1 FROM scene_search WHERE scene_search MATCH $match LIMIT $ceiling)`,
+		db.Vars{"match": match, "ceiling": ceiling})
+}
+
+// SearchSceneCandidates returns scenes sharing the most three-letter pieces
+// with the query's words, best first: the raw material for typo-tolerant
+// search (scene_search_fuzzy). Most are not matches at all; the caller scores
+// the text and keeps the near ones. Rows carry search_performers, search_studio
+// and search_tags like SearchLibrary's.
+func (s *Service) SearchSceneCandidates(ctx context.Context, query string) ([]map[string]any, error) {
+	match := TrigramQuery(query)
+	if match == "" {
+		return nil, nil
+	}
+	return s.database.Query(ctx, `SELECT scene.*,
+			scene_search_fuzzy.performers AS search_performers,
+			scene_search_fuzzy.studio AS search_studio,
+			scene_search_fuzzy.tags AS search_tags
+		FROM scene_search_fuzzy JOIN scene ON scene.id = scene_search_fuzzy.scene_id
+		WHERE scene_search_fuzzy MATCH $match
+		ORDER BY bm25(scene_search_fuzzy, 0.0, 10.0, 4.0, 3.0, 1.0)
+		LIMIT $limit`, db.Vars{"match": match, "limit": fuzzyCandidateLimit})
+}
+
+// TrigramQuery turns the user's text into an FTS5 expression for the trigram
+// index: every three-letter piece of every word of three letters or more,
+// any of which may match. Empty when no word is long enough.
+func TrigramQuery(text string) string {
+	var terms []string
+	for _, word := range strings.Fields(names.Key(text)) {
+		letters := []rune(word)
+		for start := 0; start+3 <= len(letters) && start < maximumTrigramsPerWord; start++ {
+			terms = append(terms, `"`+string(letters[start:start+3])+`"`)
+		}
+	}
+	return strings.Join(terms, " OR ")
+}
+
+// NamedRecords lists every record of a performer, studio or tag table with its
+// id, name and aliases, for matching names in a query.
+func (s *Service) NamedRecords(ctx context.Context, table string) ([]map[string]any, error) {
+	switch table {
+	case "performer", "studio", "tag":
+		return s.database.Query(ctx, fmt.Sprintf(`SELECT id, name, aliases FROM %s`, table), nil)
+	}
+	return nil, fmt.Errorf("named records: unsupported table %q", table)
+}

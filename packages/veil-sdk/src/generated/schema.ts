@@ -1387,7 +1387,7 @@ export interface PluginCategoryGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface ImpressionInput {mediaId: Scalars['ID'],source?: (Scalars['String'] | null),surface?: (Scalars['String'] | null),position?: (Scalars['Int'] | null),clicked?: (Scalars['Boolean'] | null)}
+export interface ImpressionInput {mediaId: Scalars['ID'],source?: (Scalars['String'] | null),surface?: (Scalars['String'] | null),position?: (Scalars['Int'] | null),clicked?: (Scalars['Boolean'] | null),query?: (Scalars['String'] | null)}
 
 export interface TasteProfileGenqlSelection{
     signalCount?: boolean | number
