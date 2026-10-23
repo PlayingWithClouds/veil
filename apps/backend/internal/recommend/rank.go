@@ -43,7 +43,7 @@ func sortByScore(items []scoredItem) {
 // freshness and site popularity, minus the penalties. undated is the freshness a scene without a
 // release date gets.
 func score(proposed *candidate, scene *sceneFeatures, state *snapshot, undated float64) float64 {
-	prior := proposed.prior + multiSourceBonus*float64(proposed.sourceCount-1)
+	prior := proposed.prior*state.policy.multiplier(proposed.source) + multiSourceBonus*float64(proposed.sourceCount-1)
 	total := rankWeightAffinity * affinityMatch(scene, state.profile)
 	total += rankWeightSourcePrior * prior
 	total += rankWeightFreshness * sceneFreshness(scene, state.now, undated)

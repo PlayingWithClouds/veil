@@ -27,6 +27,8 @@ type snapshot struct {
 	// excluded holds blocked scenes and unfetched stubs of inactive plugins.
 	excluded          map[string]bool
 	dislikedNeighbors map[string]bool
+	// policy is what this ranking learned from past clicks; nil = hand-set.
+	policy *learnedPolicy
 	// popularity places a scene among its site's scenes by views and rating.
 	popularity *popularityIndex
 }
@@ -75,7 +77,12 @@ func (e *Engine) takeSnapshot(ctx context.Context, disabledPlugins []string) (*s
 	if err != nil {
 		return nil, err
 	}
+	policy, err := e.learnPolicy(ctx, now)
+	if err != nil {
+		return nil, err
+	}
 	return &snapshot{
+		policy:            policy,
 		popularity:        popularity,
 		now:               now,
 		profile:           profile,

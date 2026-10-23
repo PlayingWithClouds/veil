@@ -12,7 +12,8 @@ import (
 type candidate struct {
 	sceneID string
 	source  string
-	// prior is the source's trust in this scene, in [0, 1].
+	// prior is the source's hand-set trust in this scene, in [0, 1]; scoring
+	// scales it by what the source earned (learnedPolicy).
 	prior float64
 	// sourceCount is how many sources proposed the scene.
 	sourceCount int

@@ -13,6 +13,7 @@ package recommend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"slices"
 	"sort"
 	"strings"
@@ -29,6 +30,12 @@ type Engine struct {
 	repo     *media.Repository
 	// now is the clock, swappable in tests.
 	now func() time.Time
+
+	// random drives the Thompson sampling of learned priors; used under mutex
+	// (rankings are built one at a time), swappable in tests.
+	random sampler
+	// lastPolicyLog is when the learned values were last logged.
+	lastPolicyLog time.Time
 
 	mutex sync.Mutex
 	cache *rankedFeed
@@ -56,7 +63,7 @@ type rankedFeed struct {
 // New returns an engine over the database; repo supplies the blocklist and
 // listing exclusions shared with the rest of the app.
 func New(database *db.DB, repo *media.Repository) *Engine {
-	return &Engine{database: database, repo: repo, now: time.Now}
+	return &Engine{database: database, repo: repo, now: time.Now, random: rand.New(rand.NewSource(time.Now().UnixNano()))}
 }
 
 // OnLowPool registers what to call when a ranking runs short of fresh
@@ -313,7 +320,7 @@ func (e *Engine) buildFeed(ctx context.Context, disabledPlugins []string) (*rank
 	if err != nil {
 		return nil, err
 	}
-	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerank(scored), observingPlugins: observingPlugins, durations: durations}, nil
+	return &rankedFeed{builtAt: state.now, scored: scored, ranked: rerankWithQuotas(scored, state.policy.pageQuotas()), observingPlugins: observingPlugins, durations: durations}, nil
 }
 
 // freshCount counts the scored scenes the user has neither watched nor been

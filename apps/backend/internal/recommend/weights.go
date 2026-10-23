@@ -219,8 +219,9 @@ const (
 	kindFiller = "filler"
 )
 
-// kindQuotas is how many of a page's pageSize slots each kind may fill, in the
-// order the page is described. Filler has no quota. A kind with fewer items
+// kindQuotas is how many of a page's pageSize slots each kind may fill by
+// default (learning shifts them, see learning.go), in the order the page is
+// described. Filler has no quota. A kind with fewer items
 // than slots hands the rest to the best remaining items overall, and search
 // is the last kind to take such leftovers.
 var kindQuotas = map[string]int{
@@ -229,6 +230,63 @@ var kindQuotas = map[string]int{
 	kindCatalog:  5,
 	kindExplore:  4,
 	kindSearch:   2,
+}
+
+// Learning from clicks: per-source priors and per-kind quotas are nudged by
+// how often each source's showings were opened (Thompson sampling, see
+// learning.go). Every number here only bounds how far the data may move the
+// hand-set values above.
+const (
+	// learnWindow is how far back showings are read; they decay with
+	// AffinityHalfLife inside it. It stays under impressionRetention.
+	learnWindow = 60 * 24 * time.Hour
+	// learnAttributionWindow is how long after a showing an open of the same
+	// scene (logged click or first visit) still counts as its result. Showings
+	// younger than this are not read yet: their outcome is still open.
+	learnAttributionWindow = 6 * time.Hour
+	// learnDownstreamWindow is how long after an opened showing a completed
+	// watch or a like still adds to its reward.
+	learnDownstreamWindow = 7 * 24 * time.Hour
+	// A showing's reward is 0 when ignored, learnRewardClick when opened, plus
+	// a bonus for a completed watch and for a like, capped at 1 so a reward
+	// never outweighs the showing it belongs to.
+	learnRewardClick     = 0.6
+	learnRewardCompleted = 0.25
+	learnRewardLiked     = 0.25
+	// learnPriorClicks is the strength of the Beta prior in pseudo-rewards:
+	// every source starts as Beta(learnPriorClicks, learnPriorClicks·(1−r)/r)
+	// around the pooled reward rate r, i.e. as if it had already been shown
+	// learnPriorClicks/r times at the average rate. 30 means a source needs
+	// roughly 30 rewards of evidence of its own before the data outweighs
+	// the prior; at the current ~1% click rate that is ~1600 showings.
+	learnPriorClicks = 30.0
+	// learnMinShows is the decayed number of showings (all sources) below
+	// which nothing is learned and the hand-set values stand.
+	learnMinShows = 300.0
+	// learnMinPooledRate floors the pooled reward rate so a window with
+	// almost no opens does not give the prior an absurd pseudo-count.
+	learnMinPooledRate = 0.002
+	// A sampled rate is read relative to the pooled rate and clamped to
+	// [learnMinMultiplier, learnMaxMultiplier]; that is the factor applied to
+	// a source's hand-set prior.
+	learnMinMultiplier = 0.5
+	learnMaxMultiplier = 1.5
+	// learnQuotaMaxFactor bounds a kind's learned quota above, as a multiple
+	// of its default in kindQuotas (rounded down).
+	learnQuotaMaxFactor = 1.5
+	// learnLogInterval rate-limits the log line with the learned values.
+	learnLogInterval = 30 * time.Minute
+)
+
+// kindQuotaMinimums is the fewest slots a learned quota may leave a kind, so
+// the bandit cannot starve a kind it knows little about. Exploration keeps
+// the most relative to its default: it exists to widen the data.
+var kindQuotaMinimums = map[string]int{
+	kindPersonal: 4,
+	kindTaste:    2,
+	kindCatalog:  2,
+	kindExplore:  3,
+	kindSearch:   1,
 }
 
 // paceLookahead is how many slots ahead of an even spread over the page a
