@@ -16,42 +16,42 @@ Commits carry only what matters. Say the thing, explain what a reader won't see 
 
 ## Layout
 
-| Path | Purpose |
-| ---- | ------- |
-| `apps/backend/` | Go backend (module `github.com/playingwithclouds/veil`) |
-| `apps/backend/plugins/` | Scraper plugins (TypeScript source; bundled by `apps/backend/scripts/bundle-plugins.ts`) |
-| `apps/backend/internal/db/migrations/` | Versioned SQLite schema (`NNN_*.sql`), embedded, applied on startup, append-only |
-| `apps/web/` | SvelteKit 2 + Svelte 5 (runes) + Tailwind v4 frontend |
-| `apps/mobile/` | Native Kotlin + Jetpack Compose Android app with the embedded Go backend (see Mobile app) |
-| `packages/veil-sdk/` | Shared TS types + genql GraphQL client + plugin SDK |
-| `packages/config/` | Shared eslint/tsconfig |
+| Path                                   | Purpose                                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `apps/backend/`                        | Go backend (module `github.com/playingwithclouds/veil`)                                   |
+| `apps/backend/plugins/`                | Scraper plugins (TypeScript source; bundled by `apps/backend/scripts/bundle-plugins.ts`)  |
+| `apps/backend/internal/db/migrations/` | Versioned SQLite schema (`NNN_*.sql`), embedded, applied on startup, append-only          |
+| `apps/web/`                            | SvelteKit 2 + Svelte 5 (runes) + Tailwind v4 frontend                                     |
+| `apps/mobile/`                         | Native Kotlin + Jetpack Compose Android app with the embedded Go backend (see Mobile app) |
+| `packages/veil-sdk/`                   | Shared TS types + genql GraphQL client + plugin SDK                                       |
+| `packages/config/`                     | Shared eslint/tsconfig                                                                    |
 
 ### Key backend paths
 
-| Path | Purpose |
-| ---- | ------- |
-| `cmd/server/main.go` | Entry point, wires everything |
-| `internal/db/` | SQLite open/migrate + query helpers (`"table:id"` record ids, JSON/BOOLEAN column decoding, `$name` params) |
-| `internal/cache/` | Expiring key-value store on the SQLite `kv` table |
-| `internal/storage/` | On-disk blob store, served at `/api/blob/`; optional at-rest encryption of `stream-cache/` (`BLOB_ENCRYPTION_KEY`, see Mobile app) |
-| `internal/blobcache/` | Cache size limit: LRU eviction of `stream-cache/` + `img-cache/` blobs |
-| `internal/plugins/` | Registry (hot reload) + embedded JS runtime (goja, native HTML parser) + types; the Bun runner remains only for the parity test |
-| `internal/ingest/` | Observation→canonical merge, relation linking, collection members, markers |
-| `internal/pipeline/` | Orchestrator: scene visits (`visit.go`), job execution (download, speed-check, enrich) |
-| `internal/jobs/` | DB-backed job queue + worker pool (VPN-gated) |
-| `internal/discovery/` | Plugin keyword search + stub ingest, shared by `/api/search` and search subscriptions |
-| `internal/updater/` | Scheduler that re-runs due search subscriptions |
-| `internal/media/` | Repository: all GraphQL read/write queries |
-| `internal/api/graphql/` | gqlgen resolvers; SDL in `schema/*.graphql` |
-| `internal/stream/` | HLS/MP4 proxy + write-through blob cache; live sessions (cams) bypass the cache |
-| `internal/resolve/` | Stream resolution chain (cache → domain plugin → wildcard → direct) |
-| `internal/searchrank/` | Live search scoring: typo-tolerant text match, reciprocal-rank-fused site ranks, quality, query-dependent taste, recognised-entity credit and click memory (all weights in `weights.go`); entity index, click history, cross-site duplicate collapse |
-| `internal/mediakeep/` | Keeps the posters of `expiring_media` plugins' stubs in the blob store and refreshes their preview URLs |
-| `internal/alike/` | Cross-plugin alternate-source matching (pHash + performer/duration score) |
-| `internal/cams/` | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL, recorder (`recorder.go`, `recording_scene.go`) and auto-record watcher (`autorecord.go`) |
-| `internal/recommend/` | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go` |
-| `internal/searchlab/` | Search benchmark: frozen plugin results for fixed queries, hand grades, ranking theories scored against them (`cmd/search-lab`, data in `apps/backend/searchlab/`) |
-| `internal/recommendeval/` | Offline replay of the Home ranking over a database's history (`cmd/recommend-eval`) |
+| Path                      | Purpose                                                                                                                                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/server/main.go`      | Entry point, wires everything                                                                                                                                                                                                                        |
+| `internal/db/`            | SQLite open/migrate + query helpers (`"table:id"` record ids, JSON/BOOLEAN column decoding, `$name` params)                                                                                                                                          |
+| `internal/cache/`         | Expiring key-value store on the SQLite `kv` table                                                                                                                                                                                                    |
+| `internal/storage/`       | On-disk blob store, served at `/api/blob/`; optional at-rest encryption of `stream-cache/` (`BLOB_ENCRYPTION_KEY`, see Mobile app)                                                                                                                   |
+| `internal/blobcache/`     | Cache size limit: LRU eviction of `stream-cache/` + `img-cache/` blobs                                                                                                                                                                               |
+| `internal/plugins/`       | Registry (hot reload) + embedded JS runtime (goja, native HTML parser) + types; the Bun runner remains only for the parity test                                                                                                                      |
+| `internal/ingest/`        | Observation→canonical merge, relation linking, collection members, markers                                                                                                                                                                           |
+| `internal/pipeline/`      | Orchestrator: scene visits (`visit.go`), job execution (download, speed-check, enrich)                                                                                                                                                               |
+| `internal/jobs/`          | DB-backed job queue + worker pool (VPN-gated)                                                                                                                                                                                                        |
+| `internal/discovery/`     | Plugin keyword search + stub ingest, shared by `/api/search` and search subscriptions                                                                                                                                                                |
+| `internal/updater/`       | Scheduler that re-runs due search subscriptions                                                                                                                                                                                                      |
+| `internal/media/`         | Repository: all GraphQL read/write queries                                                                                                                                                                                                           |
+| `internal/api/graphql/`   | gqlgen resolvers; SDL in `schema/*.graphql`                                                                                                                                                                                                          |
+| `internal/stream/`        | HLS/MP4 proxy + write-through blob cache; live sessions (cams) bypass the cache                                                                                                                                                                      |
+| `internal/resolve/`       | Stream resolution chain (cache → domain plugin → wildcard → direct)                                                                                                                                                                                  |
+| `internal/searchrank/`    | Live search scoring: typo-tolerant text match, reciprocal-rank-fused site ranks, quality, query-dependent taste, recognised-entity credit and click memory (all weights in `weights.go`); entity index, click history, cross-site duplicate collapse |
+| `internal/mediakeep/`     | Keeps the posters of `expiring_media` plugins' stubs in the blob store and refreshes their preview URLs                                                                                                                                              |
+| `internal/alike/`         | Cross-plugin alternate-source matching (pHash + performer/duration score)                                                                                                                                                                            |
+| `internal/cams/`          | Live cam rooms: listing through the cam plugins (60 s page cache), `cam_model` upserts, follow, online probe, live stream URL, recorder (`recorder.go`, `recording_scene.go`) and auto-record watcher (`autorecord.go`)                              |
+| `internal/recommend/`     | Recommendation engine: taste profile, candidate sources, ranking, re-ranking; all tunables in `weights.go`                                                                                                                                           |
+| `internal/searchlab/`     | Search benchmark: frozen plugin results for fixed queries, hand grades, ranking theories scored against them (`cmd/search-lab`, data in `apps/backend/searchlab/`)                                                                                   |
+| `internal/recommendeval/` | Offline replay of the Home ranking over a database's history (`cmd/recommend-eval`)                                                                                                                                                                  |
 
 After changing SDL: `go run github.com/99designs/gqlgen generate` in `apps/backend`, then `bun run codegen` in `packages/veil-sdk` (regenerates the genql client the frontend uses), then `bun run check` in `apps/web`.
 
@@ -164,7 +164,7 @@ A cam model is a live room, not a scene: it comes and goes. Cam plugins (`cam:li
 - Internal links go through `src/lib/routes.ts` (`sceneUrl`, `performerUrl`, `tagUrl`, ...).
 - Design tokens + component classes live in `src/routes/layout.css`, TV/D-pad focus in `src/lib/tv.css` + `FocusGrid`/`FocusList`. Reuse `SceneCard`, `TagChips`, `MemberCard`, `CollectionDialog`, `Lightbox` before writing new components. For anything new, follow the tokens and patterns already in `layout.css`.
 - Split view (web only): `SplitView` is mounted by the root layout, so its players keep running across navigation: on `/split` (`routes/split`, `splitUrl()`, an empty route) it fills the page, elsewhere it is a muted dock at the bottom left that opens `/split` on click. It plays up to 4 cams and/or scenes at once, 1 pane full, 2 side by side, 3-4 in a 2x2 grid, with a drag-to-reorder tab bar and a fullscreen button for the grid. Panes live in `lib/stores/split.ts` (localStorage `veil:split`: `{kind, mediaId, title}` per pane + focused index; playback restarts on reload). `SplitAddButton` (hover button on `SceneCard`, `ExploreSceneCard`, `CamCard`, sidebar followed cams, `ActiveRecordings`) calls `openInSplit`, which adds a pane and stays on the page (the dock shows it); with 4 open it replaces the focused pane and says so. Each `SplitPane` resolves its own stream (cam: `fetchCamStream`, re-resolved on error; scene: best stream) into a private-element `VideoPlayer` (not `shared`, so the mini player is untouched). Audio focus: only the focused pane is unmuted, unless "All audio" (`allAudio` in the store, saved) unmutes every pane; the click that selects a pane doesn't also pause it (`VideoPlayer` `silenced`, which also isolates it from the session's live-audio choice), and only it reacts to keyboard shortcuts (`keyboard`); clicking a pane focuses it. Panes keep their DOM position and are placed with CSS `order`, since moving a player's element stalls its stream.
-- Stream playback URLs are proxied through the backend (`/api/stream/`, CORS *); images through `/api/img` (`cacheUrl` helper).
+- Stream playback URLs are proxied through the backend (`/api/stream/`, CORS \*); images through `/api/img` (`cacheUrl` helper).
 
 ## Running
 
@@ -230,3 +230,5 @@ When your changes are written, consider whether they need a test, and add one ne
 - Browser flows: Playwright, run `bunx playwright test`.
 
 Failures mean investigate, not move on.
+
+Use Read/Write/Edit instead of sed/awk/python
