@@ -19,6 +19,10 @@
 		instantHover?: boolean;
 		/** Called with a result and its place in the list when the user opens it. */
 		onopen?: (result: PluginSearchResult, position: number) => void;
+		/** When set, navigating up out of the first row hands focus here. */
+		ontopedge?: () => void;
+		/** Shown when there are no items. */
+		emptyMessage?: string;
 	}
 
 	let {
@@ -27,7 +31,9 @@
 		ariaLabel = 'Adult content',
 		onleftedge,
 		instantHover = false,
-		onopen
+		onopen,
+		ontopedge,
+		emptyMessage = 'No results.'
 	}: Props = $props();
 
 	const GRID_CLASS = 'grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
@@ -60,7 +66,12 @@
 		}
 	}
 
+	/** Hands focus on when keyboard navigation leaves the grid: up to ontopedge, left to onleftedge or the sidebar. */
 	function onGridEdge(direction: 'left' | 'right' | 'up' | 'down') {
+		if (direction === 'up') {
+			ontopedge?.();
+			return;
+		}
 		if (direction !== 'left') return;
 		if (onleftedge) {
 			onleftedge();
@@ -73,7 +84,7 @@
 {#if items.length === 0 && !loading}
 	<div class="flex flex-col items-center gap-3 py-24 text-center">
 		<span class="text-6xl opacity-10">🔞</span>
-		<p class="text-base-content/40">No results.</p>
+		<p class="text-base-content/40">{emptyMessage}</p>
 	</div>
 {:else}
 	<FocusGrid

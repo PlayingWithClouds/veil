@@ -30,8 +30,9 @@
 	});
 
 	let saved = $state(false);
-	/** Quick-saves the gallery to the default collection. */
-	function save() {
+	/** Quick-saves the gallery to the default collection, without opening it from a surrounding grid cell. */
+	function save(event: MouseEvent) {
+		event.stopPropagation();
 		quickSaveEntity('gallery', gallery.id, gallery.title);
 		saved = true;
 	}
