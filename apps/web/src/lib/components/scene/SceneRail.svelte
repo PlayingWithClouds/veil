@@ -26,6 +26,9 @@
 
 	let { feed, openingUrl, sceneSourceUrl, cast, onopen, onedge }: Props = $props();
 
+	// Placeholder cards while the related videos are pending.
+	const RAIL_SKELETONS = 6;
+
 	// Chip order above the list.
 	const GROUP_ORDER: UpNextGroup[] = ['site', 'cast', 'similar', 'feed'];
 
@@ -121,7 +124,19 @@
 			{/each}
 		</div>
 	{/if}
-	{#if feed.items.length === 0 && !feed.loading}
+	{#if !feed.ready}
+		<!-- Placeholders while the scene's related videos are still being linked. -->
+		{#each { length: RAIL_SKELETONS } as _, index (index)}
+			<div class="flex gap-2">
+				<div class="skeleton aspect-video w-[60%] min-w-[168px] shrink-0 rounded-xl"></div>
+				<div class="flex flex-1 flex-col gap-2 pt-1">
+					<div class="skeleton h-3.5 w-11/12 rounded"></div>
+					<div class="skeleton h-3 w-2/3 rounded"></div>
+					<div class="skeleton h-3 w-1/2 rounded"></div>
+				</div>
+			</div>
+		{/each}
+	{:else if feed.items.length === 0 && !feed.loading}
 		<p class="text-base-content/40 text-sm">Nothing here yet.</p>
 	{/if}
 	<FocusList
@@ -146,7 +161,7 @@
 			</div>
 		{/snippet}
 	</FocusList>
-	{#if feed.loading && pagesMore}
+	{#if feed.ready && feed.loading && pagesMore}
 		<div class="flex justify-center py-4">
 			<span class="loading loading-sm text-base-content/40"></span>
 		</div>

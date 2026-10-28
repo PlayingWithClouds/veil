@@ -60,6 +60,8 @@
 	let cards = $derived(cardsFor(source));
 	let loading = $derived.by(() => {
 		if (source === 'performer') return performerLoading;
+		// The mixed list waits for the related videos; show it as loading meanwhile.
+		if (source === 'all' && !feed.ready) return true;
 		return feed.loading;
 	});
 	let pages = $derived(source === 'all' || source === 'forYou');
