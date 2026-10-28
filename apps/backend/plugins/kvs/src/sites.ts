@@ -47,6 +47,13 @@ export interface SiteConfig {
    * so they yield no downloads; the live check picks a playable hit.
    */
   membersOnlyVideos?: boolean;
+  /**
+   * Cam sites the archive records shows from. A video whose categories or
+   * tags name one is credited to it (studio) instead of to the archive.
+   */
+  camPlatforms?: string[];
+  /** Tags kept per video, for sites that pad pages with dozens of SEO keywords. */
+  maxTags?: number;
 }
 
 /** Path prefixes most KVS themes use; sites override what differs. */
@@ -133,6 +140,20 @@ const LOCALIZED_THEME = {
   channelPrefixes: ["/channel/"],
   infoSelector: ".info-content",
 };
+
+/** Cam sites that archives of recorded shows name in their categories. */
+const CAM_PLATFORMS = [
+  "Chaturbate",
+  "MyFreeCams",
+  "Stripchat",
+  "Camsoda",
+  "Bongacams",
+  "Cam4",
+  "LiveJasmin",
+  "Flirt4Free",
+  "Cherry.tv",
+  "Streamate",
+];
 
 export const SITES: SiteConfig[] = [
   kvsSite({
@@ -463,6 +484,30 @@ export const SITES: SiteConfig[] = [
     searchPath: "/search/{query}",
     tagIndexPath: "/tags",
     modelIndexPath: "/albums/models",
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "cloudbate",
+    name: "Cloudbate",
+    origin: "https://www.cloudbate.com",
+    videoPath: /^\/video\/(\d+)\//,
+    // An archive of Chaturbate shows: every video's category says so.
+    camPlatforms: ["Chaturbate"],
+    // A few uploads are private and have no player.
+    membersOnlyVideos: true,
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "camstreams",
+    name: "CamStreams",
+    origin: "https://camstreams.tv",
+    videoPath: /^\/videos\/(\d+)\//,
+    // Videos name no model; the models index exists but is empty.
+    modelIndexPath: undefined,
+    // The categories are the cam sites the shows were recorded on.
+    camPlatforms: CAM_PLATFORMS,
+    // Pages list up to ~80 keywords such as "<model> nude" after the category.
+    maxTags: 5,
   }),
 ];
 

@@ -9,7 +9,7 @@ import { parseListingCards, parseVideoCards } from "../src/listing.ts";
 import { MODELS, TAGS, parseCatalogEntries, splitCount } from "../src/catalog.ts";
 import { interleave } from "../src/fanout.ts";
 import { mimeTypeOf, requestedQuality } from "../src/resolve.ts";
-import { withoutSiteSuffix } from "../src/scrape.ts";
+import { camPlatformStudio, withoutSiteSuffix } from "../src/scrape.ts";
 import type { DiscoveredItem } from "@playingwithclouds/veil-sdk";
 
 /** The configured site with this key; fails the test when missing. */
@@ -390,5 +390,47 @@ describe("pimpbunny", () => {
     expect(parseVideoCards(site("pimpbunny"), blocks[0]!).map((item) => item.external_id)).toEqual([
       "kvs-pimpbunny-angela-5-5-s-dildo-ride-under-the-sun",
     ]);
+  });
+});
+
+describe("cam show archives", () => {
+  test("cloudbate cards carry the cam username and the minute runtime", () => {
+    const html = `
+      <div class="row no-gutters" id="list_videos_latest_videos_list_items">
+        <div class="item col-6"><div class="video-block">
+          <span class="duration">12:58</span>
+          <a class="thumb" href="https://www.cloudbate.com/video/1141719/elle-uwu-porn-cam-video-10-28-2026/" title="Elle_uwu porn cam video - 10/28/2026">
+            <img class="video-img" src="https://www.cloudbate.com/contents/videos_screenshots/1141000/1141719/336x189/3.jpg" alt="elle_uwu recorded nude video 1141719">
+          </a>
+          <span class="streamer"><a href="https://www.cloudbate.com/models/elle_uwu/">elle_uwu</a></span>
+        </div></div>
+      </div>`;
+    const items = parseListingCards(site("cloudbate"), parse(html));
+    expect(items).toHaveLength(1);
+    expect(items[0]!.external_id).toBe("kvs-cloudbate-1141719");
+    expect(items[0]!.title).toBe("Elle_uwu porn cam video - 10/28/2026");
+    expect(items[0]!.duration_seconds).toBe(12 * 60 + 58);
+    expect(videoKey(site("cloudbate"), "https://www.cloudbate.com/models/elle_uwu/")).toBe("");
+  });
+
+  test("camstreams cards are /videos/<id>/ links with a lazy-loaded poster", () => {
+    const html = `
+      <div id="list_videos_latest_videos_list_items">
+        <div class="item"><a href="https://camstreams.tv/videos/44484/lili-jones-mfc/" title="Lili jones mfc">
+          <div class="img"><img class="thumb lazy-load" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-original="https://camstreams.tv/contents/videos_screenshots/44000/44484/320x180/1.jpg" alt="Lili jones mfc"></div>
+          <strong class="title">Lili jones mfc</strong>
+        </a></div>
+      </div>`;
+    const items = parseListingCards(site("camstreams"), parse(html));
+    expect(items.map((item) => item.external_id)).toEqual(["kvs-camstreams-44484"]);
+    expect(items[0]!.poster_path).toBe("https://camstreams.tv/contents/videos_screenshots/44000/44484/320x180/1.jpg");
+    expect(site("camstreams").modelIndexPath).toBeUndefined();
+  });
+
+  test("a category naming a cam site credits it as the studio", () => {
+    expect(camPlatformStudio(site("camstreams"), ["MyFreeCams", "fingering"])).toEqual({ name: "MyFreeCams" });
+    expect(camPlatformStudio(site("cloudbate"), ["girls", "chaturbate"])).toEqual({ name: "Chaturbate" });
+    expect(camPlatformStudio(site("camstreams"), ["fingering"])).toBeUndefined();
+    expect(camPlatformStudio(site("okxxx"), ["Chaturbate"])).toBeUndefined();
   });
 });
