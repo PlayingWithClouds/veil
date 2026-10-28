@@ -11,6 +11,9 @@ export interface SceneProgress {
 
 export const watchProgress = writable<Map<string, SceneProgress>>(new Map());
 
+// Scenes watched to the end, for the "Watched" mark on cards.
+export const watchedScenes = writable<Set<string>>(new Set());
+
 interface WatchHistoryRow {
 	media: string;
 	progressSeconds: number;
@@ -18,8 +21,8 @@ interface WatchHistoryRow {
 	completed: boolean;
 }
 
-// Loads the unfinished watches into the store. Completed watches and
-// zero-progress rows are skipped — they would draw an empty or full bar.
+// Loads the unfinished watches into watchProgress and the finished ones into
+// watchedScenes. Zero-progress rows are skipped: they would draw an empty bar.
 export async function loadWatchProgress(): Promise<void> {
 	try {
 		const data = await gqlClient.query({
@@ -33,14 +36,20 @@ export async function loadWatchProgress(): Promise<void> {
 		});
 		const rows = (data.watchHistory ?? []) as unknown as WatchHistoryRow[];
 		const next = new Map<string, SceneProgress>();
+		const watched = new Set<string>();
 		for (const row of rows) {
-			if (row.completed || row.progressSeconds <= 0) continue;
+			if (row.completed) {
+				watched.add(row.media);
+				continue;
+			}
+			if (row.progressSeconds <= 0) continue;
 			next.set(row.media, {
 				progressSeconds: row.progressSeconds,
 				durationSeconds: row.durationSeconds
 			});
 		}
 		watchProgress.set(next);
+		watchedScenes.set(watched);
 	} catch {
 		// Best-effort: leave the previous map in place on failure.
 	}

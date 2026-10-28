@@ -43,6 +43,10 @@ type Options struct {
 	// Entity, when set, lists only that entity type (the feeder wants scenes);
 	// empty lists every type each plugin searches.
 	Entity plugins.MediaType
+	// OnPluginDone, when set, is called once per plugin as its last list ends,
+	// with how many items its lists returned and whether it failed (nothing
+	// returned and an error).
+	OnPluginDone func(plugin string, itemCount int, failed bool)
 }
 
 // Hit is one plugin result after ingest. ID is the canonical record id, empty
@@ -100,6 +104,7 @@ func (s *Service) Run(ctx context.Context, options Options, searchPlugins []*plu
 	}
 
 	outcomes := make(map[string]*pluginOutcome, len(searchPlugins))
+	openJobs := jobsPerPlugin(jobs)
 	for finished := 0; finished < len(jobs); {
 		select {
 		case <-ctx.Done():
@@ -108,12 +113,33 @@ func (s *Service) Run(ctx context.Context, options Options, searchPlugins []*plu
 			recordOutcome(outcomes, batch)
 			if batch.finished {
 				finished++
+				reportPluginDone(options, openJobs, outcomes, batch.job.plugin.Meta.Name)
 				continue
 			}
 			s.ingestHits(ctx, batch.job.plugin.Meta.Name, batch.items, onHit)
 		}
 	}
 	return errors.Join(pluginFailures(options.Query, searchPlugins, outcomes)...)
+}
+
+// jobsPerPlugin counts each plugin's list jobs.
+func jobsPerPlugin(jobs []listJob) map[string]int {
+	counts := make(map[string]int, len(jobs))
+	for _, job := range jobs {
+		counts[job.plugin.Meta.Name]++
+	}
+	return counts
+}
+
+// reportPluginDone marks one of the plugin's jobs finished and, after its
+// last, reports the plugin's outcome to options.OnPluginDone.
+func reportPluginDone(options Options, openJobs map[string]int, outcomes map[string]*pluginOutcome, name string) {
+	openJobs[name]--
+	if openJobs[name] > 0 || options.OnPluginDone == nil {
+		return
+	}
+	outcome := outcomes[name]
+	options.OnPluginDone(name, outcome.itemCount, outcome.itemCount == 0 && outcome.firstErr != nil)
 }
 
 // runJob runs one list call, sending each item batch and finally its end.

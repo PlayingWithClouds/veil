@@ -30,20 +30,6 @@ export function isGalleryResult(result: PluginSearchResult): boolean {
 	return result.mediaType === 'gallery';
 }
 
-/** Splits results into videos and galleries, each keeping its order. */
-export function splitByMediaType(results: PluginSearchResult[]): {
-	videos: PluginSearchResult[];
-	galleries: PluginSearchResult[];
-} {
-	const videos: PluginSearchResult[] = [];
-	const galleries: PluginSearchResult[] = [];
-	for (const result of results) {
-		if (isGalleryResult(result)) galleries.push(result);
-		else videos.push(result);
-	}
-	return { videos, galleries };
-}
-
 /** The number a result is sorted by in the given mode; missing values are -Infinity so they sort last. */
 function sortKey(result: PluginSearchResult, mode: SortMode): number {
 	let value: number | null | undefined;

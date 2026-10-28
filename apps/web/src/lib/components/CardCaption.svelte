@@ -24,6 +24,8 @@
 		// Channel or performer image for the avatar; falls back to the site icon.
 		avatarUrl?: string | null;
 		site?: SearchPlugin | null;
+		// Shown instead of the site's name, e.g. the host for a plugin covering many sites.
+		siteName?: string | null;
 		// Trailing detail on the last line (age, image count, …).
 		detail?: string | null;
 		onclick: () => void;
@@ -36,16 +38,23 @@
 		byline = null,
 		avatarUrl = null,
 		site = null,
+		siteName = null,
 		detail = null,
 		onclick,
 		onmore
 	}: Props = $props();
 
+	let shownSite = $derived.by(() => {
+		if (siteName) return siteName;
+		if (site) return siteLabel(site);
+		return null;
+	});
+
 	// Phones fold byline, site and age into one grey line under the title.
 	let compactMeta = $derived.by(() => {
 		const parts: string[] = [];
 		if (byline) parts.push(byline);
-		if (site) parts.push(siteLabel(site));
+		if (shownSite) parts.push(shownSite);
 		if (detail) parts.push(detail);
 		return parts.join(' · ');
 	});
@@ -78,12 +87,12 @@
 		{:else if byline}
 			<span class="text-base-content/60 truncate text-[13px] leading-[18px]">{byline}</span>
 		{/if}
-		{#if !$isCompact && (site || detail)}
+		{#if !$isCompact && (shownSite || detail)}
 			<span class="text-base-content/60 flex items-center gap-1 text-[13px] leading-[18px]">
-				{#if site}
-					<span class="truncate">{siteLabel(site)}</span>
+				{#if shownSite}
+					<span class="truncate">{shownSite}</span>
 				{/if}
-				{#if site && detail}
+				{#if shownSite && detail}
 					<span aria-hidden="true">·</span>
 				{/if}
 				{#if detail}

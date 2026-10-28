@@ -65,6 +65,23 @@ export interface SearchPlugin {
 	domains: string[];
 }
 
+/**
+ * The name to show for the site a page URL is on: the plugin's name, or for a
+ * plugin covering several sites (KVS Tubes, Aylo, ...) the page's own host.
+ */
+export function siteLabelFor(url: string, plugin: SearchPlugin | null): string | null {
+	if (!plugin) return null;
+	if (plugin.domains.length > 1) {
+		try {
+			return new URL(url).hostname.replace(/^www\./, '');
+		} catch {
+			// Fall back to the plugin's name.
+		}
+	}
+	if (plugin.displayName) return plugin.displayName;
+	return plugin.name;
+}
+
 /** The plugin whose domains cover url's host, or null when none does. */
 export function pluginForUrl(url: string, plugins: SearchPlugin[]): SearchPlugin | null {
 	let host: string;
@@ -197,6 +214,13 @@ interface StreamResultEvent {
 	item: StreamItem;
 }
 
+/** The end of one site's search. */
+interface StreamSiteEvent {
+	plugin: string;
+	count: number;
+	failed: boolean;
+}
+
 /** A performer, studio or tag of the library that a search query names. */
 export interface SearchMatchedEntity {
 	kind: 'performer' | 'studio' | 'tag';
@@ -270,6 +294,8 @@ export function pluginSearchStream(
 		limit?: number;
 		/** Called with the library entities the query names, before any result. */
 		onMatched?: (entities: SearchMatchedEntity[]) => void;
+		/** Called as each site's search ends: how many items it listed, and whether it failed. */
+		onSite?: (plugin: string, count: number, failed: boolean) => void;
 	}
 ): SearchStream {
 	const url = new URL(`${apiBase()}/api/search`);
@@ -301,6 +327,15 @@ export function pluginSearchStream(
 		try {
 			const parsed = JSON.parse((event as MessageEvent).data) as StreamMatchedEvent;
 			options?.onMatched?.(streamEventToEntities(parsed));
+		} catch {
+			// malformed event — ignore
+		}
+	});
+
+	source.addEventListener('site', (event) => {
+		try {
+			const parsed = JSON.parse((event as MessageEvent).data) as StreamSiteEvent;
+			options?.onSite?.(parsed.plugin, parsed.count, parsed.failed);
 		} catch {
 			// malformed event — ignore
 		}
