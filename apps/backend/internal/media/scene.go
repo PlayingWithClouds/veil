@@ -265,6 +265,24 @@ func (r *Repository) sceneCountWhere(ctx context.Context, clause string, rid *db
 	return count
 }
 
+// PerformerSceneCount counts the scenes crediting performerID.
+func (r *Repository) PerformerSceneCount(ctx context.Context, performerID string) int {
+	rid, err := db.ParseRecordID(performerID)
+	if err != nil {
+		return 0
+	}
+	return r.sceneCountWhere(ctx, jsonContains("scene.performers", "$id"), rid)
+}
+
+// StudioSceneCount counts the scenes of studioID.
+func (r *Repository) StudioSceneCount(ctx context.Context, studioID string) int {
+	rid, err := db.ParseRecordID(studioID)
+	if err != nil {
+		return 0
+	}
+	return r.sceneCountWhere(ctx, "studio = $id", rid)
+}
+
 // ---------------------------------------------------------------------------
 // Tag
 

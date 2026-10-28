@@ -1,5 +1,5 @@
 import { gqlClient } from '$lib/veil';
-import type { PerformerRef } from '$lib/sceneDetail';
+import { PERFORMER_REF_FIELDS, type PerformerRef } from '$lib/sceneDetail';
 
 /** A performer the face-recognition services think the picture shows. */
 export interface FaceCandidate {
@@ -79,7 +79,7 @@ export async function identifyFace(
 /** Credits the performer called name to a scene or gallery, creating the performer if the library has none. */
 export async function creditPerformerByName(mediaId: string, name: string): Promise<PerformerRef> {
 	const data = await gqlClient.mutation({
-		creditPerformerByName: { __args: { mediaId, name }, id: true, name: true, imagePath: true }
+		creditPerformerByName: { __args: { mediaId, name }, ...PERFORMER_REF_FIELDS }
 	});
 	return data.creditPerformerByName as unknown as PerformerRef;
 }

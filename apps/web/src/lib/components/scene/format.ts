@@ -47,6 +47,37 @@ export function formatDuration(seconds: number | null | undefined): string | nul
 	return `${hours} h ${minutes % 60} min`;
 }
 
+/** Whole years from a birthdate to a date (now when absent), null when either is unknown. */
+export function ageAt(
+	birthdate: string | null | undefined,
+	at: string | null | undefined
+): number | null {
+	const born = parseDate(birthdate);
+	if (!born) return null;
+	let reference = new Date();
+	if (at) {
+		const parsed = parseDate(at);
+		if (!parsed) return null;
+		reference = parsed;
+	}
+	let years = reference.getFullYear() - born.getFullYear();
+	const birthdayPending =
+		reference.getMonth() < born.getMonth() ||
+		(reference.getMonth() === born.getMonth() && reference.getDate() < born.getDate());
+	if (birthdayPending) years -= 1;
+	if (years < 18 || years > 99) return null;
+	return years;
+}
+
+/** Up to two initials of a name, for avatars without a photo. */
+export function initials(name: string): string {
+	const words = name.trim().split(/\s+/).filter(Boolean);
+	return words
+		.slice(0, 2)
+		.map((word) => word.charAt(0).toUpperCase())
+		.join('');
+}
+
 /** Compact count like "1.2K" for view and scene counts. */
 export function formatCount(count: number): string {
 	return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(

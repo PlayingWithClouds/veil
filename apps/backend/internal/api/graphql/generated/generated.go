@@ -31,9 +31,11 @@ type ResolverRoot interface {
 	Gallery() GalleryResolver
 	Job() JobResolver
 	Mutation() MutationResolver
+	Performer() PerformerResolver
 	Query() QueryResolver
 	Scene() SceneResolver
 	SearchSubscription() SearchSubscriptionResolver
+	Studio() StudioResolver
 	Subscription() SubscriptionResolver
 	WatchHistory() WatchHistoryResolver
 }
@@ -872,6 +874,9 @@ type MutationResolver interface {
 	AddToWatchlist(ctx context.Context, mediaID string) (*model.WatchlistItem, error)
 	RemoveFromWatchlist(ctx context.Context, mediaID string) (bool, error)
 }
+type PerformerResolver interface {
+	SceneCount(ctx context.Context, obj *model.Performer) (int, error)
+}
 type QueryResolver interface {
 	VpnStatus(ctx context.Context) (*model.VpnStatus, error)
 	Stream(ctx context.Context, url string, pluginName *string) (*model.StreamResult, error)
@@ -949,6 +954,9 @@ type SearchSubscriptionResolver interface {
 	TotalCount(ctx context.Context, obj *model.SearchSubscription) (int, error)
 
 	Scenes(ctx context.Context, obj *model.SearchSubscription, limit *int, offset *int) ([]*model.Scene, error)
+}
+type StudioResolver interface {
+	SceneCount(ctx context.Context, obj *model.Studio) (int, error)
 }
 type SubscriptionResolver interface {
 	MediaAdded(ctx context.Context) (<-chan *model.MediaEvent, error)
@@ -18641,7 +18649,7 @@ func (ec *executionContext) _Performer_sceneCount(ctx context.Context, field gra
 			return ec.fieldContext_Performer_sceneCount(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.SceneCount, nil
+			return ec.Resolvers.Performer().SceneCount(ctx, obj)
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
@@ -18652,7 +18660,7 @@ func (ec *executionContext) _Performer_sceneCount(ctx context.Context, field gra
 	)
 }
 func (ec *executionContext) fieldContext_Performer_sceneCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Performer", field, false, false, errors.New("field of type Int does not have child fields"))
+	return graphql.NewScalarFieldContext("Performer", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Performer_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Performer) (ret graphql.Marshaler) {
@@ -25980,7 +25988,7 @@ func (ec *executionContext) _Studio_sceneCount(ctx context.Context, field graphq
 			return ec.fieldContext_Studio_sceneCount(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.SceneCount, nil
+			return ec.Resolvers.Studio().SceneCount(ctx, obj)
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
@@ -25991,7 +25999,7 @@ func (ec *executionContext) _Studio_sceneCount(ctx context.Context, field graphq
 	)
 }
 func (ec *executionContext) fieldContext_Studio_sceneCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Studio", field, false, false, errors.New("field of type Int does not have child fields"))
+	return graphql.NewScalarFieldContext("Studio", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Studio_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Studio) (ret graphql.Marshaler) {
@@ -31044,17 +31052,17 @@ func (ec *executionContext) _Performer(ctx context.Context, sel ast.SelectionSet
 		case "id":
 			out.Values[i] = ec._Performer_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Performer_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "aliases":
 			out.Values[i] = ec._Performer_aliases(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "details":
 			out.Values[i] = ec._Performer_details(ctx, field, obj)
@@ -31097,29 +31105,60 @@ func (ec *executionContext) _Performer(ctx context.Context, sel ast.SelectionSet
 		case "favorite":
 			out.Values[i] = ec._Performer_favorite(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "rating":
 			out.Values[i] = ec._Performer_rating(ctx, field, obj)
 		case "tags":
 			out.Values[i] = ec._Performer_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "sceneCount":
-			out.Values[i] = ec._Performer_sceneCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Performer_sceneCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._Performer_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Performer_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -34271,17 +34310,17 @@ func (ec *executionContext) _Studio(ctx context.Context, sel ast.SelectionSet, o
 		case "id":
 			out.Values[i] = ec._Studio_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Studio_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "aliases":
 			out.Values[i] = ec._Studio_aliases(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "url":
 			out.Values[i] = ec._Studio_url(ctx, field, obj)
@@ -34294,22 +34333,53 @@ func (ec *executionContext) _Studio(ctx context.Context, sel ast.SelectionSet, o
 		case "tags":
 			out.Values[i] = ec._Studio_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "sceneCount":
-			out.Values[i] = ec._Studio_sceneCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Studio_sceneCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._Studio_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Studio_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

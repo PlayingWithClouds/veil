@@ -41,7 +41,21 @@ export interface PerformerRef {
 	id: string;
 	name: string;
 	imagePath: string | null;
+	// Profile facts for the watch page's cast cards; null until a profile is known.
+	birthdate?: string | null;
+	country?: string | null;
+	sceneCount?: number;
 }
+
+// Performer fields the watch page shows (photo, age, country, scene count).
+export const PERFORMER_REF_FIELDS = {
+	id: true,
+	name: true,
+	imagePath: true,
+	birthdate: true,
+	country: true,
+	sceneCount: true
+} as const;
 
 export interface TagRef {
 	id: string;
@@ -98,7 +112,7 @@ export async function loadSceneDetail(id: string): Promise<FullSceneDetail> {
 					previewVideo: true,
 					previewImages: true,
 					studio: { id: true, name: true, imagePath: true, sceneCount: true },
-					performers: { id: true, name: true, imagePath: true },
+					performers: PERFORMER_REF_FIELDS,
 					tags: { id: true, name: true }
 				}
 			}),
