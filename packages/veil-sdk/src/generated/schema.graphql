@@ -298,6 +298,8 @@ type CollectionMember {
 type FaceIdentification {
   candidates: [FaceCandidate!]!
   videos: [FaceVideoMatch!]!
+  posts: [FacePostMatch!]!
+  postPerformers: [FacePostPerformer!]!
   sources: [String!]!
   failures: [String!]!
   pictureUrl: String
@@ -310,6 +312,23 @@ type FaceVideoMatch {
   thumbnailUrl: String
   sources: [String!]!
   scenePlugin: String
+}
+
+type FacePostMatch {
+  title: String!
+  url: String!
+  thumbnailUrl: String
+  solved: Boolean!
+  names: [String!]!
+  sources: [String!]!
+}
+
+type FacePostPerformer {
+  name: String!
+  posts: Int!
+  imageUrl: String
+  postUrl: String!
+  performerId: ID
 }
 
 type FaceCandidate {

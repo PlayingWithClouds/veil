@@ -321,6 +321,8 @@ export interface CollectionMember {
 export interface FaceIdentification {
     candidates: FaceCandidate[]
     videos: FaceVideoMatch[]
+    posts: FacePostMatch[]
+    postPerformers: FacePostPerformer[]
     sources: Scalars['String'][]
     failures: Scalars['String'][]
     pictureUrl: (Scalars['String'] | null)
@@ -335,6 +337,25 @@ export interface FaceVideoMatch {
     sources: Scalars['String'][]
     scenePlugin: (Scalars['String'] | null)
     __typename: 'FaceVideoMatch'
+}
+
+export interface FacePostMatch {
+    title: Scalars['String']
+    url: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    solved: Scalars['Boolean']
+    names: Scalars['String'][]
+    sources: Scalars['String'][]
+    __typename: 'FacePostMatch'
+}
+
+export interface FacePostPerformer {
+    name: Scalars['String']
+    posts: Scalars['Int']
+    imageUrl: (Scalars['String'] | null)
+    postUrl: Scalars['String']
+    performerId: (Scalars['ID'] | null)
+    __typename: 'FacePostPerformer'
 }
 
 export interface FaceCandidate {
@@ -1183,6 +1204,8 @@ export interface CollectionMemberGenqlSelection{
 export interface FaceIdentificationGenqlSelection{
     candidates?: FaceCandidateGenqlSelection
     videos?: FaceVideoMatchGenqlSelection
+    posts?: FacePostMatchGenqlSelection
+    postPerformers?: FacePostPerformerGenqlSelection
     sources?: boolean | number
     failures?: boolean | number
     pictureUrl?: boolean | number
@@ -1197,6 +1220,27 @@ export interface FaceVideoMatchGenqlSelection{
     thumbnailUrl?: boolean | number
     sources?: boolean | number
     scenePlugin?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FacePostMatchGenqlSelection{
+    title?: boolean | number
+    url?: boolean | number
+    thumbnailUrl?: boolean | number
+    solved?: boolean | number
+    names?: boolean | number
+    sources?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FacePostPerformerGenqlSelection{
+    name?: boolean | number
+    posts?: boolean | number
+    imageUrl?: boolean | number
+    postUrl?: boolean | number
+    performerId?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1934,6 +1978,22 @@ export interface WatchlistItemGenqlSelection{
     export const isFaceVideoMatch = (obj?: { __typename?: any } | null): obj is FaceVideoMatch => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isFaceVideoMatch"')
       return FaceVideoMatch_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FacePostMatch_possibleTypes: string[] = ['FacePostMatch']
+    export const isFacePostMatch = (obj?: { __typename?: any } | null): obj is FacePostMatch => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFacePostMatch"')
+      return FacePostMatch_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FacePostPerformer_possibleTypes: string[] = ['FacePostPerformer']
+    export const isFacePostPerformer = (obj?: { __typename?: any } | null): obj is FacePostPerformer => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFacePostPerformer"')
+      return FacePostPerformer_possibleTypes.includes(obj.__typename)
     }
     
 

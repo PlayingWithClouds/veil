@@ -35,12 +35,45 @@ func faceIdentificationModel(identification *face.Identification) *model.FaceIde
 	for _, video := range identification.Videos {
 		videos = append(videos, faceVideoModel(video))
 	}
+	posts := make([]*model.FacePostMatch, 0, len(identification.Posts))
+	for _, post := range identification.Posts {
+		posts = append(posts, facePostModel(post))
+	}
+	postPerformers := make([]*model.FacePostPerformer, 0, len(identification.PostPerformers))
+	for _, performer := range identification.PostPerformers {
+		postPerformers = append(postPerformers, facePostPerformerModel(performer))
+	}
 	return &model.FaceIdentification{
-		Candidates: candidates,
-		Videos:     videos,
-		Sources:    nonNilStrings(identification.Sources),
-		Failures:   nonNilStrings(identification.Failures),
-		PictureURL: strPtrIfSet(identification.PictureURL),
+		Candidates:     candidates,
+		Videos:         videos,
+		Posts:          posts,
+		PostPerformers: postPerformers,
+		Sources:        nonNilStrings(identification.Sources),
+		Failures:       nonNilStrings(identification.Failures),
+		PictureURL:     strPtrIfSet(identification.PictureURL),
+	}
+}
+
+// facePostModel converts one matching forum post; an empty thumbnail becomes null.
+func facePostModel(post face.PostMatch) *model.FacePostMatch {
+	return &model.FacePostMatch{
+		Title:        post.Title,
+		URL:          post.URL,
+		ThumbnailURL: strPtrIfSet(post.ThumbnailURL),
+		Solved:       post.Solved,
+		Names:        nonNilStrings(post.Names),
+		Sources:      nonNilStrings(post.Sources),
+	}
+}
+
+// facePostPerformerModel converts one performer named by matching posts; empty optional fields become null.
+func facePostPerformerModel(performer face.PostPerformer) *model.FacePostPerformer {
+	return &model.FacePostPerformer{
+		Name:        performer.Name,
+		Posts:       performer.Posts,
+		ImageURL:    strPtrIfSet(performer.ImageURL),
+		PostURL:     performer.PostURL,
+		PerformerID: strPtrIfSet(performer.PerformerID),
 	}
 }
 

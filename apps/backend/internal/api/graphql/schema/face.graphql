@@ -20,6 +20,11 @@ type FaceIdentification {
   # Videos on tube sites with a similar face, best first. They name nobody and
   # cannot be credited; the dialog shows them as links.
   videos: [FaceVideoMatch!]!
+  # Posts on identification forums (NameThatPorn) whose picture looks like the
+  # searched one, in the sites' order.
+  posts: [FacePostMatch!]!
+  # The performers the posts' accepted answers name, most often named first.
+  postPerformers: [FacePostPerformer!]!
   # Plugins that answered.
   sources: [String!]!
   # One line per plugin that failed or timed out.
@@ -42,6 +47,33 @@ type FaceVideoMatch {
   # The scene plugin that serves the page: pass it with url to
   # resolvePluginResult to open the video as a scene. Null when none does.
   scenePlugin: String
+}
+
+type FacePostMatch {
+  # The asker's title.
+  title: String!
+  # The post's page.
+  url: String!
+  thumbnailUrl: String
+  # Whether the post has an accepted answer.
+  solved: Boolean!
+  # Stage names the accepted answer gives; empty while unsolved.
+  names: [String!]!
+  # Plugins that found this post.
+  sources: [String!]!
+}
+
+type FacePostPerformer {
+  # The stage name.
+  name: String!
+  # How many of the matching posts name this performer.
+  posts: Int!
+  # The thumbnail of the best post naming the performer.
+  imageUrl: String
+  # The best post naming the performer.
+  postUrl: String!
+  # The library's performer of that name, when there is one.
+  performerId: ID
 }
 
 type FaceCandidate {

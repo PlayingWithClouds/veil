@@ -164,11 +164,30 @@ type ComplexityRoot struct {
 	}
 
 	FaceIdentification struct {
-		Candidates func(childComplexity int) int
-		Failures   func(childComplexity int) int
-		PictureURL func(childComplexity int) int
-		Sources    func(childComplexity int) int
-		Videos     func(childComplexity int) int
+		Candidates     func(childComplexity int) int
+		Failures       func(childComplexity int) int
+		PictureURL     func(childComplexity int) int
+		PostPerformers func(childComplexity int) int
+		Posts          func(childComplexity int) int
+		Sources        func(childComplexity int) int
+		Videos         func(childComplexity int) int
+	}
+
+	FacePostMatch struct {
+		Names        func(childComplexity int) int
+		Solved       func(childComplexity int) int
+		Sources      func(childComplexity int) int
+		ThumbnailURL func(childComplexity int) int
+		Title        func(childComplexity int) int
+		URL          func(childComplexity int) int
+	}
+
+	FacePostPerformer struct {
+		ImageURL    func(childComplexity int) int
+		Name        func(childComplexity int) int
+		PerformerID func(childComplexity int) int
+		PostURL     func(childComplexity int) int
+		Posts       func(childComplexity int) int
 	}
 
 	FaceVideoMatch struct {
@@ -1543,6 +1562,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceIdentification.PictureURL(childComplexity), true
+	case "FaceIdentification.postPerformers":
+		if e.ComplexityRoot.FaceIdentification.PostPerformers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceIdentification.PostPerformers(childComplexity), true
+	case "FaceIdentification.posts":
+		if e.ComplexityRoot.FaceIdentification.Posts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceIdentification.Posts(childComplexity), true
 	case "FaceIdentification.sources":
 		if e.ComplexityRoot.FaceIdentification.Sources == nil {
 			break
@@ -1555,6 +1586,74 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceIdentification.Videos(childComplexity), true
+
+	case "FacePostMatch.names":
+		if e.ComplexityRoot.FacePostMatch.Names == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.Names(childComplexity), true
+	case "FacePostMatch.solved":
+		if e.ComplexityRoot.FacePostMatch.Solved == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.Solved(childComplexity), true
+	case "FacePostMatch.sources":
+		if e.ComplexityRoot.FacePostMatch.Sources == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.Sources(childComplexity), true
+	case "FacePostMatch.thumbnailUrl":
+		if e.ComplexityRoot.FacePostMatch.ThumbnailURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.ThumbnailURL(childComplexity), true
+	case "FacePostMatch.title":
+		if e.ComplexityRoot.FacePostMatch.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.Title(childComplexity), true
+	case "FacePostMatch.url":
+		if e.ComplexityRoot.FacePostMatch.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostMatch.URL(childComplexity), true
+
+	case "FacePostPerformer.imageUrl":
+		if e.ComplexityRoot.FacePostPerformer.ImageURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostPerformer.ImageURL(childComplexity), true
+	case "FacePostPerformer.name":
+		if e.ComplexityRoot.FacePostPerformer.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostPerformer.Name(childComplexity), true
+	case "FacePostPerformer.performerId":
+		if e.ComplexityRoot.FacePostPerformer.PerformerID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostPerformer.PerformerID(childComplexity), true
+	case "FacePostPerformer.postUrl":
+		if e.ComplexityRoot.FacePostPerformer.PostURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostPerformer.PostURL(childComplexity), true
+	case "FacePostPerformer.posts":
+		if e.ComplexityRoot.FacePostPerformer.Posts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePostPerformer.Posts(childComplexity), true
 
 	case "FaceVideoMatch.scenePlugin":
 		if e.ComplexityRoot.FaceVideoMatch.ScenePlugin == nil {
@@ -5626,6 +5725,11 @@ type FaceIdentification {
   # Videos on tube sites with a similar face, best first. They name nobody and
   # cannot be credited; the dialog shows them as links.
   videos: [FaceVideoMatch!]!
+  # Posts on identification forums (NameThatPorn) whose picture looks like the
+  # searched one, in the sites' order.
+  posts: [FacePostMatch!]!
+  # The performers the posts' accepted answers name, most often named first.
+  postPerformers: [FacePostPerformer!]!
   # Plugins that answered.
   sources: [String!]!
   # One line per plugin that failed or timed out.
@@ -5648,6 +5752,33 @@ type FaceVideoMatch {
   # The scene plugin that serves the page: pass it with url to
   # resolvePluginResult to open the video as a scene. Null when none does.
   scenePlugin: String
+}
+
+type FacePostMatch {
+  # The asker's title.
+  title: String!
+  # The post's page.
+  url: String!
+  thumbnailUrl: String
+  # Whether the post has an accepted answer.
+  solved: Boolean!
+  # Stage names the accepted answer gives; empty while unsolved.
+  names: [String!]!
+  # Plugins that found this post.
+  sources: [String!]!
+}
+
+type FacePostPerformer {
+  # The stage name.
+  name: String!
+  # How many of the matching posts name this performer.
+  posts: Int!
+  # The thumbnail of the best post naming the performer.
+  imageUrl: String
+  # The best post naming the performer.
+  postUrl: String!
+  # The library's performer of that name, when there is one.
+  performerId: ID
 }
 
 type FaceCandidate {
@@ -7082,6 +7213,10 @@ func (ec *executionContext) childFields_FaceIdentification(ctx context.Context, 
 		return ec.fieldContext_FaceIdentification_candidates(ctx, field)
 	case "videos":
 		return ec.fieldContext_FaceIdentification_videos(ctx, field)
+	case "posts":
+		return ec.fieldContext_FaceIdentification_posts(ctx, field)
+	case "postPerformers":
+		return ec.fieldContext_FaceIdentification_postPerformers(ctx, field)
 	case "sources":
 		return ec.fieldContext_FaceIdentification_sources(ctx, field)
 	case "failures":
@@ -7090,6 +7225,40 @@ func (ec *executionContext) childFields_FaceIdentification(ctx context.Context, 
 		return ec.fieldContext_FaceIdentification_pictureUrl(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceIdentification", field.Name)
+}
+
+func (ec *executionContext) childFields_FacePostMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "title":
+		return ec.fieldContext_FacePostMatch_title(ctx, field)
+	case "url":
+		return ec.fieldContext_FacePostMatch_url(ctx, field)
+	case "thumbnailUrl":
+		return ec.fieldContext_FacePostMatch_thumbnailUrl(ctx, field)
+	case "solved":
+		return ec.fieldContext_FacePostMatch_solved(ctx, field)
+	case "names":
+		return ec.fieldContext_FacePostMatch_names(ctx, field)
+	case "sources":
+		return ec.fieldContext_FacePostMatch_sources(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FacePostMatch", field.Name)
+}
+
+func (ec *executionContext) childFields_FacePostPerformer(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_FacePostPerformer_name(ctx, field)
+	case "posts":
+		return ec.fieldContext_FacePostPerformer_posts(ctx, field)
+	case "imageUrl":
+		return ec.fieldContext_FacePostPerformer_imageUrl(ctx, field)
+	case "postUrl":
+		return ec.fieldContext_FacePostPerformer_postUrl(ctx, field)
+	case "performerId":
+		return ec.fieldContext_FacePostPerformer_performerId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FacePostPerformer", field.Name)
 }
 
 func (ec *executionContext) childFields_FaceVideoMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -13070,6 +13239,70 @@ func (ec *executionContext) fieldContext_FaceIdentification_videos(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _FaceIdentification_posts(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceIdentification_posts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Posts, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FacePostMatch) graphql.Marshaler {
+			return ec.marshalNFacePostMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostMatchᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceIdentification_posts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceIdentification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FacePostMatch(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FaceIdentification_postPerformers(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceIdentification_postPerformers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PostPerformers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FacePostPerformer) graphql.Marshaler {
+			return ec.marshalNFacePostPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostPerformerᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceIdentification_postPerformers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceIdentification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FacePostPerformer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FaceIdentification_sources(ctx context.Context, field graphql.CollectedField, obj *model.FaceIdentification) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13137,6 +13370,259 @@ func (ec *executionContext) _FaceIdentification_pictureUrl(ctx context.Context, 
 }
 func (ec *executionContext) fieldContext_FaceIdentification_pictureUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceIdentification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_title(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_url(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_thumbnailUrl(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_thumbnailUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_thumbnailUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_solved(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_solved(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Solved, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_solved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_names(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_names(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Names, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_names(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostMatch_sources(ctx context.Context, field graphql.CollectedField, obj *model.FacePostMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostMatch_sources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sources, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostMatch_sources(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostPerformer_name(ctx context.Context, field graphql.CollectedField, obj *model.FacePostPerformer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostPerformer_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostPerformer_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostPerformer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostPerformer_posts(ctx context.Context, field graphql.CollectedField, obj *model.FacePostPerformer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostPerformer_posts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Posts, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostPerformer_posts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostPerformer", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostPerformer_imageUrl(ctx context.Context, field graphql.CollectedField, obj *model.FacePostPerformer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostPerformer_imageUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImageURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostPerformer_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostPerformer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostPerformer_postUrl(ctx context.Context, field graphql.CollectedField, obj *model.FacePostPerformer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostPerformer_postUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PostURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostPerformer_postUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostPerformer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePostPerformer_performerId(ctx context.Context, field graphql.CollectedField, obj *model.FacePostPerformer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePostPerformer_performerId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PerformerID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FacePostPerformer_performerId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePostPerformer", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _FaceVideoMatch_title(ctx context.Context, field graphql.CollectedField, obj *model.FaceVideoMatch) (ret graphql.Marshaler) {
@@ -30280,6 +30766,16 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "posts":
+			out.Values[i] = ec._FaceIdentification_posts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postPerformers":
+			out.Values[i] = ec._FaceIdentification_postPerformers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "sources":
 			out.Values[i] = ec._FaceIdentification_sources(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -30292,6 +30788,120 @@ func (ec *executionContext) _FaceIdentification(ctx context.Context, sel ast.Sel
 			}
 		case "pictureUrl":
 			out.Values[i] = ec._FaceIdentification_pictureUrl(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var facePostMatchImplementors = []string{"FacePostMatch"}
+
+func (ec *executionContext) _FacePostMatch(ctx context.Context, sel ast.SelectionSet, obj *model.FacePostMatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, facePostMatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FacePostMatch")
+		case "title":
+			out.Values[i] = ec._FacePostMatch_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._FacePostMatch_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "thumbnailUrl":
+			out.Values[i] = ec._FacePostMatch_thumbnailUrl(ctx, field, obj)
+		case "solved":
+			out.Values[i] = ec._FacePostMatch_solved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "names":
+			out.Values[i] = ec._FacePostMatch_names(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sources":
+			out.Values[i] = ec._FacePostMatch_sources(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var facePostPerformerImplementors = []string{"FacePostPerformer"}
+
+func (ec *executionContext) _FacePostPerformer(ctx context.Context, sel ast.SelectionSet, obj *model.FacePostPerformer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, facePostPerformerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FacePostPerformer")
+		case "name":
+			out.Values[i] = ec._FacePostPerformer_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "posts":
+			out.Values[i] = ec._FacePostPerformer_posts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "imageUrl":
+			out.Values[i] = ec._FacePostPerformer_imageUrl(ctx, field, obj)
+		case "postUrl":
+			out.Values[i] = ec._FacePostPerformer_postUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "performerId":
+			out.Values[i] = ec._FacePostPerformer_performerId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -36170,6 +36780,58 @@ func (ec *executionContext) marshalNFaceIdentification2ᚖgithubᚗcomᚋplaying
 		return graphql.Null
 	}
 	return ec._FaceIdentification(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFacePostMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FacePostMatch) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFacePostMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostMatch(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFacePostMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostMatch(ctx context.Context, sel ast.SelectionSet, v *model.FacePostMatch) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FacePostMatch(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFacePostPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostPerformerᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FacePostPerformer) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFacePostPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostPerformer(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFacePostPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePostPerformer(ctx context.Context, sel ast.SelectionSet, v *model.FacePostPerformer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FacePostPerformer(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFaceVideoMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceVideoMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceVideoMatch) graphql.Marshaler {

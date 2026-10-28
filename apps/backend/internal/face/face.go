@@ -5,7 +5,9 @@
 // Named candidates may only come from databases of professional performers or
 // cam models; this package takes whatever plugin declares face:identify, so
 // that rule is kept at the plugin level (see CLAUDE.md). Similar videos are
-// passed through as links and never become candidates.
+// passed through as links and never become candidates. Matching forum posts
+// (reverse image search) are passed through too, with the performers their
+// accepted answers name counted into a list of their own.
 package face
 
 import (
@@ -32,6 +34,8 @@ const (
 	maxCandidates = 20
 	// maxVideos bounds how many similar videos are returned, best first.
 	maxVideos = 12
+	// maxPosts bounds how many matching forum posts are returned, best first.
+	maxPosts = 30
 )
 
 // Candidate is a performer one or more services think the picture shows.
@@ -61,11 +65,40 @@ type VideoMatch struct {
 	ScenePlugin string
 }
 
+// PostMatch is a post on a porn identification forum whose picture looks
+// like the searched one. Names are what its accepted answer names.
+type PostMatch struct {
+	Title        string
+	URL          string
+	ThumbnailURL string
+	Solved       bool
+	Names        []string
+	// Sources are the plugins that found the post.
+	Sources []string
+}
+
+// PostPerformer is a performer the accepted answers of matching posts name.
+type PostPerformer struct {
+	Name string
+	// Posts counts the matching posts naming the performer.
+	Posts int
+	// ImageURL is the thumbnail of the best post naming the performer.
+	ImageURL string
+	// PostURL is the best post naming the performer.
+	PostURL string
+	// PerformerID is the library's performer of that name, empty when there is none.
+	PerformerID string
+}
+
 // Identification is the outcome of one identify run.
 type Identification struct {
 	Candidates []Candidate
 	// Videos are similar videos from tube sites, best first.
 	Videos []VideoMatch
+	// Posts are matching forum posts, best first; PostPerformers the
+	// performers their answers name, most often named first.
+	Posts          []PostMatch
+	PostPerformers []PostPerformer
 	// Sources are the plugins that answered; Failures describe those that did not.
 	Sources  []string
 	Failures []string
@@ -188,6 +221,7 @@ type answer struct {
 	plugin     string
 	candidates []plugins.FaceCandidate
 	videos     []plugins.FaceVideoMatch
+	posts      []plugins.FacePostMatch
 	err        error
 }
 
@@ -206,6 +240,7 @@ func (s *Service) askServices(ctx context.Context, services []*plugins.Plugin, a
 			if err == nil {
 				answers[index].candidates = result.Candidates
 				answers[index].videos = result.Videos
+				answers[index].posts = result.Posts
 			}
 		}()
 	}
@@ -216,7 +251,13 @@ func (s *Service) askServices(ctx context.Context, services []*plugins.Plugin, a
 // rank merges the answers into one candidate list and marks the performers
 // the library already has.
 func (s *Service) rank(ctx context.Context, answers []answer) *Identification {
-	identification := &Identification{Candidates: mergeAnswers(answers), Videos: mergeVideos(answers)}
+	posts := mergePosts(answers)
+	identification := &Identification{
+		Candidates:     mergeAnswers(answers),
+		Videos:         mergeVideos(answers),
+		Posts:          posts,
+		PostPerformers: postPerformers(posts),
+	}
 	for _, reply := range answers {
 		if reply.err != nil {
 			log.Printf("face:identify via plugin %s: %v", reply.plugin, reply.err)
@@ -228,14 +269,24 @@ func (s *Service) rank(ctx context.Context, answers []answer) *Identification {
 	s.markScenePlugins(identification.Videos)
 	for index := range identification.Candidates {
 		candidate := &identification.Candidates[index]
-		performerID, err := s.library.FindPerformer(ctx, candidate.Name)
-		if err != nil {
-			log.Printf("face:identify: look up %q: %v", candidate.Name, err)
-			continue
-		}
-		candidate.PerformerID = performerID
+		candidate.PerformerID = s.libraryPerformer(ctx, candidate.Name)
+	}
+	for index := range identification.PostPerformers {
+		performer := &identification.PostPerformers[index]
+		performer.PerformerID = s.libraryPerformer(ctx, performer.Name)
 	}
 	return identification
+}
+
+// libraryPerformer is the id of the library's performer called name, empty
+// when there is none or the lookup failed.
+func (s *Service) libraryPerformer(ctx context.Context, name string) string {
+	performerID, err := s.library.FindPerformer(ctx, name)
+	if err != nil {
+		log.Printf("face:identify: look up %q: %v", name, err)
+		return ""
+	}
+	return performerID
 }
 
 // markScenePlugins records, per video, the scene plugin that can open its page.
@@ -320,6 +371,75 @@ func mergeVideos(answers []answer) []VideoMatch {
 		videos = videos[:maxVideos]
 	}
 	return videos
+}
+
+// mergePosts joins the posts of all services by page URL, keeping each
+// service's order (the sites rank, they give no similarity) and uniting
+// sources. At most maxPosts.
+func mergePosts(answers []answer) []PostMatch {
+	byURL := map[string]*PostMatch{}
+	var order []string
+	for _, reply := range answers {
+		for _, found := range reply.posts {
+			if found.URL == "" {
+				continue
+			}
+			merged, seen := byURL[found.URL]
+			if !seen {
+				merged = &PostMatch{URL: found.URL, Title: found.Title, ThumbnailURL: found.ThumbnailURL}
+				byURL[found.URL] = merged
+				order = append(order, found.URL)
+			}
+			if found.Solved && len(merged.Names) == 0 {
+				merged.Solved = true
+				merged.Names = found.Names
+			}
+			if !contains(merged.Sources, reply.plugin) {
+				merged.Sources = append(merged.Sources, reply.plugin)
+			}
+		}
+	}
+	if len(order) > maxPosts {
+		order = order[:maxPosts]
+	}
+	posts := make([]PostMatch, 0, len(order))
+	for _, pageURL := range order {
+		posts = append(posts, *byURL[pageURL])
+	}
+	return posts
+}
+
+// postPerformers counts the performers the posts' answers name, by name_key.
+// Most often named first, ties in the order of their best post.
+func postPerformers(posts []PostMatch) []PostPerformer {
+	byKey := map[string]*PostPerformer{}
+	var order []string
+	for _, post := range posts {
+		for _, name := range post.Names {
+			key := names.Key(name)
+			if key == "" {
+				continue
+			}
+			counted, seen := byKey[key]
+			if !seen {
+				counted = &PostPerformer{Name: name, ImageURL: post.ThumbnailURL, PostURL: post.URL}
+				byKey[key] = counted
+				order = append(order, key)
+			}
+			counted.Posts++
+		}
+	}
+	performers := make([]PostPerformer, 0, len(order))
+	for _, key := range order {
+		performers = append(performers, *byKey[key])
+	}
+	sort.SliceStable(performers, func(left, right int) bool {
+		return performers[left].Posts > performers[right].Posts
+	})
+	if len(performers) > maxCandidates {
+		performers = performers[:maxCandidates]
+	}
+	return performers
 }
 
 // mergeInto folds one service's candidate into the merged one.
