@@ -30,10 +30,38 @@ data class FaceVideoMatch(
     val scenePlugin: String?,
 )
 
+/** A post on an identification forum (NameThatPorn) whose picture looks like the searched one. */
+data class FacePostMatch(
+    /** The asker's title. */
+    val title: String,
+    val url: String,
+    val thumbnailUrl: String?,
+    /** Whether the post has an accepted answer. */
+    val solved: Boolean,
+    /** Stage names the accepted answer gives. */
+    val names: List<String>,
+)
+
+/** A performer the accepted answers of matching posts name. */
+data class FacePostPerformer(
+    val name: String,
+    /** How many matching posts name the performer. */
+    val posts: Int,
+    /** The thumbnail of the best post naming the performer. */
+    val imageUrl: String?,
+    val postUrl: String,
+    /** The library's performer of that name, when there is one. */
+    val performerId: String?,
+)
+
 /** What the face-recognition plugins answered for one picture. */
 data class FaceIdentification(
     val candidates: List<FaceCandidate>,
     val videos: List<FaceVideoMatch>,
+    /** Matching forum posts, in the sites' order. */
+    val posts: List<FacePostMatch>,
+    /** The performers the posts' answers name, most often named first. */
+    val postPerformers: List<FacePostPerformer>,
     /** Plugins that answered. */
     val sources: List<String>,
     /** One line per plugin that failed or timed out. */
@@ -66,6 +94,12 @@ object FaceRepository {
             },
             videos = result.videos.map { video ->
                 FaceVideoMatch(video.title, video.similarity, video.url, video.thumbnailUrl, video.scenePlugin)
+            },
+            posts = result.posts.map { post ->
+                FacePostMatch(post.title, post.url, post.thumbnailUrl, post.solved, post.names)
+            },
+            postPerformers = result.postPerformers.map { performer ->
+                FacePostPerformer(performer.name, performer.posts, performer.imageUrl, performer.postUrl, performer.performerId)
             },
             sources = result.sources,
             failures = result.failures,
