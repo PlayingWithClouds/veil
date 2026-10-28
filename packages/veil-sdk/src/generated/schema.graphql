@@ -464,6 +464,7 @@ type Plugin {
   version: String!
   capabilities: [String!]!
   domains: [String!]!
+  content: [String!]!
   enabled: Boolean!
   requiresSolver: Boolean!
   available: Boolean!

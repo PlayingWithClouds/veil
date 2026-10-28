@@ -388,6 +388,7 @@ type ComplexityRoot struct {
 	Plugin struct {
 		Available      func(childComplexity int) int
 		Capabilities   func(childComplexity int) int
+		Content        func(childComplexity int) int
 		Description    func(childComplexity int) int
 		DisplayName    func(childComplexity int) int
 		Domains        func(childComplexity int) int
@@ -3001,6 +3002,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Plugin.Capabilities(childComplexity), true
+	case "Plugin.content":
+		if e.ComplexityRoot.Plugin.Content == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Plugin.Content(childComplexity), true
 	case "Plugin.description":
 		if e.ComplexityRoot.Plugin.Description == nil {
 			break
@@ -5888,6 +5895,9 @@ type Plugin {
   capabilities: [String!]!
   # hostnames this plugin handles
   domains: [String!]!
+  # kinds of content the plugin's sites carry: videos, cam-shows, jav, galleries
+  # (search's ` + "`" + `content` + "`" + ` param picks plugins by them)
+  content: [String!]!
   enabled: Boolean!
   # site only works through FlareSolverr (Cloudflare challenge)
   requiresSolver: Boolean!
@@ -7279,6 +7289,8 @@ func (ec *executionContext) childFields_Plugin(ctx context.Context, field graphq
 		return ec.fieldContext_Plugin_capabilities(ctx, field)
 	case "domains":
 		return ec.fieldContext_Plugin_domains(ctx, field)
+	case "content":
+		return ec.fieldContext_Plugin_content(ctx, field)
 	case "enabled":
 		return ec.fieldContext_Plugin_enabled(ctx, field)
 	case "requiresSolver":
@@ -18936,6 +18948,29 @@ func (ec *executionContext) _Plugin_domains(ctx context.Context, field graphql.C
 	)
 }
 func (ec *executionContext) fieldContext_Plugin_domains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Plugin", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Plugin_content(ctx context.Context, field graphql.CollectedField, obj *model.Plugin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Plugin_content(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Content, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Plugin_content(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Plugin", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -31229,6 +31264,11 @@ func (ec *executionContext) _Plugin(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "domains":
 			out.Values[i] = ec._Plugin_domains(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "content":
+			out.Values[i] = ec._Plugin_content(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

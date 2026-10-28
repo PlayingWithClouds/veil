@@ -10,6 +10,7 @@
 // that copy is in the library, which always wins.
 import {
 	pluginSearchStream,
+	type ContentKind,
 	type PluginSearchResult,
 	type SearchMatchedEntity,
 	type SearchStream
@@ -54,6 +55,7 @@ export class LiveSearch {
 	query = $state('');
 
 	#sources: string[] = [];
+	#content: ContentKind | null = null;
 	#stream: SearchStream | null = null;
 	#token = 0;
 	#offset = 0;
@@ -67,13 +69,15 @@ export class LiveSearch {
 
 	/**
 	 * Starts a search for query on sources (plugin names, empty = all);
-	 * siteNames are the sites it will ask, for their status.
+	 * siteNames are the sites it will ask, for their status. A content kind
+	 * keeps the search to the plugins and sites carrying it.
 	 */
-	run(query: string, sources: string[], siteNames: string[]) {
+	run(query: string, sources: string[], siteNames: string[], content: ContentKind | null = null) {
 		this.stop();
 		this.#token++;
 		this.query = query;
 		this.#sources = sources;
+		this.#content = content;
 		this.library = [];
 		this.videos = [];
 		this.galleries = [];
@@ -159,6 +163,7 @@ export class LiveSearch {
 			{
 				offset: this.#offset,
 				limit: PER_PLUGIN,
+				content: this.#content,
 				onMatched: (entities) => {
 					if (token === this.#token) this.matched = entities;
 				},

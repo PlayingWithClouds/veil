@@ -5,6 +5,8 @@
 // blocks holding a video's credits and related list. Adding a KVS tube is
 // adding an entry to SITES.
 
+import type { ContentKind } from "@playingwithclouds/veil-sdk";
+
 export interface SiteConfig {
   /** Short stable key; namespaces external ids as kvs-<key>-<video>. */
   key: string;
@@ -54,6 +56,8 @@ export interface SiteConfig {
   camPlatforms?: string[];
   /** Tags kept per video, for sites that pad pages with dozens of SEO keywords. */
   maxTags?: number;
+  /** The kind of content the site carries; a search asking for another kind skips it. */
+  content: ContentKind;
 }
 
 /** Path prefixes most KVS themes use; sites override what differs. */
@@ -79,6 +83,7 @@ function kvsSite(options: SiteOptions): SiteConfig {
     modelPrefixes: DEFAULT_MODEL_PREFIXES,
     channelPrefixes: DEFAULT_CHANNEL_PREFIXES,
     relatedSelector: DEFAULT_RELATED_SELECTOR,
+    content: "videos",
     ...options,
   };
 }
@@ -493,6 +498,7 @@ export const SITES: SiteConfig[] = [
     videoPath: /^\/video\/(\d+)\//,
     // An archive of Chaturbate shows: every video's category says so.
     camPlatforms: ["Chaturbate"],
+    content: "cam-shows",
     // A few uploads are private and have no player.
     membersOnlyVideos: true,
   }),
@@ -506,6 +512,7 @@ export const SITES: SiteConfig[] = [
     modelIndexPath: undefined,
     // The categories are the cam sites the shows were recorded on.
     camPlatforms: CAM_PLATFORMS,
+    content: "cam-shows",
     // Pages list up to ~80 keywords such as "<model> nude" after the category.
     maxTags: 5,
   }),
@@ -564,4 +571,16 @@ export function enabledSites(): SiteConfig[] {
   }
   const solverAvailable = Boolean((process.env.FLARESOLVERR_URL ?? "").trim());
   return sites.filter((site) => solverAvailable || !site.requiresSolver);
+}
+
+/** The enabled sites carrying this kind of content, every enabled site when none is asked for. */
+export function sitesCarrying(content: ContentKind | undefined): SiteConfig[] {
+  const sites = enabledSites();
+  if (!content) return sites;
+  return sites.filter((site) => site.content === content);
+}
+
+/** Every kind of content the sites carry (meta.content). */
+export function contentKinds(): ContentKind[] {
+  return [...new Set(SITES.map((site) => site.content))];
 }

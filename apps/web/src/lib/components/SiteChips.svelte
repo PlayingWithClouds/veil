@@ -6,7 +6,13 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import type { Snippet } from 'svelte';
-	import { fetchSearchPlugins, supportsMediaFilter, type SearchPlugin } from '$lib/search';
+	import {
+		carriesContent,
+		fetchSearchPlugins,
+		supportsMediaFilter,
+		type ContentKind,
+		type SearchPlugin
+	} from '$lib/search';
 	import { mediaFilter } from '$lib/stores/mediaFilter';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import WarningCircleIcon from 'phosphor-svelte/lib/WarningCircleIcon';
@@ -19,9 +25,11 @@
 		leading?: Snippet;
 		// While a search runs: each searched site's state and result count.
 		status?: Map<string, SiteStatus>;
+		// The kind of content a search asks for: only the sites carrying it get a chip.
+		content?: ContentKind | null;
 	}
 
-	let { selectedPlugins = $bindable([]), leading, status }: Props = $props();
+	let { selectedPlugins = $bindable([]), leading, status, content = null }: Props = $props();
 
 	const SOURCES_STORAGE_KEY = 'veil:search-sources';
 
@@ -34,7 +42,9 @@
 	// Sites that don't offer the selected media type get no chip. A hidden site
 	// stays in the stored selection, so it comes back with the media type.
 	let visiblePlugins = $derived(
-		searchPlugins.filter((plugin) => supportsMediaFilter(plugin, $mediaFilter))
+		searchPlugins.filter(
+			(plugin) => supportsMediaFilter(plugin, $mediaFilter) && carriesContent(plugin, content)
+		)
 	);
 	let hasVisibleSelection = $derived(
 		visiblePlugins.some((plugin) => selectedPlugins.includes(plugin.name))
@@ -114,7 +124,9 @@
 				onclick={() => togglePlugin(plugin.name)}
 				class="site-chip"
 				class:site-chip-active={selectedPlugins.includes(plugin.name)}
-				class:site-chip-empty={siteStatus && siteStatus.state !== 'searching' && siteStatus.count === 0}
+				class:site-chip-empty={siteStatus &&
+					siteStatus.state !== 'searching' &&
+					siteStatus.count === 0}
 				title={statusTitle(siteStatus)}
 			>
 				{#if plugin.iconUrl}

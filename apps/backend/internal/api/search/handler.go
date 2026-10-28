@@ -19,7 +19,7 @@ import (
 
 // Handler serves live search results as Server-Sent Events.
 //
-// GET /api/search?q=<query>[&limit=<n>]
+// GET /api/search?q=<query>[&limit=<n>][&sources=<plugin,...>][&content=<kind>]
 //
 // Events:
 //
@@ -154,7 +154,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 2. Plugin search (concurrent, results streamed per plugin, each ingested
 	// as a stub). An optional `sources` param (comma-separated plugin names)
 	// restricts which providers run; empty means every search-capable plugin.
-	searchPlugins := h.discovery.Plugins(discovery.SplitSources(r.URL.Query().Get("sources")))
+	// An optional `content` param (plugins.Content*) keeps the plugins carrying
+	// that kind of content and has multi-site plugins search only those sites.
+	content := r.URL.Query().Get("content")
+	session.content = content
+	searchPlugins := discovery.CarryingContent(h.discovery.Plugins(discovery.SplitSources(r.URL.Query().Get("sources"))), content)
 	pluginNames := make([]string, 0, len(searchPlugins))
 	for _, plugin := range searchPlugins {
 		pluginNames = append(pluginNames, plugin.Meta.Name)
@@ -162,7 +166,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Record the search as a recommendation signal once the stream completes.
 	defer h.logSearch(q, pluginNames, session)
 
-	options := discovery.Options{Query: q, Limit: limit, Offset: offset, Paginate: paginate}
+	options := discovery.Options{Query: q, Limit: limit, Offset: offset, Paginate: paginate, Content: content}
 	var running sync.WaitGroup
 	if firstPage {
 		session.startExtras(&running, options, searchPlugins)

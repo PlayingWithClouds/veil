@@ -16,6 +16,7 @@ runPlugin({
     capabilities: ["scene:find", "scene:list", "scene:list:page", "stream:resolve"],
     // The play page and the player iframe are on the site itself.
     domains: ["showcamrips.com"],
+    content: ["cam-shows"],
   },
   find: (url) => scrape(url),
   sceneList,

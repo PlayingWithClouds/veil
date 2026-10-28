@@ -43,6 +43,10 @@ type Options struct {
 	// Entity, when set, lists only that entity type (the feeder wants scenes);
 	// empty lists every type each plugin searches.
 	Entity plugins.MediaType
+	// Content, when set, is the kind of content the search asks for
+	// (plugins.Content*), passed on so plugins carrying several kinds search
+	// only the sites of that one. Pick the plugins with CarryingContent.
+	Content string
 	// OnPluginDone, when set, is called once per plugin as its last list ends,
 	// with how many items its lists returned and whether it failed (nothing
 	// returned and an error).
@@ -93,7 +97,7 @@ type pluginOutcome struct {
 // anything and one errored; the failures are logged and come back joined.
 // Returns once every list is done or ctx is cancelled.
 func (s *Service) Run(ctx context.Context, options Options, searchPlugins []*plugins.Plugin, onHit func(Hit)) error {
-	args := plugins.ListArgs{Query: options.Query, Limit: options.Limit}
+	args := plugins.ListArgs{Query: options.Query, Limit: options.Limit, Content: options.Content}
 	if options.Paginate {
 		args.Offset = options.Offset
 	}
@@ -234,6 +238,21 @@ func SplitSources(sources string) []string {
 		}
 	}
 	return names
+}
+
+// CarryingContent keeps the plugins carrying this kind of content; an empty
+// kind returns the input unchanged.
+func CarryingContent(all []*plugins.Plugin, kind string) []*plugins.Plugin {
+	if kind == "" {
+		return all
+	}
+	filtered := make([]*plugins.Plugin, 0, len(all))
+	for _, plugin := range all {
+		if plugin.Carries(kind) {
+			filtered = append(filtered, plugin)
+		}
+	}
+	return filtered
 }
 
 // filterBySources keeps only plugins named in sources. An empty list returns

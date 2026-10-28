@@ -43,6 +43,9 @@ type searchSession struct {
 	query   string
 	stream  *eventStream
 	profile *recommend.Profile
+	// content is the kind of content asked for, "" for any; entity pages are
+	// then listed only on plugins carrying it.
+	content string
 
 	// matches are the performers, studios and tags the query names (blocked
 	// ones left out); rewritten is the query with the ones named by alias or
@@ -338,7 +341,7 @@ func (s *searchSession) listPage(match searchrank.EntityMatch, limit int) {
 		return
 	}
 	onHit := s.pageHit("page:"+match.ID, &match)
-	for _, plugin := range s.handler.pages.PagePlugins(origin) {
+	for _, plugin := range discovery.CarryingContent(s.handler.pages.PagePlugins(origin), s.content) {
 		listed := 0
 		err := s.handler.discovery.ListPage(s.ctx, plugin, origin.SourceURL, limit, func(found discovery.Hit) {
 			listed++

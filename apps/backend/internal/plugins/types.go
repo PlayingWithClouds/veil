@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -102,6 +103,27 @@ func (p *Plugin) SearchListEntities() []MediaType {
 	return entities
 }
 
+// ContentKinds returns the kinds of content the plugin carries: meta.content,
+// else videos for a scene lister and galleries for a gallery lister.
+func (p *Plugin) ContentKinds() []string {
+	if len(p.Meta.Content) > 0 {
+		return p.Meta.Content
+	}
+	var kinds []string
+	if p.Meta.Has(ListCapability(MediaTypeScene)) {
+		kinds = append(kinds, ContentVideos)
+	}
+	if p.Meta.Has(ListCapability(MediaTypeGallery)) {
+		kinds = append(kinds, ContentGalleries)
+	}
+	return kinds
+}
+
+// Carries reports whether the plugin carries this kind of content.
+func (p *Plugin) Carries(kind string) bool {
+	return slices.Contains(p.ContentKinds(), kind)
+}
+
 // ServesURL reports whether rawURL's host is one of the plugin's meta.domains
 // (or a subdomain of one). The "*" wildcard does not count.
 func (p *Plugin) ServesURL(rawURL string) bool {
@@ -178,7 +200,23 @@ type PluginMeta struct {
 	// with an expiry, so the backend keeps a copy of stub posters
 	// (internal/mediakeep) instead of storing a URL that soon stops working.
 	ExpiringMedia bool `json:"expiring_media,omitempty"`
+	// Content names the kinds of content the plugin's sites carry (Content*
+	// constants), so a search can be aimed at the sites that have what the user
+	// looks for. Empty means what its list capabilities suggest (ContentKinds).
+	Content []string `json:"content,omitempty"`
 }
+
+// Kinds of content a plugin declares in meta.content and a search may ask for.
+const (
+	// ContentVideos is studio, amateur and tube videos in general.
+	ContentVideos = "videos"
+	// ContentCamShows is recorded live cam shows.
+	ContentCamShows = "cam-shows"
+	// ContentJav is Japanese adult video.
+	ContentJav = "jav"
+	// ContentGalleries is photo sets.
+	ContentGalleries = "galleries"
+)
 
 // ResolveArgs is passed to a plugin's resolve capability.
 type ResolveArgs struct {
@@ -479,6 +517,9 @@ type ListArgs struct {
 	URL    string `json:"url,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 	Offset int    `json:"offset,omitempty"`
+	// Content is the kind of content a search asks for (Content* constants);
+	// a plugin carrying several kinds then searches only the sites of that one.
+	Content string `json:"content,omitempty"`
 }
 
 // ItemsResult is returned by every find/list capability.
