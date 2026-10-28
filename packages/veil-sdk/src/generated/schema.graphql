@@ -118,6 +118,7 @@ type Mutation {
   recordImpressions(impressions: [ImpressionInput!]!): Int!
   createSavedFilter(name: String!, filter: SceneFilterInput!): SavedFilter!
   deleteSavedFilter(filterId: ID!): Boolean!
+  refreshSceneComments(sceneId: ID!): [SceneComment!]!
   recordSceneHeat(input: RecordSceneHeatInput!): Boolean!
   setSceneThumbnail(sceneId: ID!, atSeconds: Float!, jpegBase64: String!): Boolean!
   createSceneMarker(mediaId: ID!, seconds: Float!, endSeconds: Float, tagName: String, label: String): SceneMarker!
@@ -606,8 +607,20 @@ type Scene {
   tagMatch: String
   relatedVia: String
   related(limit: Int): [Scene!]!
+  comments: [SceneComment!]!
   createdAt: String!
   updatedAt: String!
+}
+
+type SceneComment {
+  id: ID!
+  plugin: String!
+  author: String
+  text: String!
+  postedAt: String
+  likes: Int
+  replyTo: ID
+  mentions: [Performer!]!
 }
 
 type SceneHeat {

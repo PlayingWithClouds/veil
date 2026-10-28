@@ -7,11 +7,20 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/media"
 )
+
+// RefreshSceneComments is the resolver for the refreshSceneComments field.
+func (r *mutationResolver) RefreshSceneComments(ctx context.Context, sceneID string) ([]*model.SceneComment, error) {
+	if err := r.orchestrator.RefetchScene(ctx, sceneID); err != nil {
+		return nil, fmt.Errorf("fetch the scene's page: %w", err)
+	}
+	return r.repo.SceneComments(ctx, sceneID)
+}
 
 // Scenes is the resolver for the scenes field.
 func (r *queryResolver) Scenes(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sort *string, minRating *float64, minDuration *int, maxDuration *int, dateFrom *string, dateTo *string, sources []string, includeTagIds []string, excludeTagIds []string) ([]*model.Scene, error) {
@@ -58,6 +67,11 @@ func (r *queryResolver) RecommendedFeed(ctx context.Context, limit *int, offset 
 // Related is the resolver for the related field.
 func (r *sceneResolver) Related(ctx context.Context, obj *model.Scene, limit *int) ([]*model.Scene, error) {
 	return r.repo.RelatedScenes(ctx, obj.ID, derefInt(limit, 24), r.registry.InactiveNames())
+}
+
+// Comments is the resolver for the comments field.
+func (r *sceneResolver) Comments(ctx context.Context, obj *model.Scene) ([]*model.SceneComment, error) {
+	return r.repo.SceneComments(ctx, obj.ID)
 }
 
 // Scene returns generated.SceneResolver implementation.

@@ -308,6 +308,7 @@ type ComplexityRoot struct {
 		RecordRecommendationChoice func(childComplexity int, chosenMediaID string, rejectedMediaID string) int
 		RecordSceneHeat            func(childComplexity int, input model.RecordSceneHeatInput) int
 		RecordSearch               func(childComplexity int, query string) int
+		RefreshSceneComments       func(childComplexity int, sceneID string) int
 		RemoveBlock                func(childComplexity int, targetID string) int
 		RemoveFromCollection       func(childComplexity int, collectionID string, mediaID string) int
 		RemoveFromWatchlist        func(childComplexity int, mediaID string) int
@@ -559,6 +560,7 @@ type ComplexityRoot struct {
 	}
 
 	Scene struct {
+		Comments        func(childComplexity int) int
 		CreatedAt       func(childComplexity int) int
 		Date            func(childComplexity int) int
 		Details         func(childComplexity int) int
@@ -580,6 +582,17 @@ type ComplexityRoot struct {
 		Title           func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
 		ViewCount       func(childComplexity int) int
+	}
+
+	SceneComment struct {
+		Author   func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Likes    func(childComplexity int) int
+		Mentions func(childComplexity int) int
+		Plugin   func(childComplexity int) int
+		PostedAt func(childComplexity int) int
+		ReplyTo  func(childComplexity int) int
+		Text     func(childComplexity int) int
 	}
 
 	SceneFilter struct {
@@ -846,6 +859,7 @@ type MutationResolver interface {
 	RecordImpressions(ctx context.Context, impressions []*model.ImpressionInput) (int, error)
 	CreateSavedFilter(ctx context.Context, name string, filter model.SceneFilterInput) (*model.SavedFilter, error)
 	DeleteSavedFilter(ctx context.Context, filterID string) (bool, error)
+	RefreshSceneComments(ctx context.Context, sceneID string) ([]*model.SceneComment, error)
 	RecordSceneHeat(ctx context.Context, input model.RecordSceneHeatInput) (bool, error)
 	SetSceneThumbnail(ctx context.Context, sceneID string, atSeconds float64, jpegBase64 string) (bool, error)
 	CreateSceneMarker(ctx context.Context, mediaID string, seconds float64, endSeconds *float64, tagName *string, label *string) (*model.SceneMarker, error)
@@ -949,6 +963,7 @@ type QueryResolver interface {
 }
 type SceneResolver interface {
 	Related(ctx context.Context, obj *model.Scene, limit *int) ([]*model.Scene, error)
+	Comments(ctx context.Context, obj *model.Scene) ([]*model.SceneComment, error)
 }
 type SearchSubscriptionResolver interface {
 	NewCount(ctx context.Context, obj *model.SearchSubscription) (int, error)
@@ -2418,6 +2433,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordSearch(childComplexity, args["query"].(string)), true
+	case "Mutation.refreshSceneComments":
+		if e.ComplexityRoot.Mutation.RefreshSceneComments == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_refreshSceneComments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RefreshSceneComments(childComplexity, args["sceneId"].(string)), true
 	case "Mutation.removeBlock":
 		if e.ComplexityRoot.Mutation.RemoveBlock == nil {
 			break
@@ -4083,6 +4109,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.SavedFilter.Name(childComplexity), true
 
+	case "Scene.comments":
+		if e.ComplexityRoot.Scene.Comments == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Scene.Comments(childComplexity), true
 	case "Scene.createdAt":
 		if e.ComplexityRoot.Scene.CreatedAt == nil {
 			break
@@ -4214,6 +4246,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Scene.ViewCount(childComplexity), true
+
+	case "SceneComment.author":
+		if e.ComplexityRoot.SceneComment.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.Author(childComplexity), true
+	case "SceneComment.id":
+		if e.ComplexityRoot.SceneComment.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.ID(childComplexity), true
+	case "SceneComment.likes":
+		if e.ComplexityRoot.SceneComment.Likes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.Likes(childComplexity), true
+	case "SceneComment.mentions":
+		if e.ComplexityRoot.SceneComment.Mentions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.Mentions(childComplexity), true
+	case "SceneComment.plugin":
+		if e.ComplexityRoot.SceneComment.Plugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.Plugin(childComplexity), true
+	case "SceneComment.postedAt":
+		if e.ComplexityRoot.SceneComment.PostedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.PostedAt(childComplexity), true
+	case "SceneComment.replyTo":
+		if e.ComplexityRoot.SceneComment.ReplyTo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.ReplyTo(childComplexity), true
+	case "SceneComment.text":
+		if e.ComplexityRoot.SceneComment.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneComment.Text(childComplexity), true
 
 	case "SceneFilter.dateFrom":
 		if e.ComplexityRoot.SceneFilter.DateFrom == nil {
@@ -6184,8 +6265,36 @@ type Scene {
   # Scenes related to this one, filled when the scene is visited: the site's own
   # related list first, then fallback searches by performer, tag and title.
   related(limit: Int): [Scene!]!
+  # The comments under the video on its sites, as their pages showed them when
+  # visited, each site in its own order.
+  comments: [SceneComment!]!
   createdAt: String!
   updatedAt: String!
+}
+
+extend type Mutation {
+  # Fetches the scene's page on its site again (credits, streams, related list
+  # and comments) and returns its comments. For scenes visited before comments
+  # were read, or to see newer ones.
+  refreshSceneComments(sceneId: ID!): [SceneComment!]!
+}
+
+# One comment under a video on a site. Viewers often name the performer.
+type SceneComment {
+  # Unique within the scene: "<plugin>:<position>".
+  id: ID!
+  # The plugin whose site carries it.
+  plugin: String!
+  author: String
+  text: String!
+  # ISO 8601, approximate when the site only showed "3 weeks ago".
+  postedAt: String
+  likes: Int
+  # id of the comment this one answers.
+  replyTo: ID
+  # Performers of the library the text names (full names of two words or
+  # more), so a comment saying who it is links them.
+  mentions: [Performer!]!
 }
 `, BuiltIn: false},
 	{Name: "../schema/scene_heat.graphql", Input: `# Where a scene gets watched and scrubbed to, reported by the player and shown as a
@@ -7513,12 +7622,36 @@ func (ec *executionContext) childFields_Scene(ctx context.Context, field graphql
 		return ec.fieldContext_Scene_relatedVia(ctx, field)
 	case "related":
 		return ec.fieldContext_Scene_related(ctx, field)
+	case "comments":
+		return ec.fieldContext_Scene_comments(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Scene_createdAt(ctx, field)
 	case "updatedAt":
 		return ec.fieldContext_Scene_updatedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Scene", field.Name)
+}
+
+func (ec *executionContext) childFields_SceneComment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_SceneComment_id(ctx, field)
+	case "plugin":
+		return ec.fieldContext_SceneComment_plugin(ctx, field)
+	case "author":
+		return ec.fieldContext_SceneComment_author(ctx, field)
+	case "text":
+		return ec.fieldContext_SceneComment_text(ctx, field)
+	case "postedAt":
+		return ec.fieldContext_SceneComment_postedAt(ctx, field)
+	case "likes":
+		return ec.fieldContext_SceneComment_likes(ctx, field)
+	case "replyTo":
+		return ec.fieldContext_SceneComment_replyTo(ctx, field)
+	case "mentions":
+		return ec.fieldContext_SceneComment_mentions(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SceneComment", field.Name)
 }
 
 func (ec *executionContext) childFields_SceneFilter(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -8706,6 +8839,20 @@ func (ec *executionContext) field_Mutation_recordSearch_args(ctx context.Context
 		return nil, err
 	}
 	args["query"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_refreshSceneComments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sceneId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sceneId"] = arg0
 	return args, nil
 }
 
@@ -16629,6 +16776,50 @@ func (ec *executionContext) fieldContext_Mutation_deleteSavedFilter(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_refreshSceneComments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_refreshSceneComments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RefreshSceneComments(ctx, fc.Args["sceneId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.SceneComment) graphql.Marshaler {
+			return ec.marshalNSceneComment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneCommentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_refreshSceneComments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SceneComment(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_refreshSceneComments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_recordSceneHeat(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23708,6 +23899,38 @@ func (ec *executionContext) fieldContext_Scene_related(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Scene_comments(ctx context.Context, field graphql.CollectedField, obj *model.Scene) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Scene_comments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Scene().Comments(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.SceneComment) graphql.Marshaler {
+			return ec.marshalNSceneComment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneCommentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Scene_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Scene",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SceneComment(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Scene_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Scene) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23752,6 +23975,199 @@ func (ec *executionContext) _Scene_updatedAt(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Scene_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Scene", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_id(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_plugin(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_plugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Plugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_plugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_author(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_text(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_postedAt(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_postedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PostedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_postedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_likes(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_likes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Likes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_likes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_replyTo(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_replyTo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReplyTo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_replyTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneComment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _SceneComment_mentions(ctx context.Context, field graphql.CollectedField, obj *model.SceneComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneComment_mentions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Mentions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneComment_mentions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SceneComment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _SceneFilter_search(ctx context.Context, field graphql.CollectedField, obj *model.SceneFilter) (ret graphql.Marshaler) {
@@ -30781,6 +31197,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "refreshSceneComments":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshSceneComments(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "recordSceneHeat":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordSceneHeat(ctx, field)
@@ -33493,6 +33916,42 @@ func (ec *executionContext) _Scene(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "comments":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Scene_comments(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._Scene_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -33502,6 +33961,68 @@ func (ec *executionContext) _Scene(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Scene_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sceneCommentImplementors = []string{"SceneComment"}
+
+func (ec *executionContext) _SceneComment(ctx context.Context, sel ast.SelectionSet, obj *model.SceneComment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sceneCommentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SceneComment")
+		case "id":
+			out.Values[i] = ec._SceneComment_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "plugin":
+			out.Values[i] = ec._SceneComment_plugin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "author":
+			out.Values[i] = ec._SceneComment_author(ctx, field, obj)
+		case "text":
+			out.Values[i] = ec._SceneComment_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postedAt":
+			out.Values[i] = ec._SceneComment_postedAt(ctx, field, obj)
+		case "likes":
+			out.Values[i] = ec._SceneComment_likes(ctx, field, obj)
+		case "replyTo":
+			out.Values[i] = ec._SceneComment_replyTo(ctx, field, obj)
+		case "mentions":
+			out.Values[i] = ec._SceneComment_mentions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -36405,6 +36926,32 @@ func (ec *executionContext) marshalNScene2ᚖgithubᚗcomᚋplayingwithcloudsᚋ
 		return graphql.Null
 	}
 	return ec._Scene(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSceneComment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SceneComment) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSceneComment2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneComment(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSceneComment2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneComment(ctx context.Context, sel ast.SelectionSet, v *model.SceneComment) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SceneComment(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSceneFilter2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSceneFilter(ctx context.Context, sel ast.SelectionSet, v *model.SceneFilter) graphql.Marshaler {

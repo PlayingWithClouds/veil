@@ -146,6 +146,9 @@ func specificMediaStatements(table string) []string {
 					watched = scene_heat.watched + excluded.watched,
 					scrubbed = scene_heat.scrubbed + excluded.scrubbed`,
 			`DELETE FROM scene_heat WHERE scene = $merged`,
+			// Both copies' sites keep their comments; one site's twice keeps the survivor's.
+			`UPDATE OR IGNORE scene_comment SET scene = $survivor WHERE scene = $merged`,
+			`DELETE FROM scene_comment WHERE scene = $merged`,
 			`UPDATE OR IGNORE scene_related SET scene = $survivor WHERE scene = $merged`,
 			`UPDATE OR IGNORE scene_related SET related = $survivor WHERE related = $merged`,
 			`DELETE FROM scene_related WHERE scene = $merged OR related = $merged OR scene = related`,

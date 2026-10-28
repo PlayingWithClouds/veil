@@ -55,6 +55,12 @@ func (o *Orchestrator) VisitScene(ctx context.Context, sceneID string) error {
 	return nil
 }
 
+// RefetchScene fetches the scene's detail page again whether or not it was
+// visited, sharing a fetch already running for it.
+func (o *Orchestrator) RefetchScene(ctx context.Context, sceneID string) error {
+	return o.sharedDetailFetch(ctx, sceneID, o.fetchSceneDetail)
+}
+
 // needsDetailFetch reports whether a visit should fetch the scene's detail page:
 // on the first visit, and again (at most once per detailRetryInterval) while a
 // visited scene still has no streams, which is the case when its plugin gained

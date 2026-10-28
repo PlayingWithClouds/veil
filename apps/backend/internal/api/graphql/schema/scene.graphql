@@ -63,6 +63,34 @@ type Scene {
   # Scenes related to this one, filled when the scene is visited: the site's own
   # related list first, then fallback searches by performer, tag and title.
   related(limit: Int): [Scene!]!
+  # The comments under the video on its sites, as their pages showed them when
+  # visited, each site in its own order.
+  comments: [SceneComment!]!
   createdAt: String!
   updatedAt: String!
+}
+
+extend type Mutation {
+  # Fetches the scene's page on its site again (credits, streams, related list
+  # and comments) and returns its comments. For scenes visited before comments
+  # were read, or to see newer ones.
+  refreshSceneComments(sceneId: ID!): [SceneComment!]!
+}
+
+# One comment under a video on a site. Viewers often name the performer.
+type SceneComment {
+  # Unique within the scene: "<plugin>:<position>".
+  id: ID!
+  # The plugin whose site carries it.
+  plugin: String!
+  author: String
+  text: String!
+  # ISO 8601, approximate when the site only showed "3 weeks ago".
+  postedAt: String
+  likes: Int
+  # id of the comment this one answers.
+  replyTo: ID
+  # Performers of the library the text names (full names of two words or
+  # more), so a comment saying who it is links them.
+  mentions: [Performer!]!
 }

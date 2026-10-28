@@ -126,6 +126,7 @@ export interface Mutation {
     recordImpressions: Scalars['Int']
     createSavedFilter: SavedFilter
     deleteSavedFilter: Scalars['Boolean']
+    refreshSceneComments: SceneComment[]
     recordSceneHeat: Scalars['Boolean']
     setSceneThumbnail: Scalars['Boolean']
     createSceneMarker: SceneMarker
@@ -618,9 +619,22 @@ export interface Scene {
     tagMatch: (Scalars['String'] | null)
     relatedVia: (Scalars['String'] | null)
     related: Scene[]
+    comments: SceneComment[]
     createdAt: Scalars['String']
     updatedAt: Scalars['String']
     __typename: 'Scene'
+}
+
+export interface SceneComment {
+    id: Scalars['ID']
+    plugin: Scalars['String']
+    author: (Scalars['String'] | null)
+    text: Scalars['String']
+    postedAt: (Scalars['String'] | null)
+    likes: (Scalars['Int'] | null)
+    replyTo: (Scalars['ID'] | null)
+    mentions: Performer[]
+    __typename: 'SceneComment'
 }
 
 export interface SceneHeat {
@@ -957,6 +971,7 @@ export interface MutationGenqlSelection{
     recordImpressions?: { __args: {impressions: ImpressionInput[]} }
     createSavedFilter?: (SavedFilterGenqlSelection & { __args: {name: Scalars['String'], filter: SceneFilterInput} })
     deleteSavedFilter?: { __args: {filterId: Scalars['ID']} }
+    refreshSceneComments?: (SceneCommentGenqlSelection & { __args: {sceneId: Scalars['ID']} })
     recordSceneHeat?: { __args: {input: RecordSceneHeatInput} }
     setSceneThumbnail?: { __args: {sceneId: Scalars['ID'], atSeconds: Scalars['Float'], jpegBase64: Scalars['String']} }
     createSceneMarker?: (SceneMarkerGenqlSelection & { __args: {mediaId: Scalars['ID'], seconds: Scalars['Float'], endSeconds?: (Scalars['Float'] | null), tagName?: (Scalars['String'] | null), label?: (Scalars['String'] | null)} })
@@ -1492,8 +1507,22 @@ export interface SceneGenqlSelection{
     tagMatch?: boolean | number
     relatedVia?: boolean | number
     related?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
+    comments?: SceneCommentGenqlSelection
     createdAt?: boolean | number
     updatedAt?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface SceneCommentGenqlSelection{
+    id?: boolean | number
+    plugin?: boolean | number
+    author?: boolean | number
+    text?: boolean | number
+    postedAt?: boolean | number
+    likes?: boolean | number
+    replyTo?: boolean | number
+    mentions?: PerformerGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2073,6 +2102,14 @@ export interface WatchlistItemGenqlSelection{
     export const isScene = (obj?: { __typename?: any } | null): obj is Scene => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isScene"')
       return Scene_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SceneComment_possibleTypes: string[] = ['SceneComment']
+    export const isSceneComment = (obj?: { __typename?: any } | null): obj is SceneComment => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSceneComment"')
+      return SceneComment_possibleTypes.includes(obj.__typename)
     }
     
 

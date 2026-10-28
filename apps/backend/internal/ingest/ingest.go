@@ -159,9 +159,11 @@ func (s *Service) IngestScrapeResults(ctx context.Context, pluginName, sourceURL
 // ingestScene upserts a scene by source_url, resolves its studio/performers/tags
 // relations, records the observation, and syncs its stream sources.
 func (s *Service) ingestScene(ctx context.Context, pluginName, sourceURL string, scene *plugins.Scene) (*IngestResult, error) {
-	// The related list becomes stubs + edges below, not observation data.
+	// The related list becomes stubs + edges below and the comments their own
+	// rows, not observation data.
 	withoutRelated := *scene
 	withoutRelated.Related = nil
+	withoutRelated.Comments = nil
 	obs := s.baseObs(&withoutRelated, pluginName, sceneURL(scene, sourceURL))
 
 	result, err := s.upsert(ctx, "scene", "source_url", sceneURL(scene, sourceURL), obs, pluginName)
@@ -175,6 +177,7 @@ func (s *Service) ingestScene(ctx context.Context, pluginName, sourceURL string,
 	s.syncStreamsLogged(ctx, result.CanonicalID, pluginName, scene.Downloads)
 	s.mergeNewIntoTwin(ctx, "scene", result)
 	s.syncSceneMarkersLogged(ctx, result.CanonicalID, pluginName, scene.Markers)
+	s.syncSceneCommentsLogged(ctx, result.CanonicalID, pluginName, scene.Comments)
 	if len(scene.Related) > 0 {
 		if _, err := s.LinkRelated(ctx, result.CanonicalID, pluginName, RelatedSourceSite, scene.Related); err != nil {
 			log.Printf("ingest: related for %s: %v", result.CanonicalID, err)
