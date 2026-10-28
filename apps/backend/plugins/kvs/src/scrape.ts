@@ -71,7 +71,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   setOptionalFields(scene, page);
 
   if (!credits.channel) {
-    const named = namedStudio(page);
+    let named = camPlatformStudio(page.site, credits.tags);
+    if (!named) named = namedStudio(page);
     if (named) scene.studio = named;
     return [{ type: "scene", scene }];
   }
@@ -253,6 +254,7 @@ function readCredits(page: VideoPage): Credits {
   };
   if (credits.performers.length === 0) credits.performers = fallbackPerformers(page);
   if (credits.tags.length === 0) credits.tags = fallbackTags(page);
+  if (page.site.maxTags !== undefined) credits.tags = credits.tags.slice(0, page.site.maxTags);
   return credits;
 }
 
@@ -357,6 +359,17 @@ function namedStudio(page: VideoPage): StudioRef | undefined {
   ];
   if (names.length === 0) return undefined;
   return { name: names[0] };
+}
+
+/**
+ * The cam site a recorded show came from, when the site lists its
+ * `camPlatforms` and one of the video's categories or tags names it.
+ */
+export function camPlatformStudio(site: SiteConfig, tags: string[]): StudioRef | undefined {
+  for (const platform of site.camPlatforms ?? []) {
+    if (tags.some((tag) => tag.toLowerCase() === platform.toLowerCase())) return { name: platform };
+  }
+  return undefined;
 }
 
 /** The site itself, credited when a video names no channel. */
