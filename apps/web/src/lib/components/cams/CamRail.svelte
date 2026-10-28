@@ -16,7 +16,7 @@
 	let { camModel }: Props = $props();
 
 	// How many rooms the rail shows, and how many tags of the room it asks about.
-	const RAIL_SIZE = 20;
+	const RAIL_SIZE = 30;
 	const TAGS_ASKED = 2;
 
 	let rooms = $state<CamModel[]>([]);
@@ -58,7 +58,12 @@
 	}
 </script>
 
-<aside class="flex flex-col gap-3" aria-label="More live rooms">
+<!-- Beside the player (lg) the rail scrolls on its own, held at the top of the
+     page, like the watch page's up-next rail. -->
+<aside
+	class="no-scrollbar flex flex-col gap-3 lg:sticky lg:top-0 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:pb-4"
+	aria-label="More live rooms"
+>
 	<h2 class="font-semibold">More live rooms</h2>
 	{#if loading && rooms.length === 0}
 		<div class="flex justify-center py-6">
@@ -72,7 +77,7 @@
 			class="group flex gap-3 text-left"
 			onclick={() => goto(camUrl(room.id))}
 		>
-			<span class="bg-base-200 relative aspect-video w-[45%] min-w-[150px] shrink-0 overflow-hidden rounded-lg">
+			<span class="bg-base-200 relative aspect-video w-[60%] min-w-[168px] shrink-0 overflow-hidden rounded-xl">
 				{#if cacheUrl(room.thumbnailUrl)}
 					<img
 						src={cacheUrl(room.thumbnailUrl)}
@@ -89,9 +94,11 @@
 				</span>
 			</span>
 			<span class="flex min-w-0 flex-col gap-1 py-0.5">
-				<span class="truncate text-sm font-semibold group-hover:underline">{room.displayName}</span>
+				<span class="truncate text-[15px] leading-[21px] font-medium group-hover:text-white">
+					{room.displayName}
+				</span>
 				{#if topic}
-					<span class="text-base-content/55 line-clamp-2 text-[13px] leading-snug">{topic}</span>
+					<span class="text-base-content/60 line-clamp-3 text-[13px] leading-snug">{topic}</span>
 				{/if}
 				{#if room.tags.length > 0}
 					<span class="text-base-content/40 truncate text-xs">
