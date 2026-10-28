@@ -21,6 +21,29 @@ export const FROZEN_VISIBLE_COUNT = 12;
 /** How long the first results are held back to be sorted together, in milliseconds. */
 export const FIRST_RESULTS_WINDOW_MS = 1000;
 
+/**
+ * Whether a result is a gallery (an image set). The search page ranks
+ * galleries in their own section, so a gallery titled with just the queried
+ * name never pushes the videos down.
+ */
+export function isGalleryResult(result: PluginSearchResult): boolean {
+	return result.mediaType === 'gallery';
+}
+
+/** Splits results into videos and galleries, each keeping its order. */
+export function splitByMediaType(results: PluginSearchResult[]): {
+	videos: PluginSearchResult[];
+	galleries: PluginSearchResult[];
+} {
+	const videos: PluginSearchResult[] = [];
+	const galleries: PluginSearchResult[] = [];
+	for (const result of results) {
+		if (isGalleryResult(result)) galleries.push(result);
+		else videos.push(result);
+	}
+	return { videos, galleries };
+}
+
 /** The number a result is sorted by in the given mode; missing values are -Infinity so they sort last. */
 function sortKey(result: PluginSearchResult, mode: SortMode): number {
 	let value: number | null | undefined;

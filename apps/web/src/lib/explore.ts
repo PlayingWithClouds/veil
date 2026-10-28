@@ -416,16 +416,18 @@ export function streamResultToGridItem(result: PluginSearchResult): GridItem | n
 		return { kind: 'scene', scene: { ...pluginResultToSceneHit(result), id: result.dbId } };
 	}
 	if (result.mediaType !== 'gallery') return null;
+	return { kind: 'gallery', gallery: pluginResultToGalleryHit(result, result.dbId) };
+}
+
+/** Adapts a plugin result for a gallery, stored under the record id given, to a gallery card. */
+export function pluginResultToGalleryHit(result: PluginSearchResult, id: string): GalleryHit {
 	return {
-		kind: 'gallery',
-		gallery: {
-			id: result.dbId,
-			title: result.title,
-			coverUrl: cacheUrl(result.posterUrl),
-			imageCount: result.photoCount || 0,
-			tags: [],
-			sourceUrl: result.sourceUrl
-		}
+		id,
+		title: result.title,
+		coverUrl: cacheUrl(result.posterUrl),
+		imageCount: result.photoCount || 0,
+		tags: [],
+		sourceUrl: result.sourceUrl
 	};
 }
 

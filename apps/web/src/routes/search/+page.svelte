@@ -7,6 +7,7 @@
 	import { isCompact } from '$lib/stores/viewport';
 	import NsfwGrid from '$lib/components/NsfwGrid.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
+	import SearchGalleryResults from '$lib/components/SearchGalleryResults.svelte';
 	import SceneFilters from '$lib/components/SceneFilters.svelte';
 	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
 	import {
@@ -27,12 +28,15 @@
 	} from '$lib/search';
 	import { logSearchClick, logSearchShown, SHOWN_DWELL_MS } from '$lib/searchLog';
 	import { performerUrl, studioUrl, tagUrl } from '$lib/routes';
+	import { mediaFilter } from '$lib/stores/mediaFilter';
 	import {
 		FIRST_RESULTS_WINDOW_MS,
 		FROZEN_VISIBLE_COUNT,
 		SORT_OPTIONS,
 		insertArrival,
+		isGalleryResult,
 		sortResults,
+		splitByMediaType,
 		type SortMode
 	} from '$lib/searchOrder';
 
@@ -68,7 +72,10 @@
 	const DB_PAGE_SIZE = 60;
 
 	let query = $state('');
+	// Videos are the main ranked list; galleries are ranked apart from them in
+	// their own section, so they never take a video's place.
 	let results = $state<PluginSearchResult[]>([]);
+	let galleryResults = $state<PluginSearchResult[]>([]);
 	let loading = $state(false);
 	// Paging of the live search: the next page's offset, the keys shown so
 	// far, and whether a page came back with nothing new.
@@ -88,6 +95,13 @@
 	let firstResultsTimer: ReturnType<typeof setTimeout> | null = null;
 	let firstResultsShown = false;
 	let frozenCount = 0;
+	let frozenGalleryCount = 0;
+
+	// The top bar's media toggle: 'images' makes the galleries the main
+	// content, 'videos' hides them.
+	let showVideos = $derived($mediaFilter !== 'images');
+	let showGalleries = $derived($mediaFilter !== 'videos');
+	let showGalleryShelf = $derived(showVideos && showGalleries && galleryResults.length > 0);
 
 	// Performers, studios and tags of the library the query names, shown as
 	// chips that open them.
@@ -132,12 +146,15 @@
 		firstResultsTimer = null;
 		if (firstResultsShown) return;
 		firstResultsShown = true;
-		results = sortResults([...results, ...heldResults], sortMode);
+		const held = splitByMediaType(heldResults);
+		results = sortResults([...results, ...held.videos], sortMode);
+		galleryResults = sortResults([...galleryResults, ...held.galleries], sortMode);
 		heldResults = [];
 		frozenCount = Math.min(results.length, FROZEN_VISIBLE_COUNT);
+		frozenGalleryCount = Math.min(galleryResults.length, FROZEN_VISIBLE_COUNT);
 	}
 
-	/** Takes one streamed result: held during the first second, then sorted in. */
+	/** Takes one streamed result: held during the first second, then sorted into its list. */
 	function receiveResult(result: PluginSearchResult) {
 		if (!firstResultsShown) {
 			heldResults.push(result);
@@ -145,6 +162,10 @@
 			if (!firstResultsTimer) {
 				firstResultsTimer = setTimeout(showFirstResults, FIRST_RESULTS_WINDOW_MS);
 			}
+			return;
+		}
+		if (isGalleryResult(result)) {
+			galleryResults = insertArrival(galleryResults, result, sortMode, frozenGalleryCount);
 			return;
 		}
 		results = insertArrival(results, result, sortMode, frozenCount);
@@ -162,8 +183,10 @@
 	function changeSort(mode: SortMode) {
 		sortMode = mode;
 		results = sortResults(results, mode);
+		galleryResults = sortResults(galleryResults, mode);
 		heldResults = sortResults(heldResults, mode);
 		frozenCount = Math.min(results.length, FROZEN_VISIBLE_COUNT);
+		frozenGalleryCount = Math.min(galleryResults.length, FROZEN_VISIBLE_COUNT);
 	}
 
 	// Advanced DB filters. When a structured dimension is set, the page switches
@@ -210,6 +233,7 @@
 
 	let keyboard = $state<{ focus: () => void; focusFirst: () => void }>();
 	let grid = $state<{ focusFirst: () => void }>();
+	let galleryGrid = $state<{ focusFirst: () => void }>();
 
 	function runSearch(text: string) {
 		const token = ++requestToken;
@@ -219,16 +243,19 @@
 		}
 		if (!text.trim()) {
 			results = [];
+			galleryResults = [];
 			loading = false;
 			return;
 		}
 		// No sources selected means nothing to search.
 		if (searchPlugins.length > 0 && activePluginNames.length === 0) {
 			results = [];
+			galleryResults = [];
 			loading = false;
 			return;
 		}
 		results = [];
+		galleryResults = [];
 		matchedEntities = [];
 		if (shownTimer) clearTimeout(shownTimer);
 		shownTimer = null;
@@ -237,6 +264,7 @@
 		firstResultsTimer = null;
 		firstResultsShown = false;
 		frozenCount = 0;
+		frozenGalleryCount = 0;
 		seen = new Set();
 		liveOffset = 0;
 		liveDone = false;
@@ -248,6 +276,7 @@
 		loading = true;
 		// A further page is below what the reader has scrolled through.
 		frozenCount = results.length;
+		frozenGalleryCount = galleryResults.length;
 		let added = 0;
 		currentStream = pluginSearchStream(
 			text,
@@ -255,6 +284,8 @@
 			(result) => {
 				if (token !== requestToken) return;
 				if (seen.has(result.externalId)) return;
+				// A gallery opens by its stored record; one without is not shown.
+				if (isGalleryResult(result) && !result.dbId) return;
 				seen.add(result.externalId);
 				added++;
 				receiveResult(result);
@@ -302,9 +333,36 @@
 		scheduleSearch();
 	}
 
+	/** Hands keyboard focus from the on-screen keyboard to the first result shown. */
 	function focusResults() {
-		if (results.length === 0) return;
+		if (showGalleryShelf || !showVideos) {
+			galleryGrid?.focusFirst();
+			return;
+		}
 		grid?.focusFirst();
+	}
+
+	/** Moves keyboard focus out of the gallery section: left to the keyboard, down to the videos. */
+	function leaveGalleries(direction: 'left' | 'right' | 'up' | 'down') {
+		if (direction === 'left') keyboard?.focus();
+		if (direction === 'down' && showVideos) grid?.focusFirst();
+	}
+
+	/** Moves keyboard focus from the top of the videos up to the gallery shelf. */
+	function enterGalleryShelf() {
+		if (showGalleryShelf) galleryGrid?.focusFirst();
+	}
+
+	/** What the empty video grid says: "No videos." when galleries are shown above it. */
+	function videosEmptyMessage(): string {
+		if (showGalleryShelf) return 'No videos.';
+		return 'No results.';
+	}
+
+	/** Whether the main list (videos, or galleries on the images toggle) has any result. */
+	function hasMainResults(): boolean {
+		if (showVideos) return results.length > 0;
+		return galleryResults.length > 0;
 	}
 
 	// Focus the keyboard on entry so a TV remote can start typing immediately.
@@ -447,15 +505,44 @@
 						{/each}
 					</div>
 				{/if}
-				<NsfwGrid
-					bind:this={grid}
-					onopen={logOpened}
-					items={results}
-					loading={loading && results.length === 0}
-					ariaLabel="Search results"
-					onleftedge={() => keyboard?.focus()}
-				/>
-				{#if results.length > 0}
+				{#if showGalleryShelf}
+					<section class="mb-6 flex flex-col gap-3" aria-label="Galleries">
+						<h2 class="flex items-baseline gap-2 text-lg font-semibold">
+							Galleries
+							<span class="text-base-content/40 text-sm font-normal">{galleryResults.length}</span>
+						</h2>
+						<SearchGalleryResults
+							bind:this={galleryGrid}
+							items={galleryResults}
+							sites={searchPlugins}
+							layout="row"
+							onedge={leaveGalleries}
+						/>
+					</section>
+					<h2 class="mb-3 text-lg font-semibold">Videos</h2>
+				{/if}
+				{#if showVideos}
+					<NsfwGrid
+						bind:this={grid}
+						onopen={logOpened}
+						items={results}
+						loading={loading && results.length === 0}
+						ariaLabel="Search results"
+						emptyMessage={videosEmptyMessage()}
+						onleftedge={() => keyboard?.focus()}
+						ontopedge={enterGalleryShelf}
+					/>
+				{:else}
+					<SearchGalleryResults
+						bind:this={galleryGrid}
+						items={galleryResults}
+						sites={searchPlugins}
+						layout="grid"
+						loading={loading && galleryResults.length === 0}
+						onedge={leaveGalleries}
+					/>
+				{/if}
+				{#if hasMainResults()}
 					<ScrollSentinel onvisible={loadMoreLive} {loading} done={liveDone} />
 				{/if}
 			{/if}
