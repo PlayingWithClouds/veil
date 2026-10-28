@@ -28,6 +28,14 @@
 
 	let list = $state<{ focusFirst: () => void } | undefined>();
 	let sentinel = $state<HTMLElement | null>(null);
+	let rail = $state<HTMLElement | null>(null);
+
+	/** The rail when it is its own scroll container, else null for the viewport. */
+	function scrollRoot(): HTMLElement | null {
+		if (!rail) return null;
+		if (getComputedStyle(rail).overflowY === 'visible') return null;
+		return rail;
+	}
 
 	/** Logs the click with the item's place in the rail, then opens it. */
 	function openItem(item: PluginSearchResult, position: number) {
@@ -49,7 +57,8 @@
 		onedge?.(direction);
 	}
 
-	// Infinite scroll: the rail flows with the page, so watch against the viewport.
+	// Infinite scroll, watched against the rail itself where it scrolls on its
+	// own (beside the player), else against the viewport (below the player).
 	// Re-observing after each page makes a still-visible sentinel load the next one.
 	$effect(() => {
 		if (!sentinel || feed.loading || feed.done) return;
@@ -57,14 +66,20 @@
 			(entries) => {
 				if (entries[0]?.isIntersecting) feed.loadMore();
 			},
-			{ rootMargin: '400px' }
+			{ root: scrollRoot(), rootMargin: '400px' }
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
 	});
 </script>
 
-<aside class="flex flex-col gap-2" aria-label="Up next">
+<!-- Beside the player (lg) the rail scrolls on its own, held at the top of the
+     page, so the player stays in place while the list moves. -->
+<aside
+	bind:this={rail}
+	class="no-scrollbar flex flex-col gap-2 lg:sticky lg:top-0 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:pb-4"
+	aria-label="Up next"
+>
 	{#if feed.items.length === 0 && !feed.loading}
 		<p class="text-base-content/40 text-sm">Nothing here yet.</p>
 	{/if}
