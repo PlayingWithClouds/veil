@@ -21,6 +21,10 @@ type Segment struct {
 	InitURL string
 	// Discontinuity marks a break in timestamps or encoding before the segment.
 	Discontinuity bool
+	// DiscontinuityNumber is the origin's count of breaks up to the segment
+	// (EXT-X-DISCONTINUITY-SEQUENCE plus the tags before it). The origin counts
+	// alike in every rendition, so players match audio to video by it.
+	DiscontinuityNumber int
 }
 
 // Playlist is a parsed HLS media playlist.
@@ -40,6 +44,7 @@ func ParsePlaylist(text string, base *url.URL) (*Playlist, error) {
 	playlist := &Playlist{}
 	var pendingDuration float64
 	pendingDiscontinuity := false
+	discontinuityNumber := 0
 	initURL := ""
 	scanner := bufio.NewScanner(strings.NewReader(text))
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -57,9 +62,11 @@ func ParsePlaylist(text string, base *url.URL) (*Playlist, error) {
 			playlist.TargetDuration, _ = strconv.ParseFloat(strings.TrimPrefix(line, "#EXT-X-TARGETDURATION:"), 64)
 		case strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:"):
 			playlist.MediaSequence, _ = strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "#EXT-X-MEDIA-SEQUENCE:")))
-		case strings.HasPrefix(line, "#EXT-X-DISCONTINUITY-SEQUENCE"):
+		case strings.HasPrefix(line, "#EXT-X-DISCONTINUITY-SEQUENCE:"):
+			discontinuityNumber, _ = strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "#EXT-X-DISCONTINUITY-SEQUENCE:")))
 		case strings.HasPrefix(line, "#EXT-X-DISCONTINUITY"):
 			pendingDiscontinuity = true
+			discontinuityNumber++
 		case strings.HasPrefix(line, "#EXTINF:"):
 			durationText, _, _ := strings.Cut(strings.TrimPrefix(line, "#EXTINF:"), ",")
 			pendingDuration, _ = strconv.ParseFloat(strings.TrimSpace(durationText), 64)
@@ -70,7 +77,7 @@ func ParsePlaylist(text string, base *url.URL) (*Playlist, error) {
 			segmentURL := ResolveReference(base, line)
 			playlist.Segments = append(playlist.Segments, Segment{
 				URL: segmentURL, Identity: URLIdentity(segmentURL), Duration: pendingDuration,
-				InitURL: initURL, Discontinuity: pendingDiscontinuity,
+				InitURL: initURL, Discontinuity: pendingDiscontinuity, DiscontinuityNumber: discontinuityNumber,
 			})
 			pendingDuration = 0
 			pendingDiscontinuity = false

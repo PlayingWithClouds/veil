@@ -108,7 +108,6 @@ type track struct {
 	retired                map[string]bool
 	inits                  map[string]*file
 	initCounter            int
-	discontinuitiesDropped int
 	// lastSequence is the sequence number of the newest segment, -1 when empty.
 	lastSequence   int
 	lastIdentity   string
@@ -119,13 +118,15 @@ type track struct {
 
 // entry is a buffered segment.
 type entry struct {
-	sequence      int
-	identity      string
-	sourceURL     string
-	duration      float64
-	discontinuity bool
-	file          *file
-	initFile      *file
+	sequence  int
+	identity  string
+	sourceURL string
+	duration  float64
+	// discontinuityNumber is the origin's break count up to the segment
+	// (Segment.DiscontinuityNumber), alike across a stream's renditions.
+	discontinuityNumber int
+	file                *file
+	initFile            *file
 }
 
 // file is a blob being downloaded or already stored.
@@ -290,9 +291,12 @@ func (m *Manager) Observe(roomID string, source Source, playlist *Playlist, crea
 	}
 	buffered.lastTouched = now
 	rendition := buffered.renditionFor(source, now)
+	if rendition.missed(playlist) {
+		removedFiles = buffered.restart(rendition)
+	}
 	downloads := m.addNewSegments(buffered, rendition, source, playlist)
-	removedFiles = m.trim(buffered, rendition)
-	window := rendition.window(buffered)
+	removedFiles = append(removedFiles, m.trim(buffered, rendition)...)
+	window := rendition.window()
 	m.mutex.Unlock()
 
 	m.deleteFiles(removedFiles)
@@ -331,7 +335,6 @@ func (m *Manager) addNewSegments(buffered *room, rendition *track, source Source
 	rendition.ended = playlist.Ended
 	rendition.targetDuration = playlist.TargetDuration
 	rendition.pruneRetired(playlist)
-	missedSegments := rendition.lastIdentity != "" && !playlistHas(playlist, rendition.lastIdentity)
 	var downloads []pendingDownload
 	for index, segment := range playlist.Segments {
 		if rendition.known[segment.Identity] != nil || rendition.retired[segment.Identity] {
@@ -340,8 +343,7 @@ func (m *Manager) addNewSegments(buffered *room, rendition *track, source Source
 		if segment.Duration <= 0 {
 			segment.Duration = playlist.TargetDuration
 		}
-		added, initDownload := buffered.addSegment(rendition, segment, playlist.MediaSequence+index, missedSegments)
-		missedSegments = false
+		added, initDownload := buffered.addSegment(rendition, segment, playlist.MediaSequence+index)
 		downloads = append(downloads, pendingDownload{target: added.file, url: segment.URL, headers: source.Headers, fetch: source.Fetch})
 		if initDownload != nil {
 			initDownload.headers, initDownload.fetch = source.Headers, source.Fetch
@@ -350,6 +352,30 @@ func (m *Manager) addNewSegments(buffered *room, rendition *track, source Source
 		rendition.lastIdentity = segment.Identity
 	}
 	return downloads
+}
+
+// missed reports whether the rendition lost track of the stream: its newest
+// segment has left the origin's playlist, so segments in between were never
+// seen (nobody polled it for a while, or the stream reconnected).
+func (rendition *track) missed(playlist *Playlist) bool {
+	return rendition.lastIdentity != "" && !playlistHas(playlist, rendition.lastIdentity)
+}
+
+// restart empties a rendition that missed segments, so it begins again at the
+// live edge. Keeping the older part would leave a hole the player cannot
+// cross, and marking it with a break of our own would put the rendition out
+// of step with its audio or video counterpart, which players match by the
+// origin's break count. It returns the blobs to delete. The caller holds the lock.
+func (buffered *room) restart(rendition *track) []removedFile {
+	var removed []removedFile
+	for _, segment := range rendition.entries {
+		removed = append(removed, buffered.forget(segment.file)...)
+	}
+	rendition.entries = nil
+	rendition.known = map[string]*entry{}
+	rendition.retired = map[string]bool{}
+	rendition.lastIdentity = ""
+	return append(removed, buffered.dropUnusedInits(rendition)...)
 }
 
 // pruneRetired forgets trimmed segments the upstream playlist no longer lists.
@@ -382,7 +408,7 @@ func playlistHas(playlist *Playlist, identity string) bool {
 // file when new. upstreamSequence is the number the origin gave the segment; one
 // that does not move forward (the origin restarted its numbering) continues
 // after the newest. The caller holds the lock.
-func (buffered *room) addSegment(rendition *track, segment Segment, upstreamSequence int, missedSegments bool) (*entry, *pendingDownload) {
+func (buffered *room) addSegment(rendition *track, segment Segment, upstreamSequence int) (*entry, *pendingDownload) {
 	sequence := upstreamSequence
 	if sequence <= rendition.lastSequence {
 		sequence = rendition.lastSequence + 1
@@ -390,7 +416,7 @@ func (buffered *room) addSegment(rendition *track, segment Segment, upstreamSequ
 	rendition.lastSequence = sequence
 	added := &entry{
 		sequence: sequence, identity: segment.Identity, sourceURL: segment.URL,
-		duration: segment.Duration, discontinuity: segment.Discontinuity || missedSegments,
+		duration: segment.Duration, discontinuityNumber: segment.DiscontinuityNumber,
 	}
 	extension := segmentExtension(segment.Identity)
 	added.file = buffered.newFile(fmt.Sprintf("%s-%06d%s", rendition.key, added.sequence, extension), segmentContentType(extension))
@@ -453,9 +479,6 @@ func (m *Manager) trim(buffered *room, rendition *track) []removedFile {
 		total -= oldest.duration
 		delete(rendition.known, oldest.identity)
 		rendition.retired[oldest.identity] = true
-		if oldest.discontinuity {
-			rendition.discontinuitiesDropped++
-		}
 		removed = append(removed, buffered.forget(oldest.file)...)
 	}
 	return append(removed, buffered.dropUnusedInits(rendition)...)
