@@ -5,15 +5,15 @@ import (
 	"time"
 )
 
-// watch is one watch history row: a scene's playback, its furthest point and
+// watch is one watch history row: a scene's playback, how long it played and
 // when it was first started and last played.
 type watch struct {
-	sceneID         string
-	progressSeconds int
+	sceneID string
+	// playedSeconds is how long the scene played over all sittings.
+	playedSeconds int
 	// stopSeconds is where playback was when the scene was last left.
 	stopSeconds     int
 	durationSeconds int
-	completed       bool
 	startedAt       time.Time
 	lastActivityAt  time.Time
 }

@@ -30,6 +30,7 @@ var pruneStatements = []string{
 	`UPDATE watch_history SET
 		max_progress_seconds = max(0, min(max_progress_seconds, cast((julianday($cutoff) - julianday(started_at)) * 86400 AS INTEGER))),
 		progress_seconds = max(0, min(progress_seconds, cast((julianday($cutoff) - julianday(started_at)) * 86400 AS INTEGER))),
+		played_seconds = max(0, min(played_seconds, cast((julianday($cutoff) - julianday(started_at)) * 86400 AS INTEGER))),
 		completed = 0, finished_at = NULL, updated_at = $cutoff
 		WHERE updated_at > $cutoff`,
 	// What the sites and the feeder had stored by then.

@@ -496,8 +496,10 @@
 
 	// Seconds skipped per left/right arrow press.
 	const SEEK_STEP_SECONDS = 5;
-	// Progress is saved at most every 15s while playing, plus on pause/close.
-	const SAVE_INTERVAL_SECONDS = 15;
+	// Progress is saved every 15 s of playing time, plus on pause/close. The
+	// interval is wall-clock time, not position, so skipping around keeps the
+	// saves regular: the backend sums the time between saves as time played.
+	const SAVE_INTERVAL_MS = 15_000;
 	const COMPLETE_FRACTION = 0.9;
 	let lastSavedAt = 0;
 
@@ -526,8 +528,9 @@
 	function saveProgress(force = false) {
 		if (!mediaId || !videoEl) return;
 		const position = videoEl.currentTime;
-		if (!force && position - lastSavedAt < SAVE_INTERVAL_SECONDS) return;
-		lastSavedAt = position;
+		const now = performance.now();
+		if (!force && (videoEl.paused || now - lastSavedAt < SAVE_INTERVAL_MS)) return;
+		lastSavedAt = now;
 		const total = videoEl.duration;
 		const completed = total > 0 && position >= total * COMPLETE_FRACTION;
 		recordProgress({
