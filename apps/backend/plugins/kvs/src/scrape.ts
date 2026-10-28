@@ -8,6 +8,7 @@ import type {
   Studio,
   StudioRef,
 } from "@playingwithclouds/veil-sdk";
+import { extractComments } from "./comments.ts";
 import { siteForUrl, type SiteConfig } from "./sites.ts";
 import { fetchPage } from "./http.ts";
 import { parseVideoCards, imageSource } from "./listing.ts";
@@ -109,7 +110,7 @@ export async function loadVideoPage(url: string): Promise<VideoPage> {
   };
 }
 
-/** Description, date, duration and poster, each from the first source that has it. */
+/** Description, date, duration, comments and poster, each from the first source that has it. */
 function setOptionalFields(scene: Scene, page: VideoPage): void {
   const details = videoDetails(page, scene.title);
   if (details) scene.details = details;
@@ -117,6 +118,8 @@ function setOptionalFields(scene: Scene, page: VideoPage): void {
   if (date) scene.date = date;
   const duration = videoDuration(page);
   if (duration > 0) scene.duration_seconds = duration;
+  const comments = extractComments(page.root);
+  if (comments.length > 0) scene.comments = comments;
   const poster = videoPoster(page);
   if (poster) {
     scene.poster_path = poster;

@@ -1,6 +1,7 @@
 import { parse, HTMLElement } from "node-html-parser";
 import { fetchHtml } from "@playingwithclouds/veil-sdk";
 import { resolveUrl, videoIdFromUrl, decodeEntities } from "./http.ts";
+import { extractComments } from "./comments.ts";
 import { parseVideoCards, thumbsFromInitials, type VideoThumb } from "./listing.ts";
 import {
   parseInitials,
@@ -47,6 +48,9 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
     duration_seconds: extractDurationSeconds(html),
     related: extractRelated(root, `xhamster-${id}`, thumbsFromInitials(initials)),
   };
+
+  const comments = extractComments(initials);
+  if (comments.length > 0) scene.comments = comments;
 
   return [{ type: "scene", scene }];
 }

@@ -14,8 +14,22 @@ export interface VideoTag {
   isUploader?: boolean;
 }
 
+/** One entry of the page state's comment list. */
+export interface RawComment {
+  id?: string | number;
+  text?: string;
+  replyToId?: string | number | null;
+  /** unix seconds */
+  created?: number;
+  likes?: number | null;
+  status?: string;
+  isSpam?: boolean;
+  author?: { name?: string };
+}
+
 /** The subset of the page's `window.initials` state the scraper reads. */
 export interface VideoInitials {
+  commentsComponent?: { commentsList?: { items?: RawComment[] } };
   videoTagsComponent?: { tags?: VideoTag[] };
   videoModel?: { description?: string; created?: number };
 }

@@ -1,6 +1,7 @@
 import { apiVideo, toScene } from "./api.ts";
 import { idFromUrl } from "./http.ts";
 import { fetchDoc, absoluteUrl } from "./html.ts";
+import { extractComments } from "./comments.ts";
 import { parseVideoCards } from "./listing.ts";
 import { HTMLElement } from "node-html-parser";
 import type { ScrapeResult, ScenePerformer, DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
@@ -28,6 +29,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   if (studio) scene.studio = studio;
   scene.tags = mergeTags(scene.tags ?? [], extractPageTags(doc));
   scene.related = extractRelated(doc, scene.external_id);
+  const comments = extractComments(doc);
+  if (comments.length > 0) scene.comments = comments;
 
   return [{ type: "scene", scene }];
 }
