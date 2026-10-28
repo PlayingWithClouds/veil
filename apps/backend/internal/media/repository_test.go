@@ -479,7 +479,7 @@ func TestPersonalLibraryUpserts(t *testing.T) {
 	}
 
 	for range 2 {
-		if err := repo.LogSearch(ctx, "  Foo ", []string{"plugin"}, 3); err != nil {
+		if err := repo.LogSearch(ctx, "  Foo ", []string{"plugin"}, 3, nil); err != nil {
 			t.Fatalf("log search: %v", err)
 		}
 	}

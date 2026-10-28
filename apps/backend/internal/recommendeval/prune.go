@@ -22,6 +22,7 @@ var pruneStatements = []string{
 	`DELETE FROM preference_event WHERE created_at > $cutoff`,
 	`DELETE FROM recommendation_impression WHERE shown_at > $cutoff`,
 	`DELETE FROM search_history WHERE created_at > $cutoff`,
+	`DELETE FROM search_result WHERE created_at > $cutoff`,
 	// A watch under way at the cutoff keeps what could have been played by
 	// then (never more than the wall clock allows) and counts as last played
 	// at the cutoff; a watch begun later is dropped.

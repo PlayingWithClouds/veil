@@ -181,3 +181,25 @@ func TestCreditPageEntityNamesPerformerOrStudio(t *testing.T) {
 		t.Fatalf("credited page scene should match her name, got %v", score)
 	}
 }
+
+// TestResultSceneIDsKeepsBestScenesAndDropsReplacedCopies checks the scenes a
+// search logs for the recommender: scenes only, best score first, and a copy
+// a better one replaced left out.
+func TestResultSceneIDsKeepsBestScenesAndDropsReplacedCopies(t *testing.T) {
+	session := &searchSession{sceneScores: map[string]float64{}, sceneBySourceURL: map[string]string{}}
+	scene := func(sourceURL string) plugins.DiscoveredItem {
+		return plugins.DiscoveredItem{MediaType: plugins.MediaTypeScene, SourceURL: sourceURL}
+	}
+	session.trackScene("scene:low", scene("https://a.test/low"), searchrank.Verdict{Emit: true, Score: 1})
+	session.trackScene("scene:copy", scene("https://a.test/copy"), searchrank.Verdict{Emit: true, Score: 2})
+	session.trackScene("gallery:pictures", plugins.DiscoveredItem{MediaType: plugins.MediaTypeGallery, SourceURL: "https://b.test/g"},
+		searchrank.Verdict{Emit: true, Score: 9})
+	session.trackScene("scene:better", scene("https://c.test/better"),
+		searchrank.Verdict{Emit: true, Score: 3, Replaces: "https://a.test/copy"})
+
+	got := session.resultSceneIDs()
+	want := []string{"scene:better", "scene:low"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("result scenes = %v, want %v", got, want)
+	}
+}

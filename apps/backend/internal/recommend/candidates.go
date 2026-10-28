@@ -3,7 +3,6 @@ package recommend
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/playingwithclouds/veil/internal/db"
 )
@@ -272,11 +271,11 @@ func (e *Engine) randomCandidates(ctx context.Context, state *snapshot) ([]candi
 	return sceneCandidates(ids, SourceRandom, sourcePriors[SourceRandom], Reason{Kind: ReasonRandom}), nil
 }
 
-// searchCandidates proposes the unvisited stubs recent searches stored: the
-// scenes first stored around the time each search ran.
+// searchCandidates proposes the unvisited scenes recent searches returned,
+// each search's latest run in its result order.
 func (e *Engine) searchCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
 	rows, err := e.database.Query(ctx,
-		`SELECT query, max(created_at) AS at FROM search_history
+		`SELECT id, query, max(created_at) AS at FROM search_history
 		 WHERE created_at >= $since GROUP BY normalized_query ORDER BY at DESC LIMIT $limit`,
 		db.Vars{"since": db.FormatTime(state.now.Add(-recentSearchWindow)), "limit": recentSearchLimit})
 	if err != nil {
@@ -284,7 +283,7 @@ func (e *Engine) searchCandidates(ctx context.Context, state *snapshot) ([]candi
 	}
 	out := []candidate{}
 	for _, row := range rows {
-		ids, err := e.searchResultIDs(ctx, rowTime(row, "at"))
+		ids, err := e.searchResultIDs(ctx, rowString(row, "id"))
 		if err != nil {
 			return nil, err
 		}
@@ -294,17 +293,13 @@ func (e *Engine) searchCandidates(ctx context.Context, state *snapshot) ([]candi
 	return out, nil
 }
 
-// searchResultIDs lists the unvisited scenes first stored around a search.
-func (e *Engine) searchResultIDs(ctx context.Context, searchedAt time.Time) ([]string, error) {
+// searchResultIDs lists the unvisited scenes one search returned, best first.
+func (e *Engine) searchResultIDs(ctx context.Context, searchID string) ([]string, error) {
 	return e.sceneIDs(ctx,
-		`SELECT id FROM scene
-		 WHERE created_at >= $from AND created_at <= $to AND detail_fetched_at IS NULL
-		 ORDER BY created_at LIMIT $limit`,
-		db.Vars{
-			"from":  db.FormatTime(searchedAt.Add(-searchResultsBefore)),
-			"to":    db.FormatTime(searchedAt.Add(searchResultsAfter)),
-			"limit": scenesPerSearch,
-		})
+		`SELECT scene.id FROM search_result JOIN scene ON scene.id = search_result.scene
+		 WHERE search_result.search = $search AND scene.detail_fetched_at IS NULL
+		 ORDER BY search_result.rank LIMIT $limit`,
+		db.Vars{"search": searchID, "limit": scenesPerSearch})
 }
 
 // feedFinds reads the feeder's recent finds of one kind (feed_discovery

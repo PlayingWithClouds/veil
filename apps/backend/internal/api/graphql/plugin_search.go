@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
@@ -109,14 +110,32 @@ func (r *Resolver) persistDiscoveredItems(items []discoveredItemWithPlugin) {
 // Upper bound on the background search-logging write.
 const logSearchTimeout = 15 * time.Second
 
-// logSearch records a search as a recommendation signal, in the background.
-// Best-effort: it runs detached from the request and only logs failures.
-func (r *Resolver) logSearch(query string, pluginNames []string, resultCount int) {
+// persistAndLogSearch stores a search's results as stubs, like
+// persistDiscoveredItems, then records the search with the scenes it returned
+// as a recommendation signal. Best-effort: it runs detached from the request
+// and only logs failures.
+func (r *Resolver) persistAndLogSearch(query string, pluginNames []string, items []discoveredItemWithPlugin) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), logSearchTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), persistDiscoveredTimeout)
 		defer cancel()
-		if err := r.repo.LogSearch(ctx, query, pluginNames, resultCount); err != nil {
+		sceneIDs := make([]string, 0, len(items))
+		for _, entry := range items {
+			sceneID, err := r.ingestSvc.IngestDiscoveredItem(ctx, entry.plugin, entry.item)
+			if err != nil {
+				log.Printf("persist discovered item %q via %s: %v", entry.item.SourceURL, entry.plugin, err)
+				continue
+			}
+			if entry.item.MediaType == plugins.MediaTypeScene && strings.HasPrefix(sceneID, "scene:") {
+				sceneIDs = append(sceneIDs, sceneID)
+			}
+		}
+		logContext, cancelLog := context.WithTimeout(context.Background(), logSearchTimeout)
+		defer cancelLog()
+		if err := r.repo.LogSearch(logContext, query, pluginNames, len(items), sceneIDs); err != nil {
 			log.Printf("log search %q: %v", query, err)
+		}
+		for _, entry := range items {
+			r.prefetchThumbnail(ctx, entry.item.PosterPath)
 		}
 	}()
 }
