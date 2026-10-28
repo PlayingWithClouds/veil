@@ -312,6 +312,40 @@ export function formatRecordingSize(bytes: number): string {
 	return `${Math.round(bytes / 1e6)} MB`;
 }
 
+/**
+ * The room's topic as a short line: the subject without its hashtags (the
+ * tags show apart), token counters like "[947 tokens left]" and the site's
+ * default "<name>'s room"; null when nothing is left.
+ */
+export function roomTopic(subject: string | null, username: string): string | null {
+	if (!subject) return null;
+	const cleaned = subject
+		.replace(/#[\p{L}\p{N}_-]+/gu, '')
+		.replace(/\[[^\]]*\]/g, '')
+		.replace(/\s+/g, ' ')
+		.replace(/[\s/|,-]+$/u, '')
+		.trim();
+	if (!cleaned) return null;
+	if (cleaned.toLowerCase() === `${username.toLowerCase()}'s room`) return null;
+	return cleaned;
+}
+
+/** The most common tags among rooms, most frequent first, at most limit. */
+export function popularRoomTags(rooms: CamModel[], limit: number): string[] {
+	const counts = new Map<string, number>();
+	for (const room of rooms) {
+		for (const tag of room.tags) {
+			const count = counts.get(tag);
+			if (count === undefined) counts.set(tag, 1);
+			else counts.set(tag, count + 1);
+		}
+	}
+	return [...counts.entries()]
+		.sort((first, second) => second[1] - first[1])
+		.slice(0, limit)
+		.map(([tag]) => tag);
+}
+
 /** "1.2K" style viewer counts for the card badge. */
 export function formatViewers(viewers: number): string {
 	if (viewers >= 10000) return `${Math.round(viewers / 1000)}K`;

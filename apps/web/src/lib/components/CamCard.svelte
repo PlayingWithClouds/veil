@@ -1,7 +1,8 @@
 <!--
 	Card for a live cam room: thumbnail with a LIVE badge and viewer count, the
-	room's name with the site icon, and its first tags. Offline rooms (the
-	Following row) are dimmed and say when they were last seen.
+	room's name with the site icon, its topic (the subject without hashtags and
+	token counters) and its first tags. Offline rooms (the Following row) are
+	dimmed and say when they were last seen.
 -->
 <script lang="ts">
 	import EyeIcon from 'phosphor-svelte/lib/EyeIcon';
@@ -9,7 +10,7 @@
 	import SplitAddButton from './SplitAddButton.svelte';
 	import { activeCamRecordings } from '$lib/stores/camRecordings';
 	import { cacheUrl } from '$lib/img';
-	import { formatViewers, type CamModel, type CamSource } from '$lib/cams';
+	import { formatViewers, roomTopic, type CamModel, type CamSource } from '$lib/cams';
 	import { formatRelativeTime } from '$lib/time';
 
 	interface Props {
@@ -34,6 +35,7 @@
 		$activeCamRecordings.some((entry) => entry.camModelId === camModel.id)
 	);
 	let visibleTags = $derived(camModel.tags.slice(0, VISIBLE_TAGS));
+	let topic = $derived(roomTopic(camModel.subject, camModel.username));
 	let lastSeenLabel = $derived.by(() => {
 		if (camModel.online || !camModel.lastSeenOnlineAt) return null;
 		return `Seen ${formatRelativeTime(camModel.lastSeenOnlineAt)}`;
@@ -114,15 +116,18 @@
 				<span class="text-base-content/40 shrink-0 text-xs">{lastSeenLabel}</span>
 			{/if}
 		</button>
+		{#if topic}
+			<p class="text-base-content/60 line-clamp-1 text-[13px]" title={topic}>{topic}</p>
+		{/if}
 		{#if visibleTags.length > 0}
-			<div class="flex flex-wrap gap-1.5">
+			<div class="flex flex-wrap gap-x-2 gap-y-0.5">
 				{#each visibleTags as tag (tag)}
 					<button
 						type="button"
-						class="border-base-300 bg-base-200 text-base-content/70 hover:text-base-content rounded-full border px-2.5 py-0.5 text-xs transition-colors"
+						class="text-base-content/45 hover:text-base-content text-xs transition-colors"
 						onclick={() => ontag?.(tag)}
 					>
-						{tag}
+						#{tag}
 					</button>
 				{/each}
 			</div>

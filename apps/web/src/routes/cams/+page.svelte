@@ -14,6 +14,7 @@
 		fetchCamRooms,
 		fetchCamSources,
 		fetchFollowedCamModels,
+		popularRoomTags,
 		type CamModel,
 		type CamSource
 	} from '$lib/cams';
@@ -22,6 +23,7 @@
 
 	const PAGE_SIZE = 48;
 	const SEARCH_DEBOUNCE_MS = 300;
+	const POPULAR_TAG_COUNT = 16;
 
 	const GENDERS = [
 		{ value: '', label: 'All' },
@@ -51,6 +53,24 @@
 	let generation = 0;
 
 	let sourcesByName = $derived(new Map(sources.map((source) => [source.name, source])));
+
+	// The tags most rooms carry right now, as one-click filters. Taken from the
+	// rooms listed without a tag filter, so picking one keeps the row in place.
+	let popularTags = $state<string[]>([]);
+	$effect(() => {
+		if (tag || rooms.length === 0) return;
+		popularTags = popularRoomTags(rooms, POPULAR_TAG_COUNT);
+	});
+	let tagOutsidePopular = $derived(tag !== '' && !popularTags.includes(tag));
+
+	/** Filters by a tag chip, or clears the filter when it is the active one. */
+	function toggleTag(name: string) {
+		if (tag === name) {
+			tag = '';
+			return;
+		}
+		tag = name;
+	}
 
 	$effect(() => {
 		fetchCamSources().then((loaded) => {
@@ -177,9 +197,9 @@
 	{/if}
 
 	<div class="flex flex-col gap-3">
-		<div class="flex flex-wrap items-center gap-3">
+		<div class="no-scrollbar flex items-center gap-2 overflow-x-auto">
 			<label
-				class="bg-base-200 border-base-300 focus-within:border-base-content/30 flex h-10 w-full max-w-xs items-center gap-2 rounded-lg border px-3"
+				class="bg-base-200 border-base-300 focus-within:border-base-content/30 mr-1 flex h-9 w-64 shrink-0 items-center gap-2 rounded-lg border px-3"
 			>
 				<MagnifyingGlassIcon size={16} class="text-base-content/40" />
 				<input
@@ -187,23 +207,9 @@
 					bind:value={typedQuery}
 					oninput={onSearchInput}
 					placeholder="Search rooms"
-					class="flex-1 bg-transparent text-sm outline-none"
+					class="min-w-0 flex-1 bg-transparent text-sm outline-none"
 				/>
 			</label>
-			{#if tag}
-				<button
-					type="button"
-					class="bg-base-content text-base-100 flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium"
-					onclick={() => (tag = '')}
-					aria-label="Remove tag filter {tag}"
-				>
-					#{tag}
-					<XIcon size={12} weight="bold" />
-				</button>
-			{/if}
-		</div>
-
-		<div class="no-scrollbar flex items-center gap-2 overflow-x-auto">
 			{#each GENDERS as option (option.value)}
 				<button
 					type="button"
@@ -239,6 +245,40 @@
 				{/each}
 			{/if}
 		</div>
+
+		{#if popularTags.length > 0 || tag}
+			<div class="no-scrollbar flex items-center gap-2 overflow-x-auto" aria-label="Popular tags">
+				{#if tagOutsidePopular}
+					<button
+						type="button"
+						class="bg-base-content text-base-100 flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium"
+						onclick={() => (tag = '')}
+						aria-label="Remove tag filter {tag}"
+					>
+						#{tag}
+						<XIcon size={12} weight="bold" />
+					</button>
+				{/if}
+				{#each popularTags as popular (popular)}
+					<button
+						type="button"
+						aria-pressed={tag === popular}
+						onclick={() => toggleTag(popular)}
+						class="flex h-7 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] transition-colors"
+						class:bg-base-content={tag === popular}
+						class:text-base-100={tag === popular}
+						class:font-medium={tag === popular}
+						class:text-base-content={tag !== popular}
+						class:hover:bg-base-200={tag !== popular}
+					>
+						#{popular}
+						{#if tag === popular}
+							<XIcon size={11} weight="bold" />
+						{/if}
+					</button>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	{#if rooms.length === 0 && !loading}
