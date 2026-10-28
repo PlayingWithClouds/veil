@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-eporner",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Veil plugin for eporner.com",
   "private": true,
   "type": "module",

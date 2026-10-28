@@ -1,6 +1,7 @@
 import { HTMLElement, parse } from "node-html-parser";
 import type { DiscoveredItem, Download, ScenePerformer, Scene, ScrapeResult } from "@playingwithclouds/veil-sdk";
 import { fetchText, parseIsoDuration, performerFromLink, studioFromLink } from "./http.ts";
+import { extractComments } from "./comments.ts";
 import { parseCards } from "./listing.ts";
 import { extractFlashvars, extractVideoObject } from "./page.ts";
 import { requireSite, sceneExternalId, type Site } from "./sites.ts";
@@ -42,6 +43,8 @@ export function buildScene(site: Site, id: string, html: string): Scene {
   scene.tags = extractTags(site, doc);
   scene.related = extractRelated(site, doc, scene.external_id);
   scene.downloads = pageDownloads(site, scene.source_url);
+  const comments = extractComments(doc);
+  if (comments.length > 0) scene.comments = comments;
   return scene;
 }
 

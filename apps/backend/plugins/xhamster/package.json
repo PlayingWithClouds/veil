@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-xhamster",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Veil plugin for xhamster.com",
   "private": true,
   "type": "module",
