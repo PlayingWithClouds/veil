@@ -31,27 +31,25 @@ type Window struct {
 	Ended                 bool
 }
 
-// window snapshots the rendition. Segments whose download failed are left out
-// and the segment after one is marked discontinuous. The caller holds the lock.
-func (rendition *track) window(buffered *room) *Window {
+// window snapshots the rendition. Breaks and the discontinuity sequence come
+// from the origin's break count, so every rendition of a stream numbers them
+// alike and players can match audio to video. A segment whose download failed
+// stays listed: the proxy then relays it from the origin. The caller holds the lock.
+func (rendition *track) window() *Window {
 	snapshot := &Window{
 		TrackKey: rendition.key, Kind: rendition.kind, TargetDuration: rendition.targetDuration,
-		DiscontinuitySequence: rendition.discontinuitiesDropped, Ended: rendition.ended,
+		Ended: rendition.ended,
 	}
 	if len(rendition.entries) > 0 {
 		snapshot.MediaSequence = rendition.entries[0].sequence
+		snapshot.DiscontinuitySequence = rendition.entries[0].discontinuityNumber
 	}
-	skipped := false
-	for _, segment := range rendition.entries {
-		if segment.file.failed {
-			skipped = true
-			continue
-		}
+	for index, segment := range rendition.entries {
 		listed := WindowSegment{
 			Name: segment.file.name, SourceURL: segment.sourceURL, Identity: segment.identity,
-			Duration: segment.duration, Discontinuity: segment.discontinuity || skipped,
+			Duration: segment.duration,
+			Discontinuity: index > 0 && segment.discontinuityNumber != rendition.entries[index-1].discontinuityNumber,
 		}
-		skipped = false
 		if segment.initFile != nil {
 			listed.InitName = segment.initFile.name
 		}
@@ -120,7 +118,7 @@ func (m *Manager) Windows(roomID string) []*Window {
 	}
 	var windows []*Window
 	for _, rendition := range buffered.tracks {
-		snapshot := rendition.window(buffered)
+		snapshot := rendition.window()
 		if len(snapshot.Segments) > 0 {
 			windows = append(windows, snapshot)
 		}

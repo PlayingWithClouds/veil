@@ -145,17 +145,53 @@ func TestTrimmedSegmentsAreNotReAdded(t *testing.T) {
 	}
 }
 
-func TestMissedSegmentsMarkDiscontinuity(t *testing.T) {
+func TestMissedSegmentsRestartTheRendition(t *testing.T) {
 	f := newFixture(t)
 	room := "cam_model:nova"
 	f.manager.Observe(room, f.source("video", KindVideo), f.playlistOf(t, 0, 1, 2), true)
 	window := f.manager.Observe(room, f.source("video", KindVideo), f.playlistOf(t, 9, 10), true)
-	rendered := window.Render(func(name, sourceURL string) string { return name })
-	if strings.Count(rendered, "#EXT-X-DISCONTINUITY\n") != 1 {
-		t.Fatalf("playlist should mark exactly the gap:\n%s", rendered)
+	if len(window.Segments) != 2 || window.Segments[0].Identity != "/live/seg/9.ts" {
+		t.Fatalf("after a gap the rendition should hold only what follows it: %+v", window.Segments)
 	}
-	if window.Segments[3].Discontinuity != true || window.Segments[2].Discontinuity {
-		t.Errorf("break not on the first segment after the gap: %+v", window.Segments)
+	rendered := window.Render(func(name, sourceURL string) string { return name })
+	if strings.Contains(rendered, "#EXT-X-DISCONTINUITY\n") || !strings.Contains(rendered, "#EXT-X-MEDIA-SEQUENCE:9") {
+		t.Errorf("a restarted rendition should start cleanly at the gap's end:\n%s", rendered)
+	}
+	f.waitStored(t, room, window)
+	files, _ := f.store.List(context.Background(), Prefix)
+	if len(files) != 2 {
+		t.Errorf("%d blobs on disk, want only the 2 segments after the gap: %+v", len(files), files)
+	}
+}
+
+func TestBreaksFollowTheOriginsCountInEveryRendition(t *testing.T) {
+	f := newFixture(t)
+	room := "cam_model:nova"
+	base, _ := url.Parse(f.origin.URL + "/live/")
+	parse := func(text string) *Playlist {
+		playlist, err := ParsePlaylist(text, base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return playlist
+	}
+	// The video rendition was watched from before the origin's break at 12;
+	// the audio rendition is first asked for after it.
+	f.manager.Observe(room, f.source("video", KindVideo), parse(
+		"#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:10\n#EXT-X-DISCONTINUITY-SEQUENCE:4\n"+
+			"#EXTINF:2,\nv/10.ts\n#EXTINF:2,\nv/11.ts\n"), true)
+	video := f.manager.Observe(room, f.source("video", KindVideo), parse(
+		"#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:11\n#EXT-X-DISCONTINUITY-SEQUENCE:4\n"+
+			"#EXTINF:2,\nv/11.ts\n#EXT-X-DISCONTINUITY\n#EXTINF:2,\nv/12.ts\n#EXTINF:2,\nv/13.ts\n"), true)
+	audio := f.manager.Observe(room, f.source("audio", KindAudio), parse(
+		"#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:12\n#EXT-X-DISCONTINUITY-SEQUENCE:5\n"+
+			"#EXTINF:2,\na/12.ts\n#EXTINF:2,\na/13.ts\n"), true)
+
+	if video.DiscontinuitySequence != 4 || !video.Segments[2].Discontinuity || video.Segments[1].Discontinuity {
+		t.Errorf("video should start at break 4 and mark the origin's break before 12: %d %+v", video.DiscontinuitySequence, video.Segments)
+	}
+	if audio.DiscontinuitySequence != 5 || audio.Segments[0].Discontinuity {
+		t.Errorf("audio joined after the break should start at 5, unmarked: %d %+v", audio.DiscontinuitySequence, audio.Segments)
 	}
 }
 
