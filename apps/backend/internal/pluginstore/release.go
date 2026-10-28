@@ -134,10 +134,12 @@ func (s *Store) installVersion(ctx context.Context, manifest *versionManifest) e
 	return s.writePlugin(folder, files["package.json"], manifest.Main, files[manifest.Main])
 }
 
-// Update installs newer published versions of every installed plugin package
-// except local builds, returning the package names it updated. Folders
-// without the plugin keyword (e.g. plugin sources) are never touched. One
-// failing package doesn't stop the others; their errors are joined.
+// Update replaces retired packages with their successors (see
+// RetiredPackages) and installs newer published versions of every installed
+// plugin package except local builds, returning the package names it removed
+// or updated. Folders without the plugin keyword (e.g. plugin sources) are
+// never touched. One failing package doesn't stop the others; their errors are
+// joined.
 func (s *Store) Update(ctx context.Context) ([]string, error) {
 	installed, err := s.Installed()
 	if err != nil {
@@ -147,10 +149,16 @@ func (s *Store) Update(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var updated []string
-	var errs []error
+	updated, retireErr := s.retire(ctx, installed, published)
+	errs := []error{retireErr}
+	if len(updated) > 0 {
+		installed, err = s.Installed()
+		if err != nil {
+			return updated, err
+		}
+	}
 	for _, plugin := range installed {
-		if plugin.Manifest.LocalBuild || !slices.Contains(plugin.Manifest.Keywords, Keyword) {
+		if !managed(plugin) {
 			continue
 		}
 		manifest, err := published.latest(plugin.Manifest.Name)

@@ -1,14 +1,25 @@
 import type { SiteSuggestion, SuggestArgs, SuggestResult } from "@playingwithclouds/veil-sdk";
-import { BASE_URL, decodeEntities, fetchPage } from "./http.ts";
+import { decodeEntities } from "./http.ts";
+import { fetchFromMirrors } from "./mirrors.ts";
 
 const DEFAULT_LIMIT = 8;
 
-/** The site's search-box completions for a partly typed query. */
+/** The site's search-box completions for a partly typed query, from the first mirror that answers. */
 export async function suggest(args: SuggestArgs): Promise<SuggestResult> {
-  const body = await fetchPage(`${BASE_URL}/api/autocomplete?q=${encodeURIComponent(args.query)}`);
+  const page = await fetchFromMirrors(`/api/autocomplete?q=${encodeURIComponent(args.query)}`, isAutocompleteReply);
   let limit = DEFAULT_LIMIT;
   if (args.limit !== undefined && args.limit > 0) limit = args.limit;
-  return { suggestions: suggestionsFromBody(body).slice(0, limit) };
+  return { suggestions: suggestionsFromBody(page.body).slice(0, limit) };
+}
+
+/** Whether a body is an autocomplete reply, not a challenge or error page. */
+function isAutocompleteReply(body: string): boolean {
+  try {
+    const parsed = JSON.parse(jsonPayload(body)) as { results?: unknown };
+    return Array.isArray(parsed.results);
+  } catch {
+    return false;
+  }
 }
 
 /**
