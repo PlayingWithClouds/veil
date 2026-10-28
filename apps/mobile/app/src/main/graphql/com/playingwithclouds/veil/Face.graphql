@@ -16,6 +16,20 @@ mutation IdentifyFace($mediaId: ID!, $imageId: ID, $frameBase64: String) {
       sources
       scenePlugin
     }
+    posts {
+      title
+      url
+      thumbnailUrl
+      solved
+      names
+    }
+    postPerformers {
+      name
+      posts
+      imageUrl
+      postUrl
+      performerId
+    }
     sources
     failures
     pictureUrl
