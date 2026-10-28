@@ -2719,6 +2719,9 @@ export default {
             "tagMatch": [
                 1
             ],
+            "relatedVia": [
+                1
+            ],
             "related": [
                 49,
                 {

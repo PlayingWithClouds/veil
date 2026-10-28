@@ -42,11 +42,18 @@ func TestRelatedScenesOrderBySourceThenRankAndSkipBlocked(t *testing.T) {
 		t.Fatalf("related: %v", err)
 	}
 	titles := []string{}
+	via := []string{}
 	for _, scene := range scenes {
 		titles = append(titles, scene.Title)
+		if scene.RelatedVia != nil {
+			via = append(via, *scene.RelatedVia)
+		}
 	}
 	if !slices.Equal(titles, []string{"site0", "site1", "performer0", "tag0"}) {
 		t.Errorf("related = %v", titles)
+	}
+	if !slices.Equal(via, []string{"site", "site", "performer", "tag"}) {
+		t.Errorf("relatedVia = %v", via)
 	}
 
 	limited, _ := repo.RelatedScenes(ctx, "scene:visited", 2, nil)

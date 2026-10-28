@@ -603,6 +603,7 @@ type Scene {
   performers: [Performer!]!
   tags: [Tag!]!
   tagMatch: String
+  relatedVia: String
   related(limit: Int): [Scene!]!
   createdAt: String!
   updatedAt: String!

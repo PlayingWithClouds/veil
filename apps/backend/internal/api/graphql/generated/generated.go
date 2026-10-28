@@ -569,6 +569,7 @@ type ComplexityRoot struct {
 		PreviewVideo    func(childComplexity int) int
 		Rating          func(childComplexity int) int
 		Related         func(childComplexity int, limit *int) int
+		RelatedVia      func(childComplexity int) int
 		SourceURL       func(childComplexity int) int
 		Studio          func(childComplexity int) int
 		TagMatch        func(childComplexity int) int
@@ -4150,6 +4151,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Scene.Related(childComplexity, args["limit"].(*int)), true
+	case "Scene.relatedVia":
+		if e.ComplexityRoot.Scene.RelatedVia == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Scene.RelatedVia(childComplexity), true
 	case "Scene.sourceUrl":
 		if e.ComplexityRoot.Scene.SourceURL == nil {
 			break
@@ -6152,6 +6159,10 @@ type Scene {
   # "direct" | "inherited" — set when filtering by tagId; inherited means the
   # tag came from the scene's studio or a credited performer.
   tagMatch: String
+  # "site" | "performer" | "tag" | "title" — set on scenes listed by ` + "`" + `related` + "`" + `
+  # and ` + "`" + `relatedChanged` + "`" + `: the site's own related list, or the fallback search
+  # (by a performer, a tag or the title) that linked it.
+  relatedVia: String
   # Scenes related to this one, filled when the scene is visited: the site's own
   # related list first, then fallback searches by performer, tag and title.
   related(limit: Int): [Scene!]!
@@ -7478,6 +7489,8 @@ func (ec *executionContext) childFields_Scene(ctx context.Context, field graphql
 		return ec.fieldContext_Scene_tags(ctx, field)
 	case "tagMatch":
 		return ec.fieldContext_Scene_tagMatch(ctx, field)
+	case "relatedVia":
+		return ec.fieldContext_Scene_relatedVia(ctx, field)
 	case "related":
 		return ec.fieldContext_Scene_related(ctx, field)
 	case "createdAt":
@@ -23585,6 +23598,29 @@ func (ec *executionContext) fieldContext_Scene_tagMatch(_ context.Context, field
 	return graphql.NewScalarFieldContext("Scene", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Scene_relatedVia(ctx context.Context, field graphql.CollectedField, obj *model.Scene) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Scene_relatedVia(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RelatedVia, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Scene_relatedVia(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Scene", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Scene_related(ctx context.Context, field graphql.CollectedField, obj *model.Scene) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33340,6 +33376,8 @@ func (ec *executionContext) _Scene(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "tagMatch":
 			out.Values[i] = ec._Scene_tagMatch(ctx, field, obj)
+		case "relatedVia":
+			out.Values[i] = ec._Scene_relatedVia(ctx, field, obj)
 		case "related":
 			field := field
 
