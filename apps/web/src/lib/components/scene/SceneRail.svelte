@@ -77,12 +77,13 @@
 		onselect={openItem}
 		onedge={handleEdge}
 	>
-		{#snippet item(entry, position)}
+		{#snippet item(entry, position, focused)}
 			<div use:impression={relatedImpression(entry, position)}>
 				<RailCard
 					item={entry}
 					site={pluginForUrl(entry.sourceUrl, sites)}
 					opening={openingUrl === entry.sourceUrl}
+					{focused}
 				/>
 			</div>
 		{/snippet}
