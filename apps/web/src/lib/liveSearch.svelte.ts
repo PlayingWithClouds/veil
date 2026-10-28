@@ -172,11 +172,11 @@ export class LiveSearch {
 
 	/** Takes one streamed result; false when it is a repeat or can't be opened. */
 	#receive(result: PluginSearchResult): boolean {
-		// Results open by their stored record; one without can't be shown.
+		// Results open by their stored record; one without can't be shown, and
+		// two listings stored as one record (a mirror, a merged copy) show once.
 		if (!result.dbId) return false;
-		const key = `${result.plugin}|${result.externalId}`;
-		if (this.#seen.has(key)) return false;
-		this.#seen.add(key);
+		if (this.#seen.has(result.dbId)) return false;
+		this.#seen.add(result.dbId);
 		if (!result.plugin && !isGalleryResult(result)) {
 			this.library = sortResults([...this.library, result], this.sortMode);
 			return true;

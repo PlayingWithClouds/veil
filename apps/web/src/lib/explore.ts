@@ -271,7 +271,10 @@ export async function fetchRecommendationShelves(
 			key: row.key,
 			title: row.title,
 			reason: row.reason,
-			items: row.items.map((item) => ({ scene: sceneRowToHit(item.scene), source: item.source }))
+			items: uniqueBy(
+				row.items.map((item) => ({ scene: sceneRowToHit(item.scene), source: item.source })),
+				(item) => item.scene.id
+			)
 		}));
 	} catch {
 		return [];
@@ -307,10 +310,22 @@ export async function fetchContinueWatching(limit: number): Promise<SceneHit[]> 
 			if (!duration) return true;
 			return duration - row.progressSeconds > CONTINUE_END_SECONDS;
 		});
-		return unfinished.slice(0, limit).map((row) => sceneRowToHit(row.scene as SceneRow));
+		const scenes = unfinished.map((row) => sceneRowToHit(row.scene as SceneRow));
+		return uniqueBy(scenes, (scene) => scene.id).slice(0, limit);
 	} catch {
 		return [];
 	}
+}
+
+/** The items with a repeated key left out, keeping the first of each. */
+function uniqueBy<T>(items: T[], keyOf: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const key = keyOf(item);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 /**
