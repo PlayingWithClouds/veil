@@ -9,8 +9,10 @@
 	import StopIcon from 'phosphor-svelte/lib/StopIcon';
 	import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
 	import CheckIcon from 'phosphor-svelte/lib/CheckIcon';
-	import Toggle from '$lib/components/Toggle.svelte';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 	import SceneCard from '$lib/components/SceneCard.svelte';
+	import PopoverMenu from '$lib/components/scene/PopoverMenu.svelte';
+	import CamRail from '$lib/components/cams/CamRail.svelte';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
 	import { isCompact } from '$lib/stores/viewport';
 	import { activeCamRecordings, refreshCamRecordings } from '$lib/stores/camRecordings';
@@ -26,6 +28,7 @@
 		loadWatchQuality,
 		qualityName,
 		recordQualityFor,
+		roomTopic,
 		saveWatchQuality,
 		setCamAutoRecord,
 		setCamModelFollowed,
@@ -104,6 +107,35 @@
 		if (!source?.iconUrl) return null;
 		return cacheUrl(source.iconUrl);
 	});
+	let sourceName = $derived.by(() => {
+		if (source) return source.displayName;
+		return 'the site';
+	});
+	let topic = $derived.by(() => {
+		if (!camModel) return null;
+		return roomTopic(camModel.subject, camModel.username);
+	});
+
+	const PILL_CLASS =
+		'flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-50';
+	const MENU_ITEM_CLASS =
+		'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10';
+
+	/** What auto-record does for the model: "Off", or the quality it records at. */
+	function autoRecordLabel(model: CamModel | null): string {
+		if (!model || !model.autoRecord) return 'Off';
+		return qualityName(model.recordQuality);
+	}
+
+	/** Turns auto-record off (null) or on at a quality, and closes the menu. */
+	function pickAutoRecord(quality: string | null, close: () => void) {
+		close();
+		if (quality === null) {
+			updateAutoRecord(false);
+			return;
+		}
+		updateAutoRecord(true, quality);
+	}
 
 	// Load the model and, when it is live, its stream.
 	$effect(() => {
@@ -271,11 +303,8 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<a href={camsUrl()} class="text-base-content/50 hover:text-base-content w-fit text-sm">
-		&larr; All cams
-	</a>
-
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+<div class="flex min-w-0 flex-col gap-4">
 	{#if notFound}
 		<p class="text-base-content/40 py-24 text-center">This room is not known.</p>
 	{:else}
@@ -334,118 +363,160 @@
 		</div>
 
 		{#if camModel}
-			<div class="flex flex-wrap items-start justify-between gap-4">
-				<div class="flex min-w-0 flex-1 basis-80 flex-col gap-2">
-					<div class="flex items-center gap-2">
-						{#if sourceIcon}
-							<img src={sourceIcon} alt={source?.displayName ?? ''} class="h-5 w-5 rounded-sm" />
+			<!-- Channel row: who it is and how live, with Follow and Auto-record beside it. -->
+			<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+				<div class="flex min-w-0 items-center gap-3">
+					<span class="bg-base-300 h-11 w-11 shrink-0 overflow-hidden rounded-full">
+						{#if thumbnail}
+							<img src={thumbnail} alt="" class="h-full w-full object-cover" />
 						{/if}
-						<h1 class="truncate text-2xl font-bold">{camModel.displayName}</h1>
-						{#if streamUrl}
-							<span
-								class="flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
-							>
-								<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
-								Live
-							</span>
-						{/if}
-					</div>
-					{#if camModel.subject}
-						<p class="text-base-content/70 text-sm">{camModel.subject}</p>
-					{/if}
-					<div class="text-base-content/50 flex items-center gap-3 text-sm">
-						{#if streamUrl}
-							<span class="flex items-center gap-1">
-								<EyeIcon size={14} weight="fill" />
-								{formatViewers(camModel.viewers)} watching
-							</span>
-						{/if}
-						<a
-							href={camModel.sourceUrl}
-							target="_blank"
-							rel="noreferrer noopener"
-							class="hover:text-base-content flex items-center gap-1"
-						>
-							<ArrowSquareOutIcon size={14} />
-							Open on {source?.displayName ?? 'site'}
-						</a>
-					</div>
-					{#if camModel.tags.length > 0}
-						<div class="flex flex-wrap gap-1.5">
-							{#each camModel.tags as tag (tag)}
-								<a
-									href="{camsUrl()}?tag={encodeURIComponent(tag)}"
-									class="border-base-300 bg-base-200 text-base-content/70 hover:text-base-content rounded-full border px-2.5 py-1 text-xs transition-colors"
+					</span>
+					<div class="flex min-w-0 flex-col">
+						<div class="flex items-center gap-2">
+							<h1 class="truncate text-xl font-bold">{camModel.displayName}</h1>
+							{#if streamUrl}
+								<span
+									class="flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
 								>
-									{tag}
-								</a>
-							{/each}
+									<span class="h-1.5 w-1.5 rounded-full bg-white"></span>
+									Live
+								</span>
+							{/if}
 						</div>
-					{/if}
+						<p class="text-base-content/50 flex items-center gap-1.5 text-[13px]">
+							{#if streamUrl}
+								<EyeIcon size={13} weight="fill" />
+								<span>{formatViewers(camModel.viewers)} watching</span>
+								<span class="opacity-40">·</span>
+							{:else if camModel.lastSeenOnlineAt}
+								<span>Seen {formatRelativeTime(camModel.lastSeenOnlineAt)}</span>
+								<span class="opacity-40">·</span>
+							{/if}
+							{#if sourceIcon}
+								<img src={sourceIcon} alt="" class="h-3.5 w-3.5 rounded-sm" />
+							{/if}
+							<span>{sourceName}</span>
+						</p>
+					</div>
 				</div>
-				<div class="flex flex-col items-end gap-2">
-					<button
-						type="button"
-						class="btn"
-						class:btn-primary={!camModel.followed}
-						disabled={followBusy}
-						onclick={toggleFollow}
-					>
-						<HeartIcon size={18} weight={camModel.followed ? 'fill' : 'regular'} />
-						{camModel.followed ? 'Following' : 'Follow'}
-					</button>
-					<label class="flex items-center gap-2 text-sm">
-						<RecordIcon size={16} weight="fill" class="text-red-500" />
-						<span class="text-base-content/70">Auto-record when live</span>
-						<Toggle
-							checked={camModel.autoRecord}
-							disabled={autoRecordBusy}
-							ariaLabel="Auto-record when live"
-							onchange={(enabled) => updateAutoRecord(enabled)}
-						/>
-					</label>
-					<label class="flex items-center gap-2 text-sm">
-						<span class="text-base-content/70">Auto-record quality</span>
-						<select
-							class="bg-base-200 border-base-300 rounded-md border px-2 py-1 text-sm"
-							value={camModel.recordQuality}
-							disabled={autoRecordBusy}
-							onchange={(event) =>
-								updateAutoRecord(camModel!.autoRecord, event.currentTarget.value)}
+				<div class="flex items-center gap-2">
+					{#if camModel.followed}
+						<button type="button" class={PILL_CLASS} disabled={followBusy} onclick={toggleFollow}>
+							<HeartIcon size={18} weight="fill" />
+							Following
+						</button>
+					{:else}
+						<button
+							type="button"
+							class="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+							disabled={followBusy}
+							onclick={toggleFollow}
 						>
+							<HeartIcon size={18} />
+							Follow
+						</button>
+					{/if}
+					<PopoverMenu label="Auto-record" align="right" triggerClass={PILL_CLASS} disabled={autoRecordBusy}>
+						{#snippet trigger()}
+							<RecordIcon size={16} weight={camModel?.autoRecord ? 'fill' : 'regular'} class="text-red-500" />
+							Auto-record
+							<span class="text-white/60">{autoRecordLabel(camModel)}</span>
+							<CaretDownIcon size={12} weight="bold" />
+						{/snippet}
+						{#snippet children(close)}
+							<p class="text-base-content/50 px-3 pt-2 pb-1 text-xs">
+								Records whenever {camModel?.displayName} goes live (and follows).
+							</p>
+							<button
+								type="button"
+								role="menuitemradio"
+								aria-checked={!camModel?.autoRecord}
+								class={MENU_ITEM_CLASS}
+								onclick={() => pickAutoRecord(null, close)}
+							>
+								Off
+								{#if !camModel?.autoRecord}<CheckIcon size={14} weight="bold" class="ml-auto" />{/if}
+							</button>
 							{#each AUTO_RECORD_QUALITIES as quality (quality)}
-								<option value={quality}>{qualityName(quality)}</option>
+								{@const active = camModel?.autoRecord && camModel.recordQuality === quality}
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={active}
+									class={MENU_ITEM_CLASS}
+									onclick={() => pickAutoRecord(quality, close)}
+								>
+									{qualityName(quality)}
+									{#if active}<CheckIcon size={14} weight="bold" class="ml-auto" />{/if}
+								</button>
 							{/each}
-						</select>
-					</label>
+						{/snippet}
+					</PopoverMenu>
 				</div>
 			</div>
 
-			{#if recording || pastRecordings.length > 0}
-				<section class="flex flex-col gap-2">
-					<h2 class="text-lg font-semibold">Recordings</h2>
-					{#if recording}
-						<p class="text-sm text-red-400">
-							Recording now{recording.quality ? ` at ${recording.quality}` : ''}: {formatRecordingClock(
-								recordedSeconds
-							)}, {formatRecordingSize(recording.sizeBytes)}
-						</p>
-					{/if}
-					{#if pastRecordings.length > 0}
-						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-							{#each pastRecordings as past (past.recording.id)}
-								<SceneCard
-									item={past.card}
-									instantHover
-									onclick={() => past.card.id && goto(sceneUrl(past.card.id))}
-								/>
-							{/each}
-						</div>
-					{/if}
-				</section>
-			{/if}
+			<!-- About: the topic, tags, the site link and this room's recordings. -->
+			<section class="bg-base-200 flex flex-col gap-3 rounded-xl p-4 text-sm">
+				{#if topic}
+					<p class="text-base-content/85 leading-relaxed">{topic}</p>
+				{/if}
+				{#if camModel.tags.length > 0}
+					<div class="flex flex-wrap gap-x-3 gap-y-1">
+						{#each camModel.tags as tag (tag)}
+							<a
+								href="{camsUrl()}?tag={encodeURIComponent(tag)}"
+								class="text-base-content/55 hover:text-base-content transition-colors"
+							>
+								#{tag}
+							</a>
+						{/each}
+					</div>
+				{/if}
+				<a
+					href={camModel.sourceUrl}
+					target="_blank"
+					rel="noreferrer noopener"
+					class="text-base-content/60 hover:text-base-content flex w-fit items-center gap-1.5"
+				>
+					<ArrowSquareOutIcon size={14} />
+					Open on {sourceName}
+				</a>
+
+				{#if recording || pastRecordings.length > 0}
+					<div class="flex flex-col gap-3 border-t border-white/5 pt-3">
+						<h2 class="font-semibold">
+							Recordings
+							{#if pastRecordings.length > 0}
+								<span class="text-base-content/40 font-normal">{pastRecordings.length}</span>
+							{/if}
+						</h2>
+						{#if recording}
+							<p class="flex items-center gap-2 text-red-400">
+								<span class="h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
+								Recording now{#if recording.quality}&nbsp;at {recording.quality}{/if}:
+								{formatRecordingClock(recordedSeconds)}, {formatRecordingSize(recording.sizeBytes)}
+							</p>
+						{/if}
+						{#if pastRecordings.length > 0}
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+								{#each pastRecordings as past (past.recording.id)}
+									<SceneCard
+										item={past.card}
+										instantHover
+										onclick={() => past.card.id && goto(sceneUrl(past.card.id))}
+									/>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</section>
 		{/if}
 	{/if}
+</div>
+{#if camModel}
+	<CamRail {camModel} />
+{/if}
 </div>
 
 {#snippet recordControl()}
