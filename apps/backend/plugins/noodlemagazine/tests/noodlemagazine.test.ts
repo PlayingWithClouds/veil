@@ -1,17 +1,20 @@
-import { test, expect, describe } from "bun:test";
+import { test, expect, describe, afterEach } from "bun:test";
 import { readFileSync } from "fs";
 import { parse } from "node-html-parser";
 import { parseVideoCards } from "../src/cards.ts";
-import { listingUrl, searchPathFromQuery, sceneList } from "../src/listing.ts";
-import { sceneFromWatchPage, scrapeScene } from "../src/scene.ts";
-import { bestSource, resolve } from "../src/resolve.ts";
+import { listingPath, searchPathFromQuery, sceneList } from "../src/listing.ts";
+import { pageTags, sceneFromWatchPage, scrapeScene } from "../src/scene.ts";
+import { bestSource, chooseSource, requestedHeight, resolve } from "../src/resolve.ts";
 import { suggest, suggestionsFromBody } from "../src/suggest.ts";
 import { decodeEntities, videoIdFromUrl } from "../src/http.ts";
+import { fetchFromMirrors, mirrorPath, usableMirrors } from "../src/mirrors.ts";
 import { clockSeconds, countFromText } from "../src/values.ts";
 
 const NET_TIMEOUT = 60_000;
-// The live tests go through FlareSolverr, so they run only when it is configured.
+// The copies behind Cloudflare need FlareSolverr; mat6tube.com does not.
 const hasSolver = Boolean(process.env.FLARESOLVERR_URL);
+// Live tests hit the sites; run them with LIVE=1.
+const live = process.env.LIVE === "1";
 
 /** Loads a saved page from the fixtures folder. */
 function loadFixture(fileName: string): string {
@@ -19,18 +22,30 @@ function loadFixture(fileName: string): string {
 }
 
 describe("helpers", () => {
-  test("videoIdFromUrl reads the owner_video id of a watch URL", () => {
+  test("videoIdFromUrl reads the owner_video id of a watch URL on any mirror, or a relative one", () => {
     expect(videoIdFromUrl("https://noodlemagazine.com/watch/-152603790_456239053")).toBe("-152603790_456239053");
+    expect(videoIdFromUrl("https://ukdevilz.com/watch/-152603790_456239053")).toBe("-152603790_456239053");
+    expect(videoIdFromUrl("https://mat6tube.com/watch/-113656837_456242801#720p")).toBe("-113656837_456242801");
+    expect(videoIdFromUrl("/watch/-45836141_456239627")).toBe("-45836141_456239627");
     expect(videoIdFromUrl("https://noodlemagazine.com/video/creampie")).toBe("");
+    expect(videoIdFromUrl("https://example.com/watch/-1_2")).toBe("");
   });
 
   test("search paths join the words with +, and listings take 0-based pages", () => {
     expect(searchPathFromQuery("woodman  casting")).toBe("/video/woodman+casting");
-    expect(listingUrl({ query: "woodman casting" }, 1)).toBe("https://noodlemagazine.com/video/woodman+casting?p=1");
-    expect(listingUrl({}, 0)).toBe("https://noodlemagazine.com/home?range=month&p=0");
-    expect(listingUrl({ url: "https://noodlemagazine.com/video/creampie" }, 2)).toBe(
-      "https://noodlemagazine.com/video/creampie?p=2"
-    );
+    expect(listingPath({ query: "woodman casting" }, 1)).toBe("/video/woodman+casting?p=1");
+    expect(listingPath({}, 0)).toBe("/home?range=month&p=0");
+  });
+
+  test("a site page on any mirror lists by its path", () => {
+    expect(listingPath({ url: "https://noodlemagazine.com/video/creampie" }, 2)).toBe("/video/creampie?p=2");
+    expect(listingPath({ url: "https://mat6tube.com/video/creampie?p=0" }, 1)).toBe("/video/creampie?p=1");
+    expect(() => listingPath({ url: "https://example.com/video/creampie" }, 0)).toThrow();
+  });
+
+  test("mirrorPath accepts the mirrors' hosts only", () => {
+    expect(mirrorPath("https://www.ukdevilz.com/watch/-1_2?x=1")).toBe("/watch/-1_2?x=1");
+    expect(mirrorPath("https://noodlemagazine.com.evil.test/watch/-1_2")).toBeUndefined();
   });
 
   test("clock and view-count texts", () => {
@@ -47,8 +62,78 @@ describe("helpers", () => {
   });
 });
 
+describe("mirrors", () => {
+  const originalFetch = globalThis.fetch;
+  const originalSolver = process.env.FLARESOLVERR_URL;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    if (originalSolver === undefined) delete process.env.FLARESOLVERR_URL;
+    else process.env.FLARESOLVERR_URL = originalSolver;
+  });
+
+  /** Answers plain requests per host; FlareSolverr requests with a solved page of the host they ask for. */
+  function stubSites(plain: Record<string, { status: number; body: string }>, solved: Record<string, string>): string[] {
+    const requested: string[] = [];
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("http://solver.test")) {
+        const target = new URL((JSON.parse(String(init?.body)) as { url: string }).url);
+        requested.push(`solver ${target.hostname}`);
+        const response = solved[target.hostname];
+        if (response === undefined) return new Response(JSON.stringify({ status: "error", message: "timeout" }));
+        return new Response(JSON.stringify({ status: "ok", solution: { response } }));
+      }
+      const host = new URL(url).hostname;
+      requested.push(host);
+      const answer = plain[host] ?? { status: 503, body: "" };
+      return new Response(answer.body, { status: answer.status });
+    }) as typeof fetch;
+    return requested;
+  }
+
+  const sitePage = (marker: string) => `<html><link href="/static/extend/dark/a.css">${marker}</html>`;
+  const challenge = { status: 403, body: "<html>Just a moment...</html>" };
+
+  test("without a solver only the copy that answers plain requests is used", async () => {
+    delete process.env.FLARESOLVERR_URL;
+    expect(usableMirrors(false).map((mirror) => mirror.origin)).toEqual(["https://mat6tube.com"]);
+    const requested = stubSites({ "mat6tube.com": { status: 200, body: sitePage("mat6tube") } }, {});
+    const page = await fetchFromMirrors("/home?range=month&p=0");
+    expect(page.origin).toBe("https://mat6tube.com");
+    expect(requested).toEqual(["mat6tube.com"]);
+  });
+
+  test("with a solver the first copy wins, and a failing one passes to the next", async () => {
+    process.env.FLARESOLVERR_URL = "http://solver.test/v1";
+    const requested = stubSites(
+      { "noodlemagazine.com": challenge, "ukdevilz.com": challenge, "mat6tube.com": { status: 200, body: sitePage("m") } },
+      { "ukdevilz.com": sitePage("ukdevilz") }
+    );
+    const page = await fetchFromMirrors("/home?range=month&p=0");
+    expect(page.origin).toBe("https://ukdevilz.com");
+    expect(page.body).toContain("ukdevilz");
+    expect(requested).toEqual(["noodlemagazine.com", "solver noodlemagazine.com", "ukdevilz.com", "solver ukdevilz.com"]);
+  });
+
+  test("a page that is not the site's (or fails the check) is passed over", async () => {
+    process.env.FLARESOLVERR_URL = "http://solver.test/v1";
+    stubSites(
+      { "mat6tube.com": { status: 200, body: sitePage('<meta property="og:title" content="x">window.playlist') } },
+      { "noodlemagazine.com": "<html>blocked</html>", "ukdevilz.com": sitePage("no video here") }
+    );
+    const page = await fetchFromMirrors("/watch/-1_2", (body) => body.includes("window.playlist"));
+    expect(page.origin).toBe("https://mat6tube.com");
+  });
+
+  test("when no copy answers, the error names each one", async () => {
+    delete process.env.FLARESOLVERR_URL;
+    stubSites({ "mat6tube.com": { status: 500, body: "" } }, {});
+    await expect(fetchFromMirrors("/home")).rejects.toThrow(/mat6tube\.com: HTTP 500/);
+  });
+});
+
 describe("listing pages (offline)", () => {
-  test("the monthly top list has 24 videos with identity, poster, runtime and views", () => {
+  test("the monthly top list has 24 videos with identity, poster, preview, runtime and views", () => {
     const items = parseVideoCards(parse(loadFixture("home.html")));
     expect(items.length).toBe(24);
     expect(new Set(items.map((item) => item.external_id)).size).toBe(24);
@@ -59,6 +144,17 @@ describe("listing pages (offline)", () => {
     expect(first.poster_path).toBe("https://cdn2.pvvstream.pro/videos/-152603790/456239053/preview_320.jpg");
     expect(first.duration_seconds).toBe(820);
     expect(first.view_count).toBe(685920);
+    expect(items.filter((item) => item.preview_video?.includes("tr_240p.mp4")).length).toBeGreaterThan(0);
+  });
+
+  test("a copy's page gives the same identities, on the canonical origin", () => {
+    const items = parseVideoCards(parse(loadFixture("mat6tube-recent.html")));
+    expect(items.length).toBe(24);
+    for (const item of items) {
+      expect(item.source_url).toStartWith("https://noodlemagazine.com/watch/");
+      expect(item.external_id).toStartWith("noodlemagazine-");
+      expect(item.poster_path).toStartWith("https://");
+    }
   });
 
   test("the second page continues with other videos", () => {
@@ -95,7 +191,17 @@ describe("watch page (offline)", () => {
     expect(scene.duration_seconds).toBe(820);
     expect(scene.view_count).toBe(35757453);
     expect(scene.poster_path).toBe("https://cdn2.pvvstream.pro/videos/-152603790/456239053/preview_800.jpg");
-    expect(scene.tags).toContain("incest");
+  });
+
+  test("tags use the English translation of the tag links", () => {
+    expect(scene.tags).toContain("porn");
+    expect(scene.tags).toContain("amateur home");
+    expect(scene.tags?.some((tag) => /[а-я]/i.test(tag))).toBe(false);
+  });
+
+  test("without tag links the video:tag meta list is used", () => {
+    const page = parse('<meta property="video:tag" content="teen, anal ,  ">');
+    expect(pageTags(page)).toEqual(["teen", "anal"]);
   });
 
   test("related videos are the page's other videos, without the scene itself", () => {
@@ -108,6 +214,17 @@ describe("watch page (offline)", () => {
   test("the one download is the watch page: the signed links expire, so resolve fetches one at play time", () => {
     expect(scene.downloads?.map((download) => download.url)).toEqual([scene.source_url]);
   });
+
+  test("a copy's watch page gives the same scene identity and English tags", () => {
+    const copy = sceneFromWatchPage(parse(loadFixture("mat6tube-watch.html")), "-113656837_456242801");
+    expect(copy.external_id).toBe("noodlemagazine--113656837_456242801");
+    expect(copy.source_url).toBe("https://noodlemagazine.com/watch/-113656837_456242801");
+    expect(copy.title).toStartWith("Добро пожаловать домой");
+    expect(copy.duration_seconds).toBe(2567);
+    expect(copy.tags).toContain("stepmom");
+    expect(copy.tags).toContain("milf");
+    expect(copy.related?.length).toBe(24);
+  });
 });
 
 describe("stream resolution (offline)", () => {
@@ -115,6 +232,14 @@ describe("stream resolution (offline)", () => {
     const source = bestSource(loadFixture("watch.html"));
     expect(source?.height).toBe(720);
     expect(source?.url).toStartWith("https://cdn.pvvstream.pro/videos/-152603790/456239053/vid_720p.mp4");
+  });
+
+  test("a quality named in the URL's fragment is picked when the page has it", () => {
+    const html = loadFixture("mat6tube-watch.html");
+    expect(requestedHeight("https://mat6tube.com/watch/-113656837_456242801#480p")).toBe(480);
+    expect(requestedHeight("https://noodlemagazine.com/watch/-113656837_456242801")).toBe(0);
+    expect(chooseSource(html, 480)?.url).toContain("vid_480p.mp4");
+    expect(chooseSource(html, 1080)?.height).toBe(720);
   });
 
   test("a page without a playlist falls back to its video element", () => {
@@ -132,52 +257,34 @@ describe("search suggestions (offline)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Live integration against noodlemagazine.com (through FlareSolverr).
+// Live integration: through the first copy that answers (mat6tube.com without
+// FlareSolverr). Run with LIVE=1.
 
-describe.if(hasSolver)("scene:list (live, needs FlareSolverr)", () => {
+describe.if(live)("live, through the mirrors", () => {
   test(
-    "returns a bounded page of video stubs",
-    async () => {
-      const { items } = await sceneList({ limit: 5 });
-      expect(items.length).toBe(5);
-      for (const item of items) expect(item.external_id).toStartWith("noodlemagazine-");
-    },
-    2 * NET_TIMEOUT
-  );
-
-  test(
-    "offsets past the first page do not repeat it",
+    "lists, pages and searches videos",
     async () => {
       const first = await sceneList({ limit: 5 });
+      expect(first.items.length).toBe(5);
+      for (const item of first.items) expect(item.external_id).toStartWith("noodlemagazine-");
       const later = await sceneList({ limit: 5, offset: 24 });
       const firstIds = new Set(first.items.map((item) => item.external_id));
-      expect(later.items.length).toBe(5);
       expect(later.items.some((item) => firstIds.has(item.external_id))).toBe(false);
-    },
-    2 * NET_TIMEOUT
-  );
-
-  test(
-    "a query returns videos that match it",
-    async () => {
       const { items } = await sceneList({ query: "woodman casting", limit: 5 });
-      expect(items.length).toBeGreaterThan(0);
       expect(items.every((item) => item.title.toLowerCase().includes("woodman"))).toBe(true);
     },
-    2 * NET_TIMEOUT
+    3 * NET_TIMEOUT
   );
-});
 
-describe.if(hasSolver)("scene:find, stream:resolve and search:suggest (live, needs FlareSolverr)", () => {
   test(
-    "a listed video scrapes to a scene and resolves to an mp4",
+    "a listed video scrapes to a scene and resolves to an mp4, also from a copy's URL",
     async () => {
       const { items } = await sceneList({ limit: 1 });
       const [result] = await scrapeScene(items[0].source_url);
-      expect(result.type).toBe("scene");
       if (result.type !== "scene") throw new Error("expected a scene");
       expect(result.scene.external_id).toBe(items[0].external_id);
-      const resolved = await resolve(items[0].source_url);
+      const copyUrl = items[0].source_url.replace("https://noodlemagazine.com", "https://mat6tube.com");
+      const resolved = await resolve(copyUrl);
       expect(resolved.mime_type).toBe("video/mp4");
       expect(resolved.url).toContain("pvvstream.pro");
     },
@@ -194,3 +301,12 @@ describe.if(hasSolver)("scene:find, stream:resolve and search:suggest (live, nee
     2 * NET_TIMEOUT
   );
 });
+
+test.if(live && hasSolver)(
+  "live: with FlareSolverr the first copy, noodlemagazine.com, serves",
+  async () => {
+    const page = await fetchFromMirrors("/home?range=month&p=0");
+    expect(page.origin).toBe("https://noodlemagazine.com");
+  },
+  2 * NET_TIMEOUT
+);

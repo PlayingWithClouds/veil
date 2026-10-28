@@ -1,11 +1,13 @@
 import type { HTMLElement } from "node-html-parser";
 import type { DiscoveredItem } from "@playingwithclouds/veil-sdk";
-import { attributeOf, normalizeText, videoIdFromUrl, watchUrl } from "./http.ts";
+import { attributeOf, externalIdOf, normalizeText, videoIdFromUrl, watchUrl } from "./http.ts";
 import { clockSeconds, countFromText } from "./values.ts";
 
 /**
  * The video cards on a page (listings, search results and the related videos
- * of a watch page), one DiscoveredItem per distinct video.
+ * of a watch page), one DiscoveredItem per distinct video. Every mirror lists
+ * the same videos under the same ids, so the items are the same whichever
+ * served the page.
  */
 export function parseVideoCards(root: HTMLElement): DiscoveredItem[] {
   const items: DiscoveredItem[] = [];
@@ -34,13 +36,15 @@ function itemFromCard(card: HTMLElement): DiscoveredItem | undefined {
     title,
     media_type: "scene",
     source_url: watchUrl(videoId),
-    external_id: `noodlemagazine-${videoId}`,
+    external_id: externalIdOf(videoId),
   };
   const image = card.querySelector("img");
   if (image !== null) {
     const poster = posterOf(image);
     if (poster !== "") item.poster_path = poster;
   }
+  const preview = previewOf(card);
+  if (preview !== "") item.preview_video = preview;
   const durationElement = card.querySelector(".m_time");
   if (durationElement !== null) {
     const seconds = clockSeconds(durationElement.text);
@@ -61,4 +65,13 @@ function posterOf(image: HTMLElement): string {
   const source = attributeOf(image, "src");
   if (source.startsWith("data:")) return "";
   return source;
+}
+
+/** The short hover clip a card names in its data-trailer_url, or "" without one. */
+function previewOf(card: HTMLElement): string {
+  const element = card.querySelector("[data-trailer_url]");
+  if (element === null) return "";
+  const url = attributeOf(element, "data-trailer_url");
+  if (!url.startsWith("https://")) return "";
+  return url;
 }

@@ -1,27 +1,50 @@
-import { fetchHtmlSmart, resolveUrl as resolveAgainst } from "@playingwithclouds/veil-sdk";
 import type { HTMLElement } from "node-html-parser";
+import { CANONICAL_ORIGIN, fetchFromMirrors, isSitePage, mirrorPath, type MirrorPage } from "./mirrors.ts";
 
-export const BASE_URL = "https://noodlemagazine.com";
-
-// The site answers plain requests with a Cloudflare challenge (403), so every
-// page is fetched through fetchHtmlSmart, which retries via FlareSolverr.
-export function fetchPage(url: string): Promise<string> {
-  return fetchHtmlSmart(url);
+/** Fetches a site path (with its query) from the first mirror that serves it. */
+export function fetchPage(path: string): Promise<MirrorPage> {
+  return fetchFromMirrors(path);
 }
 
-/** Resolves a page or asset path against the site. */
-export function resolveUrl(path: string): string {
-  return resolveAgainst(BASE_URL, path);
+/**
+ * Fetches a video's watch page from the first mirror that shows the video:
+ * its metadata, and with needPlayer its player playlist too (a copy may have
+ * lost a video another still plays).
+ */
+export function fetchWatchPage(videoId: string, needPlayer: boolean): Promise<MirrorPage> {
+  return fetchFromMirrors(watchPath(videoId), (body) => {
+    if (!isSitePage(body) || !body.includes('property="og:title"')) return false;
+    return !needPlayer || body.includes("window.playlist");
+  });
 }
 
-/** The watch page of a video id such as -152603790_456239053. */
+/** The canonical watch page of a video id such as -152603790_456239053. */
 export function watchUrl(videoId: string): string {
-  return `${BASE_URL}/watch/${videoId}`;
+  return `${CANONICAL_ORIGIN}${watchPath(videoId)}`;
 }
 
-/** The video id in a watch URL, or an empty string when the URL has none. */
+/** The path of a video's watch page, the same on every mirror. */
+export function watchPath(videoId: string): string {
+  return `/watch/${videoId}`;
+}
+
+/** The plugin's external id of a video, whichever mirror listed it. */
+export function externalIdOf(videoId: string): string {
+  return `noodlemagazine-${videoId}`;
+}
+
+/**
+ * The video id in a watch link (absolute on any mirror, or relative), or an
+ * empty string when the link is no watch page.
+ */
 export function videoIdFromUrl(url: string): string {
-  const match = url.match(/\/watch\/(-?\d+_\d+)/);
+  let path = url;
+  if (/^https?:\/\//.test(url)) {
+    const onMirror = mirrorPath(url);
+    if (onMirror === undefined) return "";
+    path = onMirror;
+  }
+  const match = path.match(/^\/watch\/(-?\d+_\d+)\/?(?:[?#]|$)/);
   if (!match) return "";
   return match[1];
 }
