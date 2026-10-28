@@ -73,7 +73,7 @@
 		items={feed.items}
 		orientation="vertical"
 		ariaLabel="Up next"
-		class="[--tv-gap:0.5rem]"
+		class="[--tv-gap:0.75rem]"
 		onselect={openItem}
 		onedge={handleEdge}
 	>

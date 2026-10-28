@@ -627,7 +627,9 @@
 		/>
 	</div>
 {:else}
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,400px)]">
+	<div
+		class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] xl:grid-cols-[minmax(0,1fr)_clamp(24rem,30vw,36rem)]"
+	>
 		<div class="flex min-w-0 flex-col gap-3">
 			{@render player(scene)}
 
