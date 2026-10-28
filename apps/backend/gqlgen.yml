@@ -32,6 +32,8 @@ models:
     fields:
       related:
         resolver: true
+      comments:
+        resolver: true
   # Lists and pages count scenes up front; nested references (a scene's
   # performers and studio) count only when a query asks.
   Performer:

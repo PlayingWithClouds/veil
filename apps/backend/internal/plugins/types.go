@@ -286,6 +286,21 @@ type Scene struct {
 	// Related is the site's own "related videos" list from the scene page, in
 	// the site's order. Ingested as stubs linked to this scene.
 	Related []DiscoveredItem `json:"related,omitempty"`
+	// Comments are the comments under the video as the page shows them (first
+	// page, site order). Stored per scene and plugin, replaced on every scrape.
+	Comments []SceneComment `json:"comments,omitempty"`
+}
+
+// SceneComment is one comment under a video on its site.
+type SceneComment struct {
+	// Text is plain text (HTML stripped, emoticons as their alt text).
+	Text   string `json:"text"`
+	Author string `json:"author,omitempty"`
+	// Date is an ISO 8601 date-time.
+	Date  string `json:"date,omitempty"`
+	Likes *int   `json:"likes,omitempty"`
+	// ReplyTo is the index in Scene.Comments of the comment this one answers.
+	ReplyTo *int `json:"reply_to,omitempty"`
 }
 
 // StudioRef is a studio credit on a scene/gallery/image, resolved to a studio

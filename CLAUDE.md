@@ -134,6 +134,7 @@ Plugins may send the site's own `rating` (0..10) and `view_count` on `Scene` and
 - Plugins may emit `Collection` with ordered `member_urls`; unresolved members are auto-queued for scraping.
 - Plugins may emit `Scene.markers` (tag/label + seconds/end_seconds) — ingested as global markers.
 - `scene:find` should fill `Scene.related` with the page's related-videos list as `DiscoveredItem`s, using the same external_id scheme as the plugin's listings (reuse the listing card parser).
+- `scene:find` may fill `Scene.comments` with the page's comments (plain text, author, ISO date via the SDK's `relativeDate`, likes, `reply_to` index). Ingest stores them in `scene_comment` per (scene, plugin), replaced by every scrape that found some, not in the observation. `Scene.comments` returns them with `mentions` (library performers of two words or more the text names as whole words); `refreshSceneComments` fetches the page again (`Orchestrator.RefetchScene`), for scenes visited before. The web scene page shows them (`SceneComments`: a "Who's who" filter for comments asking or naming who it is, one-click credit of a mentioned performer, "Credit a name" from selected words).
 
 **FlareSolverr:** set `meta.requires_solver: true` when the site answers plain requests with a Cloudflare challenge, and fetch through `fetchHtmlSmart`. Without `FLARESOLVERR_URL` (e.g. embedded on a phone) the registry treats such plugins as unavailable: they drop out of search/browse, their stubs are hidden, visits skip them. Currently: missav, spankbang.
 

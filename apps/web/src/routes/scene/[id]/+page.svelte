@@ -12,6 +12,7 @@
 	import PlayerPoster from '$lib/components/scene/PlayerPoster.svelte';
 	import SceneActions from '$lib/components/scene/SceneActions.svelte';
 	import SceneDescription from '$lib/components/scene/SceneDescription.svelte';
+	import SceneComments from '$lib/components/scene/SceneComments.svelte';
 	import SceneRail from '$lib/components/scene/SceneRail.svelte';
 	import SceneSkeleton from '$lib/components/scene/SceneSkeleton.svelte';
 	import SceneHeaderCompact from '$lib/components/scene/SceneHeaderCompact.svelte';
@@ -75,6 +76,8 @@
 	let ensuring = $state(false);
 	// Skeletons stand in for studio/performers/tags until the detail fetch lands.
 	let detailPending = $derived(ensuring && refreshedScene === null);
+	// Changes when the scene's page fetch ends, so the comments it stored load.
+	let commentsReloadKey = $derived(ensuring ? 0 : 1);
 
 	// data.streams changes only on navigation (fresh SSR load), so this doubles as
 	// the "new scene" reset: clear stale inline playback so the reused component
@@ -626,6 +629,15 @@
 			/>
 		{/if}
 
+		{#key scene.id}
+			<SceneComments
+				sceneId={scene.id}
+				reloadKey={commentsReloadKey}
+				creditedIds={scene.performers.map((performer) => performer.id)}
+				oncredited={addCreditedPerformer}
+			/>
+		{/key}
+
 		<SceneUpNextFeed
 			{feed}
 			sceneId={scene.id}
@@ -687,6 +699,15 @@
 					onfindsources={openAlike}
 				/>
 			{/if}
+
+			{#key scene.id}
+				<SceneComments
+					sceneId={scene.id}
+					reloadKey={commentsReloadKey}
+					creditedIds={scene.performers.map((performer) => performer.id)}
+					oncredited={addCreditedPerformer}
+				/>
+			{/key}
 		</div>
 
 		<SceneRail

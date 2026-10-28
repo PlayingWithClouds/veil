@@ -191,6 +191,26 @@ export interface Scene {
   downloads?: Download[];
   /** the site's own "related videos" list from the scene page, in site order */
   related?: DiscoveredItem[];
+  /**
+   * The comments under the video as the page shows them (first page, site
+   * order). Viewers often name the performer there; stored per scene and
+   * replaced on every scrape.
+   */
+  comments?: SceneComment[];
+}
+
+/** One comment under a video on its site. */
+export interface SceneComment {
+  /** plain text: HTML stripped, emoticons as their alt text */
+  text: string;
+  /** the commenter's user name */
+  author?: string;
+  /** ISO 8601 date-time; relativeDate() turns "3 weeks ago" into one */
+  date?: string;
+  /** the site's like/vote count */
+  likes?: number;
+  /** index in Scene.comments of the comment this one answers */
+  reply_to?: number;
 }
 
 /** A person appearing in scenes/galleries. */

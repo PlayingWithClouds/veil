@@ -440,27 +440,39 @@ type SavedFilter struct {
 }
 
 type Scene struct {
-	ID              string       `json:"id"`
-	ExternalID      string       `json:"externalId"`
-	SourceURL       string       `json:"sourceUrl"`
-	Title           string       `json:"title"`
-	Details         *string      `json:"details,omitempty"`
-	Date            *string      `json:"date,omitempty"`
-	DurationSeconds *int         `json:"durationSeconds,omitempty"`
-	Rating          *float64     `json:"rating,omitempty"`
-	ViewCount       int          `json:"viewCount"`
-	Organized       bool         `json:"organized"`
-	PosterPath      *string      `json:"posterPath,omitempty"`
-	PreviewVideo    *string      `json:"previewVideo,omitempty"`
-	PreviewImages   []string     `json:"previewImages"`
-	Studio          *Studio      `json:"studio,omitempty"`
-	Performers      []*Performer `json:"performers"`
-	Tags            []*Tag       `json:"tags"`
-	TagMatch        *string      `json:"tagMatch,omitempty"`
-	RelatedVia      *string      `json:"relatedVia,omitempty"`
-	Related         []*Scene     `json:"related"`
-	CreatedAt       string       `json:"createdAt"`
-	UpdatedAt       string       `json:"updatedAt"`
+	ID              string          `json:"id"`
+	ExternalID      string          `json:"externalId"`
+	SourceURL       string          `json:"sourceUrl"`
+	Title           string          `json:"title"`
+	Details         *string         `json:"details,omitempty"`
+	Date            *string         `json:"date,omitempty"`
+	DurationSeconds *int            `json:"durationSeconds,omitempty"`
+	Rating          *float64        `json:"rating,omitempty"`
+	ViewCount       int             `json:"viewCount"`
+	Organized       bool            `json:"organized"`
+	PosterPath      *string         `json:"posterPath,omitempty"`
+	PreviewVideo    *string         `json:"previewVideo,omitempty"`
+	PreviewImages   []string        `json:"previewImages"`
+	Studio          *Studio         `json:"studio,omitempty"`
+	Performers      []*Performer    `json:"performers"`
+	Tags            []*Tag          `json:"tags"`
+	TagMatch        *string         `json:"tagMatch,omitempty"`
+	RelatedVia      *string         `json:"relatedVia,omitempty"`
+	Related         []*Scene        `json:"related"`
+	Comments        []*SceneComment `json:"comments"`
+	CreatedAt       string          `json:"createdAt"`
+	UpdatedAt       string          `json:"updatedAt"`
+}
+
+type SceneComment struct {
+	ID       string       `json:"id"`
+	Plugin   string       `json:"plugin"`
+	Author   *string      `json:"author,omitempty"`
+	Text     string       `json:"text"`
+	PostedAt *string      `json:"postedAt,omitempty"`
+	Likes    *int         `json:"likes,omitempty"`
+	ReplyTo  *string      `json:"replyTo,omitempty"`
+	Mentions []*Performer `json:"mentions"`
 }
 
 type SceneFilter struct {
