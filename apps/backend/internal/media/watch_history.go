@@ -18,8 +18,10 @@ type watchHistoryRecord struct {
 	ProgressSeconds int          `json:"progress_seconds"`
 	// MaxProgressSeconds is the furthest position reached; seeking back
 	// doesn't lower it.
-	MaxProgressSeconds int       `json:"max_progress_seconds"`
-	DurationSeconds    *int      `json:"duration_seconds,omitempty"`
+	MaxProgressSeconds int `json:"max_progress_seconds"`
+	// PlayedSeconds is how long the scene has played over all sittings.
+	PlayedSeconds   int       `json:"played_seconds"`
+	DurationSeconds *int      `json:"duration_seconds,omitempty"`
 	Completed          bool      `json:"completed"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
@@ -60,7 +62,7 @@ func (r *Repository) UpsertWatchHistory(ctx context.Context, in model.UpsertWatc
 		fields["finished_at"] = db.Now()
 	}
 
-	id, err := r.saveWatchHistory(ctx, *media, fields)
+	id, err := r.saveWatchHistory(ctx, *media, fields, in.ProgressSeconds)
 	if err != nil {
 		return nil, fmt.Errorf("upsert watch history: %w", err)
 	}
@@ -79,17 +81,40 @@ func (r *Repository) UpsertWatchHistory(ctx context.Context, in model.UpsertWatc
 }
 
 // saveWatchHistory merges fields into the media item's existing row, or
-// inserts a new one, and returns the row id.
-func (r *Repository) saveWatchHistory(ctx context.Context, media db.RecordID, fields map[string]any) (db.RecordID, error) {
+// inserts a new one, adding the time played since the last save at position,
+// and returns the row id.
+func (r *Repository) saveWatchHistory(ctx context.Context, media db.RecordID, fields map[string]any, position int) (db.RecordID, error) {
 	existing, err := r.getWatchHistoryRecord(ctx, media)
 	if err != nil {
 		return db.RecordID{}, err
 	}
+	now := time.Now()
 	if existing != nil && existing.ID != nil {
+		fields["played_seconds"] = existing.PlayedSeconds + playedSinceLastSave(existing.UpdatedAt, now, position)
 		return *existing.ID, r.database.Merge(ctx, *existing.ID, fields)
 	}
 	fields["media"] = media
+	fields["played_seconds"] = playedSinceLastSave(time.Time{}, now, position)
 	return r.database.Insert(ctx, "watch_history", fields)
+}
+
+// Players save progress every 15 seconds while playing and when paused or
+// left. A save within sittingGap of the previous one played for the time in
+// between; the first save of a sitting is credited at most one save interval,
+// and never more than its position.
+const (
+	progressSaveInterval = 15 * time.Second
+	sittingGap           = 45 * time.Second
+)
+
+// playedSinceLastSave is how long the scene played between the previous save
+// (zero time for none) and this one at now, saved at position.
+func playedSinceLastSave(previousSave, now time.Time, position int) int {
+	sinceSave := now.Sub(previousSave)
+	if !previousSave.IsZero() && sinceSave >= 0 && sinceSave <= sittingGap {
+		return int(sinceSave.Seconds())
+	}
+	return max(0, min(position, int(progressSaveInterval.Seconds())))
 }
 
 // raiseMaxProgress moves the row's furthest-reached position up to progress,

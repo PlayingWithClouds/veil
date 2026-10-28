@@ -50,11 +50,18 @@ const (
 const (
 	// ratingNeutral splits the 1–10 user rating: above is a like, below a dislike.
 	ratingNeutral = 5.0
-	// A watch that stopped before either threshold is an early abandonment.
+	// Watches are judged by how long the scene played (watch_history
+	// played_seconds), not by the position reached: viewers skip around to
+	// find what they like. A watch that played less than earlyAbandonSeconds,
+	// or less than earlyAbandonFraction of the runtime and under
+	// earlyAbandonCeiling, is an early abandonment.
 	earlyAbandonSeconds  = 10
 	earlyAbandonFraction = 0.05
-	// A watch that reached this share of the runtime counts as completed.
+	earlyAbandonCeiling  = 60
+	// A watch that played fullWatchSeconds, or this share of the runtime,
+	// counts as watched in full, however it was skipped through.
 	completedFraction = 0.8
+	fullWatchSeconds  = 300
 	// abandonGrace keeps a playback that just started from counting as abandoned.
 	abandonGrace = 5 * time.Minute
 	// sessionGap is how long nothing else may play after a watch for it to
@@ -68,9 +75,10 @@ const (
 // Candidate generation sizes.
 const (
 	// seedMinimumWeight is the decayed signal weight a scene needs to seed
-	// related-scene candidates (a watch another video followed, fresh, or a
-	// session-ending watch from up to two months ago).
-	seedMinimumWeight = 1.0
+	// related-scene candidates: a watch another video followed and its click
+	// (1.0 together at the least) for about four days, or a session-ending
+	// watch for months.
+	seedMinimumWeight = 0.9
 	seedSceneLimit    = 12
 	// relatedPerSeedSource caps each seed's edges per scene_related source.
 	relatedPerSeedSource       = 24

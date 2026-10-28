@@ -16,28 +16,29 @@ func TestDecayFactorHalvesEveryHalfLife(t *testing.T) {
 func TestWatchWeightClassifiesWatches(t *testing.T) {
 	cases := []struct {
 		name        string
-		progress    int
+		played      int
 		duration    int
-		completed   bool
 		followed    bool
 		sinceUpdate time.Duration
 		wantWeight  float64
 		wantCounts  bool
 	}{
-		{"ended the session mid-video", 300, 1200, false, false, time.Hour, weightSessionEnd, true},
-		{"ended the session at the end", 1200, 1200, true, false, time.Hour, weightSessionEnd, true},
-		{"completed, then another", 1200, 1200, true, true, time.Hour, weightCompletedWatch, true},
-		{"reached 80%, then another", 1000, 1200, false, true, time.Hour, weightCompletedWatch, true},
-		{"partial, then another", 300, 1200, false, true, time.Hour, weightPartialWatch, true},
-		{"session still open", 300, 1200, false, false, 10 * time.Minute, weightPartialWatch, true},
-		{"last, but under a minute", 40, 600, false, false, time.Hour, weightPartialWatch, true},
-		{"under ten seconds", 8, 600, false, false, time.Hour, weightEarlyAbandon, true},
-		{"under five percent", 20, 600, false, true, time.Hour, weightEarlyAbandon, true},
-		{"unknown runtime, then another", 20, 0, false, true, time.Hour, weightPartialWatch, true},
-		{"just started", 2, 600, false, false, time.Minute, 0, false},
+		{"ended the session mid-video", 300, 1200, false, time.Hour, weightSessionEnd, true},
+		{"ended the session at the end", 1200, 1200, false, time.Hour, weightSessionEnd, true},
+		{"played in full, then another", 1200, 1200, true, time.Hour, weightCompletedWatch, true},
+		{"played 80% of a short one, then another", 200, 240, true, time.Hour, weightCompletedWatch, true},
+		{"skimmed five minutes of a long one, then another", 300, 3600, true, time.Hour, weightCompletedWatch, true},
+		{"partial, then another", 200, 1200, true, time.Hour, weightPartialWatch, true},
+		{"session still open", 200, 1200, false, 10 * time.Minute, weightPartialWatch, true},
+		{"last, but under a minute", 40, 600, false, time.Hour, weightPartialWatch, true},
+		{"under ten seconds", 8, 600, false, time.Hour, weightEarlyAbandon, true},
+		{"under five percent", 20, 600, true, time.Hour, weightEarlyAbandon, true},
+		{"a minute and a half of a long one", 90, 3600, true, time.Hour, weightPartialWatch, true},
+		{"unknown runtime, then another", 20, 0, true, time.Hour, weightPartialWatch, true},
+		{"just started", 2, 600, false, time.Minute, 0, false},
 	}
 	for _, testCase := range cases {
-		entry := watch{progressSeconds: testCase.progress, durationSeconds: testCase.duration, completed: testCase.completed}
+		entry := watch{playedSeconds: testCase.played, durationSeconds: testCase.duration}
 		weight, counts := watchWeight(entry, testCase.followed, testCase.sinceUpdate)
 		if weight != testCase.wantWeight || counts != testCase.wantCounts {
 			t.Errorf("%s: got (%v, %v), want (%v, %v)", testCase.name, weight, counts, testCase.wantWeight, testCase.wantCounts)

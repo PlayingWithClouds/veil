@@ -32,8 +32,23 @@ func newTestEngine(t *testing.T) (*Engine, *db.DB, *media.Repository) {
 func insertRow(t *testing.T, database *db.DB, table, id string, fields map[string]any) {
 	t.Helper()
 	fields["id"] = id
+	defaultPlayedSeconds(table, fields)
 	if _, err := database.Insert(context.Background(), table, fields); err != nil {
 		t.Fatalf("insert %s: %v", id, err)
+	}
+}
+
+// defaultPlayedSeconds gives a watch_history row without played_seconds the
+// furthest position as its played time: a watch played straight through.
+func defaultPlayedSeconds(table string, fields map[string]any) {
+	if table != "watch_history" {
+		return
+	}
+	if _, found := fields["played_seconds"]; found {
+		return
+	}
+	if furthest, found := fields["max_progress_seconds"]; found {
+		fields["played_seconds"] = furthest
 	}
 }
 

@@ -31,7 +31,7 @@ func TestWatchedPenaltyFadesForSessionEnders(t *testing.T) {
 }
 
 func TestEndsSessionRequiresLastLongWatch(t *testing.T) {
-	long := watch{progressSeconds: 300, durationSeconds: 1200}
+	long := watch{playedSeconds:300, durationSeconds: 1200}
 	if !endsSession(long, false, time.Hour) {
 		t.Error("the last long watch ends the session")
 	}
@@ -41,10 +41,10 @@ func TestEndsSessionRequiresLastLongWatch(t *testing.T) {
 	if endsSession(long, false, 10*time.Minute) {
 		t.Error("a session still open does not")
 	}
-	if endsSession(watch{progressSeconds: 30, durationSeconds: 1200}, false, time.Hour) {
+	if endsSession(watch{playedSeconds:30, durationSeconds: 1200}, false, time.Hour) {
 		t.Error("a look under a minute does not")
 	}
-	if endsSession(watch{progressSeconds: 8, durationSeconds: 1200}, false, time.Hour) {
+	if endsSession(watch{playedSeconds:8, durationSeconds: 1200}, false, time.Hour) {
 		t.Error("an early abandonment does not")
 	}
 }

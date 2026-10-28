@@ -33,9 +33,8 @@ type snapshot struct {
 	popularity *popularityIndex
 }
 
-// watchStateQuery reads every scene watch with its furthest position.
-const watchStateQuery = `SELECT watch_history.media, watch_history.completed,
-	watch_history.max_progress_seconds AS progress,
+// watchStateQuery reads every scene watch with how long it played.
+const watchStateQuery = `SELECT watch_history.media, watch_history.played_seconds AS played,
 	coalesce(watch_history.duration_seconds, scene.duration_seconds) AS duration
 	FROM watch_history LEFT JOIN scene ON scene.id = watch_history.media
 	WHERE watch_history.media LIKE 'scene:%'`
@@ -115,7 +114,7 @@ func (state *snapshot) eligible(candidates []*candidate) []*candidate {
 	return out
 }
 
-// watchStates reads how far each watched scene got.
+// watchStates reads how much of each watched scene played.
 func (e *Engine) watchStates(ctx context.Context) (map[string]watchState, error) {
 	rows, err := e.database.Query(ctx, watchStateQuery, nil)
 	if err != nil {
@@ -123,14 +122,14 @@ func (e *Engine) watchStates(ctx context.Context) (map[string]watchState, error)
 	}
 	out := make(map[string]watchState, len(rows))
 	for _, row := range rows {
-		out[rowString(row, "media")] = watchStateOf(rowInt(row, "progress"), rowInt(row, "duration"), db.AsBool(row["completed"]))
+		out[rowString(row, "media")] = watchStateOf(rowInt(row, "played"), rowInt(row, "duration"))
 	}
 	return out, nil
 }
 
-// watchStateOf classifies one watch as completed or partial.
-func watchStateOf(progressSeconds, durationSeconds int, completed bool) watchState {
-	if completed || watchedFraction(progressSeconds, durationSeconds) >= completedFraction {
+// watchStateOf classifies one watch as completed (watched in full) or partial.
+func watchStateOf(playedSeconds, durationSeconds int) watchState {
+	if watchedInFull(playedSeconds, durationSeconds) {
 		return watchCompleted
 	}
 	return watchPartial

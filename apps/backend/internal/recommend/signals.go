@@ -55,8 +55,8 @@ const ratingQuery = `SELECT media, rating, updated_at AS at FROM user_rating
 
 // watchQuery reads scene watches since $since, with the scene's runtime as the
 // fallback duration.
-const watchQuery = `SELECT watch_history.media, watch_history.max_progress_seconds AS progress,
-	watch_history.progress_seconds AS stop, watch_history.completed,
+const watchQuery = `SELECT watch_history.media, watch_history.played_seconds AS played,
+	watch_history.progress_seconds AS stop,
 	coalesce(watch_history.duration_seconds, scene.duration_seconds) AS duration,
 	watch_history.started_at AS started, watch_history.updated_at AS at
 	FROM watch_history LEFT JOIN scene ON scene.id = watch_history.media
@@ -143,10 +143,9 @@ func (e *Engine) watchSignals(ctx context.Context, since string, now time.Time) 
 	for _, row := range rows {
 		watches = append(watches, watch{
 			sceneID:         rowString(row, "media"),
-			progressSeconds: rowInt(row, "progress"),
+			playedSeconds:   rowInt(row, "played"),
 			stopSeconds:     rowInt(row, "stop"),
 			durationSeconds: rowInt(row, "duration"),
-			completed:       db.AsBool(row["completed"]),
 			startedAt:       rowTime(row, "started"),
 			lastActivityAt:  rowTime(row, "at"),
 		})
@@ -174,11 +173,11 @@ func (e *Engine) watchSignals(ctx context.Context, since string, now time.Time) 
 // watchWeight classifies one watch. A watch that ended the session (nothing
 // else played within sessionGap) is the strongest watch signal, finished or
 // not: the video did its job. A watch another video followed counts for little,
-// more when it was watched to the end. counts is false for a fresh playback
-// that may still be starting. A watch whose session is still open counts as
+// more when it was watched in full. counts is false for a fresh playback that
+// may still be starting. A watch whose session is still open counts as
 // followed until sessionGap has passed.
 func watchWeight(entry watch, followed bool, sinceUpdate time.Duration) (weight float64, counts bool) {
-	if isEarlyAbandon(entry.progressSeconds, entry.durationSeconds) {
+	if isEarlyAbandon(entry.playedSeconds, entry.durationSeconds) {
 		if sinceUpdate < abandonGrace {
 			return 0, false
 		}
@@ -187,7 +186,7 @@ func watchWeight(entry watch, followed bool, sinceUpdate time.Duration) (weight 
 	if endsSession(entry, followed, sinceUpdate) {
 		return weightSessionEnd, true
 	}
-	if entry.completed || watchedFraction(entry.progressSeconds, entry.durationSeconds) >= completedFraction {
+	if watchedInFull(entry.playedSeconds, entry.durationSeconds) {
 		return weightCompletedWatch, true
 	}
 	return weightPartialWatch, true
@@ -197,28 +196,42 @@ func watchWeight(entry watch, followed bool, sinceUpdate time.Duration) (weight 
 // else played within sessionGap after it, it played long enough to be more
 // than a look, and it was not an early abandonment.
 func endsSession(entry watch, followed bool, sinceUpdate time.Duration) bool {
-	if isEarlyAbandon(entry.progressSeconds, entry.durationSeconds) {
+	if isEarlyAbandon(entry.playedSeconds, entry.durationSeconds) {
 		return false
 	}
-	return !followed && sinceUpdate >= sessionGap && entry.progressSeconds >= sessionEndMinimumSeconds
+	return !followed && sinceUpdate >= sessionGap && entry.playedSeconds >= sessionEndMinimumSeconds
 }
 
-// watchedFraction is the share of the runtime reached; 0 when the runtime is
+// watchedFraction is the share of the runtime played; 0 when the runtime is
 // unknown.
-func watchedFraction(progressSeconds, durationSeconds int) float64 {
+func watchedFraction(playedSeconds, durationSeconds int) float64 {
 	if durationSeconds <= 0 {
 		return 0
 	}
-	return float64(progressSeconds) / float64(durationSeconds)
+	return float64(playedSeconds) / float64(durationSeconds)
 }
 
-// isEarlyAbandon reports whether playback stopped under 10 seconds or under 5%
-// of the runtime.
-func isEarlyAbandon(progressSeconds, durationSeconds int) bool {
-	if progressSeconds < earlyAbandonSeconds {
+// watchedInFull reports whether a scene played fullWatchSeconds or
+// completedFraction of its runtime: a skimmer who spent five minutes on a long
+// scene has watched it as much as one who played a short one to the end.
+func watchedInFull(playedSeconds, durationSeconds int) bool {
+	if playedSeconds >= fullWatchSeconds {
 		return true
 	}
-	return durationSeconds > 0 && watchedFraction(progressSeconds, durationSeconds) < earlyAbandonFraction
+	return watchedFraction(playedSeconds, durationSeconds) >= completedFraction
+}
+
+// isEarlyAbandon reports whether a scene played under earlyAbandonSeconds, or
+// under earlyAbandonFraction of its runtime while also under
+// earlyAbandonCeiling: a minute spent on a long scene is a look, not a reject.
+func isEarlyAbandon(playedSeconds, durationSeconds int) bool {
+	if playedSeconds < earlyAbandonSeconds {
+		return true
+	}
+	if playedSeconds >= earlyAbandonCeiling {
+		return false
+	}
+	return durationSeconds > 0 && watchedFraction(playedSeconds, durationSeconds) < earlyAbandonFraction
 }
 
 // ignoredImpressionSignals turns "shown but not clicked" counts into weak

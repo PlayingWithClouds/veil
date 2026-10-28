@@ -43,7 +43,7 @@ func insertWatch(t *testing.T, database *db.DB, sceneID string, day, startHour, 
 	t.Helper()
 	insertRow(t, database, "watch_history", "watch_history:"+sceneID[len("scene:"):], map[string]any{
 		"media": sceneID, "started_at": dayAt(day, startHour, startMinute), "updated_at": dayAt(day, endHour, endMinute),
-		"progress_seconds": progress, "max_progress_seconds": progress, "duration_seconds": 600,
+		"progress_seconds": progress, "max_progress_seconds": progress, "played_seconds": progress, "duration_seconds": 600,
 	})
 }
 
@@ -197,8 +197,10 @@ func TestPruneRebuildsTheStateAtTheCutoff(t *testing.T) {
 			t.Errorf("%s = %d (%v), want %d", query, got, err, want)
 		}
 	}
-	progress, err := database.Int(ctx, `SELECT max_progress_seconds FROM watch_history WHERE media = 'scene:interrupted'`, nil)
-	if err != nil || progress != 100 {
-		t.Errorf("interrupted watch progress = %d (%v), want 100 (it had played 100 s of the 600 the wall clock allows by then)", progress, err)
+	for _, column := range []string{"max_progress_seconds", "played_seconds"} {
+		value, err := database.Int(ctx, `SELECT `+column+` FROM watch_history WHERE media = 'scene:interrupted'`, nil)
+		if err != nil || value != 100 {
+			t.Errorf("interrupted watch %s = %d (%v), want 100 (it had played 100 s of the 600 the wall clock allows by then)", column, value, err)
+		}
 	}
 }
