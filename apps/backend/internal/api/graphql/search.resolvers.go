@@ -98,8 +98,7 @@ func (r *queryResolver) PluginSearch(ctx context.Context, query string, limit *i
 		results = append(results, pluginSearchResult(entry.plugin, entry.item))
 		toPersist = append(toPersist, entry)
 	}
-	r.persistDiscoveredItems(toPersist)
-	r.logSearch(query, pluginNames, len(results))
+	r.persistAndLogSearch(query, pluginNames, toPersist)
 	return results, nil
 }
 

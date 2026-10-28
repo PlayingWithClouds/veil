@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/playingwithclouds/veil/internal/discovery"
@@ -50,10 +52,15 @@ type searchSession struct {
 
 	blockedScenes, blockedTargets map[string]bool
 
-	// mutex guards ranker and resultCount: lists feed them concurrently.
+	// mutex guards ranker, resultCount and the scene maps: lists feed them
+	// concurrently.
 	mutex       sync.Mutex
 	ranker      *searchrank.Ranker
 	resultCount int
+	// sceneScores holds the best score of every scene sent and not replaced
+	// since; sceneBySourceURL maps a sent copy's source URL to its scene.
+	sceneScores      map[string]float64
+	sceneBySourceURL map[string]string
 }
 
 // newSession recognises the entities in the query and configures the ranker:
@@ -61,14 +68,16 @@ type searchSession struct {
 // user's earlier clicks say.
 func (h *Handler) newSession(ctx context.Context, query string, offset int, stream *eventStream) *searchSession {
 	session := &searchSession{
-		handler:        h,
-		ctx:            ctx,
-		query:          query,
-		stream:         stream,
-		profile:        h.tasteProfile(ctx),
-		blockedScenes:  h.blockedSceneIDSet(ctx),
-		blockedTargets: h.blockedTargetIDSet(ctx),
-		ranker:         searchrank.New(query, offset),
+		handler:          h,
+		ctx:              ctx,
+		query:            query,
+		stream:           stream,
+		profile:          h.tasteProfile(ctx),
+		blockedScenes:    h.blockedSceneIDSet(ctx),
+		blockedTargets:   h.blockedTargetIDSet(ctx),
+		ranker:           searchrank.New(query, offset),
+		sceneScores:      map[string]float64{},
+		sceneBySourceURL: map[string]string{},
 	}
 	session.matches = session.recognise()
 	session.rewritten = searchrank.Rewrite(query, session.matches)
@@ -173,12 +182,49 @@ func (s *searchSession) send(source, id string, hit searchrank.Hit) {
 	verdict := s.ranker.Add(hit)
 	if verdict.Emit {
 		s.resultCount++
+		s.trackScene(id, hit.Item, verdict)
 	}
 	s.mutex.Unlock()
 	if !verdict.Emit {
 		return
 	}
 	s.stream.write("result", resultEvent{Source: source, ID: id, Score: verdict.Score, Replaces: verdict.Replaces, Item: hit.Item})
+}
+
+// trackScene notes a sent scene and its score, dropping the copy it replaces.
+// Callers hold the mutex.
+func (s *searchSession) trackScene(id string, item plugins.DiscoveredItem, verdict searchrank.Verdict) {
+	if verdict.Replaces != "" {
+		replacedID := s.sceneBySourceURL[verdict.Replaces]
+		if replacedID != id {
+			delete(s.sceneScores, replacedID)
+		}
+	}
+	if item.MediaType != plugins.MediaTypeScene || !strings.HasPrefix(id, "scene:") {
+		return
+	}
+	s.sceneBySourceURL[item.SourceURL] = id
+	if score, seen := s.sceneScores[id]; seen && score >= verdict.Score {
+		return
+	}
+	s.sceneScores[id] = verdict.Score
+}
+
+// resultSceneIDs returns the scenes the search sent, best score first.
+func (s *searchSession) resultSceneIDs() []string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	sceneIDs := make([]string, 0, len(s.sceneScores))
+	for sceneID := range s.sceneScores {
+		sceneIDs = append(sceneIDs, sceneID)
+	}
+	sort.Slice(sceneIDs, func(left, right int) bool {
+		if s.sceneScores[sceneIDs[left]] != s.sceneScores[sceneIDs[right]] {
+			return s.sceneScores[sceneIDs[left]] > s.sceneScores[sceneIDs[right]]
+		}
+		return sceneIDs[left] < sceneIDs[right]
+	})
+	return sceneIDs
 }
 
 // pluginHit returns the callback taking a plugin's ingested results into the

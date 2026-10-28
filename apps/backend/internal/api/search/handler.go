@@ -147,7 +147,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pluginNames = append(pluginNames, plugin.Meta.Name)
 	}
 	// Record the search as a recommendation signal once the stream completes.
-	defer h.logSearch(q, pluginNames, &session.resultCount)
+	defer h.logSearch(q, pluginNames, session)
 
 	options := discovery.Options{Query: q, Limit: limit, Offset: offset, Paginate: paginate}
 	var running sync.WaitGroup
@@ -164,18 +164,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stream.write("done", struct{}{})
 }
 
-// logSearch records the completed search as a recommendation signal, mirroring
-// the GraphQL pluginSearch resolver. No-op without a repo. Runs in the
-// background with its own context so it survives the closed SSE stream.
-func (h *Handler) logSearch(query string, pluginNames []string, resultCount *int) {
+// logSearch records the completed search and the scenes it sent as a
+// recommendation signal, mirroring the GraphQL pluginSearch resolver. No-op
+// without a repo. Runs in the background with its own context so it survives
+// the closed SSE stream.
+func (h *Handler) logSearch(query string, pluginNames []string, session *searchSession) {
 	if h.repo == nil {
 		return
 	}
-	count := *resultCount
+	session.mutex.Lock()
+	count := session.resultCount
+	session.mutex.Unlock()
+	sceneIDs := session.resultSceneIDs()
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), logSearchTimeout)
 		defer cancel()
-		if err := h.repo.LogSearch(ctx, query, pluginNames, count); err != nil {
+		if err := h.repo.LogSearch(ctx, query, pluginNames, count, sceneIDs); err != nil {
 			log.Printf("search: log search %q: %v", query, err)
 		}
 	}()

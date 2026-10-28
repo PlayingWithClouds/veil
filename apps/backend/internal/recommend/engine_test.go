@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/playingwithclouds/veil/internal/db"
 )
 
 // seedWatchedScene stores a completed watch of scene:seed and links it to
@@ -83,10 +85,19 @@ func TestColdStartServesSearchResultsThenNewest(t *testing.T) {
 	insertRow(t, database, "search_history", "search_history:1", map[string]any{
 		"query": "Blondes", "normalized_query": "blondes", "created_at": ago(searchedAt),
 	})
-	insertScene(t, database, "scene:result1", map[string]any{"created_at": ago(searchedAt + time.Minute)})
+	// result1 was in the library long before the search; newer was stored
+	// right after it by something else and must not count as a result.
+	insertScene(t, database, "scene:result1", map[string]any{"created_at": ago(72 * time.Hour)})
 	insertScene(t, database, "scene:result2", map[string]any{"created_at": ago(searchedAt + 30*time.Second)})
-	insertScene(t, database, "scene:newer", map[string]any{"created_at": ago(10 * time.Minute)})
-	insertScene(t, database, "scene:older", map[string]any{"created_at": ago(48 * time.Hour)})
+	insertScene(t, database, "scene:newer", map[string]any{"created_at": ago(searchedAt - 10*time.Second)})
+	insertScene(t, database, "scene:older", map[string]any{"created_at": ago(96 * time.Hour)})
+	for rank, sceneID := range []string{"scene:result1", "scene:result2"} {
+		if _, err := database.Exec(context.Background(),
+			`INSERT INTO search_result (search, scene, rank) VALUES ('search_history:1', $scene, $rank)`,
+			db.Vars{"scene": sceneID, "rank": rank}); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	profile, err := engine.Profile(context.Background())
 	if err != nil || !profile.Empty() {

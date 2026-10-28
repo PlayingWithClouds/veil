@@ -105,11 +105,6 @@ const (
 	// categoryOverfetch widens a tag category's query so scoring has room to
 	// reorder it.
 	categoryOverfetch = 3
-	// A search's stubs are the scenes first stored in this window around the
-	// search_history row (logged when the search finishes, or just before the
-	// background stub writes of the GraphQL search).
-	searchResultsBefore = 3 * time.Minute
-	searchResultsAfter  = time.Minute
 )
 
 // Source priors: how much a candidate source is trusted before its content is
