@@ -1,6 +1,6 @@
-// Data layer for Home. One keyword drives a multi-entity search: performers
-// and studios (shown as rows), plus galleries and scenes (mixed into a masonry
-// grid). An empty query shows the recommendation feed.
+// Data layer for Home: the recommendation feed (scenes, galleries, titled
+// rows, Continue watching), the card shapes, and the name searches beside the
+// live search.
 import { gqlClient } from '$lib/veil';
 import { cacheUrl } from '$lib/img';
 import {
@@ -56,10 +56,11 @@ export interface SceneHit {
 	// The site's own view count and rating (0..10), when it gives them.
 	viewCount?: number | null;
 	rating?: number | null;
+	// Why the recommendation engine picked it, e.g. "More from <performer>".
+	reason?: string | null;
 }
 
-// A single item in the masonry grid: either a gallery or a scene, tagged by kind
-// so the card renderer can branch.
+// A single item of Home's feed: either a gallery or a scene, tagged by kind.
 export type GridItem =
 	| { kind: 'scene'; scene: SceneHit }
 	| { kind: 'gallery'; gallery: GalleryHit };
@@ -165,6 +166,8 @@ interface SceneRow {
 	tags: { name: string }[] | null;
 	studio: { name: string; imagePath: string | null } | null;
 	performers: { name: string; imagePath: string | null }[] | null;
+	rating: number | null;
+	viewCount: number | null;
 }
 
 function sceneRowToHit(row: SceneRow): SceneHit {
@@ -183,7 +186,9 @@ function sceneRowToHit(row: SceneRow): SceneHit {
 		performerNames: performers.map((performer) => performer.name),
 		performerImageUrl: firstPerformerImage(performers),
 		date: row.date,
-		createdAt: row.createdAt
+		createdAt: row.createdAt,
+		rating: row.rating,
+		viewCount: row.viewCount
 	};
 }
 
@@ -215,13 +220,97 @@ const SCENE_HIT_FIELDS = {
 	createdAt: true,
 	tags: { name: true },
 	studio: { name: true, imagePath: true },
-	performers: { name: true, imagePath: true }
+	performers: { name: true, imagePath: true },
+	rating: true,
+	viewCount: true
 } as const;
 
 /** A recommended scene with the candidate source the engine served it from. */
 export interface RecommendedSceneHit {
 	scene: SceneHit;
 	source: string;
+}
+
+/** Why the engine recommends something: its kind, display text and what it points at. */
+export interface RecommendationReasonRef {
+	kind: string;
+	text: string;
+	entityId: string | null;
+}
+
+/** One titled shelf of recommendations, e.g. "More from <performer>". */
+export interface RecommendationShelf {
+	key: string;
+	title: string;
+	reason: RecommendationReasonRef;
+	items: RecommendedSceneHit[];
+}
+
+/** The engine's titled rows ("Because you watched …", "More from …"), strongest first. */
+export async function fetchRecommendationShelves(
+	rowLimit: number,
+	perRow: number
+): Promise<RecommendationShelf[]> {
+	try {
+		const data = await gqlClient.query({
+			recommendedRows: {
+				__args: { rowLimit, perRow },
+				key: true,
+				title: true,
+				reason: { kind: true, text: true, entityId: true },
+				items: { scene: SCENE_HIT_FIELDS, source: true }
+			}
+		});
+		const rows = (data.recommendedRows ?? []) as unknown as {
+			key: string;
+			title: string;
+			reason: RecommendationReasonRef;
+			items: { scene: SceneRow; source: string }[];
+		}[];
+		return rows.map((row) => ({
+			key: row.key,
+			title: row.title,
+			reason: row.reason,
+			items: row.items.map((item) => ({ scene: sceneRowToHit(item.scene), source: item.source }))
+		}));
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Scenes started and not finished, most recent first: at least
+ * CONTINUE_MIN_SECONDS played and more than CONTINUE_END_SECONDS left.
+ */
+export async function fetchContinueWatching(limit: number): Promise<SceneHit[]> {
+	const CONTINUE_MIN_SECONDS = 30;
+	const CONTINUE_END_SECONDS = 60;
+	try {
+		const data = await gqlClient.query({
+			watchHistory: {
+				__args: { limit: limit * 3 },
+				progressSeconds: true,
+				durationSeconds: true,
+				completed: true,
+				scene: SCENE_HIT_FIELDS
+			}
+		});
+		const rows = (data.watchHistory ?? []) as unknown as {
+			progressSeconds: number;
+			durationSeconds: number | null;
+			completed: boolean;
+			scene: SceneRow | null;
+		}[];
+		const unfinished = rows.filter((row) => {
+			if (row.completed || !row.scene || row.progressSeconds < CONTINUE_MIN_SECONDS) return false;
+			const duration = row.durationSeconds || row.scene.durationSeconds;
+			if (!duration) return true;
+			return duration - row.progressSeconds > CONTINUE_END_SECONDS;
+		});
+		return unfinished.slice(0, limit).map((row) => sceneRowToHit(row.scene as SceneRow));
+	} catch {
+		return [];
+	}
 }
 
 /**
@@ -242,11 +331,19 @@ export async function fetchRecommendedSceneHits(
 			recommendations: {
 				__args: { limit, offset, refresh, sources },
 				scene: SCENE_HIT_FIELDS,
-				source: true
+				source: true,
+				reason: { text: true }
 			}
 		});
-		const rows = (data.recommendations ?? []) as unknown as { scene: SceneRow; source: string }[];
-		return rows.map((row) => ({ scene: sceneRowToHit(row.scene), source: row.source }));
+		const rows = (data.recommendations ?? []) as unknown as {
+			scene: SceneRow;
+			source: string;
+			reason: { text: string };
+		}[];
+		return rows.map((row) => ({
+			scene: { ...sceneRowToHit(row.scene), reason: row.reason.text },
+			source: row.source
+		}));
 	} catch {
 		return [];
 	}
