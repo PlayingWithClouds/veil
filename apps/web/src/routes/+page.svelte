@@ -6,10 +6,7 @@
 	import ArrowClockwiseIcon from 'phosphor-svelte/lib/ArrowClockwiseIcon';
 	import { clearHomeFeed, homeFeedKey, loadHomeFeed, saveHomeFeed } from '$lib/homeFeedCache';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
-	import ExploreSceneCard from '$lib/components/ExploreSceneCard.svelte';
-	import GalleryCard, { GALLERY_COVER_ASPECT } from '$lib/components/GalleryCard.svelte';
-	import { CARD_CAPTION_HEIGHT } from '$lib/components/CardCaption.svelte';
-	import Masonry from '$lib/components/Masonry.svelte';
+	import HomeFeed from '$lib/components/home/HomeFeed.svelte';
 	import SiteChips from '$lib/components/SiteChips.svelte';
 	import MediaFilterChip from '$lib/components/MediaFilterChip.svelte';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
@@ -18,15 +15,9 @@
 	import { mediaFilter } from '$lib/stores/mediaFilter';
 	import HomeSearch from '$lib/components/search/HomeSearch.svelte';
 	import { LiveSearch } from '$lib/liveSearch.svelte';
-	import { sceneUrl, galleryUrl } from '$lib/routes';
+	import { sceneUrl } from '$lib/routes';
+	import { fetchSearchPlugins, supportsMediaFilter, type SearchPlugin } from '$lib/search';
 	import {
-		fetchSearchPlugins,
-		pluginForUrl,
-		supportsMediaFilter,
-		type SearchPlugin
-	} from '$lib/search';
-	import {
-		impression,
 		recordClicked,
 		resetShownImpressions,
 		type ImpressionSurface,
@@ -34,6 +25,8 @@
 	} from '$lib/recommendations';
 	import {
 		searchGalleries,
+		fetchContinueWatching,
+		fetchRecommendationShelves,
 		fetchRecommendedSceneHits,
 		fetchPreferredTags,
 		bestPreferredTag,
@@ -41,6 +34,7 @@
 		gridItemSiteKey,
 		mixBySite,
 		type GalleryHit,
+		type RecommendationShelf,
 		type SceneHit,
 		type GridItem
 	} from '$lib/explore';
@@ -48,7 +42,9 @@
 	const SEARCH_DEBOUNCE_MS = 300;
 	const SCENE_PAGE_SIZE = 40;
 	const GALLERY_PAGE_SIZE = 30;
-	const SCENE_ASPECT = 16 / 9;
+	// How many titled rows the feed shows between its chunks, and cards per row.
+	const SHELF_COUNT = 6;
+	const SHELF_SIZE = 12;
 	// Placeholder cards while the first page loads.
 	const SKELETON_CARDS = 6;
 	// Impression surface for recommendation-engine feedback.
@@ -84,7 +80,7 @@
 	let loading = $state(false);
 	let sceneOffset = 0;
 	let galleryOffset = 0;
-	let sceneFeedDone = false;
+	let sceneFeedDone = $state(false);
 	let galleryFeedDone = false;
 	let sentinel = $state<HTMLElement | null>(null);
 
@@ -213,7 +209,7 @@
 		galleryFeedDone = cached.galleryFeedDone;
 		appendItems(cached.gridItems);
 		loading = false;
-		// Wait for the masonry to lay the cards out before scrolling back.
+		// Wait for the grid to lay the cards out before scrolling back.
 		await tick();
 		requestAnimationFrame(() => {
 			if (token !== requestToken) return;
@@ -269,6 +265,7 @@
 		}
 		liveSearch.stop();
 		loading = true;
+		loadFeedExtras();
 		if (await restoreCachedFeed(token)) return;
 		feedBuiltAt = Date.now();
 
@@ -347,15 +344,33 @@
 		return bestPreferredTag(tags, preferredTags);
 	}
 
-	/** Width / height of a grid item's media. */
-	function aspectOf(item: GridItem): number {
-		if (item.kind === 'scene') return SCENE_ASPECT;
-		return GALLERY_COVER_ASPECT;
-	}
+	// The feed's scenes and galleries, apart: the scenes fill the grid, the
+	// galleries the shelves between its chunks.
+	let feedScenes = $derived(
+		gridItems.flatMap((item) => {
+			if (item.kind === 'scene') return [item.scene];
+			return [];
+		})
+	);
+	let feedGalleries = $derived(
+		gridItems.flatMap((item) => {
+			if (item.kind === 'gallery') return [item.gallery];
+			return [];
+		})
+	);
 
-	/** The site a record came from, by its page URL. */
-	function siteOf(sourceUrl: string): SearchPlugin | null {
-		return pluginForUrl(sourceUrl, sites);
+	// The engine's titled rows and the unfinished watches, loaded with the feed.
+	let shelves = $state<RecommendationShelf[]>([]);
+	let continueScenes = $state<SceneHit[]>([]);
+
+	/** Loads the shelves and Continue watching for the feed. */
+	async function loadFeedExtras() {
+		const [rows, unfinished] = await Promise.all([
+			fetchRecommendationShelves(SHELF_COUNT, SHELF_SIZE),
+			fetchContinueWatching(SHELF_SIZE)
+		]);
+		shelves = rows;
+		continueScenes = unfinished;
 	}
 
 	/** The impression for a recommended scene card; empty id (skipped) while searching. */
@@ -391,7 +406,7 @@
 	{#if isSearching}
 		<HomeSearch search={liveSearch} {sites} sources={activeSources} />
 	{:else}
-	<!-- The feed's galleries + scenes, left-to-right masonry. -->
+	<!-- The recommendation feed (HomeFeed lays it out). -->
 	<section class="flex flex-col gap-3">
 		{#if !$isCompact}
 			<!-- Phones refresh by pulling down instead. -->
@@ -423,39 +438,24 @@
 					</div>
 				{/each}
 			</div>
-		{:else if gridItems.length === 0 && !loading}
+		{:else if gridItems.length === 0 && continueScenes.length === 0 && !loading}
 			<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
 				<MagnifyingGlassIcon size={48} class="opacity-20" />
 				<p>Nothing here yet. Search for something to get started.</p>
 			</div>
 		{:else}
-			<Masonry
-				items={gridItems}
-				keyOf={gridItemKey}
-				{aspectOf}
-				captionHeight={CARD_CAPTION_HEIGHT}
-				gap={24}
-			>
-				{#snippet children(item: GridItem)}
-					{#if item.kind === 'scene'}
-						<div use:impression={impressionFor(item.scene)}>
-							<ExploreSceneCard
-								scene={item.scene}
-								site={siteOf(item.scene.sourceUrl)}
-								preferredTag={badgeFor(item.scene.tags)}
-								onclick={() => openScene(item.scene)}
-							/>
-						</div>
-					{:else}
-						<GalleryCard
-							gallery={item.gallery}
-							site={siteOf(item.gallery.sourceUrl)}
-							preferredTag={badgeFor(item.gallery.tags)}
-							onclick={() => goto(galleryUrl(item.gallery.id))}
-						/>
-					{/if}
-				{/snippet}
-			</Masonry>
+			<HomeFeed
+				scenes={feedScenes}
+				galleries={feedGalleries}
+				{shelves}
+				{continueScenes}
+				{sites}
+				scenesDone={sceneFeedDone}
+				galleriesOnly={$mediaFilter === 'images'}
+				{impressionFor}
+				{badgeFor}
+				onopen={openScene}
+			/>
 		{/if}
 
 		{#if loading && gridItems.length > 0}
@@ -469,7 +469,7 @@
 </div>
 
 <style>
-	/* Same column sizing as the masonry below, so the feed doesn't jump in. */
+	/* Same column sizing as the feed grid, so the feed doesn't jump in. */
 	.skeleton-grid {
 		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 	}

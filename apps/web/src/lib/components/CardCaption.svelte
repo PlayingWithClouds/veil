@@ -4,14 +4,6 @@
 	that have nothing to show collapse, so the text sits right under its media.
 	Phones fold everything under the title into one line and may add a ⋮ button.
 -->
-<script module lang="ts">
-	/**
-	 * Typical caption height including the gap above it, for the masonry's first
-	 * placement estimate; it re-measures rendered columns before placing more.
-	 */
-	export const CARD_CAPTION_HEIGHT = 64;
-</script>
-
 <script lang="ts">
 	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
 	import type { SearchPlugin } from '$lib/search';
@@ -28,6 +20,8 @@
 		siteName?: string | null;
 		// Trailing detail on the last line (age, image count, …).
 		detail?: string | null;
+		// A last, quieter line, e.g. why the card was recommended.
+		note?: string | null;
 		onclick: () => void;
 		// Opens the card's action sheet; shows a ⋮ button when set.
 		onmore?: () => void;
@@ -40,6 +34,7 @@
 		site = null,
 		siteName = null,
 		detail = null,
+		note = null,
 		onclick,
 		onmore
 	}: Props = $props();
@@ -99,6 +94,9 @@
 					<span class="shrink-0">{detail}</span>
 				{/if}
 			</span>
+		{/if}
+		{#if note}
+			<span class="text-base-content/40 truncate text-xs leading-4">{note}</span>
 		{/if}
 	</span>
 </button>

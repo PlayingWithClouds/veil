@@ -1,8 +1,3 @@
-<script module lang="ts">
-	/** Width / height of the cover. Fixed so the masonry knows the card's height before the image loads. */
-	export const GALLERY_COVER_ASPECT = 3 / 4;
-</script>
-
 <script lang="ts">
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import CheckIcon from 'phosphor-svelte/lib/CheckIcon';

@@ -33,6 +33,8 @@
 		actionable?: boolean;
 		// True while the click is still preparing the scene (e.g. storing a site result).
 		opening?: boolean;
+		// A quiet last caption line, e.g. why it was recommended.
+		note?: string | null;
 		onclick: () => void;
 	}
 
@@ -42,6 +44,7 @@
 		site = null,
 		actionable = true,
 		opening = false,
+		note = null,
 		onclick
 	}: Props = $props();
 
@@ -305,6 +308,7 @@
 		{site}
 		{siteName}
 		{detail}
+		{note}
 		{onclick}
 		onmore={$isCompact && actionable ? openActions : undefined}
 	/>
