@@ -8,6 +8,7 @@
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import CamCard from '$lib/components/CamCard.svelte';
+	import RecordingNowCard from '$lib/components/cams/RecordingNowCard.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import {
@@ -164,18 +165,17 @@
 	/>
 
 	{#if $activeCamRecordings.length > 0}
-		<div class="flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
-			<RecordIcon size={16} weight="fill" class="text-red-500" />
-			<span class="font-medium">Recording</span>
-			{#each $activeCamRecordings as active (active.id)}
-				<a
-					href={camUrl(active.camModelId)}
-					class="bg-base-200 hover:bg-base-300 rounded-full px-3 py-1 transition-colors"
-				>
-					{active.displayName}
-				</a>
-			{/each}
-		</div>
+		<section class="flex flex-col gap-3" aria-label="Recording now" aria-live="polite">
+			<h2 class="flex items-center gap-2 text-lg font-semibold">
+				<RecordIcon size={18} weight="fill" class="text-red-500" />
+				Recording now
+			</h2>
+			<div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4">
+				{#each $activeCamRecordings as active (active.id)}
+					<RecordingNowCard recording={active} />
+				{/each}
+			</div>
+		</section>
 	{/if}
 
 	{#if followed.length > 0}
