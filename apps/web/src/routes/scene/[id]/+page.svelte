@@ -505,6 +505,14 @@
 			feed.reset();
 			feed.loadMore();
 		});
+		return () => feed.dispose();
+	});
+
+	// The rail waits for the visit, which links the site's related scenes, so
+	// they don't land on top of cards already shown.
+	$effect(() => {
+		if (!data.id || ensuring || ensuredId !== data.id) return;
+		untrack(() => feed.markVisited());
 	});
 
 	// Related scenes arrive over a subscription: the stored list right away, then
