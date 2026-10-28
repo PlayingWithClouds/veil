@@ -615,6 +615,7 @@ export interface Scene {
     performers: Performer[]
     tags: Tag[]
     tagMatch: (Scalars['String'] | null)
+    relatedVia: (Scalars['String'] | null)
     related: Scene[]
     createdAt: Scalars['String']
     updatedAt: Scalars['String']
@@ -1487,6 +1488,7 @@ export interface SceneGenqlSelection{
     performers?: PerformerGenqlSelection
     tags?: TagGenqlSelection
     tagMatch?: boolean | number
+    relatedVia?: boolean | number
     related?: (SceneGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     createdAt?: boolean | number
     updatedAt?: boolean | number

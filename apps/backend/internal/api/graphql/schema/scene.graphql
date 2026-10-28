@@ -56,6 +56,10 @@ type Scene {
   # "direct" | "inherited" — set when filtering by tagId; inherited means the
   # tag came from the scene's studio or a credited performer.
   tagMatch: String
+  # "site" | "performer" | "tag" | "title" — set on scenes listed by `related`
+  # and `relatedChanged`: the site's own related list, or the fallback search
+  # (by a performer, a tag or the title) that linked it.
+  relatedVia: String
   # Scenes related to this one, filled when the scene is visited: the site's own
   # related list first, then fallback searches by performer, tag and title.
   related(limit: Int): [Scene!]!

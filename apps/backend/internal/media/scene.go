@@ -521,6 +521,7 @@ func (r *Repository) sceneFromMap(ctx context.Context, m map[string]any) *model.
 		Performers:      r.performersByIDs(ctx, mRIDList(m, "performers")),
 		Tags:            r.tagsByIDs(ctx, mRIDList(m, "tags")),
 		TagMatch:        tagMatchFromMap(m),
+		RelatedVia:      mStringPtr(m, "related_via"),
 		CreatedAt:       mString(m, "created_at"),
 		UpdatedAt:       mString(m, "updated_at"),
 	}
@@ -798,7 +799,7 @@ func (r *Repository) RelatedScenes(ctx context.Context, sceneID string, limit in
 		limit = 24
 	}
 	rows, err := r.database.Query(ctx,
-		`SELECT scene.* FROM scene_related
+		`SELECT scene.*, scene_related.source AS related_via FROM scene_related
 		 JOIN scene ON scene.id = scene_related.related
 		 WHERE scene_related.scene = $scene
 		   AND scene.id NOT IN (SELECT value FROM json_each($hidden))

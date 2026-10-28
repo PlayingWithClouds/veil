@@ -456,6 +456,7 @@ type Scene struct {
 	Performers      []*Performer `json:"performers"`
 	Tags            []*Tag       `json:"tags"`
 	TagMatch        *string      `json:"tagMatch,omitempty"`
+	RelatedVia      *string      `json:"relatedVia,omitempty"`
 	Related         []*Scene     `json:"related"`
 	CreatedAt       string       `json:"createdAt"`
 	UpdatedAt       string       `json:"updatedAt"`
