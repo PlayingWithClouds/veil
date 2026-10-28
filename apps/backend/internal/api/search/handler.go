@@ -29,6 +29,9 @@ import (
 //	event: result
 //	data: {"source":"db"|"<pluginName>","id":"...","score":1.7,"replaces":"<source url>","item":{...DiscoveredItem}}
 //
+//	event: site
+//	data: {"plugin":"<pluginName>","count":12,"failed":false}
+//
 //	event: done
 //	data: {}
 //
@@ -43,7 +46,9 @@ import (
 // by: streaming order is only arrival order. Copies of one video on several
 // sites are collapsed: later copies that score no better are not sent, and one
 // that scores better is sent with `replaces` naming the source URL of the copy
-// it supersedes (possibly its own).
+// it supersedes (possibly its own). A site event follows each plugin's last
+// result of the keyword search (count is what it listed, before duplicates are
+// dropped; failed when it listed nothing and errored).
 type Handler struct {
 	ingestSvc *ingest.Service
 	discovery *discovery.Service
@@ -87,6 +92,14 @@ type resultEvent struct {
 	// Replaces is the source URL of an earlier result this one supersedes.
 	Replaces string                 `json:"replaces,omitempty"`
 	Item     plugins.DiscoveredItem `json:"item"`
+}
+
+// siteEvent reports that one plugin's search finished: how many items it
+// listed, and whether it failed.
+type siteEvent struct {
+	Plugin string `json:"plugin"`
+	Count  int    `json:"count"`
+	Failed bool   `json:"failed"`
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +166,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var running sync.WaitGroup
 	if firstPage {
 		session.startExtras(&running, options, searchPlugins)
+	}
+	// Set after the extras copied the options, so only the main search reports sites.
+	options.OnPluginDone = func(plugin string, itemCount int, failed bool) {
+		stream.write("site", siteEvent{Plugin: plugin, Count: itemCount, Failed: failed})
 	}
 	// Plugin failures are already logged; the stream just carries what worked.
 	_ = h.discovery.Run(ctx, options, searchPlugins, session.pluginHit(""))

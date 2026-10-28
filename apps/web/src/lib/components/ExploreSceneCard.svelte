@@ -13,7 +13,9 @@
 	import { ensureStreamsCached, downloadDefault } from '$lib/cardActions';
 	import { sceneByline, type SceneHit } from '$lib/explore';
 	import { formatRelativeTime } from '$lib/time';
-	import type { SearchPlugin } from '$lib/search';
+	import { siteLabelFor, type SearchPlugin } from '$lib/search';
+	import { formatCount } from '$lib/components/scene/format';
+	import { watchedScenes, watchProgress } from '$lib/stores/watchProgress';
 	import { longPress } from '$lib/longPress';
 	import { fadeInImage } from '$lib/fadeInImage';
 	import { isCompact } from '$lib/stores/viewport';
@@ -76,6 +78,26 @@
 	let ageLabel = $derived.by(() => {
 		if (!scene.date) return null;
 		return formatRelativeTime(scene.date);
+	});
+	// The caption's last line: the site's views and rating when it gives them, then the age.
+	let detail = $derived.by(() => {
+		const parts: string[] = [];
+		if (scene.viewCount && scene.viewCount > 0) parts.push(`${formatCount(scene.viewCount)} views`);
+		if (scene.rating && scene.rating > 0) parts.push(`${Math.round(scene.rating * 10)}%`);
+		if (ageLabel) parts.push(ageLabel);
+		if (parts.length === 0) return null;
+		return parts.join(' · ');
+	});
+	let siteName = $derived(siteLabelFor(scene.sourceUrl, site));
+	let watched = $derived(actionable && $watchedScenes.has(scene.id));
+	// Share of the runtime played, for the resume bar; 0 without an unfinished watch.
+	let resumeFraction = $derived.by(() => {
+		if (!actionable) return 0;
+		const progress = $watchProgress.get(scene.id);
+		if (!progress) return 0;
+		const duration = scene.durationSeconds || progress.durationSeconds;
+		if (!duration) return 0;
+		return Math.min(1, progress.progressSeconds / duration);
 	});
 
 	$effect(() => {
@@ -199,11 +221,25 @@
 				</span>
 			{/if}
 
+			{#if watched}
+				<span
+					class="absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white"
+				>
+					Watched
+				</span>
+			{/if}
+
 			{#if durationLabel}
 				<span
 					class="absolute right-1.5 bottom-1.5 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums"
 				>
 					{durationLabel}
+				</span>
+			{/if}
+
+			{#if resumeFraction > 0}
+				<span class="absolute inset-x-0 bottom-0 h-1 bg-white/30" aria-hidden="true">
+					<span class="bg-primary block h-full" style:width="{resumeFraction * 100}%"></span>
 				</span>
 			{/if}
 
@@ -267,7 +303,8 @@
 		byline={sceneByline(scene)}
 		avatarUrl={scene.studioImageUrl || scene.performerImageUrl}
 		{site}
-		detail={ageLabel}
+		{siteName}
+		{detail}
 		{onclick}
 		onmore={$isCompact && actionable ? openActions : undefined}
 	/>

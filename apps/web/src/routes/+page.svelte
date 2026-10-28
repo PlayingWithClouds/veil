@@ -10,16 +10,15 @@
 	import GalleryCard, { GALLERY_COVER_ASPECT } from '$lib/components/GalleryCard.svelte';
 	import { CARD_CAPTION_HEIGHT } from '$lib/components/CardCaption.svelte';
 	import Masonry from '$lib/components/Masonry.svelte';
-	import PerformerCard from '$lib/components/PerformerCard.svelte';
 	import SiteChips from '$lib/components/SiteChips.svelte';
 	import MediaFilterChip from '$lib/components/MediaFilterChip.svelte';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
 	import { isCompact } from '$lib/stores/viewport';
 	import { searchQuery } from '$lib/stores/searchQuery';
 	import { mediaFilter } from '$lib/stores/mediaFilter';
-	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
-	import { sceneUrl, galleryUrl, performerUrl, studioUrl } from '$lib/routes';
-	import { cacheUrl } from '$lib/img';
+	import HomeSearch from '$lib/components/search/HomeSearch.svelte';
+	import { LiveSearch } from '$lib/liveSearch.svelte';
+	import { sceneUrl, galleryUrl } from '$lib/routes';
 	import {
 		fetchSearchPlugins,
 		pluginForUrl,
@@ -34,29 +33,19 @@
 		type ShownEvent
 	} from '$lib/recommendations';
 	import {
-		searchPerformers,
-		searchStudios,
 		searchGalleries,
-		searchScenes,
 		fetchRecommendedSceneHits,
 		fetchPreferredTags,
 		bestPreferredTag,
-		pluginSearchStream,
-		streamResultToGridItem,
 		gridItemKey,
 		gridItemSiteKey,
 		mixBySite,
-		type SearchStream,
-		type PerformerHit,
-		type StudioHit,
 		type GalleryHit,
 		type SceneHit,
 		type GridItem
 	} from '$lib/explore';
 
 	const SEARCH_DEBOUNCE_MS = 300;
-	// How often live site results are added to the grid, mixed across sites.
-	const LIVE_FLUSH_INTERVAL_MS = 800;
 	const SCENE_PAGE_SIZE = 40;
 	const GALLERY_PAGE_SIZE = 30;
 	const SCENE_ASPECT = 16 / 9;
@@ -86,13 +75,13 @@
 		if (url.href !== window.location.href) replaceState(url, {});
 	});
 
-	let performers = $state<PerformerHit[]>([]);
-	let studios = $state<StudioHit[]>([]);
+	// The search on screen while there is a query (HomeSearch renders it).
+	const liveSearch = new LiveSearch();
+
 	// The grid only ever grows while a feed is showing; see appendItems.
 	let gridItems = $state.raw<GridItem[]>([]);
 	let shownKeys = new Set<string>();
 	let loading = $state(false);
-	let pluginsSearching = $state(false);
 	let sceneOffset = 0;
 	let galleryOffset = 0;
 	let sceneFeedDone = false;
@@ -132,7 +121,6 @@
 	});
 
 	let requestToken = 0;
-	let seedStream: SearchStream | null = null;
 
 	/** Whether a card has something to show: galleries without a cover would be empty boxes. */
 	function hasPoster(item: GridItem): boolean {
@@ -150,12 +138,6 @@
 
 	/** Clears the grid for a new search, source or media selection. */
 	function resetResults() {
-		if (seedStream) {
-			seedStream.close();
-			seedStream = null;
-		}
-		pluginsSearching = false;
-		discardPendingLiveItems();
 		gridItems = [];
 		shownKeys = new Set();
 		recommendationSources = new Map();
@@ -168,13 +150,11 @@
 	}
 
 	/**
-	 * Interleaves scenes and galleries so neither clumps together, and mixes each
-	 * list's sites. The recommended scenes keep their ranking, which already caps
-	 * how often a site repeats.
+	 * Interleaves the feed's scenes and galleries so neither clumps together, and
+	 * mixes the galleries' sites. The recommended scenes keep their ranking, which
+	 * already caps how often a site repeats.
 	 */
 	function interleave(scenes: SceneHit[], galleries: GalleryHit[]): GridItem[] {
-		if (isSearching)
-			scenes = mixBySite(scenes, (scene) => gridItemSiteKey({ kind: 'scene', scene }));
 		galleries = mixBySite(galleries, (gallery) => gridItemSiteKey({ kind: 'gallery', gallery }));
 		const merged: GridItem[] = [];
 		const longest = Math.max(scenes.length, galleries.length);
@@ -185,15 +165,9 @@
 		return merged;
 	}
 
-	/** Next page of scenes: search matches, or the recommendation feed when there is no query. */
-	async function nextScenePage(text: string): Promise<SceneHit[]> {
+	/** Next page of the recommendation feed. */
+	async function nextScenePage(): Promise<SceneHit[]> {
 		if (sceneFeedDone) return [];
-		if (text) {
-			const scenes = await searchScenes(text, activeSources, SCENE_PAGE_SIZE, sceneOffset);
-			sceneOffset += scenes.length;
-			sceneFeedDone = scenes.length < SCENE_PAGE_SIZE;
-			return scenes;
-		}
 		const refresh = refreshRequested && sceneOffset === 0;
 		refreshRequested = false;
 		const recommended = await fetchRecommendedSceneHits(
@@ -211,10 +185,10 @@
 		return recommended.map((entry) => entry.scene);
 	}
 
-	/** Next page of galleries matching the query (newest first when there is none). */
-	async function nextGalleryPage(text: string): Promise<GalleryHit[]> {
+	/** Next page of the feed's galleries, newest first. */
+	async function nextGalleryPage(): Promise<GalleryHit[]> {
 		if (galleryFeedDone) return [];
-		const galleries = await searchGalleries(text, activeSources, GALLERY_PAGE_SIZE, galleryOffset);
+		const galleries = await searchGalleries('', activeSources, GALLERY_PAGE_SIZE, galleryOffset);
 		galleryOffset += galleries.length;
 		galleryFeedDone = galleries.length < GALLERY_PAGE_SIZE;
 		return galleries;
@@ -230,8 +204,6 @@
 	async function restoreCachedFeed(token: number): Promise<boolean> {
 		const cached = loadHomeFeed(homeFeedKey($mediaFilter, activeSources));
 		if (!cached) return false;
-		performers = [];
-		studios = [];
 		feedBuiltAt = cached.savedAt;
 		recommendationSources = new Map(cached.recommendationSources);
 		recommendationPositions = new Map(cached.recommendationPositions);
@@ -285,83 +257,40 @@
 		await refreshRecommendations();
 	}
 
-	/** Shows stored matches (or recommendations) first, then streams in live results from the sites. */
+	/** Runs the search (HomeSearch shows it), or shows the recommendation feed without a query. */
 	async function runSearch() {
 		const token = ++requestToken;
 		resetResults();
-		loading = true;
 		const text = query.trim();
-		if (!text && (await restoreCachedFeed(token))) return;
+		if (text) {
+			loading = false;
+			liveSearch.run(text, activeSources, searchedSiteNames());
+			return;
+		}
+		liveSearch.stop();
+		loading = true;
+		if (await restoreCachedFeed(token)) return;
 		feedBuiltAt = Date.now();
 
-		const [performerHits, studioHits, galleryHits, sceneHits] = await Promise.all([
-			searchPerformers(text),
-			searchStudios(text),
-			nextGalleryPage(text),
-			nextScenePage(text)
-		]);
+		const [galleryHits, sceneHits] = await Promise.all([nextGalleryPage(), nextScenePage()]);
 		if (token !== requestToken) return;
 
-		performers = performerHits;
-		studios = studioHits;
 		appendItems(interleave(sceneHits, galleryHits));
 		loading = false;
-
-		if (text) streamFromPlugins(text, activeSources, token);
 	}
 
-	/** Whether the media toggle lets this grid item through. */
-	function allowedByMediaFilter(item: GridItem): boolean {
-		if (item.kind === 'scene') return $mediaFilter !== 'images';
-		return $mediaFilter !== 'videos';
+	/** The sites a search asks, for their status in the chips: the picked ones, else every shown one. */
+	function searchedSiteNames(): string[] {
+		if (activeSources.length > 0) return activeSources;
+		return sites
+			.filter((site) => site.enabled && supportsMediaFilter(site, $mediaFilter))
+			.map((site) => site.name);
 	}
 
-	// Live results wait here and are added in batches, mixed across sites: one
-	// site answering first would otherwise fill the grid before the others.
-	let pendingLiveItems: GridItem[] = [];
-	let liveFlushTimer: ReturnType<typeof setInterval> | null = null;
-
-	/** Adds the waiting live results, one site after another in turn. */
-	function flushPendingLiveItems() {
-		if (pendingLiveItems.length === 0) return;
-		const items = pendingLiveItems;
-		pendingLiveItems = [];
-		appendItems(mixBySite(items, gridItemSiteKey));
-	}
-
-	/** Drops the waiting live results and stops the batching timer. */
-	function discardPendingLiveItems() {
-		pendingLiveItems = [];
-		if (liveFlushTimer === null) return;
-		clearInterval(liveFlushTimer);
-		liveFlushTimer = null;
-	}
-
-	/** Collects each live plugin result as it arrives and adds them in mixed batches. */
-	function streamFromPlugins(text: string, sources: string[], token: number) {
-		pluginsSearching = true;
-		liveFlushTimer = setInterval(() => {
-			if (token !== requestToken) return;
-			flushPendingLiveItems();
-		}, LIVE_FLUSH_INTERVAL_MS);
-		seedStream = pluginSearchStream(
-			text,
-			sources,
-			(result) => {
-				// DB hits are already covered by the source-filtered listing above.
-				if (token !== requestToken || !result.plugin) return;
-				const item = streamResultToGridItem(result);
-				if (item && allowedByMediaFilter(item)) pendingLiveItems.push(item);
-			},
-			() => {
-				if (token !== requestToken) return;
-				flushPendingLiveItems();
-				discardPendingLiveItems();
-				seedStream = null;
-				pluginsSearching = false;
-			}
-		);
-	}
+	// Stop the live search when leaving Home.
+	$effect(() => {
+		return () => liveSearch.stop();
+	});
 
 	// Debounce query/source/media changes into one search. The first run is
 	// immediate so a cached feed is back before the page paints empty.
@@ -384,16 +313,12 @@
 		};
 	});
 
-	/** Infinite scroll: appends the next page of scenes and galleries. */
+	/** Infinite scroll: appends the next page of the feed's scenes and galleries. */
 	async function loadMore() {
-		if (loading || (sceneFeedDone && galleryFeedDone)) return;
+		if (isSearching || loading || (sceneFeedDone && galleryFeedDone)) return;
 		const token = requestToken;
 		loading = true;
-		const text = query.trim();
-		const [galleryPage, scenePage] = await Promise.all([
-			nextGalleryPage(text),
-			nextScenePage(text)
-		]);
+		const [galleryPage, scenePage] = await Promise.all([nextGalleryPage(), nextScenePage()]);
 		if (token !== requestToken) return;
 		appendItems(interleave(scenePage, galleryPage));
 		loading = false;
@@ -409,6 +334,12 @@
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
+	});
+
+	// Each site's search state for the chips, only while searching.
+	let chipStatus = $derived.by(() => {
+		if (!isSearching) return undefined;
+		return liveSearch.sites;
 	});
 
 	/** The card's taste badge: its tag that ranks highest in the user's preferences. */
@@ -449,7 +380,7 @@
 	{#if $isCompact}
 		<PullToRefresh onrefresh={pullRefresh} />
 	{/if}
-	<SiteChips bind:selectedPlugins>
+	<SiteChips bind:selectedPlugins status={chipStatus}>
 		{#snippet leading()}
 			{#if $isCompact}
 				<MediaFilterChip />
@@ -457,68 +388,12 @@
 		{/snippet}
 	</SiteChips>
 
-	<!-- Performers row. -->
-	{#if performers.length > 0}
-		<section class="flex flex-col gap-3">
-			<h2 class="text-lg font-semibold">Performers</h2>
-			<div class="no-scrollbar flex gap-4 overflow-x-auto pb-1">
-				{#each performers as performer (performer.id)}
-					<div class="w-28 shrink-0">
-						<PerformerCard {performer} onclick={() => goto(performerUrl(performer.id))} />
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	<!-- Studios row. -->
-	{#if studios.length > 0}
-		<section class="flex flex-col gap-3">
-			<h2 class="text-lg font-semibold">Studios</h2>
-			<div class="no-scrollbar flex gap-4 overflow-x-auto pb-1">
-				{#each studios as studio (studio.id)}
-					<button
-						type="button"
-						class="flex w-32 shrink-0 flex-col items-center gap-2 text-center"
-						onclick={() => goto(studioUrl(studio.id))}
-					>
-						<div
-							class="tv-card bg-base-300 flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg"
-						>
-							{#if cacheUrl(studio.imagePath)}
-								<img
-									src={cacheUrl(studio.imagePath)}
-									alt={studio.name}
-									loading="lazy"
-									class="h-full w-full object-contain"
-								/>
-							{:else}
-								<span class="text-2xl opacity-20">🎬</span>
-							{/if}
-						</div>
-						<span class="line-clamp-1 text-xs font-medium">{studio.name}</span>
-					</button>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	<!-- Galleries + scenes, left-to-right masonry. -->
+	{#if isSearching}
+		<HomeSearch search={liveSearch} {sites} sources={activeSources} />
+	{:else}
+	<!-- The feed's galleries + scenes, left-to-right masonry. -->
 	<section class="flex flex-col gap-3">
-		{#if isSearching}
-			<div class="flex items-center justify-between gap-3">
-				<h2 class="flex items-center gap-3 text-lg font-semibold">
-					Results
-					{#if pluginsSearching}
-						<span class="text-base-content/40 flex items-center gap-2 text-sm font-normal">
-							<span class="loading loading-spinner loading-xs"></span>
-							Searching sites…
-						</span>
-					{/if}
-				</h2>
-				<SubscribeSearchButton {query} sources={activeSources} />
-			</div>
-		{:else if !$isCompact}
+		{#if !$isCompact}
 			<!-- Phones refresh by pulling down instead. -->
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="text-lg font-semibold">For you</h2>
@@ -548,14 +423,10 @@
 					</div>
 				{/each}
 			</div>
-		{:else if gridItems.length === 0 && !loading && !pluginsSearching}
+		{:else if gridItems.length === 0 && !loading}
 			<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
 				<MagnifyingGlassIcon size={48} class="opacity-20" />
-				<p>
-					{isSearching
-						? 'Nothing matches your search.'
-						: 'Nothing here yet. Search for something to get started.'}
-				</p>
+				<p>Nothing here yet. Search for something to get started.</p>
 			</div>
 		{:else}
 			<Masonry
@@ -594,6 +465,7 @@
 		{/if}
 		<div bind:this={sentinel} class="h-1"></div>
 	</section>
+	{/if}
 </div>
 
 <style>

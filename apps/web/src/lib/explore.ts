@@ -53,6 +53,9 @@ export interface SceneHit {
 	// Release date, else when it was stored.
 	date: string | null;
 	createdAt: string | null;
+	// The site's own view count and rating (0..10), when it gives them.
+	viewCount?: number | null;
+	rating?: number | null;
 }
 
 // A single item in the masonry grid: either a gallery or a scene, tagged by kind
@@ -262,33 +265,6 @@ export async function fetchRandomSceneHits(count: number): Promise<SceneHit[]> {
 	}
 }
 
-// DB scene search, restricted to scenes found through the given sites (empty =
-// all). The backend applies the blocklist.
-export async function searchScenes(
-	query: string,
-	sources: string[] = [],
-	limit = 40,
-	offset = 0
-): Promise<SceneHit[]> {
-	try {
-		const data = await gqlClient.query({
-			scenes: {
-				__args: {
-					search: query || undefined,
-					sources: sourcesArgument(sources),
-					limit,
-					offset
-				},
-				...SCENE_HIT_FIELDS
-			}
-		});
-		const rows = (data.scenes ?? []) as unknown as SceneRow[];
-		return rows.map(sceneRowToHit);
-	} catch {
-		return [];
-	}
-}
-
 /** Which entity a performer/studio page lists content for. */
 export type EntityFilter = { performerId: string } | { studioId: string };
 
@@ -394,7 +370,9 @@ function pluginResultToSceneHit(result: PluginSearchResult): SceneHit {
 		performerNames: [],
 		performerImageUrl: null,
 		date: result.date,
-		createdAt: null
+		createdAt: null,
+		viewCount: result.viewCount,
+		rating: result.rating
 	};
 }
 

@@ -118,7 +118,15 @@ func TestRunFailsPluginOnlyWhenNothingCameBack(t *testing.T) {
 	})
 
 	hitCount := 0
-	err := service.Run(context.Background(), Options{Query: "q", Limit: 5},
+	type report struct {
+		count  int
+		failed bool
+	}
+	reports := map[string][]report{}
+	options := Options{Query: "q", Limit: 5, OnPluginDone: func(plugin string, itemCount int, failed bool) {
+		reports[plugin] = append(reports[plugin], report{itemCount, failed})
+	}}
+	err := service.Run(context.Background(), options,
 		[]*plugins.Plugin{
 			newTestPlugin("partial", plugins.MediaTypeScene, plugins.MediaTypeGallery),
 			newTestPlugin("broken", plugins.MediaTypeScene, plugins.MediaTypeGallery),
@@ -134,6 +142,13 @@ func TestRunFailsPluginOnlyWhenNothingCameBack(t *testing.T) {
 	}
 	if err.Error() != "broken: site is down" {
 		t.Fatalf("error = %q, want only the broken plugin's first error", err)
+	}
+	want := map[string]report{"partial": {1, false}, "broken": {0, true}, "empty": {0, false}}
+	for plugin, expected := range want {
+		got := reports[plugin]
+		if len(got) != 1 || got[0] != expected {
+			t.Errorf("%s reported %+v, want one %+v after both its lists", plugin, got, expected)
+		}
 	}
 }
 
