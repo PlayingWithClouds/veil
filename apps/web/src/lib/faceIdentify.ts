@@ -31,9 +31,37 @@ export interface FaceVideoMatch {
 	scenePlugin: string | null;
 }
 
+/** A post on an identification forum (NameThatPorn) whose picture looks like the searched one. */
+export interface FacePostMatch {
+	/** The asker's title. */
+	title: string;
+	/** The post's page. */
+	url: string;
+	thumbnailUrl: string | null;
+	/** Whether the post has an accepted answer. */
+	solved: boolean;
+	/** Stage names the accepted answer gives. */
+	names: string[];
+	sources: string[];
+}
+
+/** A performer the accepted answers of matching posts name. */
+export interface FacePostPerformer {
+	name: string;
+	/** How many matching posts name the performer. */
+	posts: number;
+	/** The thumbnail of the best post naming the performer. */
+	imageUrl: string | null;
+	postUrl: string;
+	/** The library's performer of that name, when there is one. */
+	performerId: string | null;
+}
+
 export interface FaceIdentification {
 	candidates: FaceCandidate[];
 	videos: FaceVideoMatch[];
+	posts: FacePostMatch[];
+	postPerformers: FacePostPerformer[];
 	failures: string[];
 	/** The stored picture that was sent; null when a frame was. */
 	pictureUrl: string | null;
@@ -68,6 +96,21 @@ export async function identifyFace(
 				thumbnailUrl: true,
 				sources: true,
 				scenePlugin: true
+			},
+			posts: {
+				title: true,
+				url: true,
+				thumbnailUrl: true,
+				solved: true,
+				names: true,
+				sources: true
+			},
+			postPerformers: {
+				name: true,
+				posts: true,
+				imageUrl: true,
+				postUrl: true,
+				performerId: true
 			},
 			failures: true,
 			pictureUrl: true

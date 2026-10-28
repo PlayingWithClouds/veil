@@ -57,6 +57,8 @@ stdin/stdout JSON: `{ "capability", "args" }` → `{ "result" } | { "error" }`.
 - Similar videos: `videos` (`FaceVideoMatch`: own title, similarity, link, thumbnail) under "Similar videos", never a candidate, name or credit. `scenePlugin` is set when an active scene plugin's `meta.domains` serves the page; the dialog opens it as a scene (`resolvePluginResult`), else as a link.
 - facedigger (job API: create, poll, fetch; no key or captcha): `cams` titles → candidates; `porn` → `videos`;
 - pornstarbyface is the other `face:identify` plugin.
+- Forum posts: `posts` (`FacePostMatch`: title, link, thumbnail, `solved`, `names` of the accepted answer), kept in site order; the backend counts their names into `postPerformers` (creditable). namethatporn (reverse image search, multipart `imgfile` POST to `/search/images.html`, reads the accepted answers of the first 10 solved posts) fills them. Cloudflare 403s Bun's fetch but not Go's, so check it live via `TestEmbeddedBundlesLive`.
+- The dialog shows each result kind (Performers, Similar videos, Posts) as its own view, switchable when more than one has results.
 
 ## Site quirks
 
