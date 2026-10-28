@@ -41,6 +41,13 @@ export function camUrl(id: string): string {
 	return `/cams/${encodeURIComponent(id)}`;
 }
 
+/** Home searching for query, optionally only the sites carrying a kind of content (e.g. "cam-shows"). */
+export function homeSearchUrl(query: string, content?: string): string {
+	const params = new URLSearchParams({ q: query });
+	if (content) params.set('content', content);
+	return `/?${params}`;
+}
+
 /** The split view that plays several cams and videos side by side. */
 export function splitUrl(): string {
 	return '/split';

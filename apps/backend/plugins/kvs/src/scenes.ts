@@ -1,5 +1,5 @@
 import type { ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
-import { enabledSites, siteForUrl } from "./sites.ts";
+import { enabledSites, siteForUrl, sitesCarrying } from "./sites.ts";
 import { crawlListing } from "./crawl.ts";
 import { listAcrossSites, slice } from "./fanout.ts";
 import { searchUrl } from "./urls.ts";
@@ -11,14 +11,18 @@ const MAX_LISTING_PAGES = 20;
 /**
  * scene:list. A url lists that page of its site (channel, model, category,
  * tag or any other video listing, paginated); a query searches every enabled
- * site; neither browses their newest videos. Multi-site results interleave.
+ * site (only those carrying args.content when set); neither browses their
+ * newest videos. Multi-site results interleave.
  */
 export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   if (args.url) return listPage(args);
 
   const query = (args.query ?? "").trim();
   if (query) {
-    return listAcrossSites(enabledSites(), args, (site, target) =>
+    const sites = sitesCarrying(args.content);
+    // The enabled sites may carry none of the kind asked for: nothing to find, not a failure.
+    if (sites.length === 0 && args.content) return { items: [] };
+    return listAcrossSites(sites, args, (site, target) =>
       crawlListing(site, searchUrl(site, query), target, MAX_SEARCH_PAGES)
     );
   }

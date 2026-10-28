@@ -13,6 +13,7 @@ runPlugin({
     version: packageJson.version,
     capabilities: ["scene:find", "scene:list", "stream:resolve"],
     domains: ["missav.ws"],
+    content: ["jav"],
     requires_solver: true,
   },
   find: (url) => scrape(url),

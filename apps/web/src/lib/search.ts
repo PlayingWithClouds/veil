@@ -63,6 +63,32 @@ export interface SearchPlugin {
 	enabled: boolean;
 	// Hostnames the plugin serves, used to label cards with their site.
 	domains: string[];
+	// Kinds of content its sites carry (videos, cam-shows, jav, galleries).
+	content: string[];
+}
+
+/** A kind of content a search can be aimed at, as the backend names it. */
+export type ContentKind = 'videos' | 'cam-shows' | 'jav' | 'galleries';
+
+/** The kinds in the order the search offers them, with their labels. */
+export const CONTENT_KINDS: { kind: ContentKind; label: string }[] = [
+	{ kind: 'videos', label: 'Videos' },
+	{ kind: 'cam-shows', label: 'Cam shows' },
+	{ kind: 'jav', label: 'JAV' },
+	{ kind: 'galleries', label: 'Photos' }
+];
+
+/** Whether the plugin's sites carry this kind; no kind = any plugin. */
+export function carriesContent(plugin: SearchPlugin, kind: ContentKind | null): boolean {
+	if (kind === null) return true;
+	return plugin.content.includes(kind);
+}
+
+/** The kind named by a URL parameter, null for anything else. */
+export function parseContentKind(value: string | null): ContentKind | null {
+	const known = CONTENT_KINDS.find((entry) => entry.kind === value);
+	if (!known) return null;
+	return known.kind;
 }
 
 /**
@@ -142,7 +168,8 @@ export async function fetchSearchPlugins(): Promise<SearchPlugin[]> {
 				capabilities: true,
 				enabled: true,
 				available: true,
-				domains: true
+				domains: true,
+				content: true
 			}
 		});
 		const all = (data.plugins ?? []) as unknown as (SearchPlugin & { available: boolean })[];
@@ -296,12 +323,17 @@ export function pluginSearchStream(
 		onMatched?: (entities: SearchMatchedEntity[]) => void;
 		/** Called as each site's search ends: how many items it listed, and whether it failed. */
 		onSite?: (plugin: string, count: number, failed: boolean) => void;
+		/** Searches only the plugins, and the sites within them, carrying this kind. */
+		content?: ContentKind | null;
 	}
 ): SearchStream {
 	const url = new URL(`${apiBase()}/api/search`);
 	url.searchParams.set('q', query);
 	if (sources.length > 0) {
 		url.searchParams.set('sources', sources.join(','));
+	}
+	if (options?.content) {
+		url.searchParams.set('content', options.content);
 	}
 	// An explicit offset makes the backend paginate the plugin listings — used
 	// by infinite-scroll feeds (e.g. galleries).

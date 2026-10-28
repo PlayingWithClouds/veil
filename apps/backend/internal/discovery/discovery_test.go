@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -47,6 +48,36 @@ func newTestPlugin(name string, entities ...plugins.MediaType) *plugins.Plugin {
 		capabilities = append(capabilities, plugins.ListCapability(entity))
 	}
 	return &plugins.Plugin{Meta: plugins.PluginMeta{Name: name, Capabilities: capabilities}}
+}
+
+// TestCarryingContentPicksByDeclaredOrInferredKind checks that a declared
+// meta.content wins and plugins without one count by what they list.
+func TestCarryingContentPicksByDeclaredOrInferredKind(t *testing.T) {
+	tube := newTestPlugin("tube", plugins.MediaTypeScene)
+	photos := newTestPlugin("photos", plugins.MediaTypeGallery)
+	archive := newTestPlugin("archive", plugins.MediaTypeScene)
+	archive.Meta.Content = []string{plugins.ContentVideos, plugins.ContentCamShows}
+	all := []*plugins.Plugin{tube, photos, archive}
+
+	names := func(picked []*plugins.Plugin) []string {
+		var result []string
+		for _, plugin := range picked {
+			result = append(result, plugin.Meta.Name)
+		}
+		return result
+	}
+	if got := names(CarryingContent(all, plugins.ContentCamShows)); !slices.Equal(got, []string{"archive"}) {
+		t.Fatalf("cam shows: got %v", got)
+	}
+	if got := names(CarryingContent(all, plugins.ContentVideos)); !slices.Equal(got, []string{"tube", "archive"}) {
+		t.Fatalf("videos: got %v", got)
+	}
+	if got := names(CarryingContent(all, plugins.ContentGalleries)); !slices.Equal(got, []string{"photos"}) {
+		t.Fatalf("galleries: got %v", got)
+	}
+	if got := CarryingContent(all, ""); len(got) != 3 {
+		t.Fatalf("no kind: got %d plugins", len(got))
+	}
 }
 
 // testItems returns count stubs of entity, unique per plugin and entity.

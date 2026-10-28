@@ -23,7 +23,13 @@
 		type StudioHit
 	} from '$lib/explore';
 	import type { LiveSearch } from '$lib/liveSearch.svelte';
-	import { pluginForUrl, type PluginSearchResult, type SearchPlugin } from '$lib/search';
+	import ContentKindPicker from './ContentKindPicker.svelte';
+	import {
+		pluginForUrl,
+		type ContentKind,
+		type PluginSearchResult,
+		type SearchPlugin
+	} from '$lib/search';
 	import { SORT_OPTIONS } from '$lib/searchOrder';
 	import { mediaFilter } from '$lib/stores/mediaFilter';
 
@@ -33,9 +39,14 @@
 		sites: SearchPlugin[];
 		// Sites the search is limited to (empty = all), for the subscribe button.
 		sources: string[];
+		// The sites a search can ask, for the kind picker.
+		searchableSites: SearchPlugin[];
+		// The kind of content asked for, null for anything.
+		content: ContentKind | null;
+		oncontent: (kind: ContentKind | null) => void;
 	}
 
-	let { search, sites, sources }: Props = $props();
+	let { search, sites, sources, searchableSites, content, oncontent }: Props = $props();
 
 	// Video grid geometry; the gallery shelf goes after VIDEO_ROWS_BEFORE_SHELF rows.
 	const VIDEO_CARD_MIN_WIDTH = 280;
@@ -67,18 +78,22 @@
 		performers = [];
 		studios = [];
 		if (!query) return;
-		Promise.all([searchPerformers(query), searchStudios(query)]).then(([foundPerformers, foundStudios]) => {
-			if (search.query !== query) return;
-			performers = foundPerformers;
-			studios = foundStudios;
-		});
+		Promise.all([searchPerformers(query), searchStudios(query)]).then(
+			([foundPerformers, foundStudios]) => {
+				if (search.query !== query) return;
+				performers = foundPerformers;
+				studios = foundStudios;
+			}
+		);
 	});
 
 	let hasResults = $derived.by(() => {
 		if (showVideos && (search.library.length > 0 || search.videos.length > 0)) return true;
 		return gallerySection;
 	});
-	let searchingSites = $derived([...search.sites.values()].some((site) => site.state === 'searching'));
+	let searchingSites = $derived(
+		[...search.sites.values()].some((site) => site.state === 'searching')
+	);
 
 	// Infinite scroll: the next page loads as the end comes near. Re-observing
 	// after each page makes a still-visible sentinel load the one after.
@@ -116,6 +131,8 @@
 </script>
 
 <div class="flex flex-col gap-6">
+	<ContentKindPicker sites={searchableSites} selected={content} onselect={oncontent} />
+
 	<SearchEntityStrip entities={search.matched} />
 
 	{#if otherPerformers.length > 0}
@@ -136,7 +153,10 @@
 			<h2 class="text-lg font-semibold">Studios</h2>
 			<div class="no-scrollbar flex gap-4 overflow-x-auto pb-1">
 				{#each otherStudios as studio (studio.id)}
-					<a href={studioUrl(studio.id)} class="flex w-32 shrink-0 flex-col items-center gap-2 text-center">
+					<a
+						href={studioUrl(studio.id)}
+						class="flex w-32 shrink-0 flex-col items-center gap-2 text-center"
+					>
 						<span
 							class="tv-card bg-base-300 flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg"
 						>

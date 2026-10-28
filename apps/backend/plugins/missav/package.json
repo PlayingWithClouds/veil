@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-missav",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Veil plugin for missav (needs FlareSolverr)",
   "private": true,
   "type": "module",

@@ -2362,6 +2362,9 @@ export default {
             "domains": [
                 1
             ],
+            "content": [
+                1
+            ],
             "enabled": [
                 4
             ],

@@ -492,6 +492,7 @@ export interface Plugin {
     version: Scalars['String']
     capabilities: Scalars['String'][]
     domains: Scalars['String'][]
+    content: Scalars['String'][]
     enabled: Scalars['Boolean']
     requiresSolver: Scalars['Boolean']
     available: Scalars['Boolean']
@@ -1347,6 +1348,7 @@ export interface PluginGenqlSelection{
     version?: boolean | number
     capabilities?: boolean | number
     domains?: boolean | number
+    content?: boolean | number
     enabled?: boolean | number
     requiresSolver?: boolean | number
     available?: boolean | number

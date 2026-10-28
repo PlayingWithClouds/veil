@@ -1,6 +1,15 @@
 import { test, expect, describe } from "bun:test";
 import { parse } from "node-html-parser";
-import { siteByKey, siteForUrl, supportedDomains, SITES, type SiteConfig } from "../src/sites.ts";
+import {
+  contentKinds,
+  enabledSites,
+  siteByKey,
+  siteForUrl,
+  sitesCarrying,
+  supportedDomains,
+  SITES,
+  type SiteConfig,
+} from "../src/sites.ts";
 import { canonicalUrl, entitySlug, pathPageUrl, searchUrl, videoKey } from "../src/urls.ts";
 import { asyncPageUrl, parseBlock } from "../src/crawl.ts";
 import { entityName, parseDurationText, parseIsoDuration, parseMinuteBadge, withoutRankBadge } from "../src/text.ts";
@@ -33,6 +42,14 @@ describe("site config", () => {
     expect(siteForUrl("https://w11.mygoodporn.tv/video/1/x/")?.key).toBe("mygoodporn");
     expect(siteForUrl("https://ok.xxx/video/1/")?.key).toBe("okxxx");
     expect(siteForUrl("https://example.com/video/1/")).toBeUndefined();
+  });
+
+  test("a search for cam shows spans only the cam archives", () => {
+    const camSites = sitesCarrying("cam-shows").map((entry) => entry.key);
+    expect(camSites.sort()).toEqual(["camstreams", "cloudbate"]);
+    expect(sitesCarrying("videos").some((entry) => entry.key === "cloudbate")).toBe(false);
+    expect(sitesCarrying(undefined).length).toBe(enabledSites().length);
+    expect(contentKinds().sort()).toEqual(["cam-shows", "videos"]);
   });
 });
 

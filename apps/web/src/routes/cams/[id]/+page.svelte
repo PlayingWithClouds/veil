@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import ArrowClockwiseIcon from 'phosphor-svelte/lib/ArrowClockwiseIcon';
 	import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOutIcon';
+	import ClockCounterClockwiseIcon from 'phosphor-svelte/lib/ClockCounterClockwiseIcon';
 	import EyeIcon from 'phosphor-svelte/lib/EyeIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
@@ -40,7 +41,7 @@
 	} from '$lib/cams';
 	import { cacheUrl } from '$lib/img';
 	import type { PlaybackLevel } from '$lib/playback';
-	import { camsUrl, sceneUrl } from '$lib/routes';
+	import { camsUrl, homeSearchUrl, sceneUrl } from '$lib/routes';
 	import { pluginIconUrl } from '$lib/server';
 	import { notifications } from '$lib/stores/notifications';
 	import { formatRelativeTime } from '$lib/time';
@@ -405,6 +406,15 @@
 					</div>
 				</div>
 				<div class="flex items-center gap-2">
+					<!-- Her recorded shows on the cam-show archives (showcamrips, Cloudbate, ...). -->
+					<a
+						href={homeSearchUrl(camModel.username, 'cam-shows')}
+						class={PILL_CLASS}
+						title="Search the cam show archives for {camModel.username}"
+					>
+						<ClockCounterClockwiseIcon size={16} />
+						Past shows
+					</a>
 					{#if camModel.followed}
 						<button type="button" class={PILL_CLASS} disabled={followBusy} onclick={toggleFollow}>
 							<HeartIcon size={18} weight="fill" />

@@ -332,6 +332,7 @@ type Plugin struct {
 	Version        string                `json:"version"`
 	Capabilities   []string              `json:"capabilities"`
 	Domains        []string              `json:"domains"`
+	Content        []string              `json:"content"`
 	Enabled        bool                  `json:"enabled"`
 	RequiresSolver bool                  `json:"requiresSolver"`
 	Available      bool                  `json:"available"`

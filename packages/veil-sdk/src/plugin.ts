@@ -12,6 +12,7 @@ import type {
   CamListArgs,
   CamListResult,
   CamStreamArgs,
+  ContentKind,
   FaceIdentifyArgs,
   FaceIdentifyResult,
 } from "./types.ts";
@@ -68,7 +69,14 @@ function parseListArgs(args: Record<string, unknown> | undefined): ListArgs {
   if (typeof args?.url === "string" && args.url !== "") parsed.url = args.url;
   if (typeof args?.limit === "number") parsed.limit = args.limit;
   if (typeof args?.offset === "number") parsed.offset = args.offset;
+  const content = args?.content;
+  if (isContentKind(content)) parsed.content = content;
   return parsed;
+}
+
+/** Whether a value names a known kind of content. */
+function isContentKind(value: unknown): value is ContentKind {
+  return value === "videos" || value === "cam-shows" || value === "jav" || value === "galleries";
 }
 
 /** Reads the cam:list arguments, dropping anything of the wrong type. */

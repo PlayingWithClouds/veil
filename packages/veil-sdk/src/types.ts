@@ -81,7 +81,19 @@ export interface PluginMeta {
    * a listing shows the scene again.
    */
   expiring_media?: boolean;
+  /**
+   * The kinds of content the plugin's sites carry, so a search can be aimed at
+   * the sites that have what the user looks for. Omitted: "videos" for a
+   * scene lister, "galleries" for a gallery lister.
+   */
+  content?: ContentKind[];
 }
+
+/**
+ * A kind of content: studio/amateur/tube videos, recorded live cam shows,
+ * Japanese adult video, photo sets.
+ */
+export type ContentKind = "videos" | "cam-shows" | "jav" | "galleries";
 
 // ---------------------------------------------------------------------------
 // Assets attached to a record.
@@ -352,6 +364,11 @@ export interface ListArgs {
   url?: string;
   limit?: number;
   offset?: number;
+  /**
+   * The kind of content a search asks for; a plugin carrying several kinds
+   * (meta.content) then searches only the sites of that one.
+   */
+  content?: ContentKind;
 }
 
 /** Result of every list capability. */

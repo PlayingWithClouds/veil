@@ -16,7 +16,14 @@
 	import HomeSearch from '$lib/components/search/HomeSearch.svelte';
 	import { LiveSearch } from '$lib/liveSearch.svelte';
 	import { sceneUrl } from '$lib/routes';
-	import { fetchSearchPlugins, supportsMediaFilter, type SearchPlugin } from '$lib/search';
+	import {
+		carriesContent,
+		fetchSearchPlugins,
+		parseContentKind,
+		supportsMediaFilter,
+		type ContentKind,
+		type SearchPlugin
+	} from '$lib/search';
 	import {
 		recordClicked,
 		resetShownImpressions,
@@ -57,10 +64,15 @@
 	let query = $derived($searchQuery);
 	let selectedPlugins = $state<string[]>([]);
 	let isSearching = $derived(query.trim().length > 0);
+	// The kind of content the search asks for (?content=, e.g. from a cam room's
+	// "Past shows"), null for anything.
+	let contentKind = $state<ContentKind | null>(
+		parseContentKind($page.url.searchParams.get('content'))
+	);
 
-	// Mirror the query into the URL (shallow, no navigation) so it survives a
-	// round-trip through a scene page. Compared with window.location, not
-	// $page.url: shallow replaceState leaves page.url as it was, and reading
+	// Mirror the query and kind into the URL (shallow, no navigation) so they
+	// survive a round-trip through a scene page. Compared with window.location,
+	// not $page.url: shallow replaceState leaves page.url as it was, and reading
 	// $page here would re-run this effect on every replaceState.
 	$effect(() => {
 		if (!browser) return;
@@ -68,6 +80,8 @@
 		const trimmed = query.trim();
 		if (trimmed) url.searchParams.set('q', trimmed);
 		else url.searchParams.delete('q');
+		if (trimmed && contentKind) url.searchParams.set('content', contentKind);
+		else url.searchParams.delete('content');
 		if (url.href !== window.location.href) replaceState(url, {});
 	});
 
@@ -114,6 +128,21 @@
 			const site = sites.find((plugin) => plugin.name === name);
 			return site !== undefined && supportsMediaFilter(site, $mediaFilter);
 		});
+	});
+
+	// The sites a search can ask: enabled and offering the media type shown.
+	let searchableSites = $derived(
+		sites.filter((site) => site.enabled && supportsMediaFilter(site, $mediaFilter))
+	);
+
+	// The sites a search is limited to: the picked ones carrying the kind asked
+	// for, else every site carrying it; without a kind, the picked ones (none = all).
+	let searchSources = $derived.by(() => {
+		if (contentKind === null) return activeSources;
+		const carrying = searchableSites.filter((site) => carriesContent(site, contentKind));
+		const picked = carrying.filter((site) => activeSources.includes(site.name));
+		if (picked.length > 0) return picked.map((site) => site.name);
+		return carrying.map((site) => site.name);
 	});
 
 	let requestToken = 0;
@@ -260,7 +289,7 @@
 		const text = query.trim();
 		if (text) {
 			loading = false;
-			liveSearch.run(text, activeSources, searchedSiteNames());
+			liveSearch.run(text, searchSources, searchedSiteNames(), contentKind);
 			return;
 		}
 		liveSearch.stop();
@@ -278,10 +307,8 @@
 
 	/** The sites a search asks, for their status in the chips: the picked ones, else every shown one. */
 	function searchedSiteNames(): string[] {
-		if (activeSources.length > 0) return activeSources;
-		return sites
-			.filter((site) => site.enabled && supportsMediaFilter(site, $mediaFilter))
-			.map((site) => site.name);
+		if (searchSources.length > 0) return searchSources;
+		return searchableSites.map((site) => site.name);
 	}
 
 	// Stop the live search when leaving Home.
@@ -297,6 +324,7 @@
 		// Referenced so the effect re-runs on any of these.
 		query;
 		activeSources;
+		searchSources;
 		$mediaFilter;
 		if (debounceTimer) clearTimeout(debounceTimer);
 		if (firstRun) {
@@ -395,7 +423,7 @@
 	{#if $isCompact}
 		<PullToRefresh onrefresh={pullRefresh} />
 	{/if}
-	<SiteChips bind:selectedPlugins status={chipStatus}>
+	<SiteChips bind:selectedPlugins status={chipStatus} content={isSearching ? contentKind : null}>
 		{#snippet leading()}
 			{#if $isCompact}
 				<MediaFilterChip />
@@ -404,7 +432,14 @@
 	</SiteChips>
 
 	{#if isSearching}
-		<HomeSearch search={liveSearch} {sites} sources={activeSources} />
+		<HomeSearch
+			search={liveSearch}
+			{sites}
+			sources={searchSources}
+			{searchableSites}
+			content={contentKind}
+			oncontent={(kind) => (contentKind = kind)}
+		/>
 	{:else}
 	<!-- The recommendation feed (HomeFeed lays it out). -->
 	<section class="flex flex-col gap-3">
