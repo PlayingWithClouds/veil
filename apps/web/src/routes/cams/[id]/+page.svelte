@@ -10,7 +10,7 @@
 	import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
 	import CheckIcon from 'phosphor-svelte/lib/CheckIcon';
 	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
-	import SceneCard from '$lib/components/SceneCard.svelte';
+	import RecordingCard from '$lib/components/cams/RecordingCard.svelte';
 	import PopoverMenu from '$lib/components/scene/PopoverMenu.svelte';
 	import CamRail from '$lib/components/cams/CamRail.svelte';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
@@ -111,6 +111,9 @@
 		if (source) return source.displayName;
 		return 'the site';
 	});
+	let pastRecordingsBytes = $derived(
+		pastRecordings.reduce((total, past) => total + past.recording.sizeBytes, 0)
+	);
 	let topic = $derived.by(() => {
 		if (!camModel) return null;
 		return roomTopic(camModel.subject, camModel.username);
@@ -303,7 +306,9 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+<div
+	class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] xl:grid-cols-[minmax(0,1fr)_clamp(24rem,30vw,36rem)]"
+>
 <div class="flex min-w-0 flex-col gap-4">
 	{#if notFound}
 		<p class="text-base-content/40 py-24 text-center">This room is not known.</p>
@@ -481,36 +486,67 @@
 					<ArrowSquareOutIcon size={14} />
 					Open on {sourceName}
 				</a>
+			</section>
 
-				{#if recording || pastRecordings.length > 0}
-					<div class="flex flex-col gap-3 border-t border-white/5 pt-3">
-						<h2 class="font-semibold">
+			{#if recording || pastRecordings.length > 0}
+				<section class="flex flex-col gap-3" aria-label="Recordings">
+					<div class="flex items-baseline justify-between gap-3">
+						<h2 class="text-lg font-semibold">
 							Recordings
 							{#if pastRecordings.length > 0}
-								<span class="text-base-content/40 font-normal">{pastRecordings.length}</span>
+								<span class="text-base-content/40 text-sm font-normal">
+									{pastRecordings.length} · {formatRecordingSize(pastRecordingsBytes)}
+								</span>
 							{/if}
 						</h2>
-						{#if recording}
-							<p class="flex items-center gap-2 text-red-400">
-								<span class="h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
-								Recording now{#if recording.quality}&nbsp;at {recording.quality}{/if}:
-								{formatRecordingClock(recordedSeconds)}, {formatRecordingSize(recording.sizeBytes)}
-							</p>
-						{/if}
-						{#if pastRecordings.length > 0}
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-								{#each pastRecordings as past (past.recording.id)}
-									<SceneCard
-										item={past.card}
-										instantHover
-										onclick={() => past.card.id && goto(sceneUrl(past.card.id))}
-									/>
-								{/each}
-							</div>
+						{#if camModel.autoRecord}
+							<span class="text-base-content/50 text-xs">
+								Auto-records at {qualityName(camModel.recordQuality)} when live
+							</span>
 						{/if}
 					</div>
-				{/if}
-			</section>
+
+					{#if recording}
+						<!-- The capture running now, with its timer, size and a stop button. -->
+						<div class="flex items-center gap-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 pr-4">
+							<span class="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-black">
+								{#if thumbnail}
+									<img src={thumbnail} alt="" class="h-full w-full object-cover opacity-80" />
+								{/if}
+								<span class="absolute top-1 left-1 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"></span>
+							</span>
+							<div class="flex min-w-0 flex-1 flex-col">
+								<span class="text-sm font-semibold">
+									Recording now{#if recording.quality}&nbsp;· {recording.quality}{/if}
+								</span>
+								<span class="text-base-content/60 text-sm tabular-nums">
+									{formatRecordingClock(recordedSeconds)} · {formatRecordingSize(recording.sizeBytes)}
+								</span>
+							</div>
+							<button
+								type="button"
+								class="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/20 disabled:opacity-50"
+								disabled={recordBusy}
+								onclick={() => toggleRecording()}
+							>
+								<StopIcon size={14} weight="fill" class="text-red-500" />
+								Stop
+							</button>
+						</div>
+					{/if}
+
+					{#if pastRecordings.length > 0}
+						<div class="recordings-grid grid gap-x-4 gap-y-5">
+							{#each pastRecordings as past (past.recording.id)}
+								<RecordingCard
+									recorded={past}
+									onclick={() => past.card.id && goto(sceneUrl(past.card.id))}
+								/>
+							{/each}
+						</div>
+					{/if}
+				</section>
+			{/if}
 		{/if}
 	{/if}
 </div>
@@ -626,5 +662,9 @@
 		backdrop-filter: blur(24px) saturate(1.6);
 		border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+	}
+
+	.recordings-grid {
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 	}
 </style>
