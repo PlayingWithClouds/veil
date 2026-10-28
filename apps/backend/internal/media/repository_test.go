@@ -139,6 +139,12 @@ func TestListScenesRelationsAndCounts(t *testing.T) {
 	if err != nil || tag.SceneCount != 1 {
 		t.Fatalf("tag scene count: %v %+v", err, tag)
 	}
+	if count := repo.PerformerSceneCount(ctx, scene.Performers[1].ID); count != 2 {
+		t.Fatalf("nested performer scene count = %d, want 2", count)
+	}
+	if count := repo.StudioSceneCount(ctx, scene.Studio.ID); count != 1 {
+		t.Fatalf("nested studio scene count = %d, want 1", count)
+	}
 
 	searched, err := repo.ListScenes(ctx, EntityFilters{Search: stringPointer("%")}, nil, nil)
 	if err != nil || len(searched) != 1 || searched[0].ID != "scene:two" {

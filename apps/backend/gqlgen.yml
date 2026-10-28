@@ -32,6 +32,16 @@ models:
     fields:
       related:
         resolver: true
+  # Lists and pages count scenes up front; nested references (a scene's
+  # performers and studio) count only when a query asks.
+  Performer:
+    fields:
+      sceneCount:
+        resolver: true
+  Studio:
+    fields:
+      sceneCount:
+        resolver: true
   # A gallery's linked video loads only when asked (the gallery page).
   Gallery:
     fields:

@@ -1,11 +1,8 @@
 <script lang="ts">
 	// YouTube-style description panel under the channel row: a meta line (date,
-	// runtime, views, rating, site), performers, tags, collapsible details, the
-	// marker chapters and the per-site source list.
-	import UserIcon from 'phosphor-svelte/lib/UserIcon';
+	// runtime, views, rating), cast cards, tags, collapsible details, the marker
+	// chapters and a one-line source summary (the only place naming the site).
 	import TagChips from '$lib/components/TagChips.svelte';
-	import { cacheUrl } from '$lib/img';
-	import { performerUrl } from '$lib/routes';
 	import type { SceneMarker } from '$lib/markers';
 	import type { TagRef } from '$lib/tags';
 	import type { SceneDetail, SceneSite, SceneStream, StreamGroup } from '$lib/sceneDetail';
@@ -15,9 +12,9 @@
 		formatDuration,
 		formatRelativeDate
 	} from './format';
-	import SiteIcon from './SiteIcon.svelte';
+	import CastCard from './CastCard.svelte';
 	import SceneChapters from './SceneChapters.svelte';
-	import SceneSources from './SceneSources.svelte';
+	import SourceSummary from './SourceSummary.svelte';
 
 	interface Props {
 		scene: SceneDetail;
@@ -29,10 +26,13 @@
 		activeSourceId: string | null;
 		resolvingId: string | null;
 		markers: SceneMarker[];
+		// Alternate copies found so far, for the "Find on other sites" badge.
+		alikeCount: number;
 		onplay: (stream: SceneStream) => void;
 		onjump: (seconds: number) => void;
 		onremovemarker: (markerId: string) => void;
 		onblocktag: (tag: TagRef) => void;
+		onfindsources: () => void;
 	}
 
 	let {
@@ -44,10 +44,12 @@
 		activeSourceId,
 		resolvingId,
 		markers,
+		alikeCount,
 		onplay,
 		onjump,
 		onremovemarker,
-		onblocktag
+		onblocktag,
+		onfindsources
 	}: Props = $props();
 
 	let detailsExpanded = $state(false);
@@ -84,45 +86,13 @@
 			<!-- Site ratings are stored on a 0–10 scale; a percentage reads unambiguously. -->
 			<span class="opacity-30">·</span><span title="Rating on the site">{Math.round(scene.rating * 10)}% liked</span>
 		{/if}
-		{#if site}
-			<span class="opacity-30">·</span>
-			<a
-				href={scene.sourceUrl}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="flex items-center gap-1.5 hover:underline"
-				title="Open on {site.name}"
-			>
-				<SiteIcon iconUrl={site.iconUrl} />
-				{site.name}
-			</a>
-		{/if}
 	</p>
 
 	{#if scene.performers.length > 0}
-		<ul class="flex flex-wrap gap-2">
+		<ul class="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2">
 			{#each scene.performers as performer (performer.id)}
-				<li>
-					<a
-						href={performerUrl(performer.id)}
-						class="bg-base-300 flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition-colors hover:bg-white/15"
-					>
-						<span
-							class="bg-base-100 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full"
-						>
-							{#if cacheUrl(performer.imagePath)}
-								<img
-									src={cacheUrl(performer.imagePath)}
-									alt=""
-									loading="lazy"
-									class="h-full w-full object-cover"
-								/>
-							{:else}
-								<UserIcon size={14} class="opacity-40" />
-							{/if}
-						</span>
-						<span class="font-medium">{performer.name}</span>
-					</a>
+				<li class="min-w-0">
+					<CastCard {performer} sceneDate={scene.date} />
 				</li>
 			{/each}
 		</ul>
@@ -154,17 +124,18 @@
 		</div>
 	{/if}
 
-	<div class="flex flex-col gap-2">
-		<h2 class="font-semibold">Sources</h2>
-		{#if streamGroups.length > 0}
-			<SceneSources groups={streamGroups} {pluginIcons} {activeSourceId} {resolvingId} {onplay} />
-		{:else if sourcesPending}
-			<p class="text-base-content/40 flex items-center gap-2">
-				<span class="loading loading-xs"></span>
-				Fetching sources…
-			</p>
-		{:else}
-			<p class="text-base-content/40">No sources available yet. Try “Find sources”.</p>
-		{/if}
+	<div class="border-t border-white/5 pt-3">
+		<SourceSummary
+			groups={streamGroups}
+			{pluginIcons}
+			{site}
+			sourceUrl={scene.sourceUrl}
+			{sourcesPending}
+			{activeSourceId}
+			{resolvingId}
+			{alikeCount}
+			{onplay}
+			{onfindsources}
+		/>
 	</div>
 </section>

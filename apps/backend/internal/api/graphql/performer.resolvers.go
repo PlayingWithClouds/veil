@@ -8,6 +8,7 @@ package graphql
 import (
 	"context"
 
+	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/media"
 )
@@ -25,6 +26,14 @@ func (r *mutationResolver) EnrichPerformer(ctx context.Context, id string) (bool
 	return true, nil
 }
 
+// SceneCount is the resolver for the sceneCount field.
+func (r *performerResolver) SceneCount(ctx context.Context, obj *model.Performer) (int, error) {
+	if obj.SceneCount > 0 {
+		return obj.SceneCount, nil
+	}
+	return r.repo.PerformerSceneCount(ctx, obj.ID), nil
+}
+
 // Performers is the resolver for the performers field.
 func (r *queryResolver) Performers(ctx context.Context, limit *int, offset *int, search *string, tagID *string, sort *string) ([]*model.Performer, error) {
 	return r.repo.ListPerformers(ctx, media.EntityFilters{Search: search, Sort: sort, TagID: tagID}, limit, offset)
@@ -34,3 +43,8 @@ func (r *queryResolver) Performers(ctx context.Context, limit *int, offset *int,
 func (r *queryResolver) Performer(ctx context.Context, id string) (*model.Performer, error) {
 	return r.repo.GetPerformer(ctx, id)
 }
+
+// Performer returns generated.PerformerResolver implementation.
+func (r *Resolver) Performer() generated.PerformerResolver { return &performerResolver{r} }
+
+type performerResolver struct{ *Resolver }

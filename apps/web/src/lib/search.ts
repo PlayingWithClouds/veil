@@ -49,6 +49,10 @@ export interface PluginSearchResult {
 	rating?: number | null;
 	viewCount?: number | null;
 	replaces?: string;
+	// Credited performer names, known for locally-stored scenes that ask for them.
+	performerNames?: string[];
+	// Up-next related scenes only: what linked it ("site" | "performer" | "tag" | "title").
+	relatedVia?: string | null;
 }
 
 export interface SearchPlugin {
@@ -380,6 +384,10 @@ export interface BrowseSceneData {
 	previewVideo: string | null;
 	previewImages: string[];
 	studio?: { name: string; imagePath: string | null } | null;
+	rating?: number | null;
+	viewCount?: number | null;
+	performers?: { name: string }[];
+	relatedVia?: string | null;
 }
 
 // Adapts a locally-stored scene to the browse feed's result shape. `sceneId`
@@ -398,7 +406,11 @@ export function browseSceneToResult(scene: BrowseSceneData): PluginSearchResult 
 		posterUrl: scene.posterPath,
 		previewImages: scene.previewImages ?? [],
 		previewVideo: scene.previewVideo,
-		sceneId: scene.id
+		sceneId: scene.id,
+		rating: scene.rating,
+		viewCount: scene.viewCount,
+		performerNames: scene.performers?.map((performer) => performer.name),
+		relatedVia: scene.relatedVia
 	};
 }
 
@@ -414,6 +426,12 @@ const RELATED_CHANGED_SUBSCRIPTION = `
 			posterPath
 			previewVideo
 			previewImages
+			rating
+			viewCount
+			relatedVia
+			performers {
+				name
+			}
 			studio {
 				name
 				imagePath
@@ -479,6 +497,8 @@ export async function fetchRecommended(limit = 25, offset = 0): Promise<PluginSe
 				posterPath: true,
 				previewVideo: true,
 				previewImages: true,
+				rating: true,
+				viewCount: true,
 				studio: { name: true, imagePath: true }
 			}
 		});

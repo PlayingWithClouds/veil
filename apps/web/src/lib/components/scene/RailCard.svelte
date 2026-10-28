@@ -1,13 +1,14 @@
 <script lang="ts">
 	// Up-next card for the watch page rail: a large thumbnail (60% of the card)
-	// on the left; title, channel and site · date on the right. While hovered or
+	// on the left; title, channel, views · rating · date and why it is up next on
+	// the right. While hovered or
 	// focused (D-pad), the thumbnail plays the site's preview clip, else cycles
 	// its preview frames. Presentational — the rail's FocusList handles click
 	// and Enter.
 	import { cacheUrl } from '$lib/img';
 	import { formatClock } from '$lib/components/SceneCard.svelte';
 	import type { PluginSearchResult, SearchPlugin } from '$lib/search';
-	import { formatAbsoluteDate, formatRelativeDate } from './format';
+	import { formatAbsoluteDate, formatCount, formatRelativeDate } from './format';
 
 	interface Props {
 		item: PluginSearchResult;
@@ -17,9 +18,13 @@
 		opening: boolean;
 		// True while the rail's D-pad focus is on this card.
 		focused?: boolean;
+		// Why the item is in the rail, e.g. "With Nuria Millan".
+		reason: string;
+		// True when the item is on the current scene's site, which then goes unnamed.
+		sameSite: boolean;
 	}
 
-	let { item, site, opening, focused = false }: Props = $props();
+	let { item, site, opening, focused = false, reason, sameSite }: Props = $props();
 
 	// How long each preview frame shows when there is no clip.
 	const FRAME_INTERVAL_MS = 700;
@@ -55,12 +60,23 @@
 	let durationLabel = $derived(formatClock(item.durationSeconds));
 	let relativeDate = $derived(formatRelativeDate(item.date));
 	let siteName = $derived.by(() => {
-		if (!site) return null;
+		if (!site || sameSite) return null;
 		if (site.displayName) return site.displayName;
 		return site.name;
 	});
-	// The channel when known, else the site.
+	// The channel when known, else the site (unless it is the current scene's).
 	let channelName = $derived(item.studioName || siteName);
+	let stats = $derived(cardStats(item, siteName));
+
+	/** The meta line: the site beside a studio, views, the site's rating, age. */
+	function cardStats(current: PluginSearchResult, shownSite: string | null): string[] {
+		const parts: string[] = [];
+		if (current.studioName && shownSite) parts.push(shownSite);
+		if (current.viewCount && current.viewCount > 0) parts.push(`${formatCount(current.viewCount)} views`);
+		if (current.rating && current.rating > 0) parts.push(`${Math.round(current.rating * 10)}%`);
+		if (relativeDate) parts.push(relativeDate);
+		return parts;
+	}
 </script>
 
 <div
@@ -110,16 +126,11 @@
 		{#if channelName}
 			<p class="text-base-content/60 truncate text-[13px]">{channelName}</p>
 		{/if}
-		<p class="text-base-content/50 flex gap-1 text-[13px]">
-			{#if item.studioName && siteName}
-				<span class="truncate">{siteName}</span>
-			{/if}
-			{#if item.studioName && siteName && relativeDate}
-				<span aria-hidden="true">·</span>
-			{/if}
-			{#if relativeDate}
-				<span class="shrink-0" title={formatAbsoluteDate(item.date)}>{relativeDate}</span>
-			{/if}
-		</p>
+		{#if stats.length > 0}
+			<p class="text-base-content/50 truncate text-[13px]" title={formatAbsoluteDate(item.date)}>
+				{stats.join(' · ')}
+			</p>
+		{/if}
+		<p class="text-base-content/40 truncate text-xs">{reason}</p>
 	</div>
 </div>

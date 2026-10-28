@@ -639,7 +639,7 @@
 				{#if detailPending}
 					<SceneSkeleton variant="channel" />
 				{:else}
-					<ChannelRow studio={scene.studio} {site} />
+					<ChannelRow studio={scene.studio} performers={scene.performers} {site} />
 				{/if}
 				<SceneActions
 					bind:this={actionsRef}
@@ -671,10 +671,12 @@
 					{activeSourceId}
 					resolvingId={resolving}
 					{markers}
+					{alikeCount}
 					onplay={play}
 					onjump={jumpToMarker}
 					onremovemarker={removeMarker}
 					onblocktag={blockTag}
+					onfindsources={openAlike}
 				/>
 			{/if}
 		</div>
@@ -683,6 +685,8 @@
 			bind:this={railRef}
 			{feed}
 			{openingUrl}
+			sceneSourceUrl={scene.sourceUrl}
+			cast={scene.performers.map((performer) => performer.name)}
 			onopen={openRecommendation}
 			onedge={onRailEdge}
 		/>
