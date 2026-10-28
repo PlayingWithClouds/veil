@@ -147,11 +147,30 @@ type FaceCandidate struct {
 }
 
 type FaceIdentification struct {
-	Candidates []*FaceCandidate  `json:"candidates"`
-	Videos     []*FaceVideoMatch `json:"videos"`
-	Sources    []string          `json:"sources"`
-	Failures   []string          `json:"failures"`
-	PictureURL *string           `json:"pictureUrl,omitempty"`
+	Candidates     []*FaceCandidate     `json:"candidates"`
+	Videos         []*FaceVideoMatch    `json:"videos"`
+	Posts          []*FacePostMatch     `json:"posts"`
+	PostPerformers []*FacePostPerformer `json:"postPerformers"`
+	Sources        []string             `json:"sources"`
+	Failures       []string             `json:"failures"`
+	PictureURL     *string              `json:"pictureUrl,omitempty"`
+}
+
+type FacePostMatch struct {
+	Title        string   `json:"title"`
+	URL          string   `json:"url"`
+	ThumbnailURL *string  `json:"thumbnailUrl,omitempty"`
+	Solved       bool     `json:"solved"`
+	Names        []string `json:"names"`
+	Sources      []string `json:"sources"`
+}
+
+type FacePostPerformer struct {
+	Name        string  `json:"name"`
+	Posts       int     `json:"posts"`
+	ImageURL    *string `json:"imageUrl,omitempty"`
+	PostURL     string  `json:"postUrl"`
+	PerformerID *string `json:"performerId,omitempty"`
 }
 
 type FaceVideoMatch struct {

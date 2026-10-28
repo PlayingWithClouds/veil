@@ -157,6 +157,58 @@ func TestIdentifyKeepsVideosApartFromCandidates(t *testing.T) {
 	}
 }
 
+// TestIdentifyCountsPostPerformers checks that forum posts keep the site's
+// order, merge by URL with the answer kept, and that the names their answers
+// give are counted by name_key, most often named first, library marked.
+func TestIdentifyCountsPostPerformers(t *testing.T) {
+	replies := map[string]*plugins.FaceIdentifyResult{
+		"forum": {Posts: []plugins.FacePostMatch{
+			{Title: "Who is she?", URL: "https://forum.test/1", ThumbnailURL: "https://forum.test/1.jpg", Solved: true, Names: []string{"Siri"}},
+			{Title: "Name please", URL: "https://forum.test/2"},
+			{Title: "Who are they?", URL: "https://forum.test/3", ThumbnailURL: "https://forum.test/3.jpg", Solved: true, Names: []string{"Goldie Baby", "siri"}},
+			{Title: "Her again", URL: "https://forum.test/4", Solved: true, Names: []string{"Goldie  Baby"}},
+		}},
+		"mirror": {Posts: []plugins.FacePostMatch{
+			{Title: "Who is she?", URL: "https://forum.test/1"},
+		}},
+	}
+	service, _, library, _ := testService(t, replies, nil)
+	ctx := context.Background()
+	sceneID := ingestSceneWithPoster(t, library, "https://cdn.test/poster.jpg")
+	if _, err := library.CreditPerformer(ctx, sceneID, "Goldie Baby"); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := service.Identify(ctx, sceneID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Candidates) != 0 {
+		t.Errorf("posts must not become candidates: %+v", result.Candidates)
+	}
+	var urls []string
+	for _, post := range result.Posts {
+		urls = append(urls, post.URL)
+	}
+	if !slices.Equal(urls, []string{"https://forum.test/1", "https://forum.test/2", "https://forum.test/3", "https://forum.test/4"}) {
+		t.Fatalf("post order = %v", urls)
+	}
+	first := result.Posts[0]
+	if !first.Solved || !slices.Equal(first.Names, []string{"Siri"}) || len(first.Sources) != 2 {
+		t.Errorf("merged post = %+v", first)
+	}
+	if len(result.PostPerformers) != 2 {
+		t.Fatalf("post performers = %+v", result.PostPerformers)
+	}
+	siri, goldie := result.PostPerformers[0], result.PostPerformers[1]
+	if siri.Name != "Siri" || siri.Posts != 2 || siri.ImageURL != "https://forum.test/1.jpg" || siri.PostURL != "https://forum.test/1" || siri.PerformerID != "" {
+		t.Errorf("Siri = %+v", siri)
+	}
+	if goldie.Name != "Goldie Baby" || goldie.Posts != 2 || goldie.PostURL != "https://forum.test/3" || goldie.PerformerID == "" {
+		t.Errorf("Goldie Baby = %+v", goldie)
+	}
+}
+
 // TestPictureSelection picks the stored image per media kind and credits an
 // image's gallery.
 func TestPictureSelection(t *testing.T) {

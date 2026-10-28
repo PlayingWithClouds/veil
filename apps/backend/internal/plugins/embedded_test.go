@@ -248,13 +248,32 @@ func checkFaceIdentifyLive(t *testing.T, ctx context.Context, runner *Runner, pl
 	if err != nil {
 		t.Fatalf("face:identify: %v", err)
 	}
-	t.Logf("face:identify → %d candidates in %s", len(result.Candidates), time.Since(started))
+	t.Logf("face:identify → %d candidates, %d videos, %d posts in %s", len(result.Candidates), len(result.Videos), len(result.Posts), time.Since(started))
+	if plugin.Meta.Name == "namethatporn" {
+		checkPostsLive(t, result.Posts)
+		return
+	}
 	if len(result.Candidates) == 0 {
 		t.Fatal("no candidates")
 	}
 	if plugin.Meta.Name == "pornstarbyface" && result.Candidates[0].Name != "Lexi Lore" {
 		t.Fatalf("expected Lexi Lore first, got %+v", result.Candidates)
 	}
+}
+
+// checkPostsLive expects a reverse image search to find posts, some of them
+// solved with the names of their accepted answer read.
+func checkPostsLive(t *testing.T, posts []FacePostMatch) {
+	if len(posts) == 0 {
+		t.Fatal("no posts")
+	}
+	for _, post := range posts {
+		if len(post.Names) > 0 {
+			t.Logf("first named post %q: %v", post.Title, post.Names)
+			return
+		}
+	}
+	t.Fatalf("no post names anybody: %+v", posts)
 }
 
 // checkBundleLive loads one bundle's meta, searches, opens the first hit and

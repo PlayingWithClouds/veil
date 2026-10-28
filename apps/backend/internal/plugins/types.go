@@ -587,10 +587,22 @@ type FaceVideoMatch struct {
 	ThumbnailURL string  `json:"thumbnail_url,omitempty"`
 }
 
+// FacePostMatch is a post on a porn identification forum whose picture looks
+// like the searched one. Title is the asker's; Names are the performers its
+// accepted answer names, empty while unsolved.
+type FacePostMatch struct {
+	Title        string   `json:"title"`
+	URL          string   `json:"url"`
+	ThumbnailURL string   `json:"thumbnail_url,omitempty"`
+	Solved       bool     `json:"solved"`
+	Names        []string `json:"names"`
+}
+
 // FaceIdentifyResult is returned by a plugin's face:identify capability, best first.
 type FaceIdentifyResult struct {
 	Candidates []FaceCandidate  `json:"candidates"`
 	Videos     []FaceVideoMatch `json:"videos,omitempty"`
+	Posts      []FacePostMatch  `json:"posts,omitempty"`
 }
 
 // EnrichArgs is passed to a plugin's enrich capability.

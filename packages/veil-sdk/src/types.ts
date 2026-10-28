@@ -445,11 +445,28 @@ export interface FaceVideoMatch {
   thumbnail_url?: string;
 }
 
+/**
+ * A post on a porn identification forum whose picture looks like the searched
+ * one. Its title is the asker's; names are the performers its accepted answer names.
+ */
+export interface FacePostMatch {
+  title: string;
+  /** The post's page. */
+  url: string;
+  thumbnail_url?: string;
+  /** Whether the post has an accepted answer. */
+  solved: boolean;
+  /** Stage names of the accepted answer; empty while unsolved. */
+  names: string[];
+}
+
 /** Result of the face:identify capability, best first. */
 export interface FaceIdentifyResult {
   candidates: FaceCandidate[];
   /** Similar videos, when the service searches video sites too. */
   videos?: FaceVideoMatch[];
+  /** Matching forum posts, when the service is a reverse image search of one. */
+  posts?: FacePostMatch[];
 }
 
 export interface EnrichArgs {
