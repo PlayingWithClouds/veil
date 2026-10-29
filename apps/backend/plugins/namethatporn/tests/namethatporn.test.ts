@@ -2,6 +2,7 @@ import { test, expect, describe } from "bun:test";
 import { readFileSync } from "fs";
 import { parseAnswerNames, parsePosts } from "../src/parse.ts";
 import { parseThread } from "../src/thread.ts";
+import { parseSearchHits } from "../src/search.ts";
 
 /** Loads a saved page or picture from the fixtures folder. */
 function loadFixture(path: string): Buffer {
@@ -46,6 +47,29 @@ describe("parseAnswerNames", () => {
 
 // No live test here: Cloudflare turns Bun's fetch away (403) while Go's, which
 // runs the plugin in the backend, gets through; TestEmbeddedBundlesLive covers it.
+
+describe("parseSearchHits", () => {
+  const hits = parseSearchHits(loadFixture("./fixtures/text-search.html").toString("utf8"));
+
+  test("keeps only threads, in the site's order", () => {
+    expect(hits.length).toBe(29);
+    expect(hits.every((hit) => hit.url.startsWith("https://namethatporn.com/post/"))).toBe(true);
+  });
+
+  test("reads title, date, answer state, asker, snippet and a larger thumbnail", () => {
+    expect(hits[0]).toEqual({
+      title: "What's the name of this Nicole Aniston video?",
+      url: "https://namethatporn.com/post/1427287-whats-the-name-of-this-nicole-aniston-video.html",
+      thumbnail_url:
+        "https://namethatporn.com/media/squares/2023/03/25/OGFQB6HH7W7S3_whats-the-name-of-this-nicole-aniston-video.jpg",
+      date: "2023-03-25T00:00:00.000Z",
+      solved: true,
+      author: "Bewolf22",
+      snippet:
+        "Her name is Nicole Aniston Info: https://www.indexxx.com/m/nicole-aniston Official link: https://www.brazzers.com/video/3806911/fix-your-fucking-marriage",
+    });
+  });
+});
 
 describe("parseThread", () => {
   /** Parses a saved thread page. */

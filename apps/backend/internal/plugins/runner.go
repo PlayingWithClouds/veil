@@ -212,6 +212,19 @@ func (r *Runner) FindPost(ctx context.Context, p *Plugin, url string) (*ForumPos
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// SearchPosts invokes "post:search" — forum threads matching a query, best first.
+func (r *Runner) SearchPosts(ctx context.Context, p *Plugin, args ForumSearchArgs) (*ForumSearchResult, error) {
+	if !p.Meta.Has(CapabilityPostSearch) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityPostSearch)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityPostSearch, args)
+	if err != nil {
+		return nil, err
+	}
+	var result ForumSearchResult
+	return &result, json.Unmarshal(raw, &result)
+}
+
 // Find invokes "<entity>:find" — one full record by URL — and reads the NDJSON
 // stream. Plugins emit one ScrapeResult per line: root entity first, then
 // related standalone entities (performers, studio, tags, collection).

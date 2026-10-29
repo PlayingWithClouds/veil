@@ -11,6 +11,7 @@
 	import SceneFilters from '$lib/components/SceneFilters.svelte';
 	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
 	import FaceSearch from '$lib/components/FaceSearch.svelte';
+	import ForumSearchShelf from '$lib/components/ForumSearchShelf.svelte';
 	import {
 		fetchFilteredScenes,
 		sceneToCard,
@@ -323,6 +324,9 @@
 						<p>Type to search, or set a filter.</p>
 					</div>
 				{:else}
+					<div class="mb-6">
+						<ForumSearchShelf query={search.query} />
+					</div>
 					<!-- Sort order of the live results; relevance is the server's score. -->
 					<div class="mb-4 flex flex-wrap items-center gap-2">
 						<span class="text-base-content/40 text-xs font-medium uppercase">Sort</span>

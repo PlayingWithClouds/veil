@@ -28,6 +28,7 @@ export interface Query {
     collectionMembers: CollectionMember[]
     collectionIdsForMedia: Scalars['ID'][]
     forumThread: ForumThread
+    forumSearch: ForumPostHit[]
     galleries: Gallery[]
     gallery: (Gallery | null)
     findGalleryVideos: AlikeCandidate[]
@@ -368,6 +369,18 @@ export interface FaceCandidate {
     sources: Scalars['String'][]
     performerId: (Scalars['ID'] | null)
     __typename: 'FaceCandidate'
+}
+
+export interface ForumPostHit {
+    title: Scalars['String']
+    url: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    date: (Scalars['String'] | null)
+    solved: Scalars['Boolean']
+    author: (Scalars['String'] | null)
+    snippet: (Scalars['String'] | null)
+    plugin: Scalars['String']
+    __typename: 'ForumPostHit'
 }
 
 export interface ForumThread {
@@ -944,6 +957,7 @@ export interface QueryGenqlSelection{
     collectionMembers?: (CollectionMemberGenqlSelection & { __args: {collectionId: Scalars['ID']} })
     collectionIdsForMedia?: { __args: {mediaId: Scalars['ID']} }
     forumThread?: (ForumThreadGenqlSelection & { __args: {url: Scalars['String']} })
+    forumSearch?: (ForumPostHitGenqlSelection & { __args: {query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     galleries?: (GalleryGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), sources?: (Scalars['String'][] | null)} })
     gallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
     findGalleryVideos?: (AlikeCandidateGenqlSelection & { __args: {galleryId: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
@@ -1305,6 +1319,19 @@ export interface FaceCandidateGenqlSelection{
     profileUrls?: boolean | number
     sources?: boolean | number
     performerId?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumPostHitGenqlSelection{
+    title?: boolean | number
+    url?: boolean | number
+    thumbnailUrl?: boolean | number
+    date?: boolean | number
+    solved?: boolean | number
+    author?: boolean | number
+    snippet?: boolean | number
+    plugin?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2109,6 +2136,14 @@ export interface WatchlistItemGenqlSelection{
     export const isFaceCandidate = (obj?: { __typename?: any } | null): obj is FaceCandidate => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isFaceCandidate"')
       return FaceCandidate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumPostHit_possibleTypes: string[] = ['ForumPostHit']
+    export const isForumPostHit = (obj?: { __typename?: any } | null): obj is ForumPostHit => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumPostHit"')
+      return ForumPostHit_possibleTypes.includes(obj.__typename)
     }
     
 

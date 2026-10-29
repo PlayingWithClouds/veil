@@ -37,7 +37,10 @@ export type Capability =
   | "face:identify"
   // One thread of a porn identification forum (args.url): the post and its
   // comments, with the names, links and pictures they give.
-  | "post:find";
+  | "post:find"
+  // The threads of a porn identification forum whose text matches a query
+  // (args.query), best first.
+  | "post:search";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
 // standalone images, the performers/studios/tags that describe them, and
@@ -492,6 +495,33 @@ export interface ForumPostRef {
   title: string;
   url: string;
   thumbnail_url?: string;
+}
+
+/** Arguments of the post:search capability. */
+export interface ForumSearchArgs {
+  query: string;
+  /** most hits wanted; the plugin's own default when absent */
+  limit?: number;
+}
+
+/** A thread a forum's text search found. */
+export interface ForumPostHit {
+  title: string;
+  /** The thread's page; read it with post:find. */
+  url: string;
+  thumbnail_url?: string;
+  /** ISO 8601. */
+  date?: string;
+  /** Whether the thread has an accepted answer. */
+  solved: boolean;
+  author?: string;
+  /** The start of the question or its answer, as the search shows it. */
+  snippet?: string;
+}
+
+/** Result of the post:search capability, best first. */
+export interface ForumSearchResult {
+  posts: ForumPostHit[];
 }
 
 /** One thread of a porn identification forum: the question and its comments. */

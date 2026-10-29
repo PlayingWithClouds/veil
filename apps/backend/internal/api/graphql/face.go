@@ -169,3 +169,20 @@ func forumCommentModel(comment face.ThreadComment) *model.ForumComment {
 		Images:   nonNilStrings(comment.Images),
 	}
 }
+
+// defaultForumSearchLimit is how many threads each forum adds to a search when the caller names no limit.
+const defaultForumSearchLimit = 12
+
+// forumPostHitModel converts one forum search hit; empty optional fields become null.
+func forumPostHitModel(hit face.ThreadHit) *model.ForumPostHit {
+	return &model.ForumPostHit{
+		Title:        hit.Title,
+		URL:          hit.URL,
+		ThumbnailURL: strPtrIfSet(hit.ThumbnailURL),
+		Date:         strPtrIfSet(hit.Date),
+		Solved:       hit.Solved,
+		Author:       strPtrIfSet(hit.Author),
+		Snippet:      strPtrIfSet(hit.Snippet),
+		Plugin:       hit.Plugin,
+	}
+}

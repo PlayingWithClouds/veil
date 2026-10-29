@@ -51,6 +51,9 @@ const (
 	// (args.url): the post and its comments with the names, links and pictures
 	// they give.
 	CapabilityPostFind Capability = "post:find"
+	// CapabilityPostSearch lists the threads of a porn identification forum
+	// whose text matches args.query, best first.
+	CapabilityPostSearch Capability = "post:search"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -624,6 +627,29 @@ type ForumPostRef struct {
 	Title        string `json:"title"`
 	URL          string `json:"url"`
 	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+}
+
+// ForumSearchArgs is passed to a plugin's post:search capability.
+type ForumSearchArgs struct {
+	Query string `json:"query"`
+	Limit int    `json:"limit,omitempty"`
+}
+
+// ForumPostHit is a thread a forum's text search found. Date is ISO 8601;
+// Snippet is the start of the question or answer the search shows.
+type ForumPostHit struct {
+	Title        string `json:"title"`
+	URL          string `json:"url"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	Date         string `json:"date,omitempty"`
+	Solved       bool   `json:"solved"`
+	Author       string `json:"author,omitempty"`
+	Snippet      string `json:"snippet,omitempty"`
+}
+
+// ForumSearchResult is returned by a plugin's post:search capability, best first.
+type ForumSearchResult struct {
+	Posts []ForumPostHit `json:"posts"`
 }
 
 // ForumPost is one thread of a porn identification forum, returned by

@@ -206,6 +206,17 @@ type ForumName struct {
 	PerformerID *string `json:"performerId,omitempty"`
 }
 
+type ForumPostHit struct {
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
+	Date         *string `json:"date,omitempty"`
+	Solved       bool    `json:"solved"`
+	Author       *string `json:"author,omitempty"`
+	Snippet      *string `json:"snippet,omitempty"`
+	Plugin       string  `json:"plugin"`
+}
+
 type ForumPostRef struct {
 	Title        string  `json:"title"`
 	URL          string  `json:"url"`

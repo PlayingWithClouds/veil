@@ -15,6 +15,7 @@ type Query {
   collectionMembers(collectionId: ID!): [CollectionMember!]!
   collectionIdsForMedia(mediaId: ID!): [ID!]!
   forumThread(url: String!): ForumThread!
+  forumSearch(query: String!, limit: Int): [ForumPostHit!]!
   galleries(limit: Int, offset: Int, search: String, studioId: ID, performerId: ID, tagId: ID, sources: [String!]): [Gallery!]!
   gallery(id: ID!): Gallery
   findGalleryVideos(galleryId: ID!, limit: Int): [AlikeCandidate!]!
@@ -340,6 +341,17 @@ type FaceCandidate {
   profileUrls: [String!]!
   sources: [String!]!
   performerId: ID
+}
+
+type ForumPostHit {
+  title: String!
+  url: String!
+  thumbnailUrl: String
+  date: String
+  solved: Boolean!
+  author: String
+  snippet: String
+  plugin: String!
 }
 
 type ForumThread {

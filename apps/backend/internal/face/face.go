@@ -127,6 +127,9 @@ type Service struct {
 	// threadPluginFor is the active post:find plugin serving a thread URL, or nil.
 	threadPluginFor func(threadURL string) *plugins.Plugin
 	findPost        func(ctx context.Context, plugin *plugins.Plugin, threadURL string) (*plugins.ForumPost, error)
+	// forums lists the active plugins that search forum threads by text.
+	forums      func() []*plugins.Plugin
+	searchPosts func(ctx context.Context, plugin *plugins.Plugin, args plugins.ForumSearchArgs) (*plugins.ForumSearchResult, error)
 }
 
 // New returns a service asking the registry's face:identify plugins through
@@ -157,6 +160,10 @@ func New(database *db.DB, library Library, registry *plugins.Registry, runner *p
 			return nil
 		},
 		findPost: runner.FindPost,
+		forums: func() []*plugins.Plugin {
+			return registry.WithCapability(plugins.CapabilityPostSearch)
+		},
+		searchPosts: runner.SearchPosts,
 	}
 }
 

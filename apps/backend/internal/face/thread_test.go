@@ -2,6 +2,7 @@ package face
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -53,5 +54,31 @@ func TestThreadMarksPlayableLinksAndLibraryNames(t *testing.T) {
 
 	if _, err := service.Thread(ctx, "https://unknown.test/post/2"); err == nil {
 		t.Error("a thread no plugin serves was read")
+	}
+}
+
+// TestSearchThreadsSkipsFailingForums checks that hits keep their plugin and
+// order, and that a failing forum leaves the others' hits.
+func TestSearchThreadsSkipsFailingForums(t *testing.T) {
+	service, _, _, _ := testService(t, map[string]*plugins.FaceIdentifyResult{}, nil)
+	good := &plugins.Plugin{Meta: plugins.PluginMeta{Name: "forum"}}
+	broken := &plugins.Plugin{Meta: plugins.PluginMeta{Name: "down"}}
+	service.forums = func() []*plugins.Plugin { return []*plugins.Plugin{broken, good} }
+	service.searchPosts = func(ctx context.Context, plugin *plugins.Plugin, args plugins.ForumSearchArgs) (*plugins.ForumSearchResult, error) {
+		if plugin == broken {
+			return nil, errors.New("site down")
+		}
+		if args.Query != "nicole" || args.Limit != 2 {
+			t.Errorf("args = %+v", args)
+		}
+		return &plugins.ForumSearchResult{Posts: []plugins.ForumPostHit{
+			{Title: "first", URL: "https://forum.test/post/1"},
+			{Title: "second", URL: "https://forum.test/post/2", Solved: true},
+		}}, nil
+	}
+
+	hits := service.SearchThreads(context.Background(), "nicole", 2)
+	if len(hits) != 2 || hits[0].Title != "first" || hits[1].Plugin != "forum" || !hits[1].Solved {
+		t.Fatalf("hits = %+v", hits)
 	}
 }

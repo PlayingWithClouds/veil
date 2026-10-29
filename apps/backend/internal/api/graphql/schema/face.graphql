@@ -99,6 +99,25 @@ extend type Query {
   # live through the plugin serving url: the question and its comments, each
   # link marked with the scene plugin that can play it.
   forumThread(url: String!): ForumThread!
+  # Threads of identification forums (NameThatPorn) whose text matches query,
+  # read live from every forum plugin; each plugin's best first, at most limit
+  # (default 12) per plugin. A forum that fails is left out.
+  forumSearch(query: String!, limit: Int): [ForumPostHit!]!
+}
+
+type ForumPostHit {
+  title: String!
+  # The thread's page; open it with forumThread.
+  url: String!
+  thumbnailUrl: String
+  # ISO 8601.
+  date: String
+  solved: Boolean!
+  author: String
+  # The start of the question or answer, as the forum's search shows it.
+  snippet: String
+  # The plugin that found it.
+  plugin: String!
 }
 
 type ForumThread {
