@@ -67,6 +67,43 @@ export interface FaceIdentification {
 	pictureUrl: string | null;
 }
 
+// The fields of a FaceIdentification, shared by both ways of asking.
+const IDENTIFICATION_FIELDS = {
+	candidates: {
+		name: true,
+		similarity: true,
+		imageUrl: true,
+		profileUrls: true,
+		sources: true,
+		performerId: true
+	},
+	videos: {
+		title: true,
+		similarity: true,
+		url: true,
+		thumbnailUrl: true,
+		sources: true,
+		scenePlugin: true
+	},
+	posts: {
+		title: true,
+		url: true,
+		thumbnailUrl: true,
+		solved: true,
+		names: true,
+		sources: true
+	},
+	postPerformers: {
+		name: true,
+		posts: true,
+		imageUrl: true,
+		postUrl: true,
+		performerId: true
+	},
+	failures: true,
+	pictureUrl: true
+} as const;
+
 /**
  * Asks the face-recognition plugins who is in the picture of a scene (its
  * thumbnail), a gallery (imageId, else its first image) or an image, or in a
@@ -81,42 +118,27 @@ export async function identifyFace(
 	const data = await gqlClient.mutation({
 		identifyFace: {
 			__args: { mediaId, imageId: imageId || null, frameBase64: frameBase64 || null },
-			candidates: {
-				name: true,
-				similarity: true,
-				imageUrl: true,
-				profileUrls: true,
-				sources: true,
-				performerId: true
-			},
-			videos: {
-				title: true,
-				similarity: true,
-				url: true,
-				thumbnailUrl: true,
-				sources: true,
-				scenePlugin: true
-			},
-			posts: {
-				title: true,
-				url: true,
-				thumbnailUrl: true,
-				solved: true,
-				names: true,
-				sources: true
-			},
-			postPerformers: {
-				name: true,
-				posts: true,
-				imageUrl: true,
-				postUrl: true,
-				performerId: true
-			},
-			failures: true,
-			pictureUrl: true
+			...IDENTIFICATION_FIELDS
 		}
 	});
 	return data.identifyFace as unknown as FaceIdentification;
+}
+
+/** The picture a face search is about: its bytes (base64), or a web address the backend loads. */
+export type FaceSearchPicture = { base64: string } | { url: string };
+
+/** Face search for a picture of the user's own, tied to no media, so nothing can be credited. */
+export async function identifyPicture(picture: FaceSearchPicture): Promise<FaceIdentification> {
+	let args: { pictureBase64?: string; pictureUrl?: string } = {};
+	if ('base64' in picture) {
+		args = { pictureBase64: picture.base64 };
+	} else {
+		args = { pictureUrl: picture.url };
+	}
+	const data = await gqlClient.mutation({
+		identifyPicture: { __args: args, ...IDENTIFICATION_FIELDS }
+	});
+	return data.identifyPicture as unknown as FaceIdentification;
 }
 
 /** Credits the performer called name to a scene or gallery, creating the performer if the library has none. */

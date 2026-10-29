@@ -102,6 +102,7 @@ export interface Mutation {
     reorderCollection: Scalars['Boolean']
     setCollectionTags: Collection
     identifyFace: FaceIdentification
+    identifyPicture: FaceIdentification
     creditPerformerByName: Performer
     ensureGalleryImages: (Gallery | null)
     linkGalleryVideo: Scene
@@ -968,6 +969,7 @@ export interface MutationGenqlSelection{
     reorderCollection?: { __args: {collectionId: Scalars['ID'], mediaIds: Scalars['ID'][]} }
     setCollectionTags?: (CollectionGenqlSelection & { __args: {collectionId: Scalars['ID'], tagIds: Scalars['ID'][]} })
     identifyFace?: (FaceIdentificationGenqlSelection & { __args: {mediaId: Scalars['ID'], imageId?: (Scalars['ID'] | null), frameBase64?: (Scalars['String'] | null)} })
+    identifyPicture?: (FaceIdentificationGenqlSelection & { __args?: {pictureBase64?: (Scalars['String'] | null), pictureUrl?: (Scalars['String'] | null)} })
     creditPerformerByName?: (PerformerGenqlSelection & { __args: {mediaId: Scalars['ID'], name: Scalars['String']} })
     ensureGalleryImages?: (GalleryGenqlSelection & { __args: {galleryId: Scalars['ID']} })
     linkGalleryVideo?: (SceneGenqlSelection & { __args: {galleryId: Scalars['ID'], pluginName: Scalars['String'], url: Scalars['String']} })

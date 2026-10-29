@@ -1,11 +1,12 @@
 <!--
 	Phone replacement for the top bar's MediaFilterToggle: one chip at the start
-	of Home's chip row that steps through all → videos → images on each tap.
+	of Home's chip row that steps through all → videos → images → faces on each tap.
 -->
 <script lang="ts">
 	import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFourIcon';
 	import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
 	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
+	import UserFocusIcon from 'phosphor-svelte/lib/UserFocusIcon';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
 	import type { Component } from 'svelte';
 	import { fly } from 'svelte/transition';
@@ -17,7 +18,8 @@
 	const options: Option[] = [
 		{ value: 'all', label: 'All', icon: SquaresFourIcon },
 		{ value: 'videos', label: 'Videos', icon: VideoCameraIcon },
-		{ value: 'images', label: 'Images', icon: ImagesIcon }
+		{ value: 'images', label: 'Images', icon: ImagesIcon },
+		{ value: 'faces', label: 'Faces', icon: UserFocusIcon }
 	];
 
 	let currentIndex = $derived(

@@ -9,6 +9,7 @@
 	import HomeFeed from '$lib/components/home/HomeFeed.svelte';
 	import SiteChips from '$lib/components/SiteChips.svelte';
 	import MediaFilterChip from '$lib/components/MediaFilterChip.svelte';
+	import FaceSearch from '$lib/components/FaceSearch.svelte';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
 	import { isCompact } from '$lib/stores/viewport';
 	import { searchQuery } from '$lib/stores/searchQuery';
@@ -286,6 +287,11 @@
 	async function runSearch() {
 		const token = ++requestToken;
 		resetResults();
+		if ($mediaFilter === 'faces') {
+			liveSearch.stop();
+			loading = false;
+			return;
+		}
 		const text = query.trim();
 		if (text) {
 			loading = false;
@@ -423,15 +429,26 @@
 	{#if $isCompact}
 		<PullToRefresh onrefresh={pullRefresh} />
 	{/if}
-	<SiteChips bind:selectedPlugins status={chipStatus} content={isSearching ? contentKind : null}>
-		{#snippet leading()}
-			{#if $isCompact}
+	{#if $mediaFilter === 'faces'}
+		{#if $isCompact}
+			<div class="flex">
 				<MediaFilterChip />
-			{/if}
-		{/snippet}
-	</SiteChips>
+			</div>
+		{/if}
+		<FaceSearch />
+	{:else}
+		<SiteChips bind:selectedPlugins status={chipStatus} content={isSearching ? contentKind : null}>
+			{#snippet leading()}
+				{#if $isCompact}
+					<MediaFilterChip />
+				{/if}
+			{/snippet}
+		</SiteChips>
+	{/if}
 
-	{#if isSearching}
+	{#if $mediaFilter === 'faces'}
+		<!-- The face search above replaces the feed and the live search. -->
+	{:else if isSearching}
 		<HomeSearch
 			search={liveSearch}
 			{sites}
@@ -441,65 +458,65 @@
 			oncontent={(kind) => (contentKind = kind)}
 		/>
 	{:else}
-	<!-- The recommendation feed (HomeFeed lays it out). -->
-	<section class="flex flex-col gap-3">
-		{#if !$isCompact}
-			<!-- Phones refresh by pulling down instead. -->
-			<div class="flex items-center justify-between gap-3">
-				<h2 class="text-lg font-semibold">For you</h2>
-				<button
-					type="button"
-					onclick={refreshRecommendations}
-					disabled={loading}
-					class="bg-base-200 hover:bg-base-300 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-				>
-					<ArrowClockwiseIcon size={16} weight="bold" />
-					Refresh
-				</button>
-			</div>
-		{/if}
-		{#if gridItems.length === 0 && loading}
-			<div class="skeleton-grid grid gap-6">
-				{#each { length: SKELETON_CARDS } as _, index (index)}
-					<div class="flex flex-col gap-3">
-						<div class="skeleton aspect-video w-full rounded-[var(--tv-radius)]"></div>
-						<div class="flex gap-3">
-							<div class="skeleton h-9 w-9 shrink-0 rounded-full"></div>
-							<div class="flex flex-1 flex-col gap-2 pt-1">
-								<div class="skeleton h-3.5 w-11/12 rounded"></div>
-								<div class="skeleton h-3 w-1/2 rounded"></div>
+		<!-- The recommendation feed (HomeFeed lays it out). -->
+		<section class="flex flex-col gap-3">
+			{#if !$isCompact}
+				<!-- Phones refresh by pulling down instead. -->
+				<div class="flex items-center justify-between gap-3">
+					<h2 class="text-lg font-semibold">For you</h2>
+					<button
+						type="button"
+						onclick={refreshRecommendations}
+						disabled={loading}
+						class="bg-base-200 hover:bg-base-300 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+					>
+						<ArrowClockwiseIcon size={16} weight="bold" />
+						Refresh
+					</button>
+				</div>
+			{/if}
+			{#if gridItems.length === 0 && loading}
+				<div class="skeleton-grid grid gap-6">
+					{#each { length: SKELETON_CARDS } as _, index (index)}
+						<div class="flex flex-col gap-3">
+							<div class="skeleton aspect-video w-full rounded-[var(--tv-radius)]"></div>
+							<div class="flex gap-3">
+								<div class="skeleton h-9 w-9 shrink-0 rounded-full"></div>
+								<div class="flex flex-1 flex-col gap-2 pt-1">
+									<div class="skeleton h-3.5 w-11/12 rounded"></div>
+									<div class="skeleton h-3 w-1/2 rounded"></div>
+								</div>
 							</div>
 						</div>
-					</div>
-				{/each}
-			</div>
-		{:else if gridItems.length === 0 && continueScenes.length === 0 && !loading}
-			<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
-				<MagnifyingGlassIcon size={48} class="opacity-20" />
-				<p>Nothing here yet. Search for something to get started.</p>
-			</div>
-		{:else}
-			<HomeFeed
-				scenes={feedScenes}
-				galleries={feedGalleries}
-				{shelves}
-				{continueScenes}
-				{sites}
-				scenesDone={sceneFeedDone}
-				galleriesOnly={$mediaFilter === 'images'}
-				{impressionFor}
-				{badgeFor}
-				onopen={openScene}
-			/>
-		{/if}
+					{/each}
+				</div>
+			{:else if gridItems.length === 0 && continueScenes.length === 0 && !loading}
+				<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
+					<MagnifyingGlassIcon size={48} class="opacity-20" />
+					<p>Nothing here yet. Search for something to get started.</p>
+				</div>
+			{:else}
+				<HomeFeed
+					scenes={feedScenes}
+					galleries={feedGalleries}
+					{shelves}
+					{continueScenes}
+					{sites}
+					scenesDone={sceneFeedDone}
+					galleriesOnly={$mediaFilter === 'images'}
+					{impressionFor}
+					{badgeFor}
+					onopen={openScene}
+				/>
+			{/if}
 
-		{#if loading && gridItems.length > 0}
-			<div class="flex justify-center py-6">
-				<span class="loading loading-spinner text-base-content/40"></span>
-			</div>
-		{/if}
-		<div bind:this={sentinel} class="h-1"></div>
-	</section>
+			{#if loading && gridItems.length > 0}
+				<div class="flex justify-center py-6">
+					<span class="loading loading-spinner text-base-content/40"></span>
+				</div>
+			{/if}
+			<div bind:this={sentinel} class="h-1"></div>
+		</section>
 	{/if}
 </div>
 

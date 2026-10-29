@@ -976,6 +976,17 @@ export default {
                     ]
                 }
             ],
+            "identifyPicture": [
+                23,
+                {
+                    "pictureBase64": [
+                        1
+                    ],
+                    "pictureUrl": [
+                        1
+                    ]
+                }
+            ],
             "creditPerformerByName": [
                 34,
                 {

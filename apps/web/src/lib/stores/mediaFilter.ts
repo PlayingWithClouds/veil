@@ -1,8 +1,11 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
 
-/** Which kinds of media Home shows: videos, images (galleries), or both. */
-export type MediaFilter = 'all' | 'videos' | 'images';
+/**
+ * Which kinds of media Home and Search show: videos, images (galleries), or
+ * both; 'faces' turns them into a face search for a picture of the user's own.
+ */
+export type MediaFilter = 'all' | 'videos' | 'images' | 'faces';
 
 const MEDIA_FILTER_STORAGE_KEY = 'veil:media-filter';
 
@@ -10,7 +13,7 @@ const MEDIA_FILTER_STORAGE_KEY = 'veil:media-filter';
 function loadMediaFilter(): MediaFilter {
 	if (!browser) return 'all';
 	const stored = localStorage.getItem(MEDIA_FILTER_STORAGE_KEY);
-	if (stored === 'videos' || stored === 'images') return stored;
+	if (stored === 'videos' || stored === 'images' || stored === 'faces') return stored;
 	return 'all';
 }
 
