@@ -199,6 +199,50 @@ type ComplexityRoot struct {
 		URL          func(childComplexity int) int
 	}
 
+	ForumComment struct {
+		Accepted func(childComplexity int) int
+		Author   func(childComplexity int) int
+		Date     func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Images   func(childComplexity int) int
+		Likes    func(childComplexity int) int
+		Links    func(childComplexity int) int
+		Names    func(childComplexity int) int
+		Posts    func(childComplexity int) int
+		Text     func(childComplexity int) int
+		Titles   func(childComplexity int) int
+	}
+
+	ForumLink struct {
+		ScenePlugin func(childComplexity int) int
+		URL         func(childComplexity int) int
+	}
+
+	ForumName struct {
+		Name        func(childComplexity int) int
+		PerformerID func(childComplexity int) int
+	}
+
+	ForumPostRef struct {
+		ThumbnailURL func(childComplexity int) int
+		Title        func(childComplexity int) int
+		URL          func(childComplexity int) int
+	}
+
+	ForumThread struct {
+		Author      func(childComplexity int) int
+		Comments    func(childComplexity int) int
+		Date        func(childComplexity int) int
+		Description func(childComplexity int) int
+		ImageURL    func(childComplexity int) int
+		Plugin      func(childComplexity int) int
+		Solved      func(childComplexity int) int
+		Tags        func(childComplexity int) int
+		Title       func(childComplexity int) int
+		URL         func(childComplexity int) int
+		VideoURL    func(childComplexity int) int
+	}
+
 	Gallery struct {
 		CoverPath  func(childComplexity int) int
 		CreatedAt  func(childComplexity int) int
@@ -493,6 +537,7 @@ type ComplexityRoot struct {
 		FindAlikeSources      func(childComplexity int, sceneID string, limit *int) int
 		FindGalleryVideos     func(childComplexity int, galleryID string, limit *int) int
 		FollowedCamModels     func(childComplexity int) int
+		ForumThread           func(childComplexity int, url string) int
 		Galleries             func(childComplexity int, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sources []string) int
 		Gallery               func(childComplexity int, id string) int
 		Image                 func(childComplexity int, id string) int
@@ -929,6 +974,7 @@ type QueryResolver interface {
 	Collection(ctx context.Context, id string) (*model.Collection, error)
 	CollectionMembers(ctx context.Context, collectionID string) ([]*model.CollectionMember, error)
 	CollectionIdsForMedia(ctx context.Context, mediaID string) ([]string, error)
+	ForumThread(ctx context.Context, url string) (*model.ForumThread, error)
 	Galleries(ctx context.Context, limit *int, offset *int, search *string, studioID *string, performerID *string, tagID *string, sources []string) ([]*model.Gallery, error)
 	Gallery(ctx context.Context, id string) (*model.Gallery, error)
 	FindGalleryVideos(ctx context.Context, galleryID string, limit *int) ([]*model.AlikeCandidate, error)
@@ -1693,6 +1739,185 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceVideoMatch.URL(childComplexity), true
+
+	case "ForumComment.accepted":
+		if e.ComplexityRoot.ForumComment.Accepted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Accepted(childComplexity), true
+	case "ForumComment.author":
+		if e.ComplexityRoot.ForumComment.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Author(childComplexity), true
+	case "ForumComment.date":
+		if e.ComplexityRoot.ForumComment.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Date(childComplexity), true
+	case "ForumComment.id":
+		if e.ComplexityRoot.ForumComment.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.ID(childComplexity), true
+	case "ForumComment.images":
+		if e.ComplexityRoot.ForumComment.Images == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Images(childComplexity), true
+	case "ForumComment.likes":
+		if e.ComplexityRoot.ForumComment.Likes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Likes(childComplexity), true
+	case "ForumComment.links":
+		if e.ComplexityRoot.ForumComment.Links == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Links(childComplexity), true
+	case "ForumComment.names":
+		if e.ComplexityRoot.ForumComment.Names == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Names(childComplexity), true
+	case "ForumComment.posts":
+		if e.ComplexityRoot.ForumComment.Posts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Posts(childComplexity), true
+	case "ForumComment.text":
+		if e.ComplexityRoot.ForumComment.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Text(childComplexity), true
+	case "ForumComment.titles":
+		if e.ComplexityRoot.ForumComment.Titles == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumComment.Titles(childComplexity), true
+
+	case "ForumLink.scenePlugin":
+		if e.ComplexityRoot.ForumLink.ScenePlugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumLink.ScenePlugin(childComplexity), true
+	case "ForumLink.url":
+		if e.ComplexityRoot.ForumLink.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumLink.URL(childComplexity), true
+
+	case "ForumName.name":
+		if e.ComplexityRoot.ForumName.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumName.Name(childComplexity), true
+	case "ForumName.performerId":
+		if e.ComplexityRoot.ForumName.PerformerID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumName.PerformerID(childComplexity), true
+
+	case "ForumPostRef.thumbnailUrl":
+		if e.ComplexityRoot.ForumPostRef.ThumbnailURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumPostRef.ThumbnailURL(childComplexity), true
+	case "ForumPostRef.title":
+		if e.ComplexityRoot.ForumPostRef.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumPostRef.Title(childComplexity), true
+	case "ForumPostRef.url":
+		if e.ComplexityRoot.ForumPostRef.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumPostRef.URL(childComplexity), true
+
+	case "ForumThread.author":
+		if e.ComplexityRoot.ForumThread.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Author(childComplexity), true
+	case "ForumThread.comments":
+		if e.ComplexityRoot.ForumThread.Comments == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Comments(childComplexity), true
+	case "ForumThread.date":
+		if e.ComplexityRoot.ForumThread.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Date(childComplexity), true
+	case "ForumThread.description":
+		if e.ComplexityRoot.ForumThread.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Description(childComplexity), true
+	case "ForumThread.imageUrl":
+		if e.ComplexityRoot.ForumThread.ImageURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.ImageURL(childComplexity), true
+	case "ForumThread.plugin":
+		if e.ComplexityRoot.ForumThread.Plugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Plugin(childComplexity), true
+	case "ForumThread.solved":
+		if e.ComplexityRoot.ForumThread.Solved == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Solved(childComplexity), true
+	case "ForumThread.tags":
+		if e.ComplexityRoot.ForumThread.Tags == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Tags(childComplexity), true
+	case "ForumThread.title":
+		if e.ComplexityRoot.ForumThread.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.Title(childComplexity), true
+	case "ForumThread.url":
+		if e.ComplexityRoot.ForumThread.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.URL(childComplexity), true
+	case "ForumThread.videoUrl":
+		if e.ComplexityRoot.ForumThread.VideoURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ForumThread.VideoURL(childComplexity), true
 
 	case "Gallery.coverPath":
 		if e.ComplexityRoot.Gallery.CoverPath == nil {
@@ -3585,6 +3810,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.FollowedCamModels(childComplexity), true
+	case "Query.forumThread":
+		if e.ComplexityRoot.Query.ForumThread == nil {
+			break
+		}
+
+		args, err := ec.field_Query_forumThread_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.ForumThread(childComplexity, args["url"].(string)), true
 	case "Query.galleries":
 		if e.ComplexityRoot.Query.Galleries == nil {
 			break
@@ -5811,6 +6047,71 @@ type FaceCandidate {
   # The library's performer of that name, when there is one.
   performerId: ID
 }
+
+extend type Query {
+  # One thread of a porn identification forum (a post face search found), read
+  # live through the plugin serving url: the question and its comments, each
+  # link marked with the scene plugin that can play it.
+  forumThread(url: String!): ForumThread!
+}
+
+type ForumThread {
+  url: String!
+  title: String!
+  description: String
+  # The asked-about picture; null for a video post without one.
+  imageUrl: String
+  # The asked-about clip, when the post is a video or GIF.
+  videoUrl: String
+  author: String
+  # ISO 8601.
+  date: String
+  tags: [String!]!
+  solved: Boolean!
+  # The plugin that read the thread.
+  plugin: String!
+  # In the site's order, the accepted answer marked.
+  comments: [ForumComment!]!
+}
+
+type ForumComment {
+  id: String!
+  author: String
+  # ISO 8601.
+  date: String
+  # Plain text, line breaks kept.
+  text: String!
+  accepted: Boolean!
+  likes: Int
+  names: [ForumName!]!
+  # Scene or movie titles the comment tags.
+  titles: [String!]!
+  links: [ForumLink!]!
+  # Pictures posted in the comment.
+  images: [String!]!
+  # Other threads of the same forum the comment points to.
+  posts: [ForumPostRef!]!
+}
+
+type ForumPostRef {
+  title: String!
+  # The thread's page; open it with forumThread.
+  url: String!
+  thumbnailUrl: String
+}
+
+type ForumName {
+  name: String!
+  # The library's performer of that name, when there is one.
+  performerId: ID
+}
+
+type ForumLink {
+  url: String!
+  # The scene plugin that serves the page: pass it with url to
+  # resolvePluginResult to watch the video in the app. Null when none does.
+  scenePlugin: String
+}
 `, BuiltIn: false},
 	{Name: "../schema/gallery.graphql", Input: `# A set of images (photo shoot).
 
@@ -7294,6 +7595,94 @@ func (ec *executionContext) childFields_FaceVideoMatch(ctx context.Context, fiel
 		return ec.fieldContext_FaceVideoMatch_scenePlugin(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceVideoMatch", field.Name)
+}
+
+func (ec *executionContext) childFields_ForumComment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_ForumComment_id(ctx, field)
+	case "author":
+		return ec.fieldContext_ForumComment_author(ctx, field)
+	case "date":
+		return ec.fieldContext_ForumComment_date(ctx, field)
+	case "text":
+		return ec.fieldContext_ForumComment_text(ctx, field)
+	case "accepted":
+		return ec.fieldContext_ForumComment_accepted(ctx, field)
+	case "likes":
+		return ec.fieldContext_ForumComment_likes(ctx, field)
+	case "names":
+		return ec.fieldContext_ForumComment_names(ctx, field)
+	case "titles":
+		return ec.fieldContext_ForumComment_titles(ctx, field)
+	case "links":
+		return ec.fieldContext_ForumComment_links(ctx, field)
+	case "images":
+		return ec.fieldContext_ForumComment_images(ctx, field)
+	case "posts":
+		return ec.fieldContext_ForumComment_posts(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ForumComment", field.Name)
+}
+
+func (ec *executionContext) childFields_ForumLink(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "url":
+		return ec.fieldContext_ForumLink_url(ctx, field)
+	case "scenePlugin":
+		return ec.fieldContext_ForumLink_scenePlugin(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ForumLink", field.Name)
+}
+
+func (ec *executionContext) childFields_ForumName(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_ForumName_name(ctx, field)
+	case "performerId":
+		return ec.fieldContext_ForumName_performerId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ForumName", field.Name)
+}
+
+func (ec *executionContext) childFields_ForumPostRef(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "title":
+		return ec.fieldContext_ForumPostRef_title(ctx, field)
+	case "url":
+		return ec.fieldContext_ForumPostRef_url(ctx, field)
+	case "thumbnailUrl":
+		return ec.fieldContext_ForumPostRef_thumbnailUrl(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ForumPostRef", field.Name)
+}
+
+func (ec *executionContext) childFields_ForumThread(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "url":
+		return ec.fieldContext_ForumThread_url(ctx, field)
+	case "title":
+		return ec.fieldContext_ForumThread_title(ctx, field)
+	case "description":
+		return ec.fieldContext_ForumThread_description(ctx, field)
+	case "imageUrl":
+		return ec.fieldContext_ForumThread_imageUrl(ctx, field)
+	case "videoUrl":
+		return ec.fieldContext_ForumThread_videoUrl(ctx, field)
+	case "author":
+		return ec.fieldContext_ForumThread_author(ctx, field)
+	case "date":
+		return ec.fieldContext_ForumThread_date(ctx, field)
+	case "tags":
+		return ec.fieldContext_ForumThread_tags(ctx, field)
+	case "solved":
+		return ec.fieldContext_ForumThread_solved(ctx, field)
+	case "plugin":
+		return ec.fieldContext_ForumThread_plugin(ctx, field)
+	case "comments":
+		return ec.fieldContext_ForumThread_comments(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ForumThread", field.Name)
 }
 
 func (ec *executionContext) childFields_Gallery(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -9997,6 +10386,20 @@ func (ec *executionContext) field_Query_findGalleryVideos_args(ctx context.Conte
 		return nil, err
 	}
 	args["limit"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_forumThread_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "url",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["url"] = arg0
 	return args, nil
 }
 
@@ -13800,6 +14203,709 @@ func (ec *executionContext) _FaceVideoMatch_scenePlugin(ctx context.Context, fie
 }
 func (ec *executionContext) fieldContext_FaceVideoMatch_scenePlugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceVideoMatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_id(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_author(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_date(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_date(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_text(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_accepted(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_accepted(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Accepted, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_accepted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_likes(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_likes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Likes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_likes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_names(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_names(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Names, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ForumName) graphql.Marshaler {
+			return ec.marshalNForumName2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumNameᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_names(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ForumComment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ForumName(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ForumComment_titles(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_titles(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Titles, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_titles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_links(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_links(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Links, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ForumLink) graphql.Marshaler {
+			return ec.marshalNForumLink2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumLinkᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_links(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ForumComment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ForumLink(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ForumComment_images(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_images(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Images, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_images(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumComment_posts(ctx context.Context, field graphql.CollectedField, obj *model.ForumComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumComment_posts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Posts, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ForumPostRef) graphql.Marshaler {
+			return ec.marshalNForumPostRef2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumPostRefᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumComment_posts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ForumComment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ForumPostRef(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ForumLink_url(ctx context.Context, field graphql.CollectedField, obj *model.ForumLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumLink_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumLink_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumLink_scenePlugin(ctx context.Context, field graphql.CollectedField, obj *model.ForumLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumLink_scenePlugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ScenePlugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumLink_scenePlugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumName_name(ctx context.Context, field graphql.CollectedField, obj *model.ForumName) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumName_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumName_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumName", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumName_performerId(ctx context.Context, field graphql.CollectedField, obj *model.ForumName) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumName_performerId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PerformerID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumName_performerId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumName", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ForumPostRef_title(ctx context.Context, field graphql.CollectedField, obj *model.ForumPostRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumPostRef_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumPostRef_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumPostRef", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumPostRef_url(ctx context.Context, field graphql.CollectedField, obj *model.ForumPostRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumPostRef_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumPostRef_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumPostRef", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumPostRef_thumbnailUrl(ctx context.Context, field graphql.CollectedField, obj *model.ForumPostRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumPostRef_thumbnailUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThumbnailURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumPostRef_thumbnailUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumPostRef", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_url(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_title(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_description(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_imageUrl(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_imageUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImageURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_videoUrl(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_videoUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VideoURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_videoUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_author(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_date(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_date(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_tags(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_tags(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_solved(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_solved(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Solved, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_solved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_plugin(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_plugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Plugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_plugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ForumThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ForumThread_comments(ctx context.Context, field graphql.CollectedField, obj *model.ForumThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ForumThread_comments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Comments, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ForumComment) graphql.Marshaler {
+			return ec.marshalNForumComment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumCommentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ForumThread_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ForumThread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ForumComment(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Gallery_id(ctx context.Context, field graphql.CollectedField, obj *model.Gallery) (ret graphql.Marshaler) {
@@ -21232,6 +22338,50 @@ func (ec *executionContext) fieldContext_Query_collectionIdsForMedia(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_collectionIdsForMedia_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_forumThread(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_forumThread(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().ForumThread(ctx, fc.Args["url"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ForumThread) graphql.Marshaler {
+			return ec.marshalNForumThread2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_forumThread(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ForumThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_forumThread_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -31066,6 +32216,288 @@ func (ec *executionContext) _FaceVideoMatch(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var forumCommentImplementors = []string{"ForumComment"}
+
+func (ec *executionContext) _ForumComment(ctx context.Context, sel ast.SelectionSet, obj *model.ForumComment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, forumCommentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ForumComment")
+		case "id":
+			out.Values[i] = ec._ForumComment_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "author":
+			out.Values[i] = ec._ForumComment_author(ctx, field, obj)
+		case "date":
+			out.Values[i] = ec._ForumComment_date(ctx, field, obj)
+		case "text":
+			out.Values[i] = ec._ForumComment_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accepted":
+			out.Values[i] = ec._ForumComment_accepted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "likes":
+			out.Values[i] = ec._ForumComment_likes(ctx, field, obj)
+		case "names":
+			out.Values[i] = ec._ForumComment_names(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "titles":
+			out.Values[i] = ec._ForumComment_titles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "links":
+			out.Values[i] = ec._ForumComment_links(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "images":
+			out.Values[i] = ec._ForumComment_images(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "posts":
+			out.Values[i] = ec._ForumComment_posts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var forumLinkImplementors = []string{"ForumLink"}
+
+func (ec *executionContext) _ForumLink(ctx context.Context, sel ast.SelectionSet, obj *model.ForumLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, forumLinkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ForumLink")
+		case "url":
+			out.Values[i] = ec._ForumLink_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scenePlugin":
+			out.Values[i] = ec._ForumLink_scenePlugin(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var forumNameImplementors = []string{"ForumName"}
+
+func (ec *executionContext) _ForumName(ctx context.Context, sel ast.SelectionSet, obj *model.ForumName) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, forumNameImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ForumName")
+		case "name":
+			out.Values[i] = ec._ForumName_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "performerId":
+			out.Values[i] = ec._ForumName_performerId(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var forumPostRefImplementors = []string{"ForumPostRef"}
+
+func (ec *executionContext) _ForumPostRef(ctx context.Context, sel ast.SelectionSet, obj *model.ForumPostRef) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, forumPostRefImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ForumPostRef")
+		case "title":
+			out.Values[i] = ec._ForumPostRef_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._ForumPostRef_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "thumbnailUrl":
+			out.Values[i] = ec._ForumPostRef_thumbnailUrl(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var forumThreadImplementors = []string{"ForumThread"}
+
+func (ec *executionContext) _ForumThread(ctx context.Context, sel ast.SelectionSet, obj *model.ForumThread) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, forumThreadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ForumThread")
+		case "url":
+			out.Values[i] = ec._ForumThread_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._ForumThread_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._ForumThread_description(ctx, field, obj)
+		case "imageUrl":
+			out.Values[i] = ec._ForumThread_imageUrl(ctx, field, obj)
+		case "videoUrl":
+			out.Values[i] = ec._ForumThread_videoUrl(ctx, field, obj)
+		case "author":
+			out.Values[i] = ec._ForumThread_author(ctx, field, obj)
+		case "date":
+			out.Values[i] = ec._ForumThread_date(ctx, field, obj)
+		case "tags":
+			out.Values[i] = ec._ForumThread_tags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "solved":
+			out.Values[i] = ec._ForumThread_solved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "plugin":
+			out.Values[i] = ec._ForumThread_plugin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "comments":
+			out.Values[i] = ec._ForumThread_comments(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var galleryImplementors = []string{"Gallery"}
 
 func (ec *executionContext) _Gallery(ctx context.Context, sel ast.SelectionSet, obj *model.Gallery) graphql.Marshaler {
@@ -33104,6 +34536,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_collectionIdsForMedia(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "forumThread":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_forumThread(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -36994,6 +38448,124 @@ func (ec *executionContext) marshalNFloat2ᚕfloat64ᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNForumComment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ForumComment) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNForumComment2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumComment(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNForumComment2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumComment(ctx context.Context, sel ast.SelectionSet, v *model.ForumComment) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ForumComment(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNForumLink2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ForumLink) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNForumLink2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumLink(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNForumLink2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumLink(ctx context.Context, sel ast.SelectionSet, v *model.ForumLink) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ForumLink(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNForumName2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumNameᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ForumName) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNForumName2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumName(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNForumName2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumName(ctx context.Context, sel ast.SelectionSet, v *model.ForumName) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ForumName(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNForumPostRef2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumPostRefᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ForumPostRef) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNForumPostRef2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumPostRef(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNForumPostRef2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumPostRef(ctx context.Context, sel ast.SelectionSet, v *model.ForumPostRef) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ForumPostRef(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNForumThread2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumThread(ctx context.Context, sel ast.SelectionSet, v model.ForumThread) graphql.Marshaler {
+	return ec._ForumThread(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNForumThread2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐForumThread(ctx context.Context, sel ast.SelectionSet, v *model.ForumThread) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ForumThread(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGallery2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐGalleryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Gallery) graphql.Marshaler {

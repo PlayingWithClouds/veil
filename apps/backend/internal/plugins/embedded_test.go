@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -251,6 +252,7 @@ func checkFaceIdentifyLive(t *testing.T, ctx context.Context, runner *Runner, pl
 	t.Logf("face:identify → %d candidates, %d videos, %d posts in %s", len(result.Candidates), len(result.Videos), len(result.Posts), time.Since(started))
 	if plugin.Meta.Name == "namethatporn" {
 		checkPostsLive(t, result.Posts)
+		checkThreadLive(t, ctx, runner, plugin)
 		return
 	}
 	if len(result.Candidates) == 0 {
@@ -274,6 +276,22 @@ func checkPostsLive(t *testing.T, posts []FacePostMatch) {
 		}
 	}
 	t.Fatalf("no post names anybody: %+v", posts)
+}
+
+// checkThreadLive reads a solved NameThatPorn thread whose accepted answer
+// links the video through the site's redirect.
+func checkThreadLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin) {
+	post, err := runner.FindPost(ctx, plugin, "https://namethatporn.com/post/913519-where-can-i-find-full-video-and-her-name.html")
+	if err != nil {
+		t.Fatalf("post:find: %v", err)
+	}
+	t.Logf("post:find → %q, %d comments", post.Title, len(post.Comments))
+	for _, comment := range post.Comments {
+		if comment.Accepted && slices.Contains(comment.Links, "https://pornhub.com/view_video.php?viewkey=ph563f78988d71d") {
+			return
+		}
+	}
+	t.Fatalf("no accepted answer with the unwrapped pornhub link: %+v", post.Comments)
 }
 
 // checkBundleLive loads one bundle's meta, searches, opens the first hit and

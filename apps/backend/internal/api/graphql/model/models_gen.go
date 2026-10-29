@@ -182,6 +182,50 @@ type FaceVideoMatch struct {
 	ScenePlugin  *string  `json:"scenePlugin,omitempty"`
 }
 
+type ForumComment struct {
+	ID       string          `json:"id"`
+	Author   *string         `json:"author,omitempty"`
+	Date     *string         `json:"date,omitempty"`
+	Text     string          `json:"text"`
+	Accepted bool            `json:"accepted"`
+	Likes    *int            `json:"likes,omitempty"`
+	Names    []*ForumName    `json:"names"`
+	Titles   []string        `json:"titles"`
+	Links    []*ForumLink    `json:"links"`
+	Images   []string        `json:"images"`
+	Posts    []*ForumPostRef `json:"posts"`
+}
+
+type ForumLink struct {
+	URL         string  `json:"url"`
+	ScenePlugin *string `json:"scenePlugin,omitempty"`
+}
+
+type ForumName struct {
+	Name        string  `json:"name"`
+	PerformerID *string `json:"performerId,omitempty"`
+}
+
+type ForumPostRef struct {
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
+}
+
+type ForumThread struct {
+	URL         string          `json:"url"`
+	Title       string          `json:"title"`
+	Description *string         `json:"description,omitempty"`
+	ImageURL    *string         `json:"imageUrl,omitempty"`
+	VideoURL    *string         `json:"videoUrl,omitempty"`
+	Author      *string         `json:"author,omitempty"`
+	Date        *string         `json:"date,omitempty"`
+	Tags        []string        `json:"tags"`
+	Solved      bool            `json:"solved"`
+	Plugin      string          `json:"plugin"`
+	Comments    []*ForumComment `json:"comments"`
+}
+
 type Gallery struct {
 	ID         string       `json:"id"`
 	ExternalID string       `json:"externalId"`

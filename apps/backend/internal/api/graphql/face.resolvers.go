@@ -60,3 +60,15 @@ func (r *mutationResolver) CreditPerformerByName(ctx context.Context, mediaID st
 	}
 	return r.repo.GetPerformer(ctx, performerID)
 }
+
+// ForumThread is the resolver for the forumThread field.
+func (r *queryResolver) ForumThread(ctx context.Context, url string) (*model.ForumThread, error) {
+	if r.faces == nil {
+		return nil, fmt.Errorf("forum threads are not available")
+	}
+	thread, err := r.faces.Thread(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	return forumThreadModel(thread), nil
+}

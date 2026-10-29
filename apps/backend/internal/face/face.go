@@ -124,6 +124,9 @@ type Service struct {
 	scenePluginFor func(pageURL string) string
 	// loadPicture returns the bytes behind a stored image URL.
 	loadPicture func(ctx context.Context, pictureURL string) ([]byte, error)
+	// threadPluginFor is the active post:find plugin serving a thread URL, or nil.
+	threadPluginFor func(threadURL string) *plugins.Plugin
+	findPost        func(ctx context.Context, plugin *plugins.Plugin, threadURL string) (*plugins.ForumPost, error)
 }
 
 // New returns a service asking the registry's face:identify plugins through
@@ -145,6 +148,15 @@ func New(database *db.DB, library Library, registry *plugins.Registry, runner *p
 		},
 		identify:    runner.IdentifyFace,
 		loadPicture: loadPicture,
+		threadPluginFor: func(threadURL string) *plugins.Plugin {
+			for _, plugin := range registry.WithCapability(plugins.CapabilityPostFind) {
+				if plugin.ServesURL(threadURL) {
+					return plugin
+				}
+			}
+			return nil
+		},
+		findPost: runner.FindPost,
 	}
 }
 

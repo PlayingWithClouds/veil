@@ -48,6 +48,11 @@ export function homeSearchUrl(query: string, content?: string): string {
 	return `/?${params}`;
 }
 
+/** A thread of an identification forum (e.g. a NameThatPorn post), shown in the app. */
+export function forumThreadUrl(url: string): string {
+	return `/forum?${new URLSearchParams({ url })}`;
+}
+
 /** The split view that plays several cams and videos side by side. */
 export function splitUrl(): string {
 	return '/split';

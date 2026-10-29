@@ -27,6 +27,7 @@ export interface Query {
     collection: (Collection | null)
     collectionMembers: CollectionMember[]
     collectionIdsForMedia: Scalars['ID'][]
+    forumThread: ForumThread
     galleries: Gallery[]
     gallery: (Gallery | null)
     findGalleryVideos: AlikeCandidate[]
@@ -367,6 +368,55 @@ export interface FaceCandidate {
     sources: Scalars['String'][]
     performerId: (Scalars['ID'] | null)
     __typename: 'FaceCandidate'
+}
+
+export interface ForumThread {
+    url: Scalars['String']
+    title: Scalars['String']
+    description: (Scalars['String'] | null)
+    imageUrl: (Scalars['String'] | null)
+    videoUrl: (Scalars['String'] | null)
+    author: (Scalars['String'] | null)
+    date: (Scalars['String'] | null)
+    tags: Scalars['String'][]
+    solved: Scalars['Boolean']
+    plugin: Scalars['String']
+    comments: ForumComment[]
+    __typename: 'ForumThread'
+}
+
+export interface ForumComment {
+    id: Scalars['String']
+    author: (Scalars['String'] | null)
+    date: (Scalars['String'] | null)
+    text: Scalars['String']
+    accepted: Scalars['Boolean']
+    likes: (Scalars['Int'] | null)
+    names: ForumName[]
+    titles: Scalars['String'][]
+    links: ForumLink[]
+    images: Scalars['String'][]
+    posts: ForumPostRef[]
+    __typename: 'ForumComment'
+}
+
+export interface ForumPostRef {
+    title: Scalars['String']
+    url: Scalars['String']
+    thumbnailUrl: (Scalars['String'] | null)
+    __typename: 'ForumPostRef'
+}
+
+export interface ForumName {
+    name: Scalars['String']
+    performerId: (Scalars['ID'] | null)
+    __typename: 'ForumName'
+}
+
+export interface ForumLink {
+    url: Scalars['String']
+    scenePlugin: (Scalars['String'] | null)
+    __typename: 'ForumLink'
 }
 
 export interface Gallery {
@@ -893,6 +943,7 @@ export interface QueryGenqlSelection{
     collection?: (CollectionGenqlSelection & { __args: {id: Scalars['ID']} })
     collectionMembers?: (CollectionMemberGenqlSelection & { __args: {collectionId: Scalars['ID']} })
     collectionIdsForMedia?: { __args: {mediaId: Scalars['ID']} }
+    forumThread?: (ForumThreadGenqlSelection & { __args: {url: Scalars['String']} })
     galleries?: (GalleryGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null), search?: (Scalars['String'] | null), studioId?: (Scalars['ID'] | null), performerId?: (Scalars['ID'] | null), tagId?: (Scalars['ID'] | null), sources?: (Scalars['String'][] | null)} })
     gallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
     findGalleryVideos?: (AlikeCandidateGenqlSelection & { __args: {galleryId: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
@@ -1254,6 +1305,60 @@ export interface FaceCandidateGenqlSelection{
     profileUrls?: boolean | number
     sources?: boolean | number
     performerId?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumThreadGenqlSelection{
+    url?: boolean | number
+    title?: boolean | number
+    description?: boolean | number
+    imageUrl?: boolean | number
+    videoUrl?: boolean | number
+    author?: boolean | number
+    date?: boolean | number
+    tags?: boolean | number
+    solved?: boolean | number
+    plugin?: boolean | number
+    comments?: ForumCommentGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumCommentGenqlSelection{
+    id?: boolean | number
+    author?: boolean | number
+    date?: boolean | number
+    text?: boolean | number
+    accepted?: boolean | number
+    likes?: boolean | number
+    names?: ForumNameGenqlSelection
+    titles?: boolean | number
+    links?: ForumLinkGenqlSelection
+    images?: boolean | number
+    posts?: ForumPostRefGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumPostRefGenqlSelection{
+    title?: boolean | number
+    url?: boolean | number
+    thumbnailUrl?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumNameGenqlSelection{
+    name?: boolean | number
+    performerId?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface ForumLinkGenqlSelection{
+    url?: boolean | number
+    scenePlugin?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2004,6 +2109,46 @@ export interface WatchlistItemGenqlSelection{
     export const isFaceCandidate = (obj?: { __typename?: any } | null): obj is FaceCandidate => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isFaceCandidate"')
       return FaceCandidate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumThread_possibleTypes: string[] = ['ForumThread']
+    export const isForumThread = (obj?: { __typename?: any } | null): obj is ForumThread => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumThread"')
+      return ForumThread_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumComment_possibleTypes: string[] = ['ForumComment']
+    export const isForumComment = (obj?: { __typename?: any } | null): obj is ForumComment => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumComment"')
+      return ForumComment_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumPostRef_possibleTypes: string[] = ['ForumPostRef']
+    export const isForumPostRef = (obj?: { __typename?: any } | null): obj is ForumPostRef => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumPostRef"')
+      return ForumPostRef_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumName_possibleTypes: string[] = ['ForumName']
+    export const isForumName = (obj?: { __typename?: any } | null): obj is ForumName => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumName"')
+      return ForumName_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const ForumLink_possibleTypes: string[] = ['ForumLink']
+    export const isForumLink = (obj?: { __typename?: any } | null): obj is ForumLink => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isForumLink"')
+      return ForumLink_possibleTypes.includes(obj.__typename)
     }
     
 

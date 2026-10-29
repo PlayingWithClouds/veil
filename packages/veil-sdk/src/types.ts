@@ -34,7 +34,10 @@ export type Capability =
   // Ranks the performers who look like the face in a picture (args.image_base64).
   // Only for services whose database holds professional performers or cam
   // models (stage personas), never general face search.
-  | "face:identify";
+  | "face:identify"
+  // One thread of a porn identification forum (args.url): the post and its
+  // comments, with the names, links and pictures they give.
+  | "post:find";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
 // standalone images, the performers/studios/tags that describe them, and
@@ -458,6 +461,56 @@ export interface FacePostMatch {
   solved: boolean;
   /** Stage names of the accepted answer; empty while unsolved. */
   names: string[];
+}
+
+/** One comment of a forum thread, as plain text plus what it names and links. */
+export interface ForumComment {
+  /** The site's id of the comment. */
+  id: string;
+  author?: string;
+  /** ISO 8601. */
+  date?: string;
+  /** Plain text, line breaks kept. */
+  text: string;
+  /** Whether this is the thread's accepted answer. */
+  accepted: boolean;
+  likes?: number;
+  /** Performer names the comment tags. */
+  names: string[];
+  /** Scene or movie titles the comment tags. */
+  titles: string[];
+  /** Web links the comment gives, unwrapped from the site's redirects, in order. */
+  links: string[];
+  /** Pictures posted in the comment. */
+  images: string[];
+  /** Other threads of the same forum the comment points to. */
+  posts: ForumPostRef[];
+}
+
+/** A thread of the same forum a comment points to. */
+export interface ForumPostRef {
+  title: string;
+  url: string;
+  thumbnail_url?: string;
+}
+
+/** One thread of a porn identification forum: the question and its comments. */
+export interface ForumPost {
+  url: string;
+  title: string;
+  description?: string;
+  /** The asked-about picture, or the poster of a video. */
+  image_url?: string;
+  /** The asked-about clip, when the post is a video or GIF. */
+  video_url?: string;
+  author?: string;
+  /** ISO 8601. */
+  date?: string;
+  tags: string[];
+  /** Whether the thread has an accepted answer. */
+  solved: boolean;
+  /** Oldest first as the site lists them, the accepted answer marked. */
+  comments: ForumComment[];
 }
 
 /** Result of the face:identify capability, best first. */

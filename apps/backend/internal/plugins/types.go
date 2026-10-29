@@ -47,6 +47,10 @@ const (
 	// professional performers or cam models; videos from tube sites may be
 	// returned beside them, as links only.
 	CapabilityFaceIdentify Capability = "face:identify"
+	// CapabilityPostFind reads one thread of a porn identification forum
+	// (args.url): the post and its comments with the names, links and pictures
+	// they give.
+	CapabilityPostFind Capability = "post:find"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -596,6 +600,45 @@ type FacePostMatch struct {
 	ThumbnailURL string   `json:"thumbnail_url,omitempty"`
 	Solved       bool     `json:"solved"`
 	Names        []string `json:"names"`
+}
+
+// ForumComment is one comment of a forum thread: plain text (line breaks
+// kept) plus the performer names, titles, links (unwrapped from the site's
+// redirects) and pictures it gives. Date is ISO 8601.
+type ForumComment struct {
+	ID       string         `json:"id"`
+	Author   string         `json:"author,omitempty"`
+	Date     string         `json:"date,omitempty"`
+	Text     string         `json:"text"`
+	Accepted bool           `json:"accepted"`
+	Likes    *int           `json:"likes,omitempty"`
+	Names    []string       `json:"names"`
+	Titles   []string       `json:"titles"`
+	Links    []string       `json:"links"`
+	Images   []string       `json:"images"`
+	Posts    []ForumPostRef `json:"posts"`
+}
+
+// ForumPostRef is a thread of the same forum a comment points to.
+type ForumPostRef struct {
+	Title        string `json:"title"`
+	URL          string `json:"url"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+}
+
+// ForumPost is one thread of a porn identification forum, returned by
+// post:find: the question (picture or clip) and its comments in site order.
+type ForumPost struct {
+	URL         string         `json:"url"`
+	Title       string         `json:"title"`
+	Description string         `json:"description,omitempty"`
+	ImageURL    string         `json:"image_url,omitempty"`
+	VideoURL    string         `json:"video_url,omitempty"`
+	Author      string         `json:"author,omitempty"`
+	Date        string         `json:"date,omitempty"`
+	Tags        []string       `json:"tags"`
+	Solved      bool           `json:"solved"`
+	Comments    []ForumComment `json:"comments"`
 }
 
 // FaceIdentifyResult is returned by a plugin's face:identify capability, best first.

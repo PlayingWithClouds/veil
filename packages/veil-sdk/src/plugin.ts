@@ -15,6 +15,7 @@ import type {
   ContentKind,
   FaceIdentifyArgs,
   FaceIdentifyResult,
+  ForumPost,
 } from "./types.ts";
 
 /** Handler for an "<entity>:list" capability. */
@@ -46,6 +47,8 @@ export interface PluginHandlers {
   camStream?: (args: CamStreamArgs) => Promise<ResolveResult>;
   /** Serves the "face:identify" capability: performers who look like the face in a picture. */
   identifyFace?: (args: FaceIdentifyArgs) => Promise<FaceIdentifyResult>;
+  /** Serves the "post:find" capability: one forum thread by URL. */
+  findPost?: (url: string) => Promise<ForumPost>;
 }
 
 interface Invocation {
@@ -183,6 +186,13 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       let mimeType = "image/jpeg";
       if (typeof input.args?.mime_type === "string" && input.args.mime_type !== "") mimeType = input.args.mime_type;
       respond<FaceIdentifyResult>(await handlers.identifyFace({ image_base64: imageBase64, mime_type: mimeType }));
+    }
+
+    if (input.capability === "post:find") {
+      if (!handlers.findPost) fail("post:find not implemented");
+      const url = input.args?.url;
+      if (typeof url !== "string" || url === "") fail("args.url required for post:find");
+      respond<ForumPost>(await handlers.findPost(url));
     }
 
     fail(`unsupported capability: ${input.capability}`);

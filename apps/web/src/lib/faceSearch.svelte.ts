@@ -1,8 +1,12 @@
+import { goto } from '$app/navigation';
 import {
 	identifyPicture,
 	type FaceIdentification,
 	type FaceSearchPicture
 } from '$lib/faceIdentify';
+import { homeSearchUrl } from '$lib/routes';
+import { mediaFilter } from '$lib/stores/mediaFilter';
+import { searchQuery } from '$lib/stores/searchQuery';
 
 /** The longest side a picked picture is scaled down to before it is sent. */
 const MAX_PICTURE_SIDE = 1600;
@@ -86,3 +90,10 @@ async function scaledJpeg(file: File): Promise<string> {
 }
 
 export const faceSearch = new FaceSearch();
+
+/** Searches the sites for a name or title found by a face search, leaving the face search mode. */
+export function searchSitesFor(text: string) {
+	mediaFilter.set('all');
+	searchQuery.set(text);
+	goto(homeSearchUrl(text));
+}
