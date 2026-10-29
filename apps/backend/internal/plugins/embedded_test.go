@@ -253,6 +253,7 @@ func checkFaceIdentifyLive(t *testing.T, ctx context.Context, runner *Runner, pl
 	if plugin.Meta.Name == "namethatporn" {
 		checkPostsLive(t, result.Posts)
 		checkThreadLive(t, ctx, runner, plugin)
+		checkForumSearchLive(t, ctx, runner, plugin)
 		return
 	}
 	if len(result.Candidates) == 0 {
@@ -292,6 +293,18 @@ func checkThreadLive(t *testing.T, ctx context.Context, runner *Runner, plugin *
 		}
 	}
 	t.Fatalf("no accepted answer with the unwrapped pornhub link: %+v", post.Comments)
+}
+
+// checkForumSearchLive searches NameThatPorn's threads for a well-known name.
+func checkForumSearchLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin) {
+	result, err := runner.SearchPosts(ctx, plugin, ForumSearchArgs{Query: "nicole aniston", Limit: 5})
+	if err != nil {
+		t.Fatalf("post:search: %v", err)
+	}
+	t.Logf("post:search → %d threads", len(result.Posts))
+	if len(result.Posts) == 0 || result.Posts[0].Title == "" || result.Posts[0].URL == "" {
+		t.Fatalf("no usable threads: %+v", result.Posts)
+	}
 }
 
 // checkBundleLive loads one bundle's meta, searches, opens the first hit and

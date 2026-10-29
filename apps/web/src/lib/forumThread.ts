@@ -56,6 +56,37 @@ export interface ForumThread {
 	comments: ForumComment[];
 }
 
+/** A thread a forum's text search found. */
+export interface ForumPostHit {
+	title: string;
+	url: string;
+	thumbnailUrl: string | null;
+	date: string | null;
+	solved: boolean;
+	author: string | null;
+	/** The start of the question or answer, as the forum's search shows it. */
+	snippet: string | null;
+	plugin: string;
+}
+
+/** Threads of the identification forums (NameThatPorn) matching a query; none when the forums fail. */
+export async function fetchForumSearch(query: string): Promise<ForumPostHit[]> {
+	const data = await gqlClient.query({
+		forumSearch: {
+			__args: { query },
+			title: true,
+			url: true,
+			thumbnailUrl: true,
+			date: true,
+			solved: true,
+			author: true,
+			snippet: true,
+			plugin: true
+		}
+	});
+	return data.forumSearch as unknown as ForumPostHit[];
+}
+
 /** Reads a forum thread live through the plugin serving its URL. */
 export async function fetchForumThread(url: string): Promise<ForumThread> {
 	const data = await gqlClient.query({

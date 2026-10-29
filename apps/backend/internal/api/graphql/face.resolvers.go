@@ -8,6 +8,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 )
@@ -71,4 +72,20 @@ func (r *queryResolver) ForumThread(ctx context.Context, url string) (*model.For
 		return nil, err
 	}
 	return forumThreadModel(thread), nil
+}
+
+// ForumSearch is the resolver for the forumSearch field.
+func (r *queryResolver) ForumSearch(ctx context.Context, query string, limit *int) ([]*model.ForumPostHit, error) {
+	hits := []*model.ForumPostHit{}
+	if r.faces == nil || strings.TrimSpace(query) == "" {
+		return hits, nil
+	}
+	perForum := defaultForumSearchLimit
+	if limit != nil && *limit > 0 {
+		perForum = *limit
+	}
+	for _, hit := range r.faces.SearchThreads(ctx, strings.TrimSpace(query), perForum) {
+		hits = append(hits, forumPostHitModel(hit))
+	}
+	return hits, nil
 }

@@ -5,9 +5,9 @@ export default {
         3,
         4,
         5,
-        37,
-        64,
-        78
+        38,
+        65,
+        79
     ],
     "types": {
         "Query": {
@@ -163,7 +163,7 @@ export default {
                 }
             ],
             "forumThread": [
-                28,
+                29,
                 {
                     "url": [
                         1,
@@ -171,8 +171,20 @@ export default {
                     ]
                 }
             ],
+            "forumSearch": [
+                28,
+                {
+                    "query": [
+                        1,
+                        "String!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "galleries": [
-                33,
+                34,
                 {
                     "limit": [
                         3
@@ -199,7 +211,7 @@ export default {
                 }
             ],
             "gallery": [
-                33,
+                34,
                 {
                     "id": [
                         2,
@@ -208,7 +220,7 @@ export default {
                 }
             ],
             "findGalleryVideos": [
-                63,
+                64,
                 {
                     "galleryId": [
                         2,
@@ -220,7 +232,7 @@ export default {
                 }
             ],
             "images": [
-                34,
+                35,
                 {
                     "limit": [
                         3
@@ -249,18 +261,6 @@ export default {
                 }
             ],
             "image": [
-                34,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "jobs": [
-                35
-            ],
-            "job": [
                 35,
                 {
                     "id": [
@@ -269,11 +269,23 @@ export default {
                     ]
                 }
             ],
+            "jobs": [
+                36
+            ],
+            "job": [
+                36,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ]
+                }
+            ],
             "downloadedScenes": [
-                56
+                57
             ],
             "mediaCards": [
-                36,
+                37,
                 {
                     "ids": [
                         2,
@@ -291,7 +303,7 @@ export default {
                 }
             ],
             "observation": [
-                38,
+                39,
                 {
                     "id": [
                         2,
@@ -300,7 +312,7 @@ export default {
                 }
             ],
             "observations": [
-                38,
+                39,
                 {
                     "targetId": [
                         2,
@@ -318,7 +330,7 @@ export default {
                 }
             ],
             "performers": [
-                39,
+                40,
                 {
                     "limit": [
                         3
@@ -338,7 +350,7 @@ export default {
                 }
             ],
             "performer": [
-                39,
+                40,
                 {
                     "id": [
                         2,
@@ -347,10 +359,10 @@ export default {
                 }
             ],
             "plugins": [
-                41
+                42
             ],
             "plugin": [
-                41,
+                42,
                 {
                     "id": [
                         2,
@@ -359,7 +371,7 @@ export default {
                 }
             ],
             "pluginPackages": [
-                40,
+                41,
                 {
                     "query": [
                         1
@@ -367,7 +379,7 @@ export default {
                 }
             ],
             "pluginCategories": [
-                45,
+                46,
                 {
                     "plugin": [
                         1,
@@ -379,7 +391,7 @@ export default {
                 }
             ],
             "recommendations": [
-                49,
+                50,
                 {
                     "limit": [
                         3
@@ -407,7 +419,7 @@ export default {
                 }
             ],
             "tasteProfile": [
-                47,
+                48,
                 {
                     "limit": [
                         3
@@ -415,7 +427,7 @@ export default {
                 }
             ],
             "recommendedRows": [
-                51,
+                52,
                 {
                     "rowLimit": [
                         3
@@ -426,7 +438,7 @@ export default {
                 }
             ],
             "recommendedCategories": [
-                52,
+                53,
                 {
                     "categoryLimit": [
                         3
@@ -437,13 +449,13 @@ export default {
                 }
             ],
             "recommendationPair": [
-                56
+                57
             ],
             "savedFilters": [
-                55
+                56
             ],
             "scenes": [
-                56,
+                57,
                 {
                     "limit": [
                         3
@@ -496,7 +508,7 @@ export default {
                 }
             ],
             "scene": [
-                56,
+                57,
                 {
                     "id": [
                         2,
@@ -505,7 +517,7 @@ export default {
                 }
             ],
             "randomScenes": [
-                56,
+                57,
                 {
                     "limit": [
                         3
@@ -513,7 +525,7 @@ export default {
                 }
             ],
             "recommendedFeed": [
-                56,
+                57,
                 {
                     "limit": [
                         3
@@ -524,7 +536,7 @@ export default {
                 }
             ],
             "sceneHeat": [
-                58,
+                59,
                 {
                     "sceneId": [
                         2,
@@ -533,7 +545,7 @@ export default {
                 }
             ],
             "sceneMarkers": [
-                61,
+                62,
                 {
                     "mediaId": [
                         2,
@@ -542,7 +554,7 @@ export default {
                 }
             ],
             "pluginSearch": [
-                62,
+                63,
                 {
                     "query": [
                         1,
@@ -558,7 +570,7 @@ export default {
                 }
             ],
             "pluginBrowse": [
-                62,
+                63,
                 {
                     "limit": [
                         3
@@ -569,7 +581,7 @@ export default {
                 }
             ],
             "recommendedBrowse": [
-                62,
+                63,
                 {
                     "limit": [
                         3
@@ -577,7 +589,7 @@ export default {
                 }
             ],
             "findAlikeSources": [
-                63,
+                64,
                 {
                     "sceneId": [
                         2,
@@ -589,18 +601,6 @@ export default {
                 }
             ],
             "searchSuggestions": [
-                65,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "sourceSuggestions": [
                 66,
                 {
                     "query": [
@@ -612,11 +612,23 @@ export default {
                     ]
                 }
             ],
+            "sourceSuggestions": [
+                67,
+                {
+                    "query": [
+                        1,
+                        "String!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "settings": [
-                67
+                68
             ],
             "settingEntries": [
-                71,
+                72,
                 {
                     "scope": [
                         1
@@ -624,7 +636,7 @@ export default {
                 }
             ],
             "mediaStreams": [
-                73,
+                74,
                 {
                     "mediaId": [
                         2,
@@ -633,7 +645,7 @@ export default {
                 }
             ],
             "studios": [
-                75,
+                76,
                 {
                     "limit": [
                         3
@@ -653,7 +665,7 @@ export default {
                 }
             ],
             "studio": [
-                75,
+                76,
                 {
                     "id": [
                         2,
@@ -662,10 +674,10 @@ export default {
                 }
             ],
             "searchSubscriptions": [
-                80
+                81
             ],
             "searchSubscription": [
-                80,
+                81,
                 {
                     "id": [
                         2,
@@ -674,7 +686,7 @@ export default {
                 }
             ],
             "subscriptionForTarget": [
-                80,
+                81,
                 {
                     "targetId": [
                         2,
@@ -683,10 +695,10 @@ export default {
                 }
             ],
             "subscriptionFeed": [
-                77,
+                78,
                 {
                     "filter": [
-                        76
+                        77
                     ],
                     "limit": [
                         3
@@ -697,7 +709,7 @@ export default {
                 }
             ],
             "tags": [
-                81,
+                82,
                 {
                     "limit": [
                         3
@@ -714,7 +726,7 @@ export default {
                 }
             ],
             "tag": [
-                81,
+                82,
                 {
                     "id": [
                         2,
@@ -723,7 +735,7 @@ export default {
                 }
             ],
             "userRating": [
-                82,
+                83,
                 {
                     "mediaId": [
                         2,
@@ -732,7 +744,7 @@ export default {
                 }
             ],
             "userRatings": [
-                82,
+                83,
                 {
                     "limit": [
                         3
@@ -743,7 +755,7 @@ export default {
                 }
             ],
             "watchHistory": [
-                84,
+                85,
                 {
                     "limit": [
                         3
@@ -754,7 +766,7 @@ export default {
                 }
             ],
             "watchHistoryEntry": [
-                84,
+                85,
                 {
                     "mediaId": [
                         2,
@@ -763,7 +775,7 @@ export default {
                 }
             ],
             "watchlist": [
-                86
+                87
             ],
             "__typename": [
                 1
@@ -997,7 +1009,7 @@ export default {
                 }
             ],
             "creditPerformerByName": [
-                39,
+                40,
                 {
                     "mediaId": [
                         2,
@@ -1010,7 +1022,7 @@ export default {
                 }
             ],
             "ensureGalleryImages": [
-                33,
+                34,
                 {
                     "galleryId": [
                         2,
@@ -1019,7 +1031,7 @@ export default {
                 }
             ],
             "linkGalleryVideo": [
-                56,
+                57,
                 {
                     "galleryId": [
                         2,
@@ -1036,7 +1048,7 @@ export default {
                 }
             ],
             "setImageTags": [
-                34,
+                35,
                 {
                     "imageId": [
                         2,
@@ -1119,20 +1131,20 @@ export default {
                 }
             ],
             "updateObservationStatus": [
-                38,
+                39,
                 {
                     "id": [
                         2,
                         "ID!"
                     ],
                     "status": [
-                        37,
+                        38,
                         "ObservationStatus!"
                     ]
                 }
             ],
             "setPerformerFavorite": [
-                39,
+                40,
                 {
                     "id": [
                         2,
@@ -1174,7 +1186,7 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        44,
+                        45,
                         "[PluginSettingValueInput!]!"
                     ]
                 }
@@ -1217,20 +1229,20 @@ export default {
                 3,
                 {
                     "impressions": [
-                        46,
+                        47,
                         "[ImpressionInput!]!"
                     ]
                 }
             ],
             "createSavedFilter": [
-                55,
+                56,
                 {
                     "name": [
                         1,
                         "String!"
                     ],
                     "filter": [
-                        53,
+                        54,
                         "SceneFilterInput!"
                     ]
                 }
@@ -1245,7 +1257,7 @@ export default {
                 }
             ],
             "refreshSceneComments": [
-                57,
+                58,
                 {
                     "sceneId": [
                         2,
@@ -1257,7 +1269,7 @@ export default {
                 4,
                 {
                     "input": [
-                        59,
+                        60,
                         "RecordSceneHeatInput!"
                     ]
                 }
@@ -1280,7 +1292,7 @@ export default {
                 }
             ],
             "createSceneMarker": [
-                61,
+                62,
                 {
                     "mediaId": [
                         2,
@@ -1327,7 +1339,7 @@ export default {
                 }
             ],
             "attachAlikeSource": [
-                73,
+                74,
                 {
                     "sceneId": [
                         2,
@@ -1371,19 +1383,19 @@ export default {
                 }
             ],
             "updateSettings": [
-                67,
+                68,
                 {
                     "input": [
-                        68,
+                        69,
                         "UpdateSettingsInput!"
                     ]
                 }
             ],
             "upsertSettingEntry": [
-                71,
+                72,
                 {
                     "input": [
-                        72,
+                        73,
                         "UpsertSettingEntryInput!"
                     ]
                 }
@@ -1398,10 +1410,10 @@ export default {
                 }
             ],
             "createStream": [
-                73,
+                74,
                 {
                     "input": [
-                        74,
+                        75,
                         "CreateStreamInput!"
                     ]
                 }
@@ -1416,7 +1428,7 @@ export default {
                 }
             ],
             "ensureSceneStreams": [
-                73,
+                74,
                 {
                     "sceneId": [
                         2,
@@ -1425,7 +1437,7 @@ export default {
                 }
             ],
             "setStudioTags": [
-                75,
+                76,
                 {
                     "studioId": [
                         2,
@@ -1438,7 +1450,7 @@ export default {
                 }
             ],
             "subscribeSearch": [
-                80,
+                81,
                 {
                     "query": [
                         1,
@@ -1454,10 +1466,10 @@ export default {
                 }
             ],
             "subscribe": [
-                80,
+                81,
                 {
                     "kind": [
-                        78,
+                        79,
                         "SubscriptionKind!"
                     ],
                     "targetId": [
@@ -1470,7 +1482,7 @@ export default {
                 }
             ],
             "updateSearchSubscription": [
-                80,
+                81,
                 {
                     "id": [
                         2,
@@ -1494,7 +1506,7 @@ export default {
                 }
             ],
             "runSearchSubscription": [
-                80,
+                81,
                 {
                     "id": [
                         2,
@@ -1503,7 +1515,7 @@ export default {
                 }
             ],
             "markSearchSubscriptionSeen": [
-                80,
+                81,
                 {
                     "id": [
                         2,
@@ -1512,10 +1524,10 @@ export default {
                 }
             ],
             "upsertUserRating": [
-                82,
+                83,
                 {
                     "input": [
-                        83,
+                        84,
                         "UpsertUserRatingInput!"
                     ]
                 }
@@ -1530,10 +1542,10 @@ export default {
                 }
             ],
             "upsertWatchHistory": [
-                84,
+                85,
                 {
                     "input": [
-                        85,
+                        86,
                         "UpsertWatchHistoryInput!"
                     ]
                 }
@@ -1548,7 +1560,7 @@ export default {
                 }
             ],
             "addToWatchlist": [
-                86,
+                87,
                 {
                     "mediaId": [
                         2,
@@ -1574,10 +1586,10 @@ export default {
                 13
             ],
             "jobUpdated": [
-                35
+                36
             ],
             "streamsChanged": [
-                73,
+                74,
                 {
                     "mediaId": [
                         2,
@@ -1586,7 +1598,7 @@ export default {
                 }
             ],
             "relatedChanged": [
-                56,
+                57,
                 {
                     "sceneId": [
                         2,
@@ -1911,7 +1923,7 @@ export default {
                 1
             ],
             "tags": [
-                81
+                82
             ],
             "createdAt": [
                 1
@@ -2058,6 +2070,35 @@ export default {
                 1
             ]
         },
+        "ForumPostHit": {
+            "title": [
+                1
+            ],
+            "url": [
+                1
+            ],
+            "thumbnailUrl": [
+                1
+            ],
+            "date": [
+                1
+            ],
+            "solved": [
+                4
+            ],
+            "author": [
+                1
+            ],
+            "snippet": [
+                1
+            ],
+            "plugin": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
         "ForumThread": {
             "url": [
                 1
@@ -2090,7 +2131,7 @@ export default {
                 1
             ],
             "comments": [
-                29
+                30
             ],
             "__typename": [
                 1
@@ -2116,19 +2157,19 @@ export default {
                 3
             ],
             "names": [
-                31
+                32
             ],
             "titles": [
                 1
             ],
             "links": [
-                32
+                33
             ],
             "images": [
                 1
             ],
             "posts": [
-                30
+                31
             ],
             "__typename": [
                 1
@@ -2202,22 +2243,22 @@ export default {
                 4
             ],
             "studio": [
-                75
+                76
             ],
             "performers": [
-                39
+                40
             ],
             "tags": [
-                81
+                82
             ],
             "images": [
-                34
+                35
             ],
             "tagMatch": [
                 1
             ],
             "video": [
-                56
+                57
             ],
             "createdAt": [
                 1
@@ -2270,13 +2311,13 @@ export default {
                 2
             ],
             "studio": [
-                75
+                76
             ],
             "performers": [
-                39
+                40
             ],
             "tags": [
-                81
+                82
             ],
             "tagMatch": [
                 1
@@ -2356,7 +2397,7 @@ export default {
                 5
             ],
             "scene": [
-                56
+                57
             ],
             "__typename": [
                 1
@@ -2400,7 +2441,7 @@ export default {
                 5
             ],
             "status": [
-                37
+                38
             ],
             "data": [
                 1
@@ -2489,7 +2530,7 @@ export default {
                 5
             ],
             "tags": [
-                81
+                82
             ],
             "sceneCount": [
                 3
@@ -2571,10 +2612,10 @@ export default {
                 1
             ],
             "settings": [
-                42
+                43
             ],
             "settingValues": [
-                43
+                44
             ],
             "__typename": [
                 1
@@ -2673,16 +2714,16 @@ export default {
                 3
             ],
             "tags": [
-                48
+                49
             ],
             "performers": [
-                48
+                49
             ],
             "studios": [
-                48
+                49
             ],
             "sites": [
-                48
+                49
             ],
             "__typename": [
                 1
@@ -2707,13 +2748,13 @@ export default {
         },
         "RecommendedScene": {
             "scene": [
-                56
+                57
             ],
             "source": [
                 1
             ],
             "reason": [
-                50
+                51
             ],
             "score": [
                 5
@@ -2747,10 +2788,10 @@ export default {
                 1
             ],
             "reason": [
-                50
+                51
             ],
             "items": [
-                49
+                50
             ],
             "__typename": [
                 1
@@ -2758,10 +2799,10 @@ export default {
         },
         "RecommendedCategory": {
             "tag": [
-                81
+                82
             ],
             "scenes": [
-                56
+                57
             ],
             "__typename": [
                 1
@@ -2851,7 +2892,7 @@ export default {
                 1
             ],
             "filter": [
-                54
+                55
             ],
             "createdAt": [
                 1
@@ -2901,13 +2942,13 @@ export default {
                 1
             ],
             "studio": [
-                75
+                76
             ],
             "performers": [
-                39
+                40
             ],
             "tags": [
-                81
+                82
             ],
             "tagMatch": [
                 1
@@ -2916,7 +2957,7 @@ export default {
                 1
             ],
             "related": [
-                56,
+                57,
                 {
                     "limit": [
                         3
@@ -2924,7 +2965,7 @@ export default {
                 }
             ],
             "comments": [
-                57
+                58
             ],
             "createdAt": [
                 1
@@ -2959,7 +3000,7 @@ export default {
                 2
             ],
             "mentions": [
-                39
+                40
             ],
             "__typename": [
                 1
@@ -2987,7 +3028,7 @@ export default {
                 5
             ],
             "spans": [
-                60
+                61
             ],
             "scrubs": [
                 5
@@ -3012,7 +3053,7 @@ export default {
                 2
             ],
             "tag": [
-                81
+                82
             ],
             "label": [
                 1
@@ -3106,7 +3147,7 @@ export default {
         "SearchSuggestionKind": {},
         "SearchSuggestion": {
             "kind": [
-                64
+                65
             ],
             "text": [
                 1
@@ -3126,7 +3167,7 @@ export default {
         },
         "SourceSuggestion": {
             "kind": [
-                64
+                65
             ],
             "text": [
                 1
@@ -3161,7 +3202,7 @@ export default {
                 4
             ],
             "kindLimits": [
-                69
+                70
             ],
             "__typename": [
                 1
@@ -3190,7 +3231,7 @@ export default {
                 4
             ],
             "kindLimits": [
-                70
+                71
             ],
             "__typename": [
                 1
@@ -3405,7 +3446,7 @@ export default {
                 1
             ],
             "parent": [
-                75
+                76
             ],
             "imagePath": [
                 1
@@ -3414,7 +3455,7 @@ export default {
                 1
             ],
             "tags": [
-                81
+                82
             ],
             "sceneCount": [
                 3
@@ -3434,7 +3475,7 @@ export default {
                 2
             ],
             "kinds": [
-                78
+                79
             ],
             "newOnly": [
                 4
@@ -3448,7 +3489,7 @@ export default {
         },
         "SubscriptionFeedItem": {
             "scene": [
-                56
+                57
             ],
             "foundAt": [
                 1
@@ -3483,13 +3524,13 @@ export default {
                 2
             ],
             "kind": [
-                78
+                79
             ],
             "query": [
                 1
             ],
             "target": [
-                79
+                80
             ],
             "sources": [
                 1
@@ -3519,7 +3560,7 @@ export default {
                 1
             ],
             "scenes": [
-                56,
+                57,
                 {
                     "limit": [
                         3
@@ -3601,7 +3642,7 @@ export default {
                 2
             ],
             "scene": [
-                56
+                57
             ],
             "startedAt": [
                 1

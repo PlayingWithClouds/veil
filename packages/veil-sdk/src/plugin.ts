@@ -16,6 +16,8 @@ import type {
   FaceIdentifyArgs,
   FaceIdentifyResult,
   ForumPost,
+  ForumSearchArgs,
+  ForumSearchResult,
 } from "./types.ts";
 
 /** Handler for an "<entity>:list" capability. */
@@ -49,6 +51,8 @@ export interface PluginHandlers {
   identifyFace?: (args: FaceIdentifyArgs) => Promise<FaceIdentifyResult>;
   /** Serves the "post:find" capability: one forum thread by URL. */
   findPost?: (url: string) => Promise<ForumPost>;
+  /** Serves the "post:search" capability: forum threads matching a query. */
+  searchPosts?: (args: ForumSearchArgs) => Promise<ForumSearchResult>;
 }
 
 interface Invocation {
@@ -193,6 +197,15 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       const url = input.args?.url;
       if (typeof url !== "string" || url === "") fail("args.url required for post:find");
       respond<ForumPost>(await handlers.findPost(url));
+    }
+
+    if (input.capability === "post:search") {
+      if (!handlers.searchPosts) fail("post:search not implemented");
+      const query = input.args?.query;
+      if (typeof query !== "string" || query === "") fail("args.query required for post:search");
+      let limit: number | undefined;
+      if (typeof input.args?.limit === "number") limit = input.args.limit;
+      respond<ForumSearchResult>(await handlers.searchPosts({ query, limit }));
     }
 
     fail(`unsupported capability: ${input.capability}`);

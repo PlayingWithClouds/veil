@@ -1,12 +1,14 @@
 <script lang="ts">
-	// Home while searching. From the top: the performers and studios the query
-	// names, other name matches, then the results in the order the backend ranks
+	// Home while searching. From the top: identification-forum threads matching
+	// the query (NameThatPorn), the performers and studios the query names, other
+	// name matches, then the results in the order the backend ranks
 	// them (or the picked sort): stored scenes in their own row, site videos in
 	// an even 16:9 grid, and the galleries as a shelf of portrait covers after
 	// the first two rows (or as the grid itself on the images filter).
 	import { goto } from '$app/navigation';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import ExploreSceneCard from '$lib/components/ExploreSceneCard.svelte';
+	import ForumSearchShelf from '$lib/components/ForumSearchShelf.svelte';
 	import GalleryCard from '$lib/components/GalleryCard.svelte';
 	import PerformerCard from '$lib/components/PerformerCard.svelte';
 	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
@@ -132,6 +134,8 @@
 
 <div class="flex flex-col gap-6">
 	<ContentKindPicker sites={searchableSites} selected={content} onselect={oncontent} />
+
+	<ForumSearchShelf query={search.query} />
 
 	<SearchEntityStrip entities={search.matched} />
 

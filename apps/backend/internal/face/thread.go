@@ -3,6 +3,8 @@ package face
 import (
 	"context"
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -39,6 +41,44 @@ type Thread struct {
 	Plugin string
 	// MarkedComments are the post's comments in site order, links and names marked.
 	MarkedComments []ThreadComment
+}
+
+// ThreadHit is a forum thread a text search found, with the plugin that found it.
+type ThreadHit struct {
+	plugins.ForumPostHit
+	Plugin string
+}
+
+// SearchThreads asks every forum search plugin for threads matching query,
+// concurrently, each with its own time limit. A plugin that fails is logged
+// and left out: the threads only accompany a search. Hits keep each plugin's
+// order, plugins in registry order, at most limit per plugin.
+func (s *Service) SearchThreads(ctx context.Context, query string, limit int) []ThreadHit {
+	forums := s.forums()
+	answers := make([][]ThreadHit, len(forums))
+	var group sync.WaitGroup
+	for index, forum := range forums {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			searchContext, cancel := context.WithTimeout(ctx, threadTimeout)
+			defer cancel()
+			result, err := s.searchPosts(searchContext, forum, plugins.ForumSearchArgs{Query: query, Limit: limit})
+			if err != nil {
+				log.Printf("post:search via plugin %s: %v", forum.Meta.Name, err)
+				return
+			}
+			for _, hit := range result.Posts {
+				answers[index] = append(answers[index], ThreadHit{ForumPostHit: hit, Plugin: forum.Meta.Name})
+			}
+		}()
+	}
+	group.Wait()
+	var hits []ThreadHit
+	for _, answer := range answers {
+		hits = append(hits, answer...)
+	}
+	return hits
 }
 
 // Thread reads the forum thread at threadURL through the post:find plugin
