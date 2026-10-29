@@ -339,13 +339,30 @@ private fun CandidateRow(candidate: FaceCandidate, credited: Boolean, crediting:
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(candidate.imageUrl, Modifier.size(52.dp))
+        PerformerPicture(candidate.imageUrl)
         Column(Modifier.weight(1f)) {
             Text(candidate.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(candidateFacts(candidate), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         CreditAction(credited, crediting, onCredit)
     }
+}
+
+/** Size of a performer's picture in the rows, portrait like the services' photos. */
+private val PerformerPictureWidth = 96.dp
+private val PerformerPictureHeight = 128.dp
+
+/** Size of a forum post's square picture. */
+private val PostPictureSize = 112.dp
+
+/** A performer's photo, big enough to compare with the searched face; a placeholder without one. */
+@Composable
+private fun PerformerPicture(imageUrl: String?) {
+    if (imageUrl == null) {
+        Avatar(null, Modifier.size(PerformerPictureWidth))
+        return
+    }
+    RemoteImage(imageUrl, Modifier.size(width = PerformerPictureWidth, height = PerformerPictureHeight).clip(VeilShapes.card))
 }
 
 /** "87% · In library · facedigger". */
@@ -385,7 +402,7 @@ private fun PostPerformerRow(performer: FacePostPerformer, credited: Boolean, cr
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(performer.imageUrl, Modifier.size(52.dp))
+        PerformerPicture(performer.imageUrl)
         Column(Modifier.weight(1f)) {
             Text(performer.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(postPerformerFacts(performer), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -416,7 +433,7 @@ private fun PostRow(post: FacePostMatch) {
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(post.thumbnailUrl, Modifier.size(68.dp).clip(VeilShapes.card))
+        RemoteImage(post.thumbnailUrl, Modifier.size(PostPictureSize).clip(VeilShapes.card))
         Column(Modifier.weight(1f)) {
             Text(post.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(postFacts(post), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -451,7 +468,7 @@ private fun SimilarVideoRow(video: FaceVideoMatch, opening: Boolean, viewModel: 
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteImage(video.thumbnailUrl, Modifier.size(width = 120.dp, height = 68.dp).clip(VeilShapes.card))
+        RemoteImage(video.thumbnailUrl, Modifier.size(width = 168.dp, height = 94.dp).clip(VeilShapes.card))
         Column(Modifier.weight(1f)) {
             Text(video.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(formatSimilarity(video.similarity), style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted)

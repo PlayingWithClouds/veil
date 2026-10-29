@@ -58,7 +58,7 @@ stdin/stdout JSON: `{ "capability", "args" }` → `{ "result" } | { "error" }`.
 - facedigger (job API: create, poll, fetch; no key or captcha): `cams` titles → candidates; `porn` → `videos`;
 - pornstarbyface is the other `face:identify` plugin.
 - Forum posts: `posts` (`FacePostMatch`: title, link, thumbnail, `solved`, `names` of the accepted answer), kept in site order; the backend counts their names into `postPerformers` (creditable). namethatporn (reverse image search, multipart `imgfile` POST to `/search/images.html`, reads the accepted answers of the first 10 solved posts) fills them. Cloudflare 403s Bun's fetch but not Go's, so check it live via `TestEmbeddedBundlesLive`.
-- The dialog shows each result kind (Performers, Similar videos, Posts) as its own view, switchable when more than one has results.
+- Web `FaceResults` shows each result kind (Performers, Similar videos, Posts) as its own view, switchable when more than one has results. Used by the dialog (credits) and by the top bar's fourth mode, Face search (`mediaFilter` `faces`, `FaceSearch` on Home and /search: drop/paste/pick a picture or its address → `identifyPicture`, tied to no media, so names open their library page or search the sites).
 
 ## Site quirks
 
