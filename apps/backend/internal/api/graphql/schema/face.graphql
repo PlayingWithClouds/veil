@@ -93,3 +93,68 @@ type FaceCandidate {
   # The library's performer of that name, when there is one.
   performerId: ID
 }
+
+extend type Query {
+  # One thread of a porn identification forum (a post face search found), read
+  # live through the plugin serving url: the question and its comments, each
+  # link marked with the scene plugin that can play it.
+  forumThread(url: String!): ForumThread!
+}
+
+type ForumThread {
+  url: String!
+  title: String!
+  description: String
+  # The asked-about picture; null for a video post without one.
+  imageUrl: String
+  # The asked-about clip, when the post is a video or GIF.
+  videoUrl: String
+  author: String
+  # ISO 8601.
+  date: String
+  tags: [String!]!
+  solved: Boolean!
+  # The plugin that read the thread.
+  plugin: String!
+  # In the site's order, the accepted answer marked.
+  comments: [ForumComment!]!
+}
+
+type ForumComment {
+  id: String!
+  author: String
+  # ISO 8601.
+  date: String
+  # Plain text, line breaks kept.
+  text: String!
+  accepted: Boolean!
+  likes: Int
+  names: [ForumName!]!
+  # Scene or movie titles the comment tags.
+  titles: [String!]!
+  links: [ForumLink!]!
+  # Pictures posted in the comment.
+  images: [String!]!
+  # Other threads of the same forum the comment points to.
+  posts: [ForumPostRef!]!
+}
+
+type ForumPostRef {
+  title: String!
+  # The thread's page; open it with forumThread.
+  url: String!
+  thumbnailUrl: String
+}
+
+type ForumName {
+  name: String!
+  # The library's performer of that name, when there is one.
+  performerId: ID
+}
+
+type ForumLink {
+  url: String!
+  # The scene plugin that serves the page: pass it with url to
+  # resolvePluginResult to watch the video in the app. Null when none does.
+  scenePlugin: String
+}

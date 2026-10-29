@@ -119,3 +119,53 @@ func nonNilStrings(values []string) []string {
 	}
 	return values
 }
+
+// forumThreadModel converts a forum thread for the API; empty optional fields become null.
+func forumThreadModel(thread *face.Thread) *model.ForumThread {
+	comments := make([]*model.ForumComment, 0, len(thread.MarkedComments))
+	for _, comment := range thread.MarkedComments {
+		comments = append(comments, forumCommentModel(comment))
+	}
+	return &model.ForumThread{
+		URL:         thread.URL,
+		Title:       thread.Title,
+		Description: strPtrIfSet(thread.Description),
+		ImageURL:    strPtrIfSet(thread.ImageURL),
+		VideoURL:    strPtrIfSet(thread.VideoURL),
+		Author:      strPtrIfSet(thread.Author),
+		Date:        strPtrIfSet(thread.Date),
+		Tags:        nonNilStrings(thread.Tags),
+		Solved:      thread.Solved,
+		Plugin:      thread.Plugin,
+		Comments:    comments,
+	}
+}
+
+// forumCommentModel converts one comment with its marked links and names.
+func forumCommentModel(comment face.ThreadComment) *model.ForumComment {
+	links := make([]*model.ForumLink, 0, len(comment.MarkedLinks))
+	for _, link := range comment.MarkedLinks {
+		links = append(links, &model.ForumLink{URL: link.URL, ScenePlugin: strPtrIfSet(link.ScenePlugin)})
+	}
+	names := make([]*model.ForumName, 0, len(comment.MarkedNames))
+	for _, name := range comment.MarkedNames {
+		names = append(names, &model.ForumName{Name: name.Name, PerformerID: strPtrIfSet(name.PerformerID)})
+	}
+	posts := make([]*model.ForumPostRef, 0, len(comment.Posts))
+	for _, post := range comment.Posts {
+		posts = append(posts, &model.ForumPostRef{Title: post.Title, URL: post.URL, ThumbnailURL: strPtrIfSet(post.ThumbnailURL)})
+	}
+	return &model.ForumComment{
+		Posts:    posts,
+		ID:       comment.ID,
+		Author:   strPtrIfSet(comment.Author),
+		Date:     strPtrIfSet(comment.Date),
+		Text:     comment.Text,
+		Accepted: comment.Accepted,
+		Likes:    comment.Likes,
+		Names:    names,
+		Titles:   nonNilStrings(comment.Titles),
+		Links:    links,
+		Images:   nonNilStrings(comment.Images),
+	}
+}

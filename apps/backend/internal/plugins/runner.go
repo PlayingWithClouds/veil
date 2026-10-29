@@ -199,6 +199,19 @@ func (r *Runner) IdentifyFace(ctx context.Context, p *Plugin, args FaceIdentifyA
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// FindPost invokes "post:find" — one forum thread by URL, its comments in site order.
+func (r *Runner) FindPost(ctx context.Context, p *Plugin, url string) (*ForumPost, error) {
+	if !p.Meta.Has(CapabilityPostFind) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityPostFind)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityPostFind, map[string]string{"url": url})
+	if err != nil {
+		return nil, err
+	}
+	var result ForumPost
+	return &result, json.Unmarshal(raw, &result)
+}
+
 // Find invokes "<entity>:find" — one full record by URL — and reads the NDJSON
 // stream. Plugins emit one ScrapeResult per line: root entity first, then
 // related standalone entities (performers, studio, tags, collection).

@@ -4,7 +4,7 @@
 	first, with their similarity); videos with a similar face, which name nobody
 	(one a scene plugin serves opens as a scene in the app, others as a link);
 	forum posts with a similar picture (NameThatPorn) with the pornstars their
-	answers name. Shared by the "Who is this?" dialog, which credits a name to its
+	answers name, each opening its thread in the app (/forum). Shared by the "Who is this?" dialog, which credits a name to its
 	media, and the face search mode, which has no media and offers the
 	performer's page or a search for the name instead.
 -->
@@ -12,10 +12,9 @@
 	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
 	import { goto } from '$app/navigation';
 	import { cacheUrl } from '$lib/img';
-	import { homeSearchUrl, performerUrl, sceneUrl } from '$lib/routes';
+	import { forumThreadUrl, performerUrl, sceneUrl } from '$lib/routes';
 	import { ingestPluginResult } from '$lib/search';
-	import { mediaFilter } from '$lib/stores/mediaFilter';
-	import { searchQuery } from '$lib/stores/searchQuery';
+	import { searchSitesFor } from '$lib/faceSearch.svelte';
 	import { notifications } from '$lib/stores/notifications';
 	import type { FaceIdentification, FacePostMatch, FaceVideoMatch } from '$lib/faceIdentify';
 
@@ -102,9 +101,7 @@
 	/** Searches the sites for a name, leaving the face search mode. */
 	function searchName(name: string) {
 		onLeave?.();
-		mediaFilter.set('all');
-		searchQuery.set(name);
-		goto(homeSearchUrl(name));
+		searchSitesFor(name);
 	}
 </script>
 
@@ -190,9 +187,8 @@
 
 {#snippet postRow(post: FacePostMatch)}
 	<a
-		href={post.url}
-		target="_blank"
-		rel="noopener noreferrer"
+		href={forumThreadUrl(post.url)}
+		onclick={() => onLeave?.()}
 		class="flex items-center gap-3 rounded-xl bg-white/5 p-2 hover:bg-white/10"
 	>
 		{#if post.thumbnailUrl}
@@ -323,9 +319,8 @@
 									{/if}
 								</div>
 								<a
-									href={performer.postUrl}
-									target="_blank"
-									rel="noopener noreferrer"
+									href={forumThreadUrl(performer.postUrl)}
+									onclick={() => onLeave?.()}
 									class="text-base-content/50 hover:text-base-content text-xs underline"
 								>
 									{postCountLabel(performer.posts)}
