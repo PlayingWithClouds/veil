@@ -155,6 +155,7 @@ function listsContent(plugin: SearchPlugin): boolean {
 export function supportsMediaFilter(plugin: SearchPlugin, filter: MediaFilter): boolean {
 	if (filter === 'videos') return plugin.capabilities.includes('scene:list');
 	if (filter === 'images') return plugin.capabilities.includes('gallery:list');
+	if (filter === 'faces') return plugin.capabilities.includes('face:identify');
 	return true;
 }
 

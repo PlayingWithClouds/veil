@@ -317,6 +317,7 @@ type ComplexityRoot struct {
 		FollowCamModel             func(childComplexity int, id string) int
 		ForgetSearch               func(childComplexity int, query string) int
 		IdentifyFace               func(childComplexity int, mediaID string, imageID *string, frameBase64 *string) int
+		IdentifyPicture            func(childComplexity int, pictureBase64 *string, pictureURL *string) int
 		IncrementOCount            func(childComplexity int, mediaID string) int
 		InstallPlugin              func(childComplexity int, packageName string) int
 		LinkGalleryVideo           func(childComplexity int, galleryID string, pluginName string, url string) int
@@ -854,6 +855,7 @@ type MutationResolver interface {
 	ReorderCollection(ctx context.Context, collectionID string, mediaIds []string) (bool, error)
 	SetCollectionTags(ctx context.Context, collectionID string, tagIds []string) (*model.Collection, error)
 	IdentifyFace(ctx context.Context, mediaID string, imageID *string, frameBase64 *string) (*model.FaceIdentification, error)
+	IdentifyPicture(ctx context.Context, pictureBase64 *string, pictureURL *string) (*model.FaceIdentification, error)
 	CreditPerformerByName(ctx context.Context, mediaID string, name string) (*model.Performer, error)
 	EnsureGalleryImages(ctx context.Context, galleryID string) (*model.Gallery, error)
 	LinkGalleryVideo(ctx context.Context, galleryID string, pluginName string, url string) (*model.Scene, error)
@@ -2422,6 +2424,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.IdentifyFace(childComplexity, args["mediaId"].(string), args["imageId"].(*string), args["frameBase64"].(*string)), true
+	case "Mutation.identifyPicture":
+		if e.ComplexityRoot.Mutation.IdentifyPicture == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_identifyPicture_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.IdentifyPicture(childComplexity, args["pictureBase64"].(*string), args["pictureUrl"].(*string)), true
 	case "Mutation.incrementOCount":
 		if e.ComplexityRoot.Mutation.IncrementOCount == nil {
 			break
@@ -5714,6 +5727,10 @@ extend type Mutation {
   # the video frame the user paused on) is sent instead when given; mediaId is
   # then only the media the pick gets credited to.
   identifyFace(mediaId: ID!, imageId: ID, frameBase64: String): FaceIdentification!
+  # Face search for a picture of the user's own, tied to no media: pictureBase64
+  # (a JPEG, PNG, WebP or GIF) or else pictureUrl (an http(s) image address,
+  # loaded through the image cache). Nothing can be credited from the answer.
+  identifyPicture(pictureBase64: String, pictureUrl: String): FaceIdentification!
   # Credits the performer called name to a scene or gallery (an image counts for
   # its gallery), creating the performer when the library has none. The name is
   # matched like ingest does (spelling-insensitive, aliases).
@@ -8820,6 +8837,28 @@ func (ec *executionContext) field_Mutation_identifyFace_args(ctx context.Context
 		return nil, err
 	}
 	args["frameBase64"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_identifyPicture_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "pictureBase64",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pictureBase64"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pictureUrl",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pictureUrl"] = arg1
 	return args, nil
 }
 
@@ -16242,6 +16281,50 @@ func (ec *executionContext) fieldContext_Mutation_identifyFace(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_identifyFace_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_identifyPicture(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_identifyPicture(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().IdentifyPicture(ctx, fc.Args["pictureBase64"].(*string), fc.Args["pictureUrl"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.FaceIdentification) graphql.Marshaler {
+			return ec.marshalNFaceIdentification2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceIdentification(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_identifyPicture(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceIdentification(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_identifyPicture_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -31638,6 +31721,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "identifyFace":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_identifyFace(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "identifyPicture":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_identifyPicture(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

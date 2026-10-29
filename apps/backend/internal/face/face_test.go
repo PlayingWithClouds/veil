@@ -299,3 +299,26 @@ func TestIdentifyPictureSendsSuppliedFrame(t *testing.T) {
 		t.Errorf("picture URL = %q", stored.PictureURL)
 	}
 }
+
+// TestIdentifyURLLoadsWebPictures checks that a picture address is loaded and
+// reported back, and that anything but http(s) is refused unloaded.
+func TestIdentifyURLLoadsWebPictures(t *testing.T) {
+	service, _, _, loaded := testService(t, map[string]*plugins.FaceIdentifyResult{"only": {}}, nil)
+	ctx := context.Background()
+
+	result, err := service.IdentifyURL(ctx, "https://pics.test/face.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.PictureURL != "https://pics.test/face.jpg" || !slices.Equal(*loaded, []string{"https://pics.test/face.jpg"}) {
+		t.Errorf("picture URL %q, loaded %v", result.PictureURL, *loaded)
+	}
+	for _, refused := range []string{"file:///etc/passwd", "/api/blob/x.jpg", "not a url"} {
+		if _, err := service.IdentifyURL(ctx, refused); err == nil {
+			t.Errorf("%q was accepted", refused)
+		}
+	}
+	if len(*loaded) != 1 {
+		t.Errorf("refused addresses were loaded: %v", *loaded)
+	}
+}

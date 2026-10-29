@@ -94,6 +94,7 @@ type Mutation {
   reorderCollection(collectionId: ID!, mediaIds: [ID!]!): Boolean!
   setCollectionTags(collectionId: ID!, tagIds: [ID!]!): Collection!
   identifyFace(mediaId: ID!, imageId: ID, frameBase64: String): FaceIdentification!
+  identifyPicture(pictureBase64: String, pictureUrl: String): FaceIdentification!
   creditPerformerByName(mediaId: ID!, name: String!): Performer!
   ensureGalleryImages(galleryId: ID!): Gallery
   linkGalleryVideo(galleryId: ID!, pluginName: String!, url: String!): Scene!

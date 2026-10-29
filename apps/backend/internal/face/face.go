@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"sync"
 	"time"
@@ -154,6 +155,25 @@ func (s *Service) Identify(ctx context.Context, mediaID, imageID string) (*Ident
 	pictureURL, err := s.pictureURL(ctx, mediaID, imageID)
 	if err != nil {
 		return nil, err
+	}
+	picture, err := s.loadPicture(ctx, pictureURL)
+	if err != nil {
+		return nil, fmt.Errorf("load picture: %w", err)
+	}
+	identification, err := s.IdentifyPicture(ctx, picture)
+	if err != nil {
+		return nil, err
+	}
+	identification.PictureURL = pictureURL
+	return identification, nil
+}
+
+// IdentifyURL runs the face services on the picture at an http(s) address,
+// loaded through the image cache, and returns the merged candidates, best first.
+func (s *Service) IdentifyURL(ctx context.Context, pictureURL string) (*Identification, error) {
+	parsed, err := url.Parse(pictureURL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return nil, fmt.Errorf("%q is not a web address", pictureURL)
 	}
 	picture, err := s.loadPicture(ctx, pictureURL)
 	if err != nil {

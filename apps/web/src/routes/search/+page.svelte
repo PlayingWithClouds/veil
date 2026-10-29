@@ -10,6 +10,7 @@
 	import SearchGalleryResults from '$lib/components/SearchGalleryResults.svelte';
 	import SceneFilters from '$lib/components/SceneFilters.svelte';
 	import SubscribeSearchButton from '$lib/components/SubscribeSearchButton.svelte';
+	import FaceSearch from '$lib/components/FaceSearch.svelte';
 	import {
 		fetchFilteredScenes,
 		sceneToCard,
@@ -226,171 +227,176 @@
 		<span class="badge badge-error">18+</span>
 	</div>
 
-	<!-- Source badges: which plugins feed the search. Toggle to include/exclude. -->
-	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-base-content/40 text-xs font-medium uppercase">Sources</span>
-		{#if searchPlugins.length === 0}
-			<span class="text-base-content/30 text-sm">No search plugins installed</span>
-		{/if}
-		{#each searchPlugins as plugin (plugin.name)}
-			{@const on = !disabledPlugins.has(plugin.name)}
-			<button
-				type="button"
-				onclick={() => togglePlugin(plugin.name)}
-				aria-pressed={on}
-				class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors
+	{#if $mediaFilter === 'faces'}
+		<FaceSearch />
+	{:else}
+		<!-- Source badges: which plugins feed the search. Toggle to include/exclude. -->
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="text-base-content/40 text-xs font-medium uppercase">Sources</span>
+			{#if searchPlugins.length === 0}
+				<span class="text-base-content/30 text-sm">No search plugins installed</span>
+			{/if}
+			{#each searchPlugins as plugin (plugin.name)}
+				{@const on = !disabledPlugins.has(plugin.name)}
+				<button
+					type="button"
+					onclick={() => togglePlugin(plugin.name)}
+					aria-pressed={on}
+					class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors
 					{on
-					? 'border-primary bg-primary/15 text-primary'
-					: 'border-base-300 text-base-content/40 hover:text-base-content/70'}"
-			>
-				{#if plugin.iconUrl}
-					<img
-						src={plugin.iconUrl}
-						alt=""
-						class="h-4 w-4 rounded-sm {on ? '' : 'opacity-40 grayscale'}"
-					/>
-				{/if}
-				{pluginLabel(plugin)}
-			</button>
-		{/each}
-	</div>
-
-	<!-- Advanced filters -->
-	<SceneFilters bind:filter oncommit={refresh} />
-
-	<!-- Query display -->
-	<div class="border-base-300 bg-base-200 flex items-center gap-3 rounded-xl border px-4 py-3">
-		{#if loading || search.loading}
-			<SpinnerGapIcon size={22} class="text-primary shrink-0 animate-spin" />
-		{:else}
-			<MagnifyingGlassIcon size={22} class="text-base-content/40 shrink-0" />
-		{/if}
-		{#if $isCompact}
-			<!-- Phones type with their own keyboard instead of the on-screen one. -->
-			<input
-				type="search"
-				enterkeyhint="search"
-				bind:value={query}
-				oninput={scheduleSearch}
-				placeholder="Search adult sources…"
-				class="placeholder:text-base-content/30 min-w-0 flex-1 bg-transparent text-lg outline-none"
-			/>
-		{:else}
-			<span class="flex-1 truncate text-lg {query ? '' : 'text-base-content/30'}">
-				{query || 'Search adult sources…'}
-			</span>
-		{/if}
-		{#if query.trim() && !filterMode}
-			<SubscribeSearchButton {query} sources={subscriptionSources()} />
-		{/if}
-	</div>
-
-	<div class="flex flex-col gap-6 lg:flex-row">
-		<!-- On-screen keyboard (top-left) -->
-		<div class="w-full shrink-0 max-md:hidden lg:w-96">
-			<SearchKeyboard
-				bind:this={keyboard}
-				oninput={appendChar}
-				onbackspace={backspace}
-				onclear={clearQuery}
-				onedge={focusResults}
-			/>
+						? 'border-primary bg-primary/15 text-primary'
+						: 'border-base-300 text-base-content/40 hover:text-base-content/70'}"
+				>
+					{#if plugin.iconUrl}
+						<img
+							src={plugin.iconUrl}
+							alt=""
+							class="h-4 w-4 rounded-sm {on ? '' : 'opacity-40 grayscale'}"
+						/>
+					{/if}
+					{pluginLabel(plugin)}
+				</button>
+			{/each}
 		</div>
 
-		<!-- Results grid (right) -->
-		<div class="min-w-0 flex-1">
-			{#if filterMode}
-				{#if dbResults.length === 0 && !loading}
+		<!-- Advanced filters -->
+		<SceneFilters bind:filter oncommit={refresh} />
+
+		<!-- Query display -->
+		<div class="border-base-300 bg-base-200 flex items-center gap-3 rounded-xl border px-4 py-3">
+			{#if loading || search.loading}
+				<SpinnerGapIcon size={22} class="text-primary shrink-0 animate-spin" />
+			{:else}
+				<MagnifyingGlassIcon size={22} class="text-base-content/40 shrink-0" />
+			{/if}
+			{#if $isCompact}
+				<!-- Phones type with their own keyboard instead of the on-screen one. -->
+				<input
+					type="search"
+					enterkeyhint="search"
+					bind:value={query}
+					oninput={scheduleSearch}
+					placeholder="Search adult sources…"
+					class="placeholder:text-base-content/30 min-w-0 flex-1 bg-transparent text-lg outline-none"
+				/>
+			{:else}
+				<span class="flex-1 truncate text-lg {query ? '' : 'text-base-content/30'}">
+					{query || 'Search adult sources…'}
+				</span>
+			{/if}
+			{#if query.trim() && !filterMode}
+				<SubscribeSearchButton {query} sources={subscriptionSources()} />
+			{/if}
+		</div>
+
+		<div class="flex flex-col gap-6 lg:flex-row">
+			<!-- On-screen keyboard (top-left) -->
+			<div class="w-full shrink-0 max-md:hidden lg:w-96">
+				<SearchKeyboard
+					bind:this={keyboard}
+					oninput={appendChar}
+					onbackspace={backspace}
+					onclear={clearQuery}
+					onedge={focusResults}
+				/>
+			</div>
+
+			<!-- Results grid (right) -->
+			<div class="min-w-0 flex-1">
+				{#if filterMode}
+					{#if dbResults.length === 0 && !loading}
+						<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
+							<MagnifyingGlassIcon size={48} class="opacity-20" />
+							<p>No scenes match these filters.</p>
+						</div>
+					{:else}
+						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+							{#each dbResults as scene (scene.id)}
+								<SceneCard item={sceneToCard(scene)} onclick={() => goto(`/scene/${scene.id}`)} />
+							{/each}
+						</div>
+						<ScrollSentinel onvisible={loadMoreDb} {loading} done={dbDone} />
+					{/if}
+				{:else if !query.trim()}
 					<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
 						<MagnifyingGlassIcon size={48} class="opacity-20" />
-						<p>No scenes match these filters.</p>
+						<p>Type to search, or set a filter.</p>
 					</div>
 				{:else}
-					<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-						{#each dbResults as scene (scene.id)}
-							<SceneCard item={sceneToCard(scene)} onclick={() => goto(`/scene/${scene.id}`)} />
-						{/each}
-					</div>
-					<ScrollSentinel onvisible={loadMoreDb} {loading} done={dbDone} />
-				{/if}
-			{:else if !query.trim()}
-				<div class="text-base-content/30 flex flex-col items-center gap-3 py-24 text-center">
-					<MagnifyingGlassIcon size={48} class="opacity-20" />
-					<p>Type to search, or set a filter.</p>
-				</div>
-			{:else}
-				<!-- Sort order of the live results; relevance is the server's score. -->
-				<div class="mb-4 flex flex-wrap items-center gap-2">
-					<span class="text-base-content/40 text-xs font-medium uppercase">Sort</span>
-					{#each SORT_OPTIONS as option (option.mode)}
-						<button
-							type="button"
-							onclick={() => search.changeSort(option.mode)}
-							aria-pressed={search.sortMode === option.mode}
-							class="rounded-full border px-3 py-1 text-sm font-medium transition-colors
-								{search.sortMode === option.mode
-								? 'border-primary bg-primary/15 text-primary'
-								: 'border-base-300 text-base-content/40 hover:text-base-content/70'}"
-						>
-							{option.label}
-						</button>
-					{/each}
-				</div>
-				{#if matchedEntities.length > 0}
-					<!-- Library entities the query names. -->
+					<!-- Sort order of the live results; relevance is the server's score. -->
 					<div class="mb-4 flex flex-wrap items-center gap-2">
-						{#each matchedEntities as entity (entity.id)}
-							<a
-								href={entityUrl(entity)}
-								class="border-base-300 hover:border-primary hover:text-primary rounded-full border px-3 py-1 text-sm font-medium transition-colors"
+						<span class="text-base-content/40 text-xs font-medium uppercase">Sort</span>
+						{#each SORT_OPTIONS as option (option.mode)}
+							<button
+								type="button"
+								onclick={() => search.changeSort(option.mode)}
+								aria-pressed={search.sortMode === option.mode}
+								class="rounded-full border px-3 py-1 text-sm font-medium transition-colors
+								{search.sortMode === option.mode
+									? 'border-primary bg-primary/15 text-primary'
+									: 'border-base-300 text-base-content/40 hover:text-base-content/70'}"
 							>
-								{#if entity.fuzzy}<span class="text-base-content/40">Did you mean</span>{/if}
-								{ENTITY_LABELS[entity.kind]}: {entity.name}
-							</a>
+								{option.label}
+							</button>
 						{/each}
 					</div>
-				{/if}
-				{#if showGalleryShelf}
-					<section class="mb-6 flex flex-col gap-3" aria-label="Galleries">
-						<h2 class="flex items-baseline gap-2 text-lg font-semibold">
-							Galleries
-							<span class="text-base-content/40 text-sm font-normal">{galleryResults.length}</span>
-						</h2>
+					{#if matchedEntities.length > 0}
+						<!-- Library entities the query names. -->
+						<div class="mb-4 flex flex-wrap items-center gap-2">
+							{#each matchedEntities as entity (entity.id)}
+								<a
+									href={entityUrl(entity)}
+									class="border-base-300 hover:border-primary hover:text-primary rounded-full border px-3 py-1 text-sm font-medium transition-colors"
+								>
+									{#if entity.fuzzy}<span class="text-base-content/40">Did you mean</span>{/if}
+									{ENTITY_LABELS[entity.kind]}: {entity.name}
+								</a>
+							{/each}
+						</div>
+					{/if}
+					{#if showGalleryShelf}
+						<section class="mb-6 flex flex-col gap-3" aria-label="Galleries">
+							<h2 class="flex items-baseline gap-2 text-lg font-semibold">
+								Galleries
+								<span class="text-base-content/40 text-sm font-normal">{galleryResults.length}</span
+								>
+							</h2>
+							<SearchGalleryResults
+								bind:this={galleryGrid}
+								items={galleryResults}
+								sites={searchPlugins}
+								layout="row"
+								onedge={leaveGalleries}
+							/>
+						</section>
+						<h2 class="mb-3 text-lg font-semibold">Videos</h2>
+					{/if}
+					{#if showVideos}
+						<NsfwGrid
+							bind:this={grid}
+							onopen={logOpened}
+							items={results}
+							loading={search.loading && results.length === 0}
+							ariaLabel="Search results"
+							emptyMessage={videosEmptyMessage()}
+							onleftedge={() => keyboard?.focus()}
+							ontopedge={enterGalleryShelf}
+						/>
+					{:else}
 						<SearchGalleryResults
 							bind:this={galleryGrid}
 							items={galleryResults}
 							sites={searchPlugins}
-							layout="row"
+							layout="grid"
+							loading={search.loading && galleryResults.length === 0}
 							onedge={leaveGalleries}
 						/>
-					</section>
-					<h2 class="mb-3 text-lg font-semibold">Videos</h2>
+					{/if}
+					{#if hasMainResults()}
+						<ScrollSentinel onvisible={loadMoreLive} loading={search.loading} done={search.done} />
+					{/if}
 				{/if}
-				{#if showVideos}
-					<NsfwGrid
-						bind:this={grid}
-						onopen={logOpened}
-						items={results}
-						loading={search.loading && results.length === 0}
-						ariaLabel="Search results"
-						emptyMessage={videosEmptyMessage()}
-						onleftedge={() => keyboard?.focus()}
-						ontopedge={enterGalleryShelf}
-					/>
-				{:else}
-					<SearchGalleryResults
-						bind:this={galleryGrid}
-						items={galleryResults}
-						sites={searchPlugins}
-						layout="grid"
-						loading={search.loading && galleryResults.length === 0}
-						onedge={leaveGalleries}
-					/>
-				{/if}
-				{#if hasMainResults()}
-					<ScrollSentinel onvisible={loadMoreLive} loading={search.loading} done={search.done} />
-				{/if}
-			{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>

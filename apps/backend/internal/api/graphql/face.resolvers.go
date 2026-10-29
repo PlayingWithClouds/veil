@@ -31,6 +31,24 @@ func (r *mutationResolver) IdentifyFace(ctx context.Context, mediaID string, ima
 	return faceIdentificationModel(identification), nil
 }
 
+// IdentifyPicture is the resolver for the identifyPicture field.
+func (r *mutationResolver) IdentifyPicture(ctx context.Context, pictureBase64 *string, pictureURL *string) (*model.FaceIdentification, error) {
+	if r.faces == nil {
+		return nil, fmt.Errorf("face identification is not available")
+	}
+	if pictureBase64 != nil && *pictureBase64 != "" {
+		return r.identifyFrame(ctx, *pictureBase64)
+	}
+	if pictureURL == nil || *pictureURL == "" {
+		return nil, fmt.Errorf("give a picture or its address")
+	}
+	identification, err := r.faces.IdentifyURL(ctx, *pictureURL)
+	if err != nil {
+		return nil, err
+	}
+	return faceIdentificationModel(identification), nil
+}
+
 // CreditPerformerByName is the resolver for the creditPerformerByName field.
 func (r *mutationResolver) CreditPerformerByName(ctx context.Context, mediaID string, name string) (*model.Performer, error) {
 	if r.faces == nil {

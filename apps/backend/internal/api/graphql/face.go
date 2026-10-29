@@ -12,7 +12,8 @@ import (
 // SetFaceIdentifier wires in the "Who is this?" service.
 func (r *Resolver) SetFaceIdentifier(service *face.Service) { r.faces = service }
 
-// identifyFrame identifies the face in a video frame the user picked, sent as base64.
+// identifyFrame identifies the face in a picture sent as base64: a video frame
+// the user picked or a picture of their own.
 func (r *Resolver) identifyFrame(ctx context.Context, frameBase64 string) (*model.FaceIdentification, error) {
 	frame, err := base64.StdEncoding.DecodeString(frameBase64)
 	if err != nil {
