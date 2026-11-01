@@ -48,19 +48,14 @@ stdin/stdout JSON: `{ "capability", "args" }` → `{ "result" } | { "error" }`.
 - `Collection` with ordered `member_urls`; unresolved members are queued for scraping.
 - `Scene.markers` (tag/label + seconds/end_seconds) ingest as global markers.
 - Optional `rating` (0..10) and `view_count` on `Scene` and listing `DiscoveredItem`s; cards show them.
-- `scene:find` may fill `Scene.comments` (plain text, author, ISO date via SDK `relativeDate`, likes, `reply_to` index). Stored in `scene_comment` per (scene, plugin), replaced by each scrape that found some, not in the observation. Returned with `mentions` (library performers, 2+ words, named as whole words). `refreshSceneComments` refetches (`Orchestrator.RefetchScene`). Web `SceneComments`: "Who's who" filter, one-click credit, "Credit a name" from a selection.
+- `scene:find` may fill `Scene.comments` (plain text, author, ISO date via SDK `relativeDate`, likes, `reply_to` index). The backend doesn't store them yet (scope issue "Site comments stay, per source").
 
-## Face identification (`internal/face`)
+## Identification plugins
 
-`identifyFace(mediaId, imageId?)` sends a thumbnail/poster, gallery image (via image cache) or a supplied frame (`frameBase64`; web pauses and grabs via `VideoPlayer.captureFrame`, which needs the `crossOrigin = 'anonymous'` video from `playback.ts`; "Pick another moment" rescans) to every active `face:identify` plugin concurrently with a timeout (args `image_base64`, `mime_type`; result `candidates[{ name, similarity 0..1, image_url?, profile_urls }]`). Merges by `name_key`, returns `pictureUrl`, marks library performers. `creditPerformerByName` → `ingest.CreditPerformer`.
+No backend feature consumes these yet; they return as lookups that answer with matches and evidence (scope issue "Lookups return matches with evidence").
 
-- Similar videos: `videos` (`FaceVideoMatch`: own title, similarity, link, thumbnail) under "Similar videos", never a candidate, name or credit. `scenePlugin` is set when an active scene plugin's `meta.domains` serves the page; the dialog opens it as a scene (`resolvePluginResult`), else as a link.
-- facedigger (job API: create, poll, fetch; no key or captcha): `cams` titles → candidates; `porn` → `videos`;
-- pornstarbyface is the other `face:identify` plugin.
-- Forum posts: `posts` (`FacePostMatch`: title, link, thumbnail, `solved`, `names` of the accepted answer), kept in site order; the backend counts their names into `postPerformers` (creditable). namethatporn (reverse image search, multipart `imgfile` POST to `/search/images.html`, reads the accepted answers of the first 10 solved posts) fills them. Cloudflare 403s Bun's fetch but not Go's, so check it live via `TestEmbeddedBundlesLive`.
-- `post:find` (args `url`) reads one forum thread as `ForumPost` (question picture/clip, tags, comments with text, `names`, `titles`, `links` unwrapped from `redir.me`, `images`, `posts` = cards of other threads). `face.Service.Thread` picks the plugin by `meta.domains`, marks each link's `scenePlugin` and each name's library performer; GraphQL `forumThread(url)`. Web `/forum?url=` (`forumThreadUrl`) shows it as a chat with Watch buttons (`resolvePluginResult`); face search posts open there instead of the site.
-- `post:search` (args `query`, `limit`) → `ForumSearchResult { posts: ForumPostHit[] }` (title, link, larger "squares" thumbnail, date, solved, asker, snippet). `face.Service.SearchThreads` asks every such plugin concurrently, failures logged and skipped; GraphQL `forumSearch(query, limit)` (default 12 per forum). Web `ForumSearchShelf` shows them as "Threads" at the top of Home search and /search.
-- Web `FaceResults` shows each result kind (Performers, Similar videos, Posts) as its own view, switchable when more than one has results. Used by the dialog (credits) and by the top bar's fourth mode, Face search (`mediaFilter` `faces`, `FaceSearch` on Home and /search: drop/paste/pick a picture or its address → `identifyPicture`, tied to no media, so names open their library page or search the sites).
+- `face:identify` (args `image_base64`, `mime_type`; result `candidates[{ name, similarity 0..1, image_url?, profile_urls }]`, `videos`, `posts`): facedigger (job API: create, poll, fetch; no key or captcha; `cams` titles → candidates, `porn` → `videos`) and pornstarbyface.
+- namethatporn: reverse image search (multipart `imgfile` POST to `/search/images.html`, reads the accepted answers of the first 10 solved posts), `post:find` (one thread: question, comments, `names`, `links` unwrapped from `redir.me`), `post:search`. Cloudflare 403s Bun's fetch but not Go's, so check it live via `TestEmbeddedBundlesLive`.
 
 ## Site quirks
 

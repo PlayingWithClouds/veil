@@ -1,55 +1,44 @@
 ---
 paths:
-  - "apps/backend/internal/ingest/**"
+  - "schema/**"
+  - "apps/backend/internal/schema/**"
+  - "apps/backend/internal/db/**"
+  - "apps/backend/internal/library/**"
+  - "apps/backend/internal/pipeline/**"
   - "apps/backend/internal/alike/**"
   - "apps/backend/internal/names/**"
-  - "apps/backend/internal/db/**"
   - "apps/backend/internal/cache/**"
-  - "apps/backend/internal/media/**"
-  - "apps/backend/internal/pipeline/**"
   - "apps/backend/internal/jobs/**"
-  - "apps/backend/internal/updater/**"
+  - "apps/backend/internal/settings/**"
   - "apps/backend/internal/api/graphql/**"
 ---
 
 # Data model and ingest
 
-## Entities
+## Schema is the source
 
-Tags are flat. Collections don't nest.
+`schema/*.schema` (OpenSchema, entry `schema/veil.schema`) defines every stored model. The long-term scope is in GitHub issues labelled `scope`; only part of it is built.
 
-- scene: one video, the atomic unit. No series/season/episode; episodic content is a collection. Studio link, performers, tags, preview assets, streams.
-- gallery: image set, the stills counterpart of scene.
-- image: one row per image. `content = true` (gallery pages, standalone) is browsable/taggable/collectible; `content = false` is an asset (poster, logo, profile shot).
-- performer: bio, `aliases`, `tags`.
-- studio: `aliases`, `tags`, `parent` (network → studio), identity `source_url`.
-- collection: ordered members of any type (scene/gallery/image/performer/studio). `user_created` = playlist; otherwise scraper-made (site series, DVD; `created_by`/`source_url`).
-- tag: `aliases` merge synonyms at ingest.
-- scene_marker: tag and/or label at `seconds`, optional `end_seconds`. `personal` = user-made; otherwise global (`created_by`, e.g. plugin position tagger).
-
-Tag search inherits: `scenes(tagId)` matches the scene's own tags, its studio's, or any credited performer's, direct first, exposed as `tagMatch: "direct" | "inherited"`. Same for galleries and images (images also via their owning gallery).
+- `bun run schema` (root) generates `apps/backend/internal/schema/schema.go` and `packages/veil-sdk/src/schema/schema.ts`. Never edit those by hand.
+- Database changes: edit the schema, then `openschema migrate schema/veil.schema -t migration-sqlite --numbered apps/backend/internal/db/migrations --name <name>` writes the next migration and updates `openschema.snapshot.json`. Commit both. Hand-written data migrations still go in a numbered file.
+- `openschema` is not on npm: build it from the OpenSchema repo (`bun build src/cli/index.ts --compile --outfile ~/.local/bin/openschema`).
+- Only decorators that change generated output: `@abstract`, `@value`, `@index`, `@table`, `@invisible`. Links are the `ref<T>` type. Behaviour goes in comments.
+- Names are exact: tables `"Video"`, columns `"createdAt"`. Always `db.Quote` them.
 
 ## Storage helpers
 
-- `internal/db`: `"table:id"` record ids, JSON/BOOLEAN column decoding, `$name` params. `db.Open` applies migrations and tracks versions in `_migration`.
-- `internal/cache`: expiring kv on the `kv` table.
-- `internal/jobs`: DB-backed job queue + worker pool, VPN-gated. `internal/pipeline`: scene visits (`visit.go`), jobs (download, speed-check, enrich).
+- `internal/db`: uuid ids (`db.NewID`), `Insert`/`Update`/`Trash`/`Delete`, `Get[T]`, `QueryAs[T]`, `$name` params. Lists/maps/value objects are JSON text, booleans 0/1; `DecodeRow` decodes by the target struct's field types. Foreign keys are on. `db.Open` refuses databases from the pre-schema migration history.
+- Records are trashed (`deletedAt`), not deleted; every read filters `"deletedAt" IS NULL`. Site-owned rows (streams, gallery images) are replaced for good.
+- `internal/cache` (`CacheEntry`), `internal/settings` (`Setting`, plugin `""` = global), `internal/jobs` (`Job`; no worker runs jobs yet).
 
-## Ingest
+## Ingest (`internal/library`)
 
-- Observation-first: raw plugin payloads land in `observation`, merge into canonical records by identity (source_url → external_id → name), per-field history in `changes`.
-- Search/browse results are stubs only (listing fields, no scrape). A scene's detail page is fetched once, on first visit (`ensureSceneStreams` → `Orchestrator.VisitScene`, `scene.detail_fetched_at`). That fetch links the site's related videos (`scene_related`, source `site`); under 24, background searches by performer, tag, then title on the origin plugin fill the rest.
-- A gallery page is fetched on open while it has no images (`ensureGalleryImages` → `Orchestrator.VisitGallery`).
+- Identity: one `Source` row per site a record was found on (`plugin` + `externalId`, unique; `externalId` falls back to the URL). Ingesting the same site record again updates the record its source points at.
+- Performers, studios and tags without a site identity match by `nameKey` (`internal/names.Key`); a site identity, when given, is added as a source.
+- `IngestFound` (a page from `<entity>:find`): root first (video/gallery), then standalone performers/studios/tags. Marks the root's source `fetchedAt`, replaces its streams (`Stream`, per source) and gallery images.
+- `IngestListed` (a listing card): stub only; doesn't touch credits. Unfetched sources are read on first open (`pipeline.Visit` via `fetchVideo`/`fetchGallery`).
+- Not back yet: cross-site merging of the same video (`alike.SameSceneStrict` is still there, unused), per-field provenance (`FieldSource`), revisions.
 
-## Duplicates and merges
+## API (`internal/api/graphql`)
 
-- Performers, studios, tags match by spelling-insensitive `name_key` (`internal/names`); `RepairNamedRecords` merges older duplicates at startup.
-- Scenes (`alike.SameSceneStrict`), galleries (`alike.SameGallery`) and scraper collections (same name + a shared member) merge via `MergeDuplicateMedia` at startup and, for new scenes/galleries, at ingest.
-- A merged-away record's `source_url`/`external_id` stay in `entity_identity` and resolve to the survivor.
-- `alike.SameScene` (loose, hide-only): runtimes within 5%, then identical credited performers or near-identical title. No runtime never matches. `alike` also does pHash + performer/duration alternate-source matching.
-- Stage names: `Orchestrator.ProfilePerformers` (start + every 6 h, 100 per run) searches `freeones` for performers without a profile and ingests the page naming them. Its aliases are absorbed; any performer whose name is one of them (full names, 2+ words only) merges in (`mergeAliasTwins`, also in startup repair).
-- Manual: `mergeRecords(survivorId, mergedId)`; web ⋮ → "Merge into…" on performer/studio pages, a button on tag pages.
-
-## Subscriptions
-
-`search_subscription` (`kind` search | studio | performer | tag) re-runs every `interval_hours` (`internal/updater`). Searches use the live-search discovery path. Entity kinds list the entity's site page via `scene:list:page` when a plugin supports it, else keyword-search the name on its origin plugins (keeping scenes credited to it or uncredited), and always add library scenes credited to it. Results go to `search_subscription_item`; the first run counts as seen, later arrivals as new.
+Hand-written SDL in `schema/*.graphql`; library types are bound to the generated `internal/schema` structs in `gqlgen.yml`, and reference fields (`studio`, `performers`, `tags`, …) resolve to records. After SDL changes: `go run github.com/99designs/gqlgen generate`, then `bun run codegen` in `packages/veil-sdk`. gqlgen moves helper functions out of `*.resolvers.go` into a comment; keep helpers in `helpers.go`.

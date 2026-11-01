@@ -6,7 +6,8 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 
 ## Layout
 
-- `apps/backend/`: Go, module `github.com/playingwithclouds/veil`, entry `cmd/server/main.go`. Under `internal/`: `db/migrations/` schema, `api/graphql/` resolvers (SDL in `schema/*.graphql`), `media/` all GraphQL queries, `ingest/` `alike/` `names/` merging, `pipeline/` `jobs/` visits and job queue, `searchrank/` `discovery/` search, `recommend/` `updater/` recommendations and feeder, `plugins/` `pluginstore/` plugin runtime and install, `cams/` `livebuffer/` live cams, `stream/` `resolve/` `storage/` `blobcache/` streaming and blobs.
+- `schema/`: the data model in OpenSchema (`veil.schema` entry). Long-term scope: GitHub issues labelled `scope`.
+- `apps/backend/`: Go, module `github.com/playingwithclouds/veil`, entry `cmd/server/main.go`. Under `internal/`: `schema/` generated types, `db/` storage and generated `migrations/`, `library/` ingest and reads of the core records, `pipeline/` page visits, browse and search, `api/graphql/` resolvers (SDL in `schema/*.graphql`), `names/` `alike/` matching, `jobs/` `cache/` `settings/`, `plugins/` `pluginstore/` plugin runtime and install, `stream/` `resolve/` `storage/` `blobcache/` streaming and blobs.
 - `apps/backend/plugins/`: scraper plugins, bundled by `scripts/bundle-plugins.ts`.
 - `apps/web/`: SvelteKit 2, Svelte 5 runes, Tailwind v4.
 - `apps/mobile/`: Kotlin + Compose, embeds the Go backend.
@@ -15,6 +16,7 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 ## Commands
 
 - `bun dev` (root): bundler watch + backend + web + FlareSolverr. State in `DATA_DIR` (default `apps/backend/data`); wipe = stop backend, delete it.
+- After schema changes: `bun run schema` (root, needs the `openschema` CLI on PATH), then `openschema migrate schema/veil.schema -t migration-sqlite --numbered apps/backend/internal/db/migrations --name <name>`.
 - After SDL changes, in order: `go run github.com/99designs/gqlgen generate` (`apps/backend`), `bun run codegen` (`packages/veil-sdk`), `bun run check` (`apps/web`), `./gradlew generateVeilApolloSources` (`apps/mobile`).
 - Tests: `go test ./...` (`apps/backend`), `bun test` (plugin dir), `bunx playwright test`, `bun run test` (`apps/mobile`).
 - Android: `bun run apk` / `bun run android` in `apps/mobile`.
@@ -22,7 +24,7 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 ## Git
 
 - Work on `main`. No branches, no PRs.
-- Deferred work → GitHub issue on `PlayingWithClouds/veil` via `gh` as `PlayingWithClouds` (`gh auth status`, `gh auth switch`).
+- Deferred work → GitHub issue on `PlayingWithClouds/veil` via `gh` as `PlayingWithClouds` (`gh auth status`, `gh auth switch`). Never `export GH_TOKEN`; check `gh api user -q .login` prints `PlayingWithClouds` in the same command as any GitHub write, and check the author afterwards.
 - Dirty worktree at start: commit it first, so your changes stay separate.
 - Commit after each substantial change; push if a remote exists.
 - Title: short, what changed. Body: `AI Generated`, plus anything the diff doesn't show. Don't restate the diff or summarise.
@@ -30,8 +32,8 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 
 ## Invariants
 
-- Migrations are append-only: never edit an applied one, add a new numbered file.
-- API results never expose raw record ids, only `..._id: string`.
+- Migrations are append-only and generated from the schema: never edit an applied one, generate the next numbered file.
+- Ids are uuids; a reference (`ref<T>`) holds the referenced record's id.
 - JSON list columns (`tags`, `performers`, `aliases`): match with `json_each`, bind lists as `$param` → `IN (SELECT value FROM json_each($param))`.
 - Merges are irreversible, so merge matchers stay strict (`alike.SameSceneStrict`, `SameGallery`). The loose `alike.SameScene` only hides, never merges.
 - `internal/plugins/types.go` ⇄ `packages/veil-sdk/src/types.ts`: change both in one commit.
