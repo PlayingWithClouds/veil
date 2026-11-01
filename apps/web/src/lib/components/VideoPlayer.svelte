@@ -17,8 +17,8 @@
 	import { formatClock } from './SceneCard.svelte';
 	import { isCompact } from '$lib/stores/viewport';
 	import { portal } from '$lib/portal';
-	import { recordProgress } from '$lib/discovery';
-	import { sites, siteDisplayName } from '$lib/stores/sites';
+	import { sites } from '$lib/stores/sites';
+	import { siteDisplayName } from '$lib/plugins';
 	import { miniPlayer } from '$lib/stores/miniPlayer';
 	import {
 		isHlsSource,
@@ -75,10 +75,7 @@
 		// Resolves a source id to a playable URL, used to prebuffer a higher quality
 		// before auto-upgrading. Without it, only auto-downgrade is available.
 		onresolvesource?: (sourceId: string) => Promise<{ url: string; mimeType: string } | null>;
-		// Media record id (movie:… / episode:…). When set, playback progress is
-		// recorded for resume + recommendations.
-		mediaId?: string;
-		// Seconds to resume playback from on load (saved watch position). 0 = start.
+		// Seconds to resume playback from on load. 0 = start.
 		startPosition?: number;
 		// Inline players embed in the page (aspect-video box) instead of taking
 		// over the viewport as a fullscreen modal.
@@ -141,7 +138,6 @@
 		activeSourceId,
 		onselectsource,
 		onresolvesource,
-		mediaId,
 		startPosition = 0,
 		inline = false,
 		square = false,
@@ -496,12 +492,8 @@
 
 	// Seconds skipped per left/right arrow press.
 	const SEEK_STEP_SECONDS = 5;
-	// Progress is saved every 15 s of playing time, plus on pause/close. The
-	// interval is wall-clock time, not position, so skipping around keeps the
-	// saves regular: the backend sums the time between saves as time played.
-	const SAVE_INTERVAL_MS = 15_000;
+	// A start position this close to the end restarts the video instead.
 	const COMPLETE_FRACTION = 0.9;
-	let lastSavedAt = 0;
 
 	// Resume from the saved position once per source, when metadata is ready. Skip
 	// when near the very end so a finished video restarts instead of resuming to
@@ -525,24 +517,7 @@
 		videoEl.currentTime = startPosition;
 	}
 
-	function saveProgress(force = false) {
-		if (!mediaId || !videoEl) return;
-		const position = videoEl.currentTime;
-		const now = performance.now();
-		if (!force && (videoEl.paused || now - lastSavedAt < SAVE_INTERVAL_MS)) return;
-		lastSavedAt = now;
-		const total = videoEl.duration;
-		const completed = total > 0 && position >= total * COMPLETE_FRACTION;
-		recordProgress({
-			mediaId,
-			progressSeconds: position,
-			durationSeconds: isFinite(total) ? total : undefined,
-			completed
-		});
-	}
-
 	function close() {
-		saveProgress(true);
 		onclose();
 	}
 
@@ -1010,7 +985,6 @@
 			},
 			pause: () => {
 				playing = false;
-				saveProgress(true);
 				// Paused video keeps its controls up.
 				clearTimeout(hideTimer);
 				controlsVisible = true;
@@ -1028,7 +1002,6 @@
 			},
 			timeupdate: () => {
 				currentTime = video.currentTime;
-				saveProgress();
 			},
 			durationchange: () => {
 				duration = video.duration;

@@ -46,30 +46,17 @@
 </script>
 
 <script lang="ts">
-	import BookmarkSimpleIcon from 'phosphor-svelte/lib/BookmarkSimpleIcon';
 	import CardCaption from './CardCaption.svelte';
-	import SplitAddButton from './SplitAddButton.svelte';
-	import CardHoverPlayer from './CardHoverPlayer.svelte';
-	import { centerPreview } from '$lib/centerPreview';
-	import { watchProgress } from '$lib/stores/watchProgress';
-	import { quickSaveEntity } from '$lib/collectionActions';
 	import { formatRelativeTime } from '$lib/time';
-	import { pluginForUrl } from '$lib/search';
+	import { pluginForUrl } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 
 	interface Props {
 		item: SceneCardData;
 		onclick: () => void;
-		/** Play the video itself on hover almost at once (videos stored on the backend). */
-		instantHover?: boolean;
 	}
 
-	let { item, onclick, instantHover = false }: Props = $props();
-
-	/** Quick-saves to the last-used collection without opening the card. */
-	function save() {
-		if (item.id) quickSaveEntity('scene', item.id, item.title);
-	}
+	let { item, onclick }: Props = $props();
 
 	let frames = $derived(item.previewImages ?? []);
 	// Hover and focus tracked apart: the hover player covering the card takes
@@ -82,15 +69,8 @@
 		if (event.pointerType === 'touch') return;
 		hovered = true;
 	}
-	let active = $derived(hovered || focused);
-	// Touch screens: the card rests in the middle of the screen (centerPreview).
-	let centered = $state(false);
-	// The hover player covering the card replaces its preview.
-	let hoverPlaying = $state(false);
-	let previewing = $derived((active || centered) && !hoverPlaying);
+	let previewing = $derived(hovered || focused);
 	let frameIndex = $state(0);
-	// Length of the preview clip once it loaded, for the hover player's delay.
-	let clipSeconds = $state(0);
 
 	// Cycle preview frames only while hovered/focused; torn down when inactive.
 	$effect(() => {
@@ -105,6 +85,8 @@
 	});
 
 	let imageSrc = $derived(previewing && frames.length > 0 ? frames[frameIndex] : item.bannerUrl);
+	// The image URL that failed to load; the placeholder shows instead of its alt text.
+	let failedSrc = $state<string | null>(null);
 	let showVideo = $derived(previewing && Boolean(item.previewVideo));
 
 	let durationLabel = $derived(formatClock(item.durationSeconds));
@@ -116,27 +98,12 @@
 		if (!item.date) return null;
 		return formatRelativeTime(item.date);
 	});
-
-	// Resume fraction from the shared watch-progress store, when this scene has an
-	// unfinished watch. Prefers the card's own duration, falling back to the
-	// duration snapshot stored with the watch.
-	let resumeFraction = $derived.by(() => {
-		if (!item.id) return 0;
-		const progress = $watchProgress.get(item.id);
-		if (!progress) return 0;
-		const duration = item.durationSeconds || progress.durationSeconds;
-		if (!duration || duration <= 0) return 0;
-		const fraction = progress.progressSeconds / duration;
-		if (fraction <= 0) return 0;
-		return Math.min(fraction, 1);
-	});
 </script>
 
 <div class="group flex w-full flex-col gap-3">
 	<div
 		class="relative"
 		role="presentation"
-		use:centerPreview={(isCentered) => (centered = isCentered)}
 		onpointerenter={onPointerEnter}
 		onpointerleave={() => (hovered = false)}
 	>
@@ -147,8 +114,14 @@
 			onblur={() => (focused = false)}
 			class="tv-card relative block aspect-video w-full overflow-hidden ring-1 ring-white/5 transition-transform duration-200 group-hover:scale-[1.02] group-hover:shadow-xl focus:outline-none"
 		>
-			{#if imageSrc}
-				<img src={imageSrc} alt={item.title} loading="lazy" class="h-full w-full object-cover" />
+			{#if imageSrc && imageSrc !== failedSrc}
+				<img
+					src={imageSrc}
+					alt={item.title}
+					loading="lazy"
+					onerror={() => (failedSrc = imageSrc)}
+					class="h-full w-full object-cover"
+				/>
 			{:else}
 				<div class="flex h-full w-full items-center justify-center">
 					<span class="text-5xl opacity-10">🔞</span>
@@ -161,7 +134,6 @@
 				<video
 					src={item.previewVideo ?? undefined}
 					class="absolute inset-0 h-full w-full object-cover"
-					onloadedmetadata={(event) => (clipSeconds = event.currentTarget.duration)}
 					autoplay
 					muted
 					loop
@@ -197,7 +169,6 @@
 			{#if durationLabel}
 				<span
 					class="absolute right-1.5 bottom-1.5 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums"
-					class:bottom-2.5={resumeFraction > 0}
 				>
 					{durationLabel}
 				</span>
@@ -214,46 +185,7 @@
 					{/each}
 				</div>
 			{/if}
-
-			<!-- Resume bar: how far playback got into this scene. -->
-			{#if resumeFraction > 0}
-				<div class="absolute inset-x-0 bottom-0 h-1 bg-white/30">
-					<div class="bg-primary h-full" style:width="{resumeFraction * 100}%"></div>
-				</div>
-			{/if}
 		</button>
-
-		{#if hovered && item.id}
-			<CardHoverPlayer
-				sceneId={item.id}
-				title={item.title}
-				frameCount={frames.length}
-				{clipSeconds}
-				onshow={(shown) => (hoverPlaying = shown)}
-				onopen={onclick}
-				instant={instantHover}
-			/>
-		{/if}
-
-		{#if item.id}
-			<!-- Quick-save: appears on hover or keyboard/TV focus only. -->
-			<button
-				type="button"
-				onclick={save}
-				tabindex="-1"
-				aria-label="Save to collection"
-				title="Save to collection"
-				class="absolute top-1.5 left-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-md bg-black/70 text-white opacity-0 backdrop-blur-sm transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-black/90"
-			>
-				<BookmarkSimpleIcon size={16} weight="fill" />
-			</button>
-			<SplitAddButton
-				kind="scene"
-				mediaId={item.id}
-				title={item.title}
-				class="absolute top-1.5 left-11"
-			/>
-		{/if}
 	</div>
 
 	<CardCaption

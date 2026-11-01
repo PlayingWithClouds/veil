@@ -1,13 +1,13 @@
 // Ergonomic, fully-typed data client over the Veil GraphQL API.
 //
 //   const veil = createVeilClient({ url: "http://localhost:8080/graphql" });
-//   const scenes = await veil.scene.list({ limit: 50 });
-//   const scene  = await veil.scene.get(id);
+//   const videos = await veil.video.list({ limit: 50 });
+//   const video  = await veil.video.get(id);
 //
 // Every method selects all scalar fields by default. Pass a genql selection as
 // the last argument to pick fields or pull in relations:
 //
-//   await veil.scene.get(id, { id: true, title: true, tags: { name: true } });
+//   await veil.video.get(id, { id: true, title: true, tags: { name: true } });
 //
 // For anything outside plain CRUD (subscriptions, settings, custom mutations),
 // use the raw genql client exposed as `veil.client`.
@@ -158,42 +158,11 @@ export function createVeilClient(options: VeilClientOptions) {
     /** Raw genql client for subscriptions, settings, and bespoke operations. */
     client,
 
-    /** Stored playback/download sources for a scene. */
-    stream: {
-      /** List stored streams for a media record. */
-      async forMedia<S extends Record<string, any> = { __scalar: true }>(
-        mediaId: string,
-        select?: S,
-      ) {
-        const request = { mediaStreams: { __args: { mediaId }, ...(select ?? EVERYTHING) } };
-        const data = (await client.query(request as any)) as Record<string, any>;
-        return data.mediaStreams as any[];
-      },
-      /** Add a stream source to a media record. */
-      async create<S extends Record<string, any> = { __scalar: true }>(
-        input: ArgsOf<MutationGenqlSelection["createStream"]> extends { input: infer I } ? I : never,
-        select?: S,
-      ) {
-        const request = { createStream: { __args: { input }, ...(select ?? EVERYTHING) } };
-        const data = (await client.mutation(request as any)) as Record<string, any>;
-        return data.createStream;
-      },
-      /** Delete a stream by id. */
-      async remove(id: string): Promise<boolean> {
-        const request = { deleteStream: { __args: { id } } };
-        const data = (await client.mutation(request as any)) as Record<string, any>;
-        return Boolean(data.deleteStream);
-      },
-    },
-
-    // Content entities are read-only over GraphQL — they are ingested via the
-    // plugin pipeline, not created through the API.
-    scene: makeReaders(client, { one: "scene", many: "scenes" }),
+    // Records are read-only over GraphQL: they come in through the plugins.
+    video: makeReaders(client, { one: "video", many: "videos" }),
+    gallery: makeReaders(client, { one: "gallery", many: "galleries" }),
     performer: makeReaders(client, { one: "performer", many: "performers" }),
     studio: makeReaders(client, { one: "studio", many: "studios" }),
     tag: makeReaders(client, { one: "tag", many: "tags" }),
-    gallery: makeReaders(client, { one: "gallery", many: "galleries" }),
-    image: makeReaders(client, { one: "image", many: "images" }),
-    collection: makeReaders(client, { one: "collection", many: "collections" }),
   };
 }

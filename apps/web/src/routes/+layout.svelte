@@ -2,68 +2,17 @@
 	import './layout.css';
 	import '$lib/tv.css';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import MobileDrawer from '$lib/components/MobileDrawer.svelte';
-	import SceneActionSheet from '$lib/components/SceneActionSheet.svelte';
-	import SearchOverlay from '$lib/components/SearchOverlay.svelte';
-	import { searchOverlayOpen } from '$lib/stores/searchOverlay';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
-	import NotificationManager from '$lib/components/NotificationManager.svelte';
-	import CollectionDialog from '$lib/components/CollectionDialog.svelte';
-	import MergeDialog from '$lib/components/MergeDialog.svelte';
-	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
-	import SplitView from '$lib/components/SplitView.svelte';
-	import { splitState } from '$lib/stores/split';
-	import { page } from '$app/state';
-	import { splitUrl } from '$lib/routes';
 	import { afterNavigate } from '$app/navigation';
-	import { loadWatchProgress } from '$lib/stores/watchProgress';
-	import { refreshNewSubscriptionScenes } from '$lib/stores/newSubscriptionScenes';
-	import {
-		chromeHidden,
-		immersiveTop,
-		drawerDrag,
-		drawerOpen,
-		drawerProgress,
-		isCompact
-	} from '$lib/stores/viewport';
+	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { isNativeApp } from '$lib/server';
 	import { listenToBackButton } from '$lib/native';
-	import { listenForPressFeedback } from '$lib/pressFeedback';
-	import { listenForSwipes } from '$lib/swipeGestures';
 
 	let { children } = $props();
 
-	let onSplitPage = $derived(page.url.pathname === splitUrl());
-
-	/**
-	 * Pushes the page back as the phone drawer opens: it shrinks a little, slides
-	 * right and rounds its corners, like a card behind the drawer. Unset while
-	 * closed, so fixed children (players, dialogs) keep the viewport as their box.
-	 */
-	function pushedBackStyle(progress: number): string | undefined {
-		if (!$isCompact || progress === 0) return undefined;
-		return `transform: translateX(${progress * 1.5}rem) scale(${1 - progress * 0.04}); border-radius: ${progress * 1.5}rem;`;
-	}
-
-	// Keep the shared resume-progress map fresh: reload after every navigation, so
-	// a scene watched on the detail page shows an updated bar when the user
-	// returns to a list. Following a link also closes the phone drawer.
-	/** Room above the page: the top bar, or just the status bar on immersive pages. */
-	function topSpacerHeight(immersive: boolean): string {
-		if (immersive) return 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))';
-		return 'var(--compact-header-height)';
-	}
-
-	// An immersive page that mounts after the navigation hides the bar at once.
-	$effect(() => {
-		if ($immersiveTop) chromeHidden.set(true);
-	});
-
 	afterNavigate(() => {
-		loadWatchProgress();
-		drawerOpen.set(false);
-		chromeHidden.set($immersiveTop);
+		chromeHidden.set(false);
 	});
 
 	// Scroll in one direction before the phone top bar hides or returns, so
@@ -79,34 +28,18 @@
 		const delta = scrollTop - lastScrollTop;
 		if (Math.abs(delta) < CHROME_SCROLL_THRESHOLD) return;
 		lastScrollTop = scrollTop;
-		const scrollingDown = delta > 0 && scrollTop > CHROME_HIDE_AFTER;
-		const atImmersiveTop = $immersiveTop && scrollTop <= CHROME_HIDE_AFTER;
-		chromeHidden.set(scrollingDown || atImmersiveTop);
+		chromeHidden.set(delta > 0 && scrollTop > CHROME_HIDE_AFTER);
 	}
-
-	// The subscription list and unseen badge feed both the sidebar and the phone tab bar.
-	$effect(() => {
-		refreshNewSubscriptionScenes();
-	});
 
 	$effect(() => {
 		if (!isNativeApp()) return;
 		return listenToBackButton();
 	});
 
-	$effect(() => listenForPressFeedback());
-
-	$effect(() => {
-		if (!$isCompact) return;
-		return listenForSwipes();
-	});
-
-	// Opening the sidebar via the left edge is handled by the FocusList that
-	// currently owns keyboard navigation (JS-tracked position); the layout only
-	// handles global shortcuts.
-	function onWindowKeydown(e: KeyboardEvent) {
-		if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-			e.preventDefault();
+	/** Ctrl/Cmd+K focuses the search. */
+	function onWindowKeydown(event: KeyboardEvent) {
+		if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+			event.preventDefault();
 			document.getElementById('global-search')?.focus();
 		}
 	}
@@ -116,36 +49,23 @@
 
 <div
 	class="app-shell bg-base-100 flex h-dvh flex-col overflow-hidden"
-	class:app-shell-dragging={$drawerDrag !== null}
 	class:chrome-hidden={$chromeHidden}
-	style={pushedBackStyle($drawerProgress)}
 >
 	<TopBar />
-	<NotificationManager />
-	<CollectionDialog />
-	<MergeDialog />
-	<MiniPlayer />
 	<div class="flex min-h-0 flex-1">
 		{#if !$isCompact}
 			<Sidebar />
 		{/if}
 		<main
-			data-swipe-page
 			onscroll={onMainScroll}
-			class="no-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 max-md:px-3 max-md:pb-bottom-nav"
+			class="no-scrollbar max-md:pb-bottom-nav min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 max-md:px-3"
 		>
 			{#if $isCompact}
 				<!-- Room for the floating top bar. A spacer, not padding: sticky
-				     offsets count from inside the scroll container's padding, so
-				     padding would push sticky rows (top-chrome) down twice. -->
-				<div class="shrink-0" style:height={topSpacerHeight($immersiveTop)} aria-hidden="true"></div>
+				     offsets count from inside the scroll container's padding. -->
+				<div class="shrink-0" style:height="var(--compact-header-height)" aria-hidden="true"></div>
 			{/if}
 			{@render children()}
-			<!-- Mounted here rather than by /split so its players survive navigation;
-			     away from /split it is a floating dock. -->
-			{#if onSplitPage || $splitState.panes.length > 0}
-				<SplitView docked={!onSplitPage} />
-			{/if}
 		</main>
 	</div>
 	{#if $isCompact}
@@ -153,23 +73,10 @@
 	{/if}
 </div>
 
-{#if $isCompact}
-	<MobileDrawer />
-	<SceneActionSheet />
-	{#if $searchOverlayOpen}
-		<SearchOverlay />
-	{/if}
-{/if}
-
 <style>
-	/* Transform timed like the drawer panel so page and drawer move as one;
-	   --chrome-offset like the top bar sliding away. */
 	.app-shell {
 		--chrome-offset: 0px;
-		transition:
-			transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
-			border-radius 340ms cubic-bezier(0.22, 1, 0.36, 1),
-			--chrome-offset 280ms cubic-bezier(0.22, 1, 0.36, 1);
+		transition: --chrome-offset 280ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
 	/* The phone layout; same rule as isCompact. */
@@ -180,10 +87,6 @@
 		.app-shell.chrome-hidden {
 			--chrome-offset: 0px;
 		}
-	}
-
-	.app-shell-dragging {
-		transition: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

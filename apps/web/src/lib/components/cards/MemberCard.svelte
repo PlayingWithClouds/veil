@@ -1,46 +1,44 @@
+<!--
+	A performer or studio in a grid: its picture (portrait for performers,
+	landscape for studios), name and what the library holds of it.
+-->
 <script lang="ts">
-	import FilmStripIcon from 'phosphor-svelte/lib/FilmStripIcon';
-	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
-	import ImageIcon from 'phosphor-svelte/lib/ImageIcon';
 	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import FilmSlateIcon from 'phosphor-svelte/lib/FilmSlateIcon';
-	import type { Component } from 'svelte';
 	import { cacheUrl } from '$lib/img';
-	import type { CollectionMember } from '$lib/collections';
 
-	let { member, onclick }: { member: CollectionMember; onclick?: () => void } = $props();
+	interface Props {
+		kind: 'performer' | 'studio';
+		name: string;
+		imageUrl: string | null;
+		// A short line under the name, like "12 videos".
+		detail?: string | null;
+		href: string;
+	}
 
-	const typeIcons: Record<string, Component> = {
-		scene: FilmStripIcon,
-		gallery: ImagesIcon,
-		image: ImageIcon,
-		performer: UserIcon,
-		studio: FilmSlateIcon
-	};
+	let { kind, name, imageUrl, detail = null, href }: Props = $props();
 
-	let TypeIcon = $derived(typeIcons[member.mediaType] ?? FilmStripIcon);
-	let poster = $derived(cacheUrl(member.posterPath));
-	// Performers read best as portraits; everything else is landscape.
-	let portrait = $derived(member.mediaType === 'performer');
+	let picture = $derived(cacheUrl(imageUrl));
+	let portrait = $derived(kind === 'performer');
 </script>
 
-<button type="button" class="flex w-full flex-col gap-2 text-left" {onclick}>
+<a {href} class="flex w-full flex-col gap-2 text-left">
 	<div
-		class="tv-card bg-base-200 relative flex w-full items-center justify-center overflow-hidden rounded-xl {portrait
-			? 'aspect-[2/3]'
-			: 'aspect-video'}"
+		class="tv-card bg-base-200 relative flex w-full items-center justify-center overflow-hidden rounded-xl"
+		style:aspect-ratio={portrait ? '2 / 3' : '16 / 9'}
 	>
-		{#if poster}
-			<img src={poster} alt={member.title} loading="lazy" class="h-full w-full object-cover" />
+		{#if picture}
+			<img src={picture} alt={name} loading="lazy" class="h-full w-full object-cover" />
+		{:else if portrait}
+			<UserIcon size={32} class="opacity-15" />
 		{:else}
-			<TypeIcon size={32} class="opacity-15" />
+			<FilmSlateIcon size={32} class="opacity-15" />
 		{/if}
-		<span
-			class="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80"
-		>
-			<TypeIcon size={11} />
-			{member.mediaType}
-		</span>
 	</div>
-	<span class="line-clamp-1 text-sm font-medium">{member.title}</span>
-</button>
+	<span class="flex min-w-0 flex-col">
+		<span class="line-clamp-1 text-sm font-medium">{name}</span>
+		{#if detail}
+			<span class="text-base-content/50 text-xs">{detail}</span>
+		{/if}
+	</span>
+</a>

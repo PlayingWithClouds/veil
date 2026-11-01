@@ -1,59 +1,32 @@
 // Canonical route builders. Every internal link goes through these so a route
 // rename is a one-line change and stray literals are grep-able.
 
-export function sceneUrl(id: string): string {
-	return `/scene/${encodeURIComponent(id)}`;
+/** One video's page. */
+export function videoUrl(id: string): string {
+	return `/video/${encodeURIComponent(id)}`;
 }
 
+/** One performer's page. */
 export function performerUrl(id: string): string {
 	return `/performers/${encodeURIComponent(id)}`;
 }
 
+/** One studio's page. */
 export function studioUrl(id: string): string {
 	return `/studios/${encodeURIComponent(id)}`;
 }
 
+/** One gallery's page. */
 export function galleryUrl(id: string): string {
 	return `/galleries/${encodeURIComponent(id)}`;
 }
 
-export function collectionUrl(id: string): string {
-	return `/collections/${encodeURIComponent(id)}`;
+/** Home with the video grid filtered to one tag. Tags have no page of their own. */
+export function tagFilterUrl(id: string): string {
+	return `/?${new URLSearchParams({ tag: id })}`;
 }
 
-export function tagUrl(id: string): string {
-	return `/tags/${encodeURIComponent(id)}`;
-}
-
-/** Subscriptions page, optionally with one subscription's feed open. */
-export function subscriptionsUrl(id?: string): string {
-	if (id === undefined) return '/subscriptions';
-	return `/subscriptions?id=${encodeURIComponent(id)}`;
-}
-
-/** The live cams grid. */
-export function camsUrl(): string {
-	return '/cams';
-}
-
-/** One live cam room. */
-export function camUrl(id: string): string {
-	return `/cams/${encodeURIComponent(id)}`;
-}
-
-/** Home searching for query, optionally only the sites carrying a kind of content (e.g. "cam-shows"). */
-export function homeSearchUrl(query: string, content?: string): string {
-	const params = new URLSearchParams({ q: query });
-	if (content) params.set('content', content);
-	return `/?${params}`;
-}
-
-/** A thread of an identification forum (e.g. a NameThatPorn post), shown in the app. */
-export function forumThreadUrl(url: string): string {
-	return `/forum?${new URLSearchParams({ url })}`;
-}
-
-/** The split view that plays several cams and videos side by side. */
-export function splitUrl(): string {
-	return '/split';
+/** The plugins page. */
+export function pluginsUrl(): string {
+	return '/plugins';
 }

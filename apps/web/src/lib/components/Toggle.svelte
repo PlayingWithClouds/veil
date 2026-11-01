@@ -25,6 +25,6 @@
 	<span
 		class="inline-block h-5 w-5 rounded-full transition-transform {checked
 			? 'translate-x-[18px] bg-black'
-			: 'translate-x-0.5 bg-base-content/40'}"
+			: 'bg-base-content/40 translate-x-0.5'}"
 	></span>
 </button>

@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
-	import type { SearchPlugin } from '$lib/search';
+	import type { SitePlugin } from '$lib/plugins';
 	import { isCompact } from '$lib/stores/viewport';
 
 	interface Props {
@@ -15,7 +15,7 @@
 		byline?: string | null;
 		// Channel or performer image for the avatar; falls back to the site icon.
 		avatarUrl?: string | null;
-		site?: SearchPlugin | null;
+		site?: SitePlugin | null;
 		// Shown instead of the site's name, e.g. the host for a plugin covering many sites.
 		siteName?: string | null;
 		// Trailing detail on the last line (age, image count, …).
@@ -58,56 +58,59 @@
 	let avatarInitial = $derived((byline || title || '?').trim().charAt(0).toUpperCase());
 
 	/** The site's display label. */
-	function siteLabel(plugin: SearchPlugin): string {
+	function siteLabel(plugin: SitePlugin): string {
 		if (plugin.displayName) return plugin.displayName;
 		return plugin.name;
 	}
 </script>
 
 <div class="flex items-start gap-1">
-<button type="button" {onclick} class="flex min-w-0 flex-1 gap-3 text-left" {title}>
-	<span class="bg-base-300 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
-		{#if avatarSource}
-			<img src={avatarSource} alt="" loading="lazy" class="h-full w-full object-cover" />
-		{:else}
-			<span class="text-base-content/60 text-sm font-semibold">{avatarInitial}</span>
-		{/if}
-	</span>
-	<span class="flex min-w-0 flex-1 flex-col gap-0.5">
-		<span class="line-clamp-2 text-[15px] leading-5 font-medium">{title}</span>
-		{#if $isCompact}
-			{#if compactMeta}
-				<span class="text-base-content/60 truncate text-[13px] leading-[18px]">{compactMeta}</span>
+	<button type="button" {onclick} class="flex min-w-0 flex-1 gap-3 text-left" {title}>
+		<span
+			class="bg-base-300 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+		>
+			{#if avatarSource}
+				<img src={avatarSource} alt="" loading="lazy" class="h-full w-full object-cover" />
+			{:else}
+				<span class="text-base-content/60 text-sm font-semibold">{avatarInitial}</span>
 			{/if}
-		{:else if byline}
-			<span class="text-base-content/60 truncate text-[13px] leading-[18px]">{byline}</span>
-		{/if}
-		{#if !$isCompact && (shownSite || detail)}
-			<span class="text-base-content/60 flex items-center gap-1 text-[13px] leading-[18px]">
-				{#if shownSite}
-					<span class="truncate">{shownSite}</span>
+		</span>
+		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span class="line-clamp-2 text-[15px] leading-5 font-medium">{title}</span>
+			{#if $isCompact}
+				{#if compactMeta}
+					<span class="text-base-content/60 truncate text-[13px] leading-[18px]">{compactMeta}</span
+					>
 				{/if}
-				{#if shownSite && detail}
-					<span aria-hidden="true">·</span>
-				{/if}
-				{#if detail}
-					<span class="shrink-0">{detail}</span>
-				{/if}
-			</span>
-		{/if}
-		{#if note}
-			<span class="text-base-content/40 truncate text-xs leading-4">{note}</span>
-		{/if}
-	</span>
-</button>
-{#if onmore}
-	<button
-		type="button"
-		onclick={onmore}
-		aria-label="More actions"
-		class="text-base-content/70 -mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-	>
-		<DotsThreeVerticalIcon size={20} weight="bold" />
+			{:else if byline}
+				<span class="text-base-content/60 truncate text-[13px] leading-[18px]">{byline}</span>
+			{/if}
+			{#if !$isCompact && (shownSite || detail)}
+				<span class="text-base-content/60 flex items-center gap-1 text-[13px] leading-[18px]">
+					{#if shownSite}
+						<span class="truncate">{shownSite}</span>
+					{/if}
+					{#if shownSite && detail}
+						<span aria-hidden="true">·</span>
+					{/if}
+					{#if detail}
+						<span class="shrink-0">{detail}</span>
+					{/if}
+				</span>
+			{/if}
+			{#if note}
+				<span class="text-base-content/40 truncate text-xs leading-4">{note}</span>
+			{/if}
+		</span>
 	</button>
-{/if}
+	{#if onmore}
+		<button
+			type="button"
+			onclick={onmore}
+			aria-label="More actions"
+			class="text-base-content/70 -mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+		>
+			<DotsThreeVerticalIcon size={20} weight="bold" />
+		</button>
+	{/if}
 </div>

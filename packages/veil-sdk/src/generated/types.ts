@@ -3,167 +3,14 @@ export default {
         1,
         2,
         3,
-        4,
         5,
-        38,
-        65,
-        79
+        9,
+        13
     ],
     "types": {
         "Query": {
-            "vpnStatus": [
-                8
-            ],
-            "stream": [
-                9,
-                {
-                    "url": [
-                        1,
-                        "String!"
-                    ],
-                    "pluginName": [
-                        1
-                    ]
-                }
-            ],
-            "checkProviderSpeeds": [
-                11,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "blocklist": [
-                14
-            ],
-            "camRooms": [
-                16,
-                {
-                    "sources": [
-                        1,
-                        "[String!]"
-                    ],
-                    "tag": [
-                        1
-                    ],
-                    "query": [
-                        1
-                    ],
-                    "gender": [
-                        1
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "camSources": [
-                17
-            ],
-            "camModel": [
-                15,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "followedCamModels": [
-                15
-            ],
-            "camStream": [
-                18,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "camRecordings": [
-                19,
-                {
-                    "camModelId": [
-                        2
-                    ],
-                    "activeOnly": [
-                        4
-                    ]
-                }
-            ],
-            "changes": [
-                20,
-                {
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ],
-                    "key": [
-                        1
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "collections": [
-                21,
-                {
-                    "search": [
-                        1
-                    ],
-                    "tagId": [
-                        2
-                    ],
-                    "origin": [
-                        1
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "collection": [
-                21,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "collectionMembers": [
-                22,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "collectionIdsForMedia": [
-                2,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "forumThread": [
-                29,
+            "play": [
+                6,
                 {
                     "url": [
                         1,
@@ -171,1028 +18,246 @@ export default {
                     ]
                 }
             ],
-            "forumSearch": [
-                28,
+            "videos": [
+                12,
                 {
-                    "query": [
-                        1,
-                        "String!"
+                    "filter": [
+                        8
                     ],
                     "limit": [
-                        3
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "video": [
+                12,
+                {
+                    "id": [
+                        3,
+                        "ID!"
                     ]
                 }
             ],
             "galleries": [
-                34,
+                16,
                 {
+                    "filter": [
+                        8
+                    ],
                     "limit": [
-                        3
+                        2
                     ],
                     "offset": [
-                        3
-                    ],
-                    "search": [
-                        1
-                    ],
-                    "studioId": [
                         2
-                    ],
-                    "performerId": [
-                        2
-                    ],
-                    "tagId": [
-                        2
-                    ],
-                    "sources": [
-                        1,
-                        "[String!]"
                     ]
                 }
             ],
             "gallery": [
-                34,
+                16,
                 {
                     "id": [
-                        2,
+                        3,
                         "ID!"
-                    ]
-                }
-            ],
-            "findGalleryVideos": [
-                64,
-                {
-                    "galleryId": [
-                        2,
-                        "ID!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "images": [
-                35,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ],
-                    "search": [
-                        1
-                    ],
-                    "studioId": [
-                        2
-                    ],
-                    "performerId": [
-                        2
-                    ],
-                    "tagId": [
-                        2
-                    ],
-                    "galleryId": [
-                        2
-                    ],
-                    "sort": [
-                        1
-                    ]
-                }
-            ],
-            "image": [
-                35,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "jobs": [
-                36
-            ],
-            "job": [
-                36,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "downloadedScenes": [
-                57
-            ],
-            "mediaCards": [
-                37,
-                {
-                    "ids": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "oCount": [
-                3,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "observation": [
-                39,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "observations": [
-                39,
-                {
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ],
-                    "status": [
-                        1
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
                     ]
                 }
             ],
             "performers": [
-                40,
+                18,
                 {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ],
-                    "search": [
+                    "text": [
                         1
                     ],
-                    "tagId": [
+                    "limit": [
                         2
                     ],
-                    "sort": [
-                        1
+                    "offset": [
+                        2
                     ]
                 }
             ],
             "performer": [
-                40,
+                18,
                 {
                     "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "plugins": [
-                42
-            ],
-            "plugin": [
-                42,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "pluginPackages": [
-                41,
-                {
-                    "query": [
-                        1
-                    ]
-                }
-            ],
-            "pluginCategories": [
-                46,
-                {
-                    "plugin": [
-                        1,
-                        "String!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "recommendations": [
-                50,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ],
-                    "refresh": [
-                        4
-                    ],
-                    "sources": [
-                        1,
-                        "[String!]"
-                    ],
-                    "minDuration": [
-                        3
-                    ],
-                    "maxDuration": [
-                        3
-                    ],
-                    "excludeTagIds": [
-                        2,
-                        "[ID!]"
-                    ]
-                }
-            ],
-            "tasteProfile": [
-                48,
-                {
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "recommendedRows": [
-                52,
-                {
-                    "rowLimit": [
-                        3
-                    ],
-                    "perRow": [
-                        3
-                    ]
-                }
-            ],
-            "recommendedCategories": [
-                53,
-                {
-                    "categoryLimit": [
-                        3
-                    ],
-                    "perCategory": [
-                        3
-                    ]
-                }
-            ],
-            "recommendationPair": [
-                57
-            ],
-            "savedFilters": [
-                56
-            ],
-            "scenes": [
-                57,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ],
-                    "search": [
-                        1
-                    ],
-                    "studioId": [
-                        2
-                    ],
-                    "performerId": [
-                        2
-                    ],
-                    "tagId": [
-                        2
-                    ],
-                    "sort": [
-                        1
-                    ],
-                    "minRating": [
-                        5
-                    ],
-                    "minDuration": [
-                        3
-                    ],
-                    "maxDuration": [
-                        3
-                    ],
-                    "dateFrom": [
-                        1
-                    ],
-                    "dateTo": [
-                        1
-                    ],
-                    "sources": [
-                        1,
-                        "[String!]"
-                    ],
-                    "includeTagIds": [
-                        2,
-                        "[ID!]"
-                    ],
-                    "excludeTagIds": [
-                        2,
-                        "[ID!]"
-                    ]
-                }
-            ],
-            "scene": [
-                57,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "randomScenes": [
-                57,
-                {
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "recommendedFeed": [
-                57,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "sceneHeat": [
-                59,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "sceneMarkers": [
-                62,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "pluginSearch": [
-                63,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "pluginNames": [
-                        1,
-                        "[String!]"
-                    ]
-                }
-            ],
-            "pluginBrowse": [
-                63,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "recommendedBrowse": [
-                63,
-                {
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "findAlikeSources": [
-                64,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "searchSuggestions": [
-                66,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "sourceSuggestions": [
-                67,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ],
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "settings": [
-                68
-            ],
-            "settingEntries": [
-                72,
-                {
-                    "scope": [
-                        1
-                    ]
-                }
-            ],
-            "mediaStreams": [
-                74,
-                {
-                    "mediaId": [
-                        2,
+                        3,
                         "ID!"
                     ]
                 }
             ],
             "studios": [
-                76,
+                20,
                 {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ],
-                    "search": [
+                    "text": [
                         1
                     ],
-                    "tagId": [
+                    "limit": [
                         2
                     ],
-                    "sort": [
-                        1
+                    "offset": [
+                        2
                     ]
                 }
             ],
             "studio": [
-                76,
+                20,
                 {
                     "id": [
-                        2,
+                        3,
                         "ID!"
-                    ]
-                }
-            ],
-            "searchSubscriptions": [
-                81
-            ],
-            "searchSubscription": [
-                81,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "subscriptionForTarget": [
-                81,
-                {
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "subscriptionFeed": [
-                78,
-                {
-                    "filter": [
-                        77
-                    ],
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
                     ]
                 }
             ],
             "tags": [
-                82,
+                21,
                 {
+                    "text": [
+                        1
+                    ],
                     "limit": [
-                        3
+                        2
                     ],
                     "offset": [
-                        3
-                    ],
-                    "search": [
-                        1
-                    ],
-                    "category": [
-                        1
+                        2
                     ]
                 }
             ],
             "tag": [
-                82,
+                21,
                 {
                     "id": [
-                        2,
+                        3,
                         "ID!"
                     ]
                 }
             ],
-            "userRating": [
-                83,
+            "plugins": [
+                25
+            ],
+            "plugin": [
+                25,
                 {
-                    "mediaId": [
-                        2,
-                        "ID!"
+                    "name": [
+                        1,
+                        "String!"
                     ]
                 }
             ],
-            "userRatings": [
-                83,
+            "pluginPackages": [
+                24,
                 {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
+                    "query": [
+                        1
                     ]
                 }
-            ],
-            "watchHistory": [
-                85,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "watchHistoryEntry": [
-                85,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "watchlist": [
-                87
             ],
             "__typename": [
                 1
             ]
         },
         "String": {},
-        "ID": {},
         "Int": {},
-        "Boolean": {},
-        "Float": {},
+        "ID": {},
         "Mutation": {
             "scrape": [
+                7,
+                {
+                    "plugin": [
+                        1,
+                        "String!"
+                    ],
+                    "url": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
+            "fetchVideo": [
                 12,
                 {
-                    "pluginName": [
-                        1,
-                        "String!"
-                    ],
-                    "url": [
-                        1,
-                        "String!"
+                    "id": [
+                        3,
+                        "ID!"
                     ]
                 }
             ],
-            "queueDownload": [
-                2,
+            "fetchGallery": [
+                16,
                 {
-                    "url": [
-                        1,
-                        "String!"
-                    ],
-                    "title": [
-                        1,
-                        "String!"
-                    ],
-                    "pluginName": [
-                        1
+                    "id": [
+                        3,
+                        "ID!"
                     ]
                 }
             ],
-            "addBlock": [
-                14,
+            "browse": [
+                10,
                 {
+                    "plugin": [
+                        1,
+                        "String!"
+                    ],
                     "kind": [
-                        1,
-                        "String!"
+                        9,
+                        "ListKind!"
                     ],
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ],
-                    "label": [
-                        1
-                    ]
-                }
-            ],
-            "removeBlock": [
-                4,
-                {
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "followCamModel": [
-                15,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "unfollowCamModel": [
-                15,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "startCamRecording": [
-                19,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ],
-                    "quality": [
+                    "query": [
                         1
                     ],
-                    "fromSecondsAgo": [
-                        3
-                    ]
-                }
-            ],
-            "stopCamRecording": [
-                19,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "setCamAutoRecord": [
-                15,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ],
-                    "enabled": [
-                        4,
-                        "Boolean!"
-                    ],
-                    "quality": [
-                        1
-                    ]
-                }
-            ],
-            "createCollection": [
-                21,
-                {
-                    "name": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "renameCollection": [
-                21,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ],
-                    "name": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "deleteCollection": [
-                4,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "addToCollection": [
-                4,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ],
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "removeFromCollection": [
-                4,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ],
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "reorderCollection": [
-                4,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ],
-                    "mediaIds": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "setCollectionTags": [
-                21,
-                {
-                    "collectionId": [
-                        2,
-                        "ID!"
-                    ],
-                    "tagIds": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "identifyFace": [
-                23,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ],
-                    "imageId": [
+                    "limit": [
                         2
                     ],
-                    "frameBase64": [
-                        1
+                    "offset": [
+                        2
                     ]
                 }
             ],
-            "identifyPicture": [
-                23,
-                {
-                    "pictureBase64": [
-                        1
-                    ],
-                    "pictureUrl": [
-                        1
-                    ]
-                }
-            ],
-            "creditPerformerByName": [
-                40,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ],
-                    "name": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "ensureGalleryImages": [
-                34,
-                {
-                    "galleryId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "linkGalleryVideo": [
-                57,
-                {
-                    "galleryId": [
-                        2,
-                        "ID!"
-                    ],
-                    "pluginName": [
-                        1,
-                        "String!"
-                    ],
-                    "url": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "setImageTags": [
-                35,
-                {
-                    "imageId": [
-                        2,
-                        "ID!"
-                    ],
-                    "tagIds": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "deleteJob": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "deleteJobsByKind": [
-                3,
+            "search": [
+                10,
                 {
                     "kind": [
+                        9,
+                        "ListKind!"
+                    ],
+                    "query": [
                         1,
                         "String!"
-                    ]
-                }
-            ],
-            "clearJobs": [
-                3
-            ],
-            "reorderDownloads": [
-                4,
-                {
-                    "jobIds": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "retryJob": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "mergeRecords": [
-                2,
-                {
-                    "survivorId": [
-                        2,
-                        "ID!"
                     ],
-                    "mergedId": [
-                        2,
-                        "ID!"
+                    "limit": [
+                        2
                     ]
                 }
             ],
-            "incrementOCount": [
-                3,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "decrementOCount": [
-                3,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "updateObservationStatus": [
-                39,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ],
-                    "status": [
-                        38,
-                        "ObservationStatus!"
-                    ]
-                }
-            ],
-            "setPerformerFavorite": [
-                40,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ],
-                    "favorite": [
-                        4,
-                        "Boolean!"
-                    ]
-                }
-            ],
-            "enrichPerformer": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "togglePlugin": [
-                4,
+            "setPluginEnabled": [
+                5,
                 {
                     "name": [
                         1,
                         "String!"
                     ],
                     "enabled": [
-                        4,
+                        5,
                         "Boolean!"
                     ]
                 }
             ],
             "updatePluginSettings": [
-                4,
+                5,
                 {
-                    "pluginName": [
+                    "plugin": [
                         1,
                         "String!"
                     ],
                     "values": [
-                        45,
+                        28,
                         "[PluginSettingValueInput!]!"
                     ]
                 }
             ],
             "installPlugin": [
-                4,
+                5,
                 {
                     "packageName": [
                         1,
@@ -1201,7 +266,7 @@ export default {
                 }
             ],
             "uninstallPlugin": [
-                4,
+                5,
                 {
                     "name": [
                         1,
@@ -1212,416 +277,12 @@ export default {
             "updatePlugins": [
                 1
             ],
-            "recordRecommendationChoice": [
-                4,
-                {
-                    "chosenMediaId": [
-                        2,
-                        "ID!"
-                    ],
-                    "rejectedMediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "recordImpressions": [
-                3,
-                {
-                    "impressions": [
-                        47,
-                        "[ImpressionInput!]!"
-                    ]
-                }
-            ],
-            "createSavedFilter": [
-                56,
-                {
-                    "name": [
-                        1,
-                        "String!"
-                    ],
-                    "filter": [
-                        54,
-                        "SceneFilterInput!"
-                    ]
-                }
-            ],
-            "deleteSavedFilter": [
-                4,
-                {
-                    "filterId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "refreshSceneComments": [
-                58,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "recordSceneHeat": [
-                4,
-                {
-                    "input": [
-                        60,
-                        "RecordSceneHeatInput!"
-                    ]
-                }
-            ],
-            "setSceneThumbnail": [
-                4,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ],
-                    "atSeconds": [
-                        5,
-                        "Float!"
-                    ],
-                    "jpegBase64": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "createSceneMarker": [
-                62,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ],
-                    "seconds": [
-                        5,
-                        "Float!"
-                    ],
-                    "endSeconds": [
-                        5
-                    ],
-                    "tagName": [
-                        1
-                    ],
-                    "label": [
-                        1
-                    ]
-                }
-            ],
-            "deleteSceneMarker": [
-                4,
-                {
-                    "markerId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "resolvePluginResult": [
-                2,
-                {
-                    "pluginName": [
-                        1,
-                        "String!"
-                    ],
-                    "url": [
-                        1,
-                        "String!"
-                    ],
-                    "posterUrl": [
-                        1
-                    ]
-                }
-            ],
-            "attachAlikeSource": [
-                74,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ],
-                    "pluginName": [
-                        1,
-                        "String!"
-                    ],
-                    "url": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "ensureEntityScenes": [
-                3,
-                {
-                    "entityId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "recordSearch": [
-                4,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "forgetSearch": [
-                4,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ]
-                }
-            ],
-            "updateSettings": [
-                68,
-                {
-                    "input": [
-                        69,
-                        "UpdateSettingsInput!"
-                    ]
-                }
-            ],
-            "upsertSettingEntry": [
-                72,
-                {
-                    "input": [
-                        73,
-                        "UpsertSettingEntryInput!"
-                    ]
-                }
-            ],
-            "deleteSettingEntry": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "createStream": [
-                74,
-                {
-                    "input": [
-                        75,
-                        "CreateStreamInput!"
-                    ]
-                }
-            ],
-            "deleteStream": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "ensureSceneStreams": [
-                74,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "setStudioTags": [
-                76,
-                {
-                    "studioId": [
-                        2,
-                        "ID!"
-                    ],
-                    "tagIds": [
-                        2,
-                        "[ID!]!"
-                    ]
-                }
-            ],
-            "subscribeSearch": [
-                81,
-                {
-                    "query": [
-                        1,
-                        "String!"
-                    ],
-                    "sources": [
-                        1,
-                        "[String!]"
-                    ],
-                    "intervalHours": [
-                        3
-                    ]
-                }
-            ],
-            "subscribe": [
-                81,
-                {
-                    "kind": [
-                        79,
-                        "SubscriptionKind!"
-                    ],
-                    "targetId": [
-                        2,
-                        "ID!"
-                    ],
-                    "intervalHours": [
-                        3
-                    ]
-                }
-            ],
-            "updateSearchSubscription": [
-                81,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ],
-                    "intervalHours": [
-                        3
-                    ],
-                    "enabled": [
-                        4
-                    ]
-                }
-            ],
-            "unsubscribeSearch": [
-                4,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "runSearchSubscription": [
-                81,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "markSearchSubscriptionSeen": [
-                81,
-                {
-                    "id": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "upsertUserRating": [
-                83,
-                {
-                    "input": [
-                        84,
-                        "UpsertUserRatingInput!"
-                    ]
-                }
-            ],
-            "deleteUserRating": [
-                4,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "upsertWatchHistory": [
-                85,
-                {
-                    "input": [
-                        86,
-                        "UpsertWatchHistoryInput!"
-                    ]
-                }
-            ],
-            "deleteWatchHistory": [
-                4,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "addToWatchlist": [
-                87,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "removeFromWatchlist": [
-                4,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
             "__typename": [
                 1
             ]
         },
-        "Subscription": {
-            "mediaAdded": [
-                13
-            ],
-            "jobUpdated": [
-                36
-            ],
-            "streamsChanged": [
-                74,
-                {
-                    "mediaId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "relatedChanged": [
-                57,
-                {
-                    "sceneId": [
-                        2,
-                        "ID!"
-                    ]
-                }
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "VpnStatus": {
-            "connected": [
-                4
-            ],
-            "interface": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "StreamResult": {
+        "Boolean": {},
+        "Playable": {
             "url": [
                 1
             ],
@@ -1631,299 +292,82 @@ export default {
             "quality": [
                 1
             ],
-            "headers": [
-                10
-            ],
-            "loadTimeMs": [
-                5
-            ],
-            "speedBps": [
-                5
-            ],
             "__typename": [
                 1
             ]
         },
-        "StreamHeader": {
-            "name": [
-                1
-            ],
-            "value": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ProviderSpeed": {
-            "url": [
-                1
-            ],
-            "loadTimeMs": [
-                5
-            ],
-            "speedBps": [
-                5
-            ],
-            "error": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ScrapePayload": {
-            "success": [
-                4
-            ],
-            "error": [
-                1
-            ],
-            "mediaId": [
-                2
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "MediaEvent": {
-            "id": [
-                2
-            ],
-            "type": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "BlocklistEntry": {
-            "id": [
-                2
-            ],
+        "Scraped": {
             "kind": [
                 1
             ],
-            "targetId": [
-                2
-            ],
-            "label": [
-                1
-            ],
-            "createdAt": [
-                1
+            "id": [
+                3
             ],
             "__typename": [
                 1
             ]
         },
-        "CamModel": {
-            "id": [
-                2
-            ],
-            "pluginName": [
+        "MediaFilter": {
+            "text": [
                 1
             ],
-            "username": [
-                1
+            "performerId": [
+                3
             ],
-            "displayName": [
-                1
+            "studioId": [
+                3
             ],
-            "sourceUrl": [
-                1
+            "tagId": [
+                3
             ],
-            "thumbnailUrl": [
+            "__typename": [
                 1
+            ]
+        },
+        "ListKind": {},
+        "Listed": {
+            "videos": [
+                12
+            ],
+            "galleries": [
+                16
+            ],
+            "performers": [
+                18
+            ],
+            "studios": [
+                20
             ],
             "tags": [
-                1
-            ],
-            "gender": [
-                1
-            ],
-            "subject": [
-                1
-            ],
-            "viewers": [
-                3
-            ],
-            "online": [
-                4
-            ],
-            "lastSeenOnlineAt": [
-                1
-            ],
-            "followed": [
-                4
-            ],
-            "autoRecord": [
-                4
-            ],
-            "recordQuality": [
-                1
+                21
             ],
             "__typename": [
                 1
             ]
         },
-        "CamRoomPage": {
-            "rooms": [
-                15
-            ],
-            "totalCount": [
-                3
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "CamSource": {
-            "name": [
-                1
-            ],
-            "displayName": [
-                1
-            ],
-            "iconUrl": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "CamStream": {
-            "url": [
+        "Asset": {
+            "uri": [
                 1
             ],
             "mimeType": [
                 1
             ],
-            "__typename": [
-                1
-            ]
-        },
-        "CamRecording": {
-            "id": [
+            "width": [
                 2
             ],
-            "camModelId": [
+            "height": [
                 2
             ],
-            "displayName": [
-                1
-            ],
-            "thumbnailUrl": [
-                1
-            ],
-            "quality": [
-                1
-            ],
-            "status": [
-                1
-            ],
-            "stopReason": [
-                1
-            ],
-            "startedAt": [
-                1
-            ],
-            "endedAt": [
-                1
-            ],
-            "durationSeconds": [
-                5
-            ],
-            "sizeBytes": [
-                5
-            ],
-            "sceneId": [
-                2
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Change": {
-            "id": [
-                2
-            ],
-            "canonical": [
-                2
-            ],
-            "observation": [
-                2
-            ],
-            "plugin": [
-                1
-            ],
-            "key": [
-                1
-            ],
-            "action": [
-                1
-            ],
-            "value": [
-                1
-            ],
-            "originalValue": [
-                1
-            ],
-            "iso6391": [
-                1
-            ],
-            "iso31661": [
-                1
-            ],
-            "score": [
-                5
-            ],
-            "mode": [
-                1
-            ],
-            "changedBy": [
-                1
-            ],
-            "createdAt": [
+            "blurhash": [
                 1
             ],
             "__typename": [
                 1
             ]
         },
-        "Collection": {
+        "Video": {
             "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "details": [
-                1
-            ],
-            "coverPath": [
-                1
-            ],
-            "itemCount": [
                 3
-            ],
-            "origin": [
-                1
-            ],
-            "builtIn": [
-                4
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "externalId": [
-                1
-            ],
-            "tags": [
-                82
             ],
             "createdAt": [
                 1
@@ -1931,281 +375,94 @@ export default {
             "updatedAt": [
                 1
             ],
-            "__typename": [
-                1
-            ]
-        },
-        "CollectionMember": {
-            "mediaId": [
-                2
-            ],
-            "mediaType": [
-                1
-            ],
-            "position": [
-                3
-            ],
             "title": [
                 1
             ],
-            "posterPath": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "FaceIdentification": {
-            "candidates": [
-                27
-            ],
-            "videos": [
-                24
-            ],
-            "posts": [
-                25
-            ],
-            "postPerformers": [
-                26
-            ],
-            "sources": [
-                1
-            ],
-            "failures": [
-                1
-            ],
-            "pictureUrl": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "FaceVideoMatch": {
-            "title": [
-                1
-            ],
-            "similarity": [
-                5
-            ],
-            "url": [
-                1
-            ],
-            "thumbnailUrl": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "scenePlugin": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "FacePostMatch": {
-            "title": [
-                1
-            ],
-            "url": [
-                1
-            ],
-            "thumbnailUrl": [
-                1
-            ],
-            "solved": [
-                4
-            ],
-            "names": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "FacePostPerformer": {
-            "name": [
-                1
-            ],
-            "posts": [
-                3
-            ],
-            "imageUrl": [
-                1
-            ],
-            "postUrl": [
-                1
-            ],
-            "performerId": [
-                2
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "FaceCandidate": {
-            "name": [
-                1
-            ],
-            "similarity": [
-                5
-            ],
-            "imageUrl": [
-                1
-            ],
-            "profileUrls": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "performerId": [
-                2
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ForumPostHit": {
-            "title": [
-                1
-            ],
-            "url": [
-                1
-            ],
-            "thumbnailUrl": [
+            "details": [
                 1
             ],
             "date": [
                 1
             ],
-            "solved": [
-                4
+            "cover": [
+                11
             ],
-            "author": [
-                1
-            ],
-            "snippet": [
+            "status": [
                 1
             ],
-            "plugin": [
-                1
+            "studio": [
+                20
             ],
-            "__typename": [
-                1
-            ]
-        },
-        "ForumThread": {
-            "url": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "description": [
-                1
-            ],
-            "imageUrl": [
-                1
-            ],
-            "videoUrl": [
-                1
-            ],
-            "author": [
-                1
-            ],
-            "date": [
-                1
+            "performers": [
+                18
             ],
             "tags": [
-                1
+                21
             ],
-            "solved": [
-                4
+            "durationSeconds": [
+                13
             ],
-            "plugin": [
-                1
+            "width": [
+                2
             ],
-            "comments": [
-                30
+            "height": [
+                2
             ],
-            "__typename": [
-                1
-            ]
-        },
-        "ForumComment": {
-            "id": [
-                1
+            "vr": [
+                14
             ],
-            "author": [
-                1
+            "preview": [
+                11
             ],
-            "date": [
-                1
+            "trickplay": [
+                15
             ],
-            "text": [
-                1
+            "gallery": [
+                16
             ],
-            "accepted": [
-                4
+            "sources": [
+                22
             ],
-            "likes": [
-                3
-            ],
-            "names": [
-                32
-            ],
-            "titles": [
-                1
-            ],
-            "links": [
-                33
-            ],
-            "images": [
-                1
-            ],
-            "posts": [
-                31
+            "streams": [
+                23
             ],
             "__typename": [
                 1
             ]
         },
-        "ForumPostRef": {
-            "title": [
+        "Float": {},
+        "VrFormat": {
+            "projection": [
                 1
             ],
-            "url": [
+            "stereo": [
                 1
             ],
-            "thumbnailUrl": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ForumName": {
-            "name": [
-                1
-            ],
-            "performerId": [
+            "fieldOfView": [
                 2
             ],
             "__typename": [
                 1
             ]
         },
-        "ForumLink": {
-            "url": [
-                1
+        "Trickplay": {
+            "sheets": [
+                11
             ],
-            "scenePlugin": [
-                1
+            "columns": [
+                2
+            ],
+            "rows": [
+                2
+            ],
+            "tileWidth": [
+                2
+            ],
+            "tileHeight": [
+                2
+            ],
+            "intervalSeconds": [
+                13
             ],
             "__typename": [
                 1
@@ -2213,12 +470,12 @@ export default {
         },
         "Gallery": {
             "id": [
-                2
+                3
             ],
-            "externalId": [
+            "createdAt": [
                 1
             ],
-            "sourceUrl": [
+            "updatedAt": [
                 1
             ],
             "title": [
@@ -2230,41 +487,32 @@ export default {
             "date": [
                 1
             ],
-            "coverPath": [
+            "cover": [
+                11
+            ],
+            "status": [
                 1
-            ],
-            "imageCount": [
-                3
-            ],
-            "rating": [
-                5
-            ],
-            "organized": [
-                4
             ],
             "studio": [
-                76
+                20
             ],
             "performers": [
-                40
+                18
             ],
             "tags": [
-                82
+                21
+            ],
+            "imageCount": [
+                2
             ],
             "images": [
-                35
-            ],
-            "tagMatch": [
-                1
+                17
             ],
             "video": [
-                57
+                12
             ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
+            "sources": [
+                22
             ],
             "__typename": [
                 1
@@ -2272,185 +520,19 @@ export default {
         },
         "Image": {
             "id": [
-                2
-            ],
-            "filePath": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "details": [
-                1
-            ],
-            "date": [
-                1
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "externalId": [
-                1
-            ],
-            "width": [
-                3
-            ],
-            "height": [
                 3
             ],
             "position": [
-                3
-            ],
-            "rating": [
-                5
-            ],
-            "organized": [
-                4
-            ],
-            "galleryId": [
                 2
             ],
-            "studio": [
-                76
+            "asset": [
+                11
             ],
-            "performers": [
-                40
-            ],
-            "tags": [
-                82
-            ],
-            "tagMatch": [
-                1
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Job": {
-            "id": [
+            "width": [
                 2
             ],
-            "kind": [
-                1
-            ],
-            "status": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "description": [
-                1
-            ],
-            "pluginName": [
-                1
-            ],
-            "target": [
+            "height": [
                 2
-            ],
-            "error": [
-                1
-            ],
-            "attempts": [
-                3
-            ],
-            "maxAttempts": [
-                3
-            ],
-            "priority": [
-                3
-            ],
-            "runAt": [
-                1
-            ],
-            "startedAt": [
-                1
-            ],
-            "finishedAt": [
-                1
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "downloadTitle": [
-                1
-            ],
-            "downloadUrl": [
-                1
-            ],
-            "downloadProgress": [
-                5
-            ],
-            "downloadBytesReceived": [
-                5
-            ],
-            "downloadBytesTotal": [
-                5
-            ],
-            "scene": [
-                57
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "MediaCard": {
-            "mediaId": [
-                2
-            ],
-            "mediaType": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "posterPath": [
-                1
-            ],
-            "backdropPath": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ObservationStatus": {},
-        "Observation": {
-            "id": [
-                2
-            ],
-            "target": [
-                2
-            ],
-            "plugin": [
-                1
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "confidence": [
-                5
-            ],
-            "status": [
-                38
-            ],
-            "data": [
-                1
-            ],
-            "job": [
-                2
-            ],
-            "observedAt": [
-                1
             ],
             "__typename": [
                 1
@@ -2458,7 +540,13 @@ export default {
         },
         "Performer": {
             "id": [
-                2
+                3
+            ],
+            "createdAt": [
+                1
+            ],
+            "updatedAt": [
+                1
             ],
             "name": [
                 1
@@ -2466,9 +554,35 @@ export default {
             "aliases": [
                 1
             ],
+            "image": [
+                11
+            ],
             "details": [
                 1
             ],
+            "attributes": [
+                19
+            ],
+            "links": [
+                1
+            ],
+            "tags": [
+                21
+            ],
+            "sources": [
+                22
+            ],
+            "videoCount": [
+                2
+            ],
+            "galleryCount": [
+                2
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "PerformerAttributes": {
             "gender": [
                 1
             ],
@@ -2491,10 +605,10 @@ export default {
                 1
             ],
             "heightCm": [
-                3
+                2
             ],
             "weightKg": [
-                3
+                2
             ],
             "measurements": [
                 1
@@ -2508,31 +622,18 @@ export default {
             "piercings": [
                 1
             ],
-            "careerLength": [
+            "careerStart": [
+                2
+            ],
+            "careerEnd": [
+                2
+            ],
+            "__typename": [
                 1
-            ],
-            "url": [
-                1
-            ],
-            "twitter": [
-                1
-            ],
-            "instagram": [
-                1
-            ],
-            "imagePath": [
-                1
-            ],
-            "favorite": [
-                4
-            ],
-            "rating": [
-                5
-            ],
-            "tags": [
-                82
-            ],
-            "sceneCount": [
+            ]
+        },
+        "Studio": {
+            "id": [
                 3
             ],
             "createdAt": [
@@ -2540,6 +641,108 @@ export default {
             ],
             "updatedAt": [
                 1
+            ],
+            "name": [
+                1
+            ],
+            "aliases": [
+                1
+            ],
+            "image": [
+                11
+            ],
+            "details": [
+                1
+            ],
+            "url": [
+                1
+            ],
+            "parent": [
+                20
+            ],
+            "tags": [
+                21
+            ],
+            "sources": [
+                22
+            ],
+            "videoCount": [
+                2
+            ],
+            "galleryCount": [
+                2
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Tag": {
+            "id": [
+                3
+            ],
+            "name": [
+                1
+            ],
+            "aliases": [
+                1
+            ],
+            "videoCount": [
+                2
+            ],
+            "galleryCount": [
+                2
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Source": {
+            "id": [
+                3
+            ],
+            "plugin": [
+                1
+            ],
+            "externalId": [
+                1
+            ],
+            "url": [
+                1
+            ],
+            "title": [
+                1
+            ],
+            "image": [
+                11
+            ],
+            "fetchedAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Stream": {
+            "id": [
+                3
+            ],
+            "url": [
+                1
+            ],
+            "mimeType": [
+                1
+            ],
+            "quality": [
+                1
+            ],
+            "height": [
+                2
+            ],
+            "speedKbps": [
+                2
+            ],
+            "source": [
+                22
             ],
             "__typename": [
                 1
@@ -2563,9 +766,6 @@ export default {
             ]
         },
         "Plugin": {
-            "id": [
-                2
-            ],
             "name": [
                 1
             ],
@@ -2573,7 +773,7 @@ export default {
                 1
             ],
             "localBuild": [
-                4
+                5
             ],
             "displayName": [
                 1
@@ -2597,25 +797,19 @@ export default {
                 1
             ],
             "enabled": [
-                4
+                5
             ],
             "requiresSolver": [
-                4
+                5
             ],
             "available": [
-                4
-            ],
-            "installedAt": [
-                1
-            ],
-            "updatedAt": [
-                1
+                5
             ],
             "settings": [
-                43
+                26
             ],
             "settingValues": [
-                44
+                27
             ],
             "__typename": [
                 1
@@ -2635,7 +829,7 @@ export default {
                 1
             ],
             "required": [
-                4
+                5
             ],
             "default": [
                 1
@@ -2660,1040 +854,6 @@ export default {
                 1
             ],
             "value": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "PluginCategory": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "url": [
-                1
-            ],
-            "count": [
-                3
-            ],
-            "poster": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "ImpressionInput": {
-            "mediaId": [
-                2
-            ],
-            "source": [
-                1
-            ],
-            "surface": [
-                1
-            ],
-            "position": [
-                3
-            ],
-            "clicked": [
-                4
-            ],
-            "query": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "TasteProfile": {
-            "signalCount": [
-                3
-            ],
-            "tags": [
-                49
-            ],
-            "performers": [
-                49
-            ],
-            "studios": [
-                49
-            ],
-            "sites": [
-                49
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "TasteEntry": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "imagePath": [
-                1
-            ],
-            "affinity": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "RecommendedScene": {
-            "scene": [
-                57
-            ],
-            "source": [
-                1
-            ],
-            "reason": [
-                51
-            ],
-            "score": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "RecommendationReason": {
-            "kind": [
-                1
-            ],
-            "text": [
-                1
-            ],
-            "entityId": [
-                2
-            ],
-            "entityName": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "RecommendationRow": {
-            "key": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "reason": [
-                51
-            ],
-            "items": [
-                50
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "RecommendedCategory": {
-            "tag": [
-                82
-            ],
-            "scenes": [
-                57
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SceneFilterInput": {
-            "search": [
-                1
-            ],
-            "studioId": [
-                2
-            ],
-            "performerId": [
-                2
-            ],
-            "tagId": [
-                2
-            ],
-            "minRating": [
-                5
-            ],
-            "minDuration": [
-                3
-            ],
-            "maxDuration": [
-                3
-            ],
-            "dateFrom": [
-                1
-            ],
-            "dateTo": [
-                1
-            ],
-            "sort": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SceneFilter": {
-            "search": [
-                1
-            ],
-            "studioId": [
-                2
-            ],
-            "performerId": [
-                2
-            ],
-            "tagId": [
-                2
-            ],
-            "minRating": [
-                5
-            ],
-            "minDuration": [
-                3
-            ],
-            "maxDuration": [
-                3
-            ],
-            "dateFrom": [
-                1
-            ],
-            "dateTo": [
-                1
-            ],
-            "sort": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SavedFilter": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "filter": [
-                55
-            ],
-            "createdAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Scene": {
-            "id": [
-                2
-            ],
-            "externalId": [
-                1
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "details": [
-                1
-            ],
-            "date": [
-                1
-            ],
-            "durationSeconds": [
-                3
-            ],
-            "rating": [
-                5
-            ],
-            "viewCount": [
-                3
-            ],
-            "organized": [
-                4
-            ],
-            "posterPath": [
-                1
-            ],
-            "previewVideo": [
-                1
-            ],
-            "previewImages": [
-                1
-            ],
-            "studio": [
-                76
-            ],
-            "performers": [
-                40
-            ],
-            "tags": [
-                82
-            ],
-            "tagMatch": [
-                1
-            ],
-            "relatedVia": [
-                1
-            ],
-            "related": [
-                57,
-                {
-                    "limit": [
-                        3
-                    ]
-                }
-            ],
-            "comments": [
-                58
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SceneComment": {
-            "id": [
-                2
-            ],
-            "plugin": [
-                1
-            ],
-            "author": [
-                1
-            ],
-            "text": [
-                1
-            ],
-            "postedAt": [
-                1
-            ],
-            "likes": [
-                3
-            ],
-            "replyTo": [
-                2
-            ],
-            "mentions": [
-                40
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SceneHeat": {
-            "buckets": [
-                5
-            ],
-            "bestMomentSeconds": [
-                5
-            ],
-            "thumbnailSeconds": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "RecordSceneHeatInput": {
-            "sceneId": [
-                2
-            ],
-            "durationSeconds": [
-                5
-            ],
-            "spans": [
-                61
-            ],
-            "scrubs": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "HeatSpanInput": {
-            "fromSeconds": [
-                5
-            ],
-            "toSeconds": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SceneMarker": {
-            "id": [
-                2
-            ],
-            "tag": [
-                82
-            ],
-            "label": [
-                1
-            ],
-            "seconds": [
-                5
-            ],
-            "endSeconds": [
-                5
-            ],
-            "personal": [
-                4
-            ],
-            "createdAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "PluginSearchResult": {
-            "externalId": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "mediaType": [
-                1
-            ],
-            "plugin": [
-                1
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "date": [
-                1
-            ],
-            "posterUrl": [
-                1
-            ],
-            "previewImages": [
-                1
-            ],
-            "previewVideo": [
-                1
-            ],
-            "durationSeconds": [
-                3
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "AlikeCandidate": {
-            "externalId": [
-                1
-            ],
-            "title": [
-                1
-            ],
-            "plugin": [
-                1
-            ],
-            "sourceUrl": [
-                1
-            ],
-            "posterUrl": [
-                1
-            ],
-            "date": [
-                1
-            ],
-            "previewImages": [
-                1
-            ],
-            "previewVideo": [
-                1
-            ],
-            "durationSeconds": [
-                3
-            ],
-            "matchScore": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SearchSuggestionKind": {},
-        "SearchSuggestion": {
-            "kind": [
-                65
-            ],
-            "text": [
-                1
-            ],
-            "entityId": [
-                1
-            ],
-            "imageUrl": [
-                1
-            ],
-            "detail": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SourceSuggestion": {
-            "kind": [
-                65
-            ],
-            "text": [
-                1
-            ],
-            "sources": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Settings": {
-            "maxConcurrentJobs": [
-                3
-            ],
-            "maxJobRetries": [
-                3
-            ],
-            "downloadSpeedLimitKBps": [
-                3
-            ],
-            "allowDownloadsWhileStreaming": [
-                4
-            ],
-            "camRecordingMaxMinutes": [
-                3
-            ],
-            "autoEnrichAfterScrape": [
-                4
-            ],
-            "requireVpn": [
-                4
-            ],
-            "kindLimits": [
-                70
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "UpdateSettingsInput": {
-            "maxConcurrentJobs": [
-                3
-            ],
-            "maxJobRetries": [
-                3
-            ],
-            "downloadSpeedLimitKBps": [
-                3
-            ],
-            "allowDownloadsWhileStreaming": [
-                4
-            ],
-            "camRecordingMaxMinutes": [
-                3
-            ],
-            "autoEnrichAfterScrape": [
-                4
-            ],
-            "requireVpn": [
-                4
-            ],
-            "kindLimits": [
-                71
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "KindRateLimit": {
-            "kind": [
-                1
-            ],
-            "maxConcurrent": [
-                3
-            ],
-            "retryInitialMs": [
-                3
-            ],
-            "retryMultiplier": [
-                5
-            ],
-            "retryMaxMs": [
-                3
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "KindRateLimitInput": {
-            "kind": [
-                1
-            ],
-            "maxConcurrent": [
-                3
-            ],
-            "retryInitialMs": [
-                3
-            ],
-            "retryMultiplier": [
-                5
-            ],
-            "retryMaxMs": [
-                3
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SettingEntry": {
-            "id": [
-                2
-            ],
-            "scope": [
-                1
-            ],
-            "plugin": [
-                2
-            ],
-            "key": [
-                1
-            ],
-            "value": [
-                1
-            ],
-            "description": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "UpsertSettingEntryInput": {
-            "scope": [
-                1
-            ],
-            "plugin": [
-                2
-            ],
-            "key": [
-                1
-            ],
-            "value": [
-                1
-            ],
-            "description": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Stream": {
-            "id": [
-                2
-            ],
-            "mediaId": [
-                2
-            ],
-            "url": [
-                1
-            ],
-            "kind": [
-                1
-            ],
-            "label": [
-                1
-            ],
-            "provider": [
-                1
-            ],
-            "resolution": [
-                1
-            ],
-            "width": [
-                3
-            ],
-            "height": [
-                3
-            ],
-            "language": [
-                1
-            ],
-            "format": [
-                1
-            ],
-            "mimeType": [
-                1
-            ],
-            "expectedSpeedBps": [
-                5
-            ],
-            "fileSizeBytes": [
-                5
-            ],
-            "verified": [
-                4
-            ],
-            "pluginName": [
-                1
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "CreateStreamInput": {
-            "mediaId": [
-                2
-            ],
-            "url": [
-                1
-            ],
-            "kind": [
-                1
-            ],
-            "label": [
-                1
-            ],
-            "provider": [
-                1
-            ],
-            "resolution": [
-                1
-            ],
-            "width": [
-                3
-            ],
-            "height": [
-                3
-            ],
-            "language": [
-                1
-            ],
-            "format": [
-                1
-            ],
-            "mimeType": [
-                1
-            ],
-            "expectedSpeedBps": [
-                5
-            ],
-            "fileSizeBytes": [
-                5
-            ],
-            "verified": [
-                4
-            ],
-            "pluginName": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Studio": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "aliases": [
-                1
-            ],
-            "url": [
-                1
-            ],
-            "parent": [
-                76
-            ],
-            "imagePath": [
-                1
-            ],
-            "details": [
-                1
-            ],
-            "tags": [
-                82
-            ],
-            "sceneCount": [
-                3
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SubscriptionFeedFilter": {
-            "subscriptionId": [
-                2
-            ],
-            "kinds": [
-                79
-            ],
-            "newOnly": [
-                4
-            ],
-            "unwatchedOnly": [
-                4
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SubscriptionFeedItem": {
-            "scene": [
-                57
-            ],
-            "foundAt": [
-                1
-            ],
-            "subscriptionId": [
-                2
-            ],
-            "isNew": [
-                4
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SubscriptionKind": {},
-        "SubscriptionTarget": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "imageUrl": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "SearchSubscription": {
-            "id": [
-                2
-            ],
-            "kind": [
-                79
-            ],
-            "query": [
-                1
-            ],
-            "target": [
-                80
-            ],
-            "sources": [
-                1
-            ],
-            "intervalHours": [
-                3
-            ],
-            "enabled": [
-                4
-            ],
-            "lastRunAt": [
-                1
-            ],
-            "nextRunAt": [
-                1
-            ],
-            "lastError": [
-                1
-            ],
-            "newCount": [
-                3
-            ],
-            "totalCount": [
-                3
-            ],
-            "createdAt": [
-                1
-            ],
-            "scenes": [
-                57,
-                {
-                    "limit": [
-                        3
-                    ],
-                    "offset": [
-                        3
-                    ]
-                }
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "Tag": {
-            "id": [
-                2
-            ],
-            "name": [
-                1
-            ],
-            "aliases": [
-                1
-            ],
-            "description": [
-                1
-            ],
-            "category": [
-                1
-            ],
-            "sceneCount": [
-                3
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "UserRating": {
-            "id": [
-                2
-            ],
-            "media": [
-                2
-            ],
-            "rating": [
-                5
-            ],
-            "createdAt": [
-                1
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "UpsertUserRatingInput": {
-            "media": [
-                2
-            ],
-            "rating": [
-                5
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "WatchHistory": {
-            "id": [
-                2
-            ],
-            "media": [
-                2
-            ],
-            "scene": [
-                57
-            ],
-            "startedAt": [
-                1
-            ],
-            "finishedAt": [
-                1
-            ],
-            "progressSeconds": [
-                3
-            ],
-            "maxProgressSeconds": [
-                3
-            ],
-            "durationSeconds": [
-                3
-            ],
-            "completed": [
-                4
-            ],
-            "updatedAt": [
-                1
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "UpsertWatchHistoryInput": {
-            "media": [
-                2
-            ],
-            "progressSeconds": [
-                3
-            ],
-            "durationSeconds": [
-                3
-            ],
-            "completed": [
-                4
-            ],
-            "__typename": [
-                1
-            ]
-        },
-        "WatchlistItem": {
-            "id": [
-                2
-            ],
-            "media": [
-                2
-            ],
-            "createdAt": [
                 1
             ],
             "__typename": [

@@ -26,13 +26,13 @@
 	aria-modal="true"
 	aria-label={alt || 'Image'}
 >
-	<button type="button" class="absolute inset-0 cursor-zoom-out" aria-label="Close" onclick={onclose}
+	<button
+		type="button"
+		class="absolute inset-0 cursor-zoom-out"
+		aria-label="Close"
+		onclick={onclose}
 	></button>
-	<img
-		{src}
-		{alt}
-		class="relative max-h-full max-w-full rounded-xl object-contain shadow-2xl"
-	/>
+	<img {src} {alt} class="relative max-h-full max-w-full rounded-xl object-contain shadow-2xl" />
 	<button
 		type="button"
 		class="absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"

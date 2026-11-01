@@ -1,49 +1,49 @@
-<script lang="ts">
-	import { goto } from '$app/navigation';
-	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
-	import { tagUrl } from '$lib/routes';
-	import { tagLabel, type TagRef } from '$lib/tags';
+<!--
+	A record's tags as chips. Tags only filter: a chip opens home with the
+	video grid narrowed to that tag.
+-->
+<script lang="ts" module>
+	/** A tag as chips need it. */
+	export interface TagRef {
+		id: string;
+		name: string;
+	}
 
-	let {
-		tags,
-		inherited = false,
-		onblock
-	}: {
-		tags: TagRef[];
-		// Muted styling for tags that came from a studio/performer, not the record.
-		inherited?: boolean;
-		// When set, a block button appears on each chip.
-		onblock?: (tag: TagRef) => void;
-	} = $props();
+	/**
+	 * Shows a tag in lower case, except words that are acronyms ("POV", "MILF",
+	 * "JAV"). Sites disagree on casing, so the stored spelling is whatever arrived
+	 * first.
+	 */
+	export function tagLabel(name: string): string {
+		return name
+			.replaceAll('-', ' ')
+			.split(' ')
+			.map((word) => {
+				const isAcronym =
+					word.length >= 2 && word.length <= 5 && word === word.toUpperCase() && /[A-Z]/.test(word);
+				if (isAcronym) return word;
+				return word.toLowerCase();
+			})
+			.join(' ');
+	}
+</script>
+
+<script lang="ts">
+	import { tagFilterUrl } from '$lib/routes';
+
+	let { tags }: { tags: TagRef[] } = $props();
 </script>
 
 {#if tags.length > 0}
 	<div class="flex flex-wrap items-center gap-1.5">
 		{#each tags as tag (tag.id)}
-			<span
-				class="group/chip flex items-center overflow-hidden rounded-full border text-xs {inherited
-					? 'border-base-300 text-base-content/40'
-					: 'border-base-300 bg-base-200 text-base-content/70'}"
+			<a
+				href={tagFilterUrl(tag.id)}
+				class="border-base-300 bg-base-200 text-base-content/70 hover:text-base-content rounded-full border px-2.5 py-1 text-xs transition-colors"
+				title={tag.name}
 			>
-				<button
-					type="button"
-					class="hover:text-base-content px-2.5 py-1 transition-colors"
-					title={inherited ? `${tag.name} (via studio/performer)` : tag.name}
-					onclick={() => goto(tagUrl(tag.id))}
-				>
-					{tagLabel(tag.name)}
-				</button>
-				{#if onblock}
-					<button
-						type="button"
-						class="hover:text-error hidden pr-2 text-current/40 group-hover/chip:block"
-						aria-label={`Block ${tag.name}`}
-						onclick={() => onblock(tag)}
-					>
-						<ProhibitIcon size={12} />
-					</button>
-				{/if}
-			</span>
+				{tagLabel(tag.name)}
+			</a>
 		{/each}
 	</div>
 {/if}
