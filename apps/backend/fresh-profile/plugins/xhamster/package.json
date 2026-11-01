@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-xhamster",
+  "version": "0.5.1",
+  "description": "Veil plugin for xhamster.com",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

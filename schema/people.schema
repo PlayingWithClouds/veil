@@ -27,6 +27,7 @@ model PerformerAttributes {
 }
 
 /// A person who appears in media.
+@index(fields: ["nameKey"])
 model Performer extends Entity {
   10 name: string
 
@@ -42,9 +43,13 @@ model Performer extends Entity {
   15 links: [string]
 
   16 tags: [ref<Tag>]
+
+  /// The name folded for comparison (internal/names.Key).
+  17 nameKey: string
 }
 
 /// A production company, channel or network.
+@index(fields: ["nameKey"])
 model Studio extends Entity {
   10 name: string
 
@@ -59,6 +64,9 @@ model Studio extends Entity {
   15 url: string?
 
   16 tags: [ref<Tag>]
+
+  /// The name folded for comparison (internal/names.Key).
+  17 nameKey: string
 }
 
 /// What a cam room is doing right now; null on the model when offline.

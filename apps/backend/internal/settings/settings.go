@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,8 +11,8 @@ import (
 )
 
 const (
-	scopeGlobal = "global"
-	scopePlugin = "plugin"
+	// globalPlugin is the plugin column of global settings.
+	globalPlugin = ""
 
 	// pluginSettingsKey is the Settings field stored as plugin-scoped rows
 	// instead of a single global row.
@@ -33,8 +32,6 @@ type KindRateLimit struct {
 // Settings holds all user-configurable values. Each field is one global
 // setting row keyed by its JSON name; PluginSettings are plugin-scoped rows.
 type Settings struct {
-	ID *db.RecordID `json:"id,omitempty"`
-
 	// Job execution
 	MaxConcurrentJobs int `json:"maxConcurrentJobs"`
 	MaxJobRetries     int `json:"maxJobRetries"`
@@ -93,6 +90,8 @@ type Service struct {
 	cached   Settings
 }
 
+// NewService returns a settings service over database, with defaults cached
+// until Init loads the stored values.
 func NewService(database *db.DB) *Service {
 	return &Service{
 		database: database,
@@ -137,7 +136,8 @@ func (s *Service) PluginEnv(pluginName string) []string {
 
 // load reads every setting row and decodes them into Settings.
 func (s *Service) load(ctx context.Context) (*Settings, error) {
-	rows, err := s.database.Query(ctx, `SELECT scope, plugin, key, value, updated_at FROM setting`, nil)
+	rows, err := s.database.Query(ctx,
+		`SELECT "plugin", "key", "value", "updatedAt" FROM "Setting" WHERE "deletedAt" IS NULL`, nil)
 	if err != nil {
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
@@ -145,50 +145,67 @@ func (s *Service) load(ctx context.Context) (*Settings, error) {
 	pluginSettings := map[string]map[string]string{}
 	latestUpdate := ""
 	for _, row := range rows {
-		updatedAt, _ := row["updated_at"].(string)
+		updatedAt, _ := row["updatedAt"].(string)
 		if updatedAt > latestUpdate {
 			latestUpdate = updatedAt
 		}
 		key, _ := row["key"].(string)
-		if row["scope"] == scopePlugin {
-			addPluginSetting(pluginSettings, row, key)
+		pluginName, _ := row["plugin"].(string)
+		if pluginName != globalPlugin {
+			addPluginSetting(pluginSettings, pluginName, key, row["value"])
 			continue
 		}
-		fields[key] = row["value"]
+		fields[key] = storedJSON(row["value"])
 	}
 	fields[pluginSettingsKey] = pluginSettings
 	if latestUpdate != "" {
 		fields[updatedAtKey] = latestUpdate
 	}
+	return decodeSettings(fields)
+}
 
+// decodeSettings turns the loaded fields (JSON values by setting name) into
+// Settings.
+func decodeSettings(fields map[string]any) (*Settings, error) {
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return nil, fmt.Errorf("encode settings: %w", err)
+	}
 	var cfg Settings
-	if err := db.DecodeRow(fields, &cfg); err != nil {
+	if err := json.Unmarshal(encoded, &cfg); err != nil {
 		return nil, fmt.Errorf("decode settings: %w", err)
 	}
 	return &cfg, nil
 }
 
-// addPluginSetting files a plugin-scoped row under its plugin name.
-func addPluginSetting(pluginSettings map[string]map[string]string, row db.Row, key string) {
-	pluginID, _ := row["plugin"].(string)
-	pluginName := strings.TrimPrefix(pluginID, "plugin:")
+// storedJSON is a value column as JSON; a missing or broken value is null.
+func storedJSON(value any) json.RawMessage {
+	text, isText := value.(string)
+	if !isText || !json.Valid([]byte(text)) {
+		return json.RawMessage("null")
+	}
+	return json.RawMessage(text)
+}
+
+// addPluginSetting files a plugin-scoped value under its plugin name.
+func addPluginSetting(pluginSettings map[string]map[string]string, pluginName, key string, value any) {
 	if pluginSettings[pluginName] == nil {
 		pluginSettings[pluginName] = map[string]string{}
 	}
-	pluginSettings[pluginName][key] = settingString(row["value"])
+	pluginSettings[pluginName][key] = settingString(storedJSON(value))
 }
 
-// settingString renders a plugin setting value as the string injected into
-// the plugin's environment.
-func settingString(value any) string {
-	if text, isText := value.(string); isText {
+// settingString renders a stored plugin setting as the string injected into
+// the plugin's environment: strings as they are, anything else as JSON.
+func settingString(value json.RawMessage) string {
+	var text string
+	if err := json.Unmarshal(value, &text); err == nil {
 		return text
 	}
-	if value == nil {
+	if string(value) == "null" {
 		return ""
 	}
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
+	return string(value)
 }
 
 // Get returns fresh settings from DB.
@@ -236,7 +253,7 @@ func applyUpdate(ctx context.Context, tx *db.DB, key string, value any) error {
 	case pluginSettingsKey:
 		return upsertPluginSettings(ctx, tx, value)
 	}
-	return upsertSetting(ctx, tx, scopeGlobal, "", key, value)
+	return upsertSetting(ctx, tx, globalPlugin, key, value)
 }
 
 // upsertPluginSettings writes each plugin's key/value pairs as plugin-scoped
@@ -252,7 +269,7 @@ func upsertPluginSettings(ctx context.Context, tx *db.DB, value any) error {
 	}
 	for pluginName, values := range pluginSettings {
 		for key, settingValue := range values {
-			if err := upsertSetting(ctx, tx, scopePlugin, pluginName, key, settingValue); err != nil {
+			if err := upsertSetting(ctx, tx, pluginName, key, settingValue); err != nil {
 				return err
 			}
 		}
@@ -260,15 +277,15 @@ func upsertPluginSettings(ctx context.Context, tx *db.DB, value any) error {
 	return nil
 }
 
-// upsertSetting inserts or replaces the value of (scope, plugin, key).
-func upsertSetting(ctx context.Context, tx *db.DB, scope, pluginName, key string, value any) error {
-	vars, err := settingVars(scope, pluginName, key, value)
+// upsertSetting inserts or replaces the value of (plugin, key).
+func upsertSetting(ctx context.Context, tx *db.DB, pluginName, key string, value any) error {
+	vars, err := settingVars(pluginName, key, value)
 	if err != nil {
 		return err
 	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO setting (id, scope, plugin, key, value) VALUES ($id, $scope, $plugin, $key, $value)
-		ON CONFLICT (scope, ifnull(plugin, ''), key) DO UPDATE SET value = excluded.value`, vars)
+		`INSERT INTO "Setting" ("id", "plugin", "key", "value") VALUES ($id, $plugin, $key, $value)
+		ON CONFLICT ("plugin", "key") DO UPDATE SET "value" = excluded."value", "updatedAt" = $now, "deletedAt" = NULL`, vars)
 	if err != nil {
 		return fmt.Errorf("upsert setting %s: %w", key, err)
 	}
@@ -277,13 +294,13 @@ func upsertSetting(ctx context.Context, tx *db.DB, scope, pluginName, key string
 
 // insertDefault writes a global setting only when it doesn't exist yet.
 func insertDefault(ctx context.Context, tx *db.DB, key string, value any) error {
-	vars, err := settingVars(scopeGlobal, "", key, value)
+	vars, err := settingVars(globalPlugin, key, value)
 	if err != nil {
 		return err
 	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO setting (id, scope, plugin, key, value) VALUES ($id, $scope, $plugin, $key, $value)
-		ON CONFLICT (scope, ifnull(plugin, ''), key) DO NOTHING`, vars)
+		`INSERT INTO "Setting" ("id", "plugin", "key", "value") VALUES ($id, $plugin, $key, $value)
+		ON CONFLICT ("plugin", "key") DO NOTHING`, vars)
 	if err != nil {
 		return fmt.Errorf("seed setting %s: %w", key, err)
 	}
@@ -291,21 +308,17 @@ func insertDefault(ctx context.Context, tx *db.DB, key string, value any) error 
 }
 
 // settingVars binds a setting row. The value is stored as JSON text so any Go
-// value round-trips; the plugin column holds "plugin:<name>" or NULL.
-func settingVars(scope, pluginName, key string, value any) (db.Vars, error) {
+// value round-trips; plugin is "" for global settings.
+func settingVars(pluginName, key string, value any) (db.Vars, error) {
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("encode setting %s: %w", key, err)
 	}
-	vars := db.Vars{
-		"id":     db.NewRecordID("setting"),
-		"scope":  scope,
-		"plugin": nil,
+	return db.Vars{
+		"id":     db.NewID(),
+		"plugin": pluginName,
 		"key":    key,
 		"value":  string(encoded),
-	}
-	if pluginName != "" {
-		vars["plugin"] = db.RecordID{Table: "plugin", ID: pluginName}
-	}
-	return vars, nil
+		"now":    db.Now(),
+	}, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/db"
 )
 
+// openTestQueue returns a queue over a fresh database.
 func openTestQueue(t *testing.T) (*Queue, context.Context) {
 	t.Helper()
 	ctx := context.Background()
@@ -21,6 +22,7 @@ func openTestQueue(t *testing.T) (*Queue, context.Context) {
 	return NewQueue(database, 3), ctx
 }
 
+// enqueue adds job and returns its id, failing the test on error.
 func enqueue(t *testing.T, ctx context.Context, queue *Queue, job Job) string {
 	t.Helper()
 	id, err := queue.Enqueue(ctx, job)
@@ -30,6 +32,7 @@ func enqueue(t *testing.T, ctx context.Context, queue *Queue, job Job) string {
 	return id
 }
 
+// claim takes the next job of kinds, failing the test on error.
 func claim(t *testing.T, ctx context.Context, queue *Queue, kinds ...Kind) *Job {
 	t.Helper()
 	job, err := queue.Claim(ctx, kinds)
@@ -39,24 +42,25 @@ func claim(t *testing.T, ctx context.Context, queue *Queue, kinds ...Kind) *Job 
 	return job
 }
 
+// TestEnqueueDedupeReusesActiveJob reuses a queued or running job with the
+// same key and re-queues once it finished.
 func TestEnqueueDedupeReusesActiveJob(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	job := Job{Kind: KindScrape, PluginName: "p", Payload: map[string]any{"url": "u"}, DedupeKey: "scrape:p:u"}
 
 	firstID := enqueue(t, ctx, queue, job)
 	if secondID := enqueue(t, ctx, queue, job); secondID != firstID {
-		t.Fatalf("pending duplicate: got %s, want %s", secondID, firstID)
+		t.Fatalf("queued duplicate: got %s, want %s", secondID, firstID)
 	}
 
 	claimed := claim(t, ctx, queue, KindScrape)
-	if claimed == nil || claimed.StringID() != firstID {
+	if claimed == nil || claimed.ID != firstID || claimed.PluginName != "p" {
 		t.Fatalf("claimed %+v, want %s", claimed, firstID)
 	}
 	if runningID := enqueue(t, ctx, queue, job); runningID != firstID {
 		t.Fatalf("running duplicate: got %s, want %s", runningID, firstID)
 	}
 
-	// A terminal job with the key is replaced by a fresh one.
 	if err := queue.MarkCompleted(ctx, claimed.ID); err != nil {
 		t.Fatalf("mark completed: %v", err)
 	}
@@ -68,11 +72,12 @@ func TestEnqueueDedupeReusesActiveJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("all: %v", err)
 	}
-	if len(all) != 1 || all[0].Status != StatusPending {
+	if len(all) != 1 || all[0].Status != StatusQueued {
 		t.Fatalf("jobs after re-run: %+v", all)
 	}
 }
 
+// TestEnqueueWithoutDedupeKeyNeverCollides gives every keyless job its own row.
 func TestEnqueueWithoutDedupeKeyNeverCollides(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	firstID := enqueue(t, ctx, queue, Job{Kind: KindDownload})
@@ -82,6 +87,8 @@ func TestEnqueueWithoutDedupeKeyNeverCollides(t *testing.T) {
 	}
 }
 
+// TestClaimOrdersByPriorityThenAgeAndFiltersKinds claims the highest
+// priority first, then the oldest, and only the asked kinds.
 func TestClaimOrdersByPriorityThenAgeAndFiltersKinds(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	oldestID := enqueue(t, ctx, queue, Job{Kind: KindDownload, PluginName: "a"})
@@ -93,24 +100,24 @@ func TestClaimOrdersByPriorityThenAgeAndFiltersKinds(t *testing.T) {
 		t.Fatalf("reorder: %v", err)
 	}
 
-	wantOrder := []string{urgentID, oldestID, newerID}
-	for _, wantID := range wantOrder {
+	for _, wantID := range []string{urgentID, oldestID, newerID} {
 		job := claim(t, ctx, queue, KindDownload)
-		if job == nil || job.StringID() != wantID {
+		if job == nil || job.ID != wantID {
 			t.Fatalf("claimed %+v, want %s", job, wantID)
 		}
-		if job.Status != StatusRunning || job.Attempts != 1 {
-			t.Fatalf("claimed job state: status=%s attempts=%d", job.Status, job.Attempts)
+		if job.Status != StatusRunning || job.Attempts != 1 || job.StartedAt == nil {
+			t.Fatalf("claimed job state: %+v", job)
 		}
 	}
 	if job := claim(t, ctx, queue, KindDownload); job != nil {
-		t.Fatalf("expected empty download queue, got %s", job.StringID())
+		t.Fatalf("expected empty download queue, got %s", job.ID)
 	}
-	if job := claim(t, ctx, queue, KindScrape, KindEnrich); job == nil || job.StringID() != otherKindID {
+	if job := claim(t, ctx, queue, KindScrape, KindEnrich); job == nil || job.ID != otherKindID {
 		t.Fatalf("scrape claim got %+v, want %s", job, otherKindID)
 	}
 }
 
+// TestClaimRespectsRunAt skips jobs scheduled for later.
 func TestClaimRespectsRunAt(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	future := time.Now().Add(time.Hour)
@@ -118,22 +125,23 @@ func TestClaimRespectsRunAt(t *testing.T) {
 	readyID := enqueue(t, ctx, queue, Job{Kind: KindScrape})
 
 	job := claim(t, ctx, queue, KindScrape)
-	if job == nil || job.StringID() != readyID {
+	if job == nil || job.ID != readyID {
 		t.Fatalf("claimed %+v, want ready job %s", job, readyID)
 	}
 	if job := claim(t, ctx, queue, KindScrape); job != nil {
-		t.Fatalf("future job claimed early: %s", job.StringID())
+		t.Fatalf("future job claimed early: %s", job.ID)
 	}
 
 	// Deferring into the past makes a job claimable again.
 	if err := queue.Defer(ctx, job.ID, -time.Second); err != nil {
 		t.Fatalf("defer: %v", err)
 	}
-	if again := claim(t, ctx, queue, KindScrape); again == nil || again.StringID() != readyID {
+	if again := claim(t, ctx, queue, KindScrape); again == nil || again.ID != readyID {
 		t.Fatalf("deferred job not reclaimed: %+v", again)
 	}
 }
 
+// TestFailRetriesThenFails retries until maxRetries, then marks failed.
 func TestFailRetriesThenFails(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	jobID := enqueue(t, ctx, queue, Job{Kind: KindEnrich})
@@ -141,7 +149,7 @@ func TestFailRetriesThenFails(t *testing.T) {
 
 	for attempt := 1; attempt <= 3; attempt++ {
 		job := claim(t, ctx, queue, KindEnrich)
-		if job == nil || job.StringID() != jobID || job.Attempts != attempt {
+		if job == nil || job.ID != jobID || job.Attempts != attempt {
 			t.Fatalf("attempt %d: claimed %+v", attempt, job)
 		}
 		if err := queue.Fail(ctx, job, jobErr, 0); err != nil {
@@ -155,11 +163,12 @@ func TestFailRetriesThenFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("all: %v", err)
 	}
-	if all[0].Status != StatusFailed || all[0].Error != "boom" {
+	if all[0].Status != StatusFailed || all[0].Error != "boom" || all[0].FinishedAt == nil {
 		t.Fatalf("final job state: %+v", all[0])
 	}
 }
 
+// TestResetStuckRequeuesRunningJobs puts running jobs back after a crash.
 func TestResetStuckRequeuesRunningJobs(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	jobID := enqueue(t, ctx, queue, Job{Kind: KindScrape, Payload: map[string]any{"url": "x"}})
@@ -170,7 +179,7 @@ func TestResetStuckRequeuesRunningJobs(t *testing.T) {
 		t.Fatalf("reset stuck: %v", err)
 	}
 	job := claim(t, ctx, queue, KindScrape)
-	if job == nil || job.StringID() != jobID {
+	if job == nil || job.ID != jobID {
 		t.Fatalf("stuck job not requeued: %+v", job)
 	}
 	if job.Payload["url"] != "x" {
@@ -178,6 +187,7 @@ func TestResetStuckRequeuesRunningJobs(t *testing.T) {
 	}
 }
 
+// TestRetryRequeuesFailedJob re-queues a failed job and leaves running ones.
 func TestRetryRequeuesFailedJob(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	jobID := enqueue(t, ctx, queue, Job{Kind: KindDownload})
@@ -189,7 +199,7 @@ func TestRetryRequeuesFailedJob(t *testing.T) {
 		t.Fatalf("retry: %v", err)
 	}
 	all, _ := queue.All(ctx)
-	if all[0].Status != StatusPending || all[0].Attempts != 0 || all[0].Error != "" {
+	if all[0].Status != StatusQueued || all[0].Attempts != 0 || all[0].Error != "" {
 		t.Fatalf("retried job state: %+v", all[0])
 	}
 	if job := claim(t, ctx, queue, KindDownload); job == nil {
@@ -204,11 +214,11 @@ func TestRetryRequeuesFailedJob(t *testing.T) {
 	}
 }
 
-func TestDeleteAcceptsBareID(t *testing.T) {
+// TestDeleteByIDKindAndClear removes one job, a kind, then the rest.
+func TestDeleteByIDKindAndClear(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	jobID := enqueue(t, ctx, queue, Job{Kind: KindScrape})
-	parsed, _ := db.ParseRecordID(jobID)
-	if err := queue.Delete(ctx, parsed.ID); err != nil {
+	if err := queue.Delete(ctx, jobID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	enqueue(t, ctx, queue, Job{Kind: KindScrape})
@@ -223,19 +233,15 @@ func TestDeleteAcceptsBareID(t *testing.T) {
 	}
 }
 
+// TestDownloadURLsListsFinishedDownloads lists only downloads with a file.
 func TestDownloadURLsListsFinishedDownloads(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	finishedID := enqueue(t, ctx, queue, Job{Kind: KindDownload, DedupeKey: "a"})
 	enqueue(t, ctx, queue, Job{Kind: KindDownload, DedupeKey: "b"})
 	enqueue(t, ctx, queue, Job{Kind: KindScrape})
-	recordID, err := db.ParseRecordID(finishedID)
-	if err != nil {
-		t.Fatalf("parse id: %v", err)
-	}
-	// Mirrors how the orchestrator stores a finished download.
-	payload := map[string]any{"payload": map[string]any{"download_url": "http://localhost/api/blob/stream-cache/mp4/x.mp4"}}
-	if err := queue.DB().Merge(ctx, *recordID, payload); err != nil {
-		t.Fatalf("merge: %v", err)
+	payload := db.Vars{"payload": map[string]any{"download_url": "http://localhost/api/blob/stream-cache/mp4/x.mp4"}}
+	if err := queue.DB().Update(ctx, jobTable, finishedID, payload); err != nil {
+		t.Fatalf("update: %v", err)
 	}
 
 	urls, err := queue.DownloadURLs(ctx)
@@ -247,16 +253,14 @@ func TestDownloadURLsListsFinishedDownloads(t *testing.T) {
 	}
 }
 
+// TestForgetMissingDownloads fails downloads whose file is gone.
 func TestForgetMissingDownloads(t *testing.T) {
 	queue, ctx := openTestQueue(t)
 	for key, downloadURL := range map[string]string{"kept": "http://h/api/blob/kept.mp4", "lost": "http://h/api/blob/lost.mp4"} {
-		recordID, err := db.ParseRecordID(enqueue(t, ctx, queue, Job{Kind: KindDownload, DedupeKey: key}))
-		if err != nil {
-			t.Fatalf("parse id: %v", err)
-		}
-		payload := map[string]any{"status": "completed", "payload": map[string]any{"title": key, "download_url": downloadURL}}
-		if err := queue.DB().Merge(ctx, *recordID, payload); err != nil {
-			t.Fatalf("merge: %v", err)
+		jobID := enqueue(t, ctx, queue, Job{Kind: KindDownload, DedupeKey: key})
+		fields := db.Vars{"status": StatusSucceeded, "payload": map[string]any{"title": key, "download_url": downloadURL}}
+		if err := queue.DB().Update(ctx, jobTable, jobID, fields); err != nil {
+			t.Fatalf("update: %v", err)
 		}
 	}
 
@@ -270,7 +274,7 @@ func TestForgetMissingDownloads(t *testing.T) {
 	if len(urls) != 1 || urls[0] != "http://h/api/blob/kept.mp4" {
 		t.Errorf("remaining download urls = %v", urls)
 	}
-	failed, _ := queue.DB().Strings(ctx, `SELECT json_extract(payload, '$.title') FROM job WHERE status = 'failed'`, nil)
+	failed, _ := queue.DB().Strings(ctx, `SELECT json_extract("payload", '$.title') FROM "Job" WHERE "status" = 'failed'`, nil)
 	if len(failed) != 1 || failed[0] != "lost" {
 		t.Errorf("failed downloads = %v", failed)
 	}

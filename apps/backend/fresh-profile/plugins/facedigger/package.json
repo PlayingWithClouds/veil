@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-facedigger",
+  "version": "0.2.0",
+  "description": "Veil plugin for facedigger.com: which live-cam models and tube videos look like a face",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

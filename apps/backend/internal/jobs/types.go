@@ -3,46 +3,47 @@ package jobs
 import (
 	"time"
 
-	"github.com/playingwithclouds/veil/internal/db"
+	"github.com/playingwithclouds/veil/internal/schema"
 )
 
-type Status string
+// Status is where a job is in its life: queued, running, or finished.
+type Status = schema.JobStatus
 
 const (
-	StatusPending   Status = "pending"
-	StatusRunning   Status = "running"
-	StatusCompleted Status = "completed"
-	StatusFailed    Status = "failed"
+	StatusQueued    = schema.JobStatusQueued
+	StatusRunning   = schema.JobStatusRunning
+	StatusSucceeded = schema.JobStatusSucceeded
+	StatusFailed    = schema.JobStatusFailed
+	StatusCancelled = schema.JobStatusCancelled
 )
 
-type Kind string
+// Kind is what a job does.
+type Kind = schema.JobKind
 
 const (
-	KindScrape     Kind = "scrape"
-	KindEnrich     Kind = "enrich"
-	KindDownload   Kind = "download"
-	KindSpeedCheck Kind = "speed-check"
+	KindScrape     = schema.JobKindScrape
+	KindEnrich     = schema.JobKindEnrich
+	KindDownload   = schema.JobKindDownload
+	KindSpeedCheck = schema.JobKindSpeedCheck
 )
 
-// Job is persisted in the job table so work survives crashes.
+// Job is a row of the "Job" table, so work survives crashes. It mirrors
+// schema.Job with a decoded payload and parsed times.
 type Job struct {
-	ID         *db.RecordID   `json:"id,omitempty"`
+	ID         string         `json:"id,omitempty"`
 	Kind       Kind           `json:"kind"`
 	Status     Status         `json:"status"`
-	PluginName string         `json:"plugin_name"`
-	Payload    map[string]any `json:"payload"`
+	PluginName string         `json:"plugin,omitempty"`
+	Payload    map[string]any `json:"payload,omitempty"`
 	Error      string         `json:"error,omitempty"`
 	Attempts   int            `json:"attempts"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	RunAt      *time.Time     `json:"run_at,omitempty"` // nil = run immediately; set by backoff
-	DedupeKey  string         `json:"dedupe_key,omitempty"`
-}
-
-// StringID returns the full "table:id" string representation.
-func (j Job) StringID() string {
-	if j.ID == nil {
-		return ""
-	}
-	return j.ID.String()
+	Priority   int            `json:"priority"`
+	Progress   float64        `json:"progress"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+	// RunAt is when the job becomes claimable; nil on enqueue means now.
+	RunAt      *time.Time `json:"runAt,omitempty"`
+	StartedAt  *time.Time `json:"startedAt,omitempty"`
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+	DedupeKey  string     `json:"dedupeKey,omitempty"`
 }

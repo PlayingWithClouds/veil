@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-spankbang",
+  "version": "0.4.1",
+  "description": "Veil plugin for spankbang.com (needs FlareSolverr)",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

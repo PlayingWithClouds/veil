@@ -6,10 +6,14 @@ namespace veil
 import { Entity, Asset, RecordKind } from "./common"
 
 /// A site's own label. Never curated or browsed, only used to filter.
+@index(fields: ["nameKey"], unique: true)
 model Tag extends Entity {
-  @unique
   10 name: string
   11 aliases: [string]
+
+  /// The name folded for comparison (internal/names.Key), so spellings of
+  /// the same tag land on one row.
+  12 nameKey: string
 }
 
 /// Our own taxonomy, defined by us rather than any site. Media belongs to a

@@ -527,6 +527,7 @@ export interface Performer extends Entity {
   attributes: PerformerAttributes;
   links: string[];
   tags: string[];
+  nameKey: string;
 }
 
 export interface Studio extends Entity {
@@ -537,6 +538,7 @@ export interface Studio extends Entity {
   parent?: string;
   url?: string;
   tags: string[];
+  nameKey: string;
 }
 
 export interface CamLive {
@@ -571,6 +573,7 @@ export interface Group extends Entity {
 export interface Tag extends Entity {
   name: string;
   aliases: string[];
+  nameKey: string;
 }
 
 export interface Category extends Entity {

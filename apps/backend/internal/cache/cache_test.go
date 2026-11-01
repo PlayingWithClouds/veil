@@ -31,10 +31,10 @@ func TestSetGetExpire(t *testing.T) {
 	if value, err := client.Get(ctx, "key"); err != nil || value != "value" {
 		t.Errorf("get = %q, %v", value, err)
 	}
-	if err := client.Set(ctx, "short", "value", time.Millisecond); err != nil {
+	// Expiry has one-second resolution, so a nanosecond TTL is already over.
+	if err := client.Set(ctx, "short", "value", time.Nanosecond); err != nil {
 		t.Fatalf("set: %v", err)
 	}
-	time.Sleep(5 * time.Millisecond)
 	if _, err := client.Get(ctx, "short"); !errors.Is(err, ErrMiss) {
 		t.Errorf("expired get err = %v, want ErrMiss", err)
 	}
@@ -54,10 +54,9 @@ func TestIncrRestartsAfterExpiry(t *testing.T) {
 			t.Fatalf("incr = %d, %v; want %d", got, err, want)
 		}
 	}
-	if _, err := client.Incr(ctx, "brief", time.Millisecond); err != nil {
+	if _, err := client.Incr(ctx, "brief", time.Nanosecond); err != nil {
 		t.Fatalf("incr: %v", err)
 	}
-	time.Sleep(5 * time.Millisecond)
 	if got, _ := client.Incr(ctx, "brief", time.Hour); got != 1 {
 		t.Errorf("incr after expiry = %d, want 1", got)
 	}
@@ -73,7 +72,6 @@ func TestEntriesAndDel(t *testing.T) {
 	_ = client.Set(ctx, "stream:b", "2", 0)
 	_ = client.Set(ctx, "other:c", "3", time.Hour)
 	_ = client.Set(ctx, "stream:gone", "4", time.Nanosecond)
-	time.Sleep(time.Millisecond)
 
 	entries, err := client.Entries(ctx, "stream:")
 	if err != nil {

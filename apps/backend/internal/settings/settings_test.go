@@ -71,7 +71,7 @@ func TestUpdateRoundTripAndInitKeepsValues(t *testing.T) {
 	if cfg := restarted.Cached(); cfg.MaxConcurrentJobs != 7 || cfg.AllowDownloadsWhileStreaming {
 		t.Fatalf("values after re-init: %+v", cfg)
 	}
-	globalRows, err := database.Int(ctx, `SELECT count(*) FROM setting WHERE scope = 'global' AND key = 'maxConcurrentJobs'`, nil)
+	globalRows, err := database.Int(ctx, `SELECT count(*) FROM "Setting" WHERE "plugin" = '' AND "key" = 'maxConcurrentJobs'`, nil)
 	if err != nil || globalRows != 1 {
 		t.Fatalf("maxConcurrentJobs rows = %d (err %v), want 1", globalRows, err)
 	}
@@ -105,7 +105,7 @@ func TestPluginSettingsAreScopedPerPlugin(t *testing.T) {
 		t.Fatalf("plugin env: %v", env)
 	}
 
-	pluginRows, err := database.Int(ctx, `SELECT count(*) FROM setting WHERE scope = 'plugin' AND plugin = 'plugin:alpha'`, nil)
+	pluginRows, err := database.Int(ctx, `SELECT count(*) FROM "Setting" WHERE "plugin" = 'alpha'`, nil)
 	if err != nil || pluginRows != 2 {
 		t.Fatalf("alpha rows = %d (err %v), want 2", pluginRows, err)
 	}

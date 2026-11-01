@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-hqporn-pics",
+  "version": "0.1.0",
+  "description": "Veil plugin for hqporn-pics",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

@@ -1,4 +1,4 @@
--- Generated migration — 102 operation(s).
+-- Generated migration — 105 operation(s).
 
 -- enum CollectionKind: stored as TEXT with a CHECK on each column, so there is no type to create.
 
@@ -394,7 +394,8 @@ CREATE TABLE Performer (
   details TEXT,
   attributes TEXT NOT NULL CHECK (json_valid(attributes)),
   links TEXT NOT NULL CHECK (json_valid(links)),
-  tags TEXT NOT NULL CHECK (json_valid(tags))
+  tags TEXT NOT NULL CHECK (json_valid(tags)),
+  nameKey TEXT NOT NULL
 );
 
 CREATE TABLE Studio (
@@ -408,7 +409,8 @@ CREATE TABLE Studio (
   details TEXT,
   parent TEXT REFERENCES Studio(id),
   url TEXT,
-  tags TEXT NOT NULL CHECK (json_valid(tags))
+  tags TEXT NOT NULL CHECK (json_valid(tags)),
+  nameKey TEXT NOT NULL
 );
 
 CREATE TABLE CamModel (
@@ -446,8 +448,9 @@ CREATE TABLE Tag (
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   deletedAt TEXT,
-  name TEXT NOT NULL UNIQUE,
-  aliases TEXT NOT NULL CHECK (json_valid(aliases))
+  name TEXT NOT NULL,
+  aliases TEXT NOT NULL CHECK (json_valid(aliases)),
+  nameKey TEXT NOT NULL
 );
 
 CREATE TABLE Category (
@@ -744,7 +747,13 @@ CREATE INDEX Image_gallery_position_idx ON Image (gallery, position);
 
 CREATE UNIQUE INDEX StoryChapter_story_position_idx ON StoryChapter (story, position);
 
+CREATE INDEX Performer_nameKey_idx ON Performer (nameKey);
+
+CREATE INDEX Studio_nameKey_idx ON Studio (nameKey);
+
 CREATE UNIQUE INDEX CamModel_plugin_username_idx ON CamModel (plugin, username);
+
+CREATE UNIQUE INDEX Tag_nameKey_idx ON Tag (nameKey);
 
 CREATE INDEX AutomationRun_automation_startedAt_idx ON AutomationRun (automation, startedAt);
 

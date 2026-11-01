@@ -729,6 +729,8 @@ type Performer struct {
 	// Socials and official sites.
 	Links []string `json:"links"`
 	Tags  []string `json:"tags"`
+	// The name folded for comparison (internal/names.Key).
+	NameKey string `json:"nameKey"`
 }
 
 // A production company, channel or network.
@@ -741,6 +743,8 @@ type Studio struct {
 	Parent  *string  `json:"parent,omitempty"`
 	Url     *string  `json:"url,omitempty"`
 	Tags    []string `json:"tags"`
+	// The name folded for comparison (internal/names.Key).
+	NameKey string `json:"nameKey"`
 }
 
 // What a cam room is doing right now; null on the model when offline.
@@ -785,6 +789,9 @@ type Tag struct {
 	Entity
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases"`
+	// The name folded for comparison (internal/names.Key), so spellings of
+	// the same tag land on one row.
+	NameKey string `json:"nameKey"`
 }
 
 // Our own taxonomy, defined by us rather than any site. Media belongs to a

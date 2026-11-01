@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-showcamrips",
+  "version": "1.0.0",
+  "description": "Veil plugin for showcamrips.com, recordings of live cam shows",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

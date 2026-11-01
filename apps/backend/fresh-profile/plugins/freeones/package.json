@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-freeones",
+  "version": "0.1.0",
+  "description": "Veil plugin for freeones.com",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-txxx-network",
+  "version": "0.7.0",
+  "description": "Veil plugin for the txxx network sites",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

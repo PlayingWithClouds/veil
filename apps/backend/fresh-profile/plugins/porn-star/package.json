@@ -1,0 +1,10 @@
+{
+  "name": "@playingwithclouds/veil-plugin-porn-star",
+  "version": "0.1.0",
+  "description": "Veil plugin for porn-star",
+  "main": "plugin.js",
+  "keywords": [
+    "veil-plugin"
+  ],
+  "localBuild": true
+}

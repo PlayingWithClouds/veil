@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-01T19:37:20.887Z",
+  "updatedAt": "2026-11-01T21:31:00.484Z",
   "baseline": false,
-  "digest": "sha256-9c67d931ab061c4692ed8586337ba587b472d67929fe6a59565b317fb1129e50",
+  "digest": "sha256-b243aaeec5d07d5d71ec4f7ff504f1f4614f1f17bb75eb01b4fe3dc7a18f7192",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -3050,6 +3050,13 @@
           "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "nameKey",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T21:31:00.484Z"
         }
       }
     },
@@ -3929,6 +3936,13 @@
           "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "nameKey",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T21:31:00.484Z"
         }
       }
     },
@@ -4070,6 +4084,13 @@
           "type": "[string]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "nameKey",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T21:31:00.484Z"
         }
       }
     },
