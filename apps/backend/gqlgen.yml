@@ -15,45 +15,69 @@ resolver:
   package: graphql
   filename_template: "{name}.resolvers.go"
 
+# Library types are the generated schema types (schema/*.schema →
+# internal/schema). Fields that hold a reference id there resolve to the
+# record here.
 models:
-  # Resolve the watched scene lazily, only when the query requests it — the
-  # progress store pulls hundreds of history rows without needing scene detail.
-  WatchHistory:
+  Video:
+    model: github.com/playingwithclouds/veil/internal/schema.Video
     fields:
-      scene:
+      studio:
         resolver: true
-  # A job's scene loads only when asked (the library's download cards).
-  Job:
-    fields:
-      scene:
+      performers:
         resolver: true
-  # Related scenes load lazily, only when a query asks for them.
-  Scene:
-    fields:
-      related:
+      tags:
         resolver: true
-      comments:
+      gallery:
         resolver: true
-  # Lists and pages count scenes up front; nested references (a scene's
-  # performers and studio) count only when a query asks.
-  Performer:
-    fields:
-      sceneCount:
+      status:
         resolver: true
-  Studio:
-    fields:
-      sceneCount:
-        resolver: true
-  # A gallery's linked video loads only when asked (the gallery page).
   Gallery:
+    model: github.com/playingwithclouds/veil/internal/schema.Gallery
     fields:
+      studio:
+        resolver: true
+      performers:
+        resolver: true
+      tags:
+        resolver: true
       video:
         resolver: true
-  SearchSubscription:
+      status:
+        resolver: true
+  Image:
+    model: github.com/playingwithclouds/veil/internal/schema.Image
+  Performer:
+    model: github.com/playingwithclouds/veil/internal/schema.Performer
     fields:
-      scenes:
+      tags:
         resolver: true
-      newCount:
+  PerformerAttributes:
+    model: github.com/playingwithclouds/veil/internal/schema.PerformerAttributes
+  Studio:
+    model: github.com/playingwithclouds/veil/internal/schema.Studio
+    fields:
+      parent:
         resolver: true
-      totalCount:
+      tags:
         resolver: true
+  Tag:
+    model: github.com/playingwithclouds/veil/internal/schema.Tag
+  Source:
+    model: github.com/playingwithclouds/veil/internal/schema.Source
+  Stream:
+    model: github.com/playingwithclouds/veil/internal/schema.Stream
+    fields:
+      source:
+        resolver: true
+  Asset:
+    model: github.com/playingwithclouds/veil/internal/schema.Asset
+  VrFormat:
+    model: github.com/playingwithclouds/veil/internal/schema.VrFormat
+    fields:
+      projection:
+        resolver: true
+      stereo:
+        resolver: true
+  Trickplay:
+    model: github.com/playingwithclouds/veil/internal/schema.Trickplay

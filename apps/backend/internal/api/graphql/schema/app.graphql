@@ -1,0 +1,26 @@
+# Root types and playback. Per-area operations extend them in their own files.
+
+type Query {
+  # Resolves a stream URL (a page, an embed or a direct file) to a URL the
+  # player can load, proxied through the backend.
+  play(url: String!): Playable
+}
+
+type Mutation {
+  # Reads one page of a plugin and stores what it describes.
+  scrape(plugin: String!, url: String!): Scraped!
+}
+
+# A URL the player loads, with its media type.
+type Playable {
+  url: String!
+  mimeType: String!
+  quality: String
+}
+
+# What a scrape stored.
+type Scraped {
+  # video | gallery | performer | studio | tag
+  kind: String!
+  id: ID!
+}

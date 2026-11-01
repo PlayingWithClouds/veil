@@ -61,6 +61,11 @@ func (l *Library) Sources(ctx context.Context, kind schema.RecordKind, id string
 		db.Vars{"kind": string(kind), "id": id})
 }
 
+// Source loads one source by id.
+func (l *Library) Source(ctx context.Context, id string) (*schema.Source, error) {
+	return db.Get[schema.Source](ctx, l.database, tableSource, id)
+}
+
 // optional returns nil for an empty string, else a pointer to it.
 func optional(text string) *string {
 	if text == "" {

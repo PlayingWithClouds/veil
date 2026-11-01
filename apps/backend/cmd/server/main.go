@@ -17,41 +17,28 @@ import (
 
 	gqlapi "github.com/playingwithclouds/veil/internal/api/graphql"
 	imgapi "github.com/playingwithclouds/veil/internal/api/imgcache"
-	searchapi "github.com/playingwithclouds/veil/internal/api/search"
-	sseapi "github.com/playingwithclouds/veil/internal/api/sse"
 	"github.com/playingwithclouds/veil/internal/blobcache"
 	"github.com/playingwithclouds/veil/internal/cache"
-	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/db"
-	"github.com/playingwithclouds/veil/internal/discovery"
-	"github.com/playingwithclouds/veil/internal/face"
-	"github.com/playingwithclouds/veil/internal/ingest"
 	"github.com/playingwithclouds/veil/internal/jobs"
-	"github.com/playingwithclouds/veil/internal/livebuffer"
-	"github.com/playingwithclouds/veil/internal/media"
-	"github.com/playingwithclouds/veil/internal/mediakeep"
+	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/netdns"
 	"github.com/playingwithclouds/veil/internal/outbound"
 	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/pluginstore"
-	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
-	"github.com/playingwithclouds/veil/internal/searchrank"
 	"github.com/playingwithclouds/veil/internal/settings"
-	"github.com/playingwithclouds/veil/internal/sitesuggest"
 	"github.com/playingwithclouds/veil/internal/storage"
 	"github.com/playingwithclouds/veil/internal/stream"
-	"github.com/playingwithclouds/veil/internal/subscriptions"
-	"github.com/playingwithclouds/veil/internal/suggest"
-	"github.com/playingwithclouds/veil/internal/updater"
-	"github.com/playingwithclouds/veil/internal/vpn"
 )
 
 // pluginUpdateInterval is how often installed plugins are checked for newer
-// npm versions (besides at every start).
+// published versions (besides at every start).
 const pluginUpdateInterval = 6 * time.Hour
 
+// cachePluginIcon stores a plugin's icon in the blob store and returns its
+// local URL, or the original URL when it can't be fetched.
 func cachePluginIcon(ctx context.Context, store *storage.Client, name, iconURL string) string {
 	key := "plugin-icons/" + name
 	if store.Exists(ctx, key) {
@@ -62,11 +49,11 @@ func cachePluginIcon(ctx context.Context, store *storage.Client, name, iconURL s
 		return iconURL
 	}
 	defer resp.Body.Close()
-	ct := resp.Header.Get("Content-Type")
-	if ct == "" {
-		ct = "image/x-icon"
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/x-icon"
 	}
-	if err := store.Put(ctx, key, resp.Body, resp.ContentLength, ct); err != nil {
+	if err := store.Put(ctx, key, resp.Body, resp.ContentLength, contentType); err != nil {
 		log.Printf("plugin icon cache: %v", err)
 		return iconURL
 	}
@@ -118,49 +105,7 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 		// Keep reading blobs encrypted earlier, but write new ones plain.
 		return store.WithEncryption(key)
 	}
-	return store.WithEncryption(key, "stream-cache/", cams.RecordingPrefix, livebuffer.Prefix)
-}
-
-// camRecordingMaxDuration returns the longest a cam recording may run, read
-// from the settings each time a recording starts.
-func camRecordingMaxDuration(settingsSvc *settings.Service) func() time.Duration {
-	return func() time.Duration {
-		minutes := settingsSvc.Cached().CamRecordingMaxMinutes
-		if minutes <= 0 {
-			return cams.DefaultMaxRecording
-		}
-		return time.Duration(minutes) * time.Minute
-	}
-}
-
-// performerProfileInterval is how often performers without a profile page on
-// the profile site are looked up, performerProfileBatch at a time.
-const (
-	performerProfileInterval = 6 * time.Hour
-	performerProfileBatch    = 100
-)
-
-// profilePerformers fetches profile pages for performers shortly after start
-// (once the plugins have loaded) and then on every interval.
-func profilePerformers(ctx context.Context, orch *pipeline.Orchestrator) {
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.After(time.Minute):
-	}
-	for {
-		profiled, err := orch.ProfilePerformers(ctx, performerProfileBatch)
-		if err != nil {
-			log.Printf("profile performers: %v", err)
-		} else if profiled > 0 {
-			log.Printf("profile performers: %d profiled", profiled)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(performerProfileInterval):
-		}
-	}
+	return store.WithEncryption(key, "stream-cache/")
 }
 
 // cacheMaxBytes returns the cache size limit: CACHE_MAX_BYTES when it is a
@@ -178,6 +123,7 @@ func cacheMaxBytes() int64 {
 	return maxBytes
 }
 
+// corsMiddleware lets the web app on another port call the API.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -189,6 +135,39 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// openPlugins loads the installed plugins and starts the store that installs
+// and updates them.
+func openPlugins(ctx context.Context, dataDir string, runner *plugins.Runner, store *storage.Client, settingsService *settings.Service) (*plugins.Registry, *pluginstore.Store) {
+	// Installed plugin bundles, one folder each; hot-reloaded on change.
+	pluginDir := envOr("PLUGIN_DIR", filepath.Join(dataDir, "plugins"))
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
+		log.Fatalf("plugin dir: %v", err)
+	}
+	// Plugins come from the GitHub "plugins" release. The phone app also ships
+	// a bundled set to seed from, so it works offline on first launch.
+	pluginStore := pluginstore.New(pluginDir, os.Getenv("PLUGIN_INDEX"))
+	if seedDir := os.Getenv("PLUGIN_SEED_DIR"); seedDir != "" {
+		if err := pluginStore.Seed(seedDir); err != nil {
+			log.Printf("plugin seed: %v", err)
+		}
+	}
+	registry, err := plugins.NewRegistry(pluginDir, runner,
+		plugins.WithIconFetcher(func(ctx context.Context, name, iconURL string) string {
+			return cachePluginIcon(ctx, store, name, iconURL)
+		}),
+		// Plugins inherit the backend's environment, FLARESOLVERR_URL included.
+		plugins.WithSolver(strings.TrimSpace(os.Getenv("FLARESOLVERR_URL")) != ""),
+	)
+	if err != nil {
+		log.Fatalf("plugins: %v", err)
+	}
+	registry.RestoreDisabled(settingsService.Cached().DisabledPlugins)
+	// Inject per-plugin settings (API keys etc.) as env vars on each invocation.
+	runner.SetSettingsProvider(settingsService)
+	go pluginStore.Run(ctx, pluginUpdateInterval)
+	return registry, pluginStore
 }
 
 func main() {
@@ -205,7 +184,6 @@ func main() {
 	// servers, as a list or a file kept current by the app.
 	netdns.Configure(os.Getenv("DNS_SERVERS"), os.Getenv("DNS_SERVERS_FILE"))
 
-	// Storage.
 	database, err := db.Open(ctx, filepath.Join(dataDir, "veil.db"))
 	if err != nil {
 		log.Fatalf("db: %v", err)
@@ -213,7 +191,6 @@ func main() {
 	defer database.Close()
 
 	cacheClient := cache.New(ctx, database)
-
 	storeClient, err := storage.New(filepath.Join(dataDir, "blobs"), publicURL)
 	if err != nil {
 		log.Fatalf("storage: %v", err)
@@ -222,212 +199,78 @@ func main() {
 		log.Fatalf("blob encryption: %v", err)
 	}
 
-	// Settings (must init before anything that reads them).
-	settingsSvc := settings.NewService(database)
-	if err := settingsSvc.Init(ctx); err != nil {
+	// Settings must load before anything that reads them.
+	settingsService := settings.NewService(database)
+	if err := settingsService.Init(ctx); err != nil {
 		log.Fatalf("settings init: %v", err)
 	}
-	cfg := settingsSvc.Cached()
 
-	// Repository (subscriptions only) and job queue.
-	repo := media.NewRepository(database)
-
-	ingestSvc := ingest.New(database)
-	// Performers, studios and tags made before names were compared loosely: fill their name key
-	// and merge the ones that are the same. A failure leaves the data as
-	// it was, so it only costs the cleanup.
-	if _, err := ingestSvc.RepairNamedRecords(ctx); err != nil {
-		log.Printf("repair performers, studios and tags: %v", err)
-	}
-	// Scenes, galleries and collections that several sites carry are merged
-	// in the background; new ones are merged as they are ingested.
-	go func() {
-		if _, err := ingestSvc.MergeDuplicateMedia(ctx); err != nil {
-			log.Printf("merge duplicate media: %v", err)
-		}
-	}()
-
-	queue := jobs.NewQueue(database, cfg.MaxJobRetries)
-
-	// Crash recovery: reset any jobs left in "running" state.
+	queue := jobs.NewQueue(database, settingsService.Cached().MaxJobRetries)
+	// Crash recovery: jobs left running go back to the queue.
 	if err := queue.ResetStuck(ctx); err != nil {
 		log.Fatalf("reset stuck jobs: %v", err)
 	}
 
-	// Plugin system: bundled plugins (scripts/bundle-plugins.ts) run in the
-	// embedded JS runtime, the same on a server and in the phone app.
+	// Plugins run in the embedded JS runtime, the same on a server and in the
+	// phone app.
 	runner := plugins.NewEmbeddedRunner()
+	registry, pluginStore := openPlugins(ctx, dataDir, runner, storeClient, settingsService)
 
-	hub := subscriptions.NewHub()
-
-	// Installed plugin bundles, one folder each; hot-reloaded on change.
-	pluginDir := envOr("PLUGIN_DIR", filepath.Join(dataDir, "plugins"))
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		log.Fatalf("plugin dir: %v", err)
-	}
-
-	// Plugins come from the GitHub "plugins" release: installed on demand,
-	// updated in the background.
-	// The phone app also ships a bundled set to seed from, so it works offline
-	// on first launch.
-	pluginStore := pluginstore.New(pluginDir, os.Getenv("PLUGIN_INDEX"))
-	if seedDir := os.Getenv("PLUGIN_SEED_DIR"); seedDir != "" {
-		if err := pluginStore.Seed(seedDir); err != nil {
-			log.Printf("plugin seed: %v", err)
-		}
-	}
-
-	// Pipeline orchestrator (created before registry so onLoad can reference it).
-	orch := pipeline.New(queue, ingestSvc, nil, runner, hub, storeClient, settingsSvc)
-
-	registry, err := plugins.NewRegistry(pluginDir, runner,
-		plugins.WithIconFetcher(func(ctx context.Context, name, iconURL string) string {
-			return cachePluginIcon(ctx, storeClient, name, iconURL)
-		}),
-		// Plugins inherit the backend's environment, FLARESOLVERR_URL included.
-		plugins.WithSolver(strings.TrimSpace(os.Getenv("FLARESOLVERR_URL")) != ""),
-	)
-	if err != nil {
-		log.Fatalf("plugins: %v", err)
-	}
-	registry.RestoreDisabled(cfg.DisabledPlugins)
-	orch.SetRegistry(registry)
-	orch.SetProfileCache(cacheClient)
-	mediaKeeper := mediakeep.New(database, storeClient, registry)
-	ingestSvc.SetStubObserver(mediaKeeper)
-	go mediaKeeper.Run(ctx)
-	go profilePerformers(ctx, orch)
-	go pluginStore.Run(ctx, pluginUpdateInterval)
-
-	// Worker pool: size from settings.
-	allKinds := []jobs.Kind{jobs.KindScrape, jobs.KindEnrich, jobs.KindDownload, jobs.KindSpeedCheck}
-	concurrency := cfg.MaxConcurrentJobs
-	if concurrency <= 0 {
-		concurrency = 4
-	}
-	worker := jobs.NewWorker(queue, allKinds, concurrency, func(ctx context.Context, j *jobs.Job) {
-		orch.RunJob(ctx, j)
-	})
-	worker.SetVpnGate(func() bool {
-		if !settingsSvc.Cached().RequireVpn {
-			return true
-		}
-		connected, _ := vpn.IsConnected()
-		return connected
-	})
-	go worker.Start(ctx)
-
-	// Search subscriptions: saved searches re-run on their own schedule.
-	discoverySvc := discovery.New(ingestSvc, registry, runner)
-	searchScheduler := updater.NewScheduler(repo, discoverySvc)
-	go searchScheduler.Start(ctx)
-
-	// Inject per-plugin settings (API keys etc.) as env vars on each invocation.
-	runner.SetSettingsProvider(settingsSvc)
+	lib := library.New(database)
+	flow := pipeline.New(lib, registry, runner)
 
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.
 	streamCache := stream.NewCacheService(cacheClient, storeClient)
-
-	// Stream resolver service (cache → domain plugin → wildcard plugin → direct).
+	// Stream resolver (cache → domain plugin → wildcard plugin → direct).
 	streamResolver := resolve.New(registry, runner)
 	streamResolver.SetCache(streamCache)
-	orch.SetStreamResolver(streamResolver)
-	orch.SetStreamCache(streamCache)
-
-	// GraphQL API.
-	resolver := gqlapi.NewResolver(repo, ingestSvc, queue, registry, runner, orch, hub, streamResolver, settingsSvc, nil)
-	gqlHandler, err := gqlapi.NewHandler(resolver)
-	if err != nil {
-		log.Fatalf("graphql schema: %v", err)
-	}
-
 	// HLS proxy: rewrites manifest URIs to local proxy URLs, write-through caches segments.
 	streamProxy := stream.NewProxy(streamCache, cacheClient, publicURL)
-	resolver.SetStreamProxy(streamProxy)
-	// Live buffer: the last minutes of watched cam rooms, so a viewer can rewind
-	// and a recording can start in the past. It does not survive a restart.
-	liveBuffer := livebuffer.New(ctx, storeClient)
-	if err := liveBuffer.Reset(ctx); err != nil {
-		log.Printf("live buffer reset: %v", err)
-	}
-	go liveBuffer.Run(ctx)
-	streamProxy.SetLiveBuffer(liveBuffer)
-	camService := cams.New(database, cams.NewPluginSites(registry, runner), streamProxy)
-	resolver.SetCams(camService)
-	camRecorder := cams.NewRecorder(ctx, camService, storeClient, cams.NewHTTPFetcher(), ingestSvc, camRecordingMaxDuration(settingsSvc))
-	camRecorder.SetLiveBuffer(liveBuffer)
-	resolver.SetCamRecorder(camRecorder)
-	go func() {
-		camRecorder.Recover(ctx)
-		cams.NewAutoRecorder(camService, camRecorder).Run(ctx)
-	}()
 
 	// Cache size limit: stream and image cache blobs beyond it are evicted,
 	// least recently used first. Downloads are pinned and don't count.
 	streamCache.SetPinnedURLs(queue.DownloadURLs)
-	cacheEvictor := blobcache.New(storeClient, cacheMaxBytes(),
-		streamCache.EvictionSource(), imgapi.EvictionSource())
+	cacheEvictor := blobcache.New(storeClient, cacheMaxBytes(), streamCache.EvictionSource(), imgapi.EvictionSource())
 	storeClient.OnPut(cacheEvictor.NoteWrite)
 	go func() {
 		reconcileBlobs(ctx, streamCache, queue)
 		cacheEvictor.Run(ctx)
 	}()
 
-	imgHandler := imgapi.New(storeClient)
-	resolver.SetImageCache(imgHandler)
-	resolver.SetBlobStore(storeClient)
-	resolver.SetSearchScheduler(searchScheduler)
-	resolver.SetEntityScenes(updater.NewEntityScenes(searchScheduler, cacheClient))
-	recommender := recommend.New(database, repo)
-	// The feeder supplies the feed from the sites without a search.
-	feeder := updater.NewFeeder(searchScheduler, database, recommender, cacheClient, recommender.Invalidate)
-	recommender.OnLowPool(feeder.TopUp)
-	go feeder.Start(ctx)
-	resolver.SetRecommender(recommender)
-	searchHistory := searchrank.NewHistory(database)
-	resolver.SetSearchHistory(searchHistory)
-	resolver.SetFeeder(feeder)
-	resolver.SetPluginStore(pluginStore)
-	// Search suggestions: build the name/phrase index now, not on the first keystroke.
-	suggestions := suggest.New(database, recommender, repo)
-	resolver.SetSuggestions(suggestions)
-	resolver.SetSiteSuggestions(sitesuggest.New(registry, runner))
-	resolver.SetFaceIdentifier(face.New(database, ingestSvc, registry, runner, imgHandler.Load))
-	go suggestions.Warm(ctx)
+	resolver := gqlapi.NewResolver(gqlapi.Services{
+		Library:     lib,
+		Pipeline:    flow,
+		Registry:    registry,
+		Runner:      runner,
+		PluginStore: pluginStore,
+		Settings:    settingsService,
+		Resolver:    streamResolver,
+		Proxy:       streamProxy,
+	})
 
 	mux := http.NewServeMux()
-	mux.Handle("/graphql", gqlHandler)
-	mux.Handle("/api/events", sseapi.New(hub))
-	searchHandler := searchapi.New(ingestSvc, discoverySvc, repo, recommender)
-	searchHandler.SetHistory(searchHistory)
-	searchHandler.SetEntityPages(searchScheduler)
-	mux.Handle("/api/search", searchHandler)
-	mux.Handle("/api/img", imgHandler)
+	mux.Handle("/graphql", gqlapi.NewHandler(resolver))
+	mux.Handle("/api/img", imgapi.New(storeClient))
 	mux.Handle("/api/stream/", streamProxy)
 	mux.Handle(storage.RoutePrefix, storeClient.Handler())
-	mux.HandleFunc("/api/schema", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/graphql")
-		fmt.Fprint(w, gqlapi.SchemaSDL)
-	})
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	srv := &http.Server{
+	server := &http.Server{
 		// HOST empty = every interface; the phone app binds to 127.0.0.1.
 		Addr:    net.JoinHostPort(os.Getenv("HOST"), port),
 		Handler: corsMiddleware(mux),
 	}
-
 	go func() {
 		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_ = srv.Shutdown(shutCtx)
+		_ = server.Shutdown(shutdownContext)
 	}()
 
-	log.Printf("listening on %s", srv.Addr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	log.Printf("listening on %s", server.Addr)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

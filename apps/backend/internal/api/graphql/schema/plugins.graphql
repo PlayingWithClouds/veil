@@ -1,0 +1,71 @@
+# Installed plugins and the published plugin index.
+
+extend type Query {
+  plugins: [Plugin!]!
+  plugin(name: String!): Plugin
+  # Plugins published in the plugin index matching query, all when empty.
+  pluginPackages(query: String): [PluginPackage!]!
+}
+
+extend type Mutation {
+  setPluginEnabled(name: String!, enabled: Boolean!): Boolean!
+  updatePluginSettings(plugin: String!, values: [PluginSettingValueInput!]!): Boolean!
+  # Installs (or updates) a published plugin package; it loads within a second.
+  installPlugin(packageName: String!): Boolean!
+  # Removes an installed plugin's folder.
+  uninstallPlugin(name: String!): Boolean!
+  # Installs newer published versions of installed plugins; returns the updated package names.
+  updatePlugins: [String!]!
+}
+
+# A plugin package in the published index.
+type PluginPackage {
+  name: String!
+  version: String!
+  description: String
+  # version installed here, null when not installed
+  installedVersion: String
+}
+
+type Plugin {
+  name: String!
+  # package the plugin was installed from
+  packageName: String
+  # bundled from the backend's own checkout (dev); never auto-updated
+  localBuild: Boolean!
+  displayName: String
+  iconUrl: String
+  description: String
+  version: String!
+  capabilities: [String!]!
+  # hostnames this plugin handles
+  domains: [String!]!
+  # kinds of content the plugin's sites carry: videos, cam-shows, jav, galleries
+  content: [String!]!
+  enabled: Boolean!
+  # site only works through FlareSolverr (Cloudflare challenge)
+  requiresSolver: Boolean!
+  # false when a requirement (e.g. FlareSolverr) is missing in this deployment
+  available: Boolean!
+  settings: [PluginSettingField!]!
+  settingValues: [PluginSettingValue!]!
+}
+
+type PluginSettingField {
+  key: String!
+  label: String!
+  description: String
+  type: String!
+  required: Boolean!
+  default: String
+}
+
+type PluginSettingValue {
+  key: String!
+  value: String!
+}
+
+input PluginSettingValueInput {
+  key: String!
+  value: String!
+}

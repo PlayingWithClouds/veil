@@ -1,0 +1,210 @@
+# The core records: videos, galleries and images, performers, studios, tags,
+# and where they came from. Types mirror schema/*.schema (bound to the
+# generated Go types in internal/schema); references resolve to records.
+
+extend type Query {
+  videos(filter: MediaFilter, limit: Int, offset: Int): [Video!]!
+  video(id: ID!): Video
+  galleries(filter: MediaFilter, limit: Int, offset: Int): [Gallery!]!
+  gallery(id: ID!): Gallery
+  performers(text: String, limit: Int, offset: Int): [Performer!]!
+  performer(id: ID!): Performer
+  studios(text: String, limit: Int, offset: Int): [Studio!]!
+  studio(id: ID!): Studio
+  tags(text: String, limit: Int, offset: Int): [Tag!]!
+  tag(id: ID!): Tag
+}
+
+extend type Mutation {
+  # Reads the pages behind a video's sources that haven't been read yet
+  # (credits, description, streams), then returns the video.
+  fetchVideo(id: ID!): Video
+  # Same for a gallery: its pages list the images.
+  fetchGallery(id: ID!): Gallery
+  # Stores one page of a plugin's catalog (no query) or search results.
+  browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
+  # Searches every plugin that lists this kind and stores the results.
+  search(kind: ListKind!, query: String!, limit: Int): Listed!
+}
+
+# Narrows a list of videos or galleries. Empty fields don't filter.
+input MediaFilter {
+  text: String
+  performerId: ID
+  studioId: ID
+  tagId: ID
+}
+
+# What a plugin can list.
+enum ListKind {
+  VIDEO
+  GALLERY
+  PERFORMER
+  STUDIO
+  TAG
+}
+
+# What a browse or search stored, by kind.
+type Listed {
+  videos: [Video!]!
+  galleries: [Gallery!]!
+  performers: [Performer!]!
+  studios: [Studio!]!
+  tags: [Tag!]!
+}
+
+# A picture or clip: a stored blob or a remote URL.
+type Asset {
+  uri: String!
+  mimeType: String
+  width: Int
+  height: Int
+  blurhash: String
+}
+
+type Video {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  # available | wanted | unavailable
+  status: String!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  durationSeconds: Float
+  width: Int
+  height: Int
+  vr: VrFormat
+  preview: Asset
+  trickplay: Trickplay
+  gallery: Gallery
+  sources: [Source!]!
+  # Playable streams, fastest measured first.
+  streams: [Stream!]!
+}
+
+type VrFormat {
+  projection: String!
+  stereo: String!
+  fieldOfView: Int
+}
+
+type Trickplay {
+  sheets: [Asset!]!
+  columns: Int!
+  rows: Int!
+  tileWidth: Int!
+  tileHeight: Int!
+  intervalSeconds: Float!
+}
+
+type Gallery {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: String!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  imageCount: Int!
+  images: [Image!]!
+  video: Video
+  sources: [Source!]!
+}
+
+type Image {
+  id: ID!
+  position: Int!
+  asset: Asset!
+  width: Int
+  height: Int
+}
+
+type Performer {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  name: String!
+  aliases: [String!]!
+  image: Asset
+  details: String
+  attributes: PerformerAttributes!
+  links: [String!]!
+  tags: [Tag!]!
+  sources: [Source!]!
+  videoCount: Int!
+  galleryCount: Int!
+}
+
+type PerformerAttributes {
+  gender: String
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerStart: Int
+  careerEnd: Int
+}
+
+type Studio {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  name: String!
+  aliases: [String!]!
+  image: Asset
+  details: String
+  url: String
+  parent: Studio
+  tags: [Tag!]!
+  sources: [Source!]!
+  videoCount: Int!
+  galleryCount: Int!
+}
+
+type Tag {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  videoCount: Int!
+  galleryCount: Int!
+}
+
+# A site a record was found on.
+type Source {
+  id: ID!
+  plugin: String!
+  externalId: String!
+  url: String!
+  title: String
+  image: Asset
+  # When its page was read; null for a listing card only.
+  fetchedAt: String
+}
+
+# A playable stream a source offers.
+type Stream {
+  id: ID!
+  url: String!
+  mimeType: String!
+  quality: String
+  height: Int
+  speedKbps: Int
+  source: Source
+}

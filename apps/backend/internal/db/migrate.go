@@ -30,6 +30,9 @@ func (d *DB) migrate(ctx context.Context) error {
 	)`); err != nil {
 		return fmt.Errorf("create _migration: %w", err)
 	}
+	if err := d.refuseOldHistory(ctx); err != nil {
+		return err
+	}
 	pending, err := d.pendingMigrations(ctx)
 	if err != nil || len(pending) == 0 {
 		return err
@@ -50,6 +53,21 @@ func (d *DB) migrate(ctx context.Context) error {
 		log.Printf("db: applied migration %s", name)
 	}
 	return checkForeignKeys(ctx, connection)
+}
+
+// refuseOldHistory fails on a database made by the migrations before the
+// schema restart: their version 1 has another name, and applying the new
+// files on top would silently skip the new 001.
+func (d *DB) refuseOldHistory(ctx context.Context) error {
+	names, err := d.Strings(ctx, "SELECT name FROM _migration WHERE version = 1", nil)
+	if err != nil || len(names) == 0 {
+		return err
+	}
+	first, err := migrationNames()
+	if err != nil || len(first) == 0 || names[0] == first[0] {
+		return err
+	}
+	return fmt.Errorf("database predates the current schema (%s); delete the data directory and start fresh", names[0])
 }
 
 // pendingMigrations lists the embedded migrations not yet applied, in order.
