@@ -3,10 +3,10 @@
 
 namespace veil
 
-import { Record, Asset, RecordKind } from "./common"
+import { Entity, Asset, RecordKind } from "./common"
 
 /// A site's own label. Never curated or browsed, only used to filter.
-model Tag extends Record {
+model Tag extends Entity {
   @unique
   10 name: string
   11 aliases: [string]
@@ -15,7 +15,7 @@ model Tag extends Record {
 /// Our own taxonomy, defined by us rather than any site. Media belongs to a
 /// category when it carries any of the category's tags, so new site tags only
 /// need mapping, never re-tagging.
-model Category extends Record {
+model Category extends Entity {
   10 name: string
 
   @unique
@@ -42,7 +42,7 @@ enum FieldType {
 /// A field the user added to some kinds of records. Values live in
 /// UserState.fields under the definition's id, so filters and automation
 /// conditions can use them.
-model FieldDef extends Record {
+model FieldDef extends Entity {
   10 name: string
   11 kinds: [RecordKind]
   12 fieldType: FieldType

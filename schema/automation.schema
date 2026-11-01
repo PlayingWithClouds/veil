@@ -2,7 +2,7 @@
 
 namespace veil
 
-import { Record, RecordRef } from "./common"
+import { Entity, RecordRef } from "./common"
 import { Filter } from "./user"
 
 enum TriggerKind {
@@ -10,7 +10,7 @@ enum TriggerKind {
   1 event
   /// A cron schedule.
   2 schedule
-  /// A subscription found new media.
+  /// A follow found new media.
   3 newMedia
   /// A followed cam model went live.
   4 camLive
@@ -48,7 +48,7 @@ model Step {
 
 /// A multi-step automation: when the trigger fires, the steps run in order,
 /// each seeing the previous step's output.
-model Automation extends Record {
+model Automation extends Entity {
   10 name: string
   11 enabled: bool
   12 trigger: Trigger
@@ -76,7 +76,7 @@ model StepResult {
 
 /// One run of an automation. Undoing it reverts the revisions it wrote.
 @index(fields: ["automation", "startedAt"])
-model AutomationRun extends Record {
+model AutomationRun extends Entity {
   10 automation: ref<Automation>
 
   11 startedAt: timestamp
@@ -96,7 +96,7 @@ enum ChannelKind {
 }
 
 /// Where notifications go.
-model NotificationChannel extends Record {
+model NotificationChannel extends Entity {
   10 kind: ChannelKind
   11 name: string
   /// Topic and server for ntfy, URL for webhooks, device for push.
@@ -105,7 +105,7 @@ model NotificationChannel extends Record {
 }
 
 @index(fields: ["read", "at"])
-model Notification extends Record {
+model Notification extends Entity {
   10 at: timestamp
   /// "newMedia", "camLive", "downloadDone", "automationFailed", …
   11 kind: string

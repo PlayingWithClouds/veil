@@ -1,16 +1,16 @@
 // user.schema — everything the (single) user adds: per-record state,
-// collections, filters, subscriptions, the event log, limits and accounts.
+// collections, filters, follows, the event log, limits and accounts.
 
 namespace veil
 
-import { Record, RecordKind, MediaKind, Asset } from "./common"
+import { Entity, RecordKind, MediaKind, Asset } from "./common"
 import { MediaStatus } from "./content"
 import { Device } from "./system"
 
 /// The user's state on one record: rating, favourite, notes, progress, block,
 /// and custom field values.
 @index(fields: ["subjectKind", "subjectId"], unique: true)
-model UserState extends Record {
+model UserState extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
@@ -43,7 +43,7 @@ enum CollectionKind {
 }
 
 /// An ordered list of media.
-model Collection extends Record {
+model Collection extends Entity {
   10 name: string
   11 kind: CollectionKind
   12 details: string?
@@ -51,7 +51,7 @@ model Collection extends Record {
 }
 
 @index(fields: ["collection", "position"])
-model CollectionItem extends Record {
+model CollectionItem extends Entity {
   10 collection: ref<Collection>
 
   11 subjectKind: RecordKind
@@ -87,7 +87,7 @@ model FieldCondition {
 }
 
 /// One filter shape for every list: library pages, search, category pages,
-/// saved and smart filters, subscriptions, automation conditions and plugin
+/// saved and smart filters, follows, automation conditions and plugin
 /// listings.
 @value
 model Filter {
@@ -121,15 +121,15 @@ model Filter {
 }
 
 /// A named filter. Every saved filter can also be played as a smart playlist.
-model SavedFilter extends Record {
+model SavedFilter extends Entity {
   10 name: string
   11 filter: Filter
   12 pinned: bool
 }
 
 /// Following anything: a performer, studio, cam model, category or search is
-/// a subscription on a filter that runs on the sites and feeds notifications.
-model Subscription extends Record {
+/// a follow on a filter that runs on the sites and feeds notifications.
+model Follow extends Entity {
   10 name: string
   11 filter: Filter
 
@@ -162,7 +162,7 @@ enum EventKind {
 /// One thing the user did. History, o-count, most-replayed, recent searches,
 /// stats, limits and the recommendation signals are all queries over this log.
 @index(fields: ["kind", "at"]) @index(fields: ["subjectKind", "subjectId"])
-model Event extends Record {
+model Event extends Entity {
   10 at: timestamp
   11 kind: EventKind
   12 subjectKind: RecordKind?
@@ -192,7 +192,7 @@ enum LimitAction {
 }
 
 /// A usage limit, checked against the event log.
-model Limit extends Record {
+model Limit extends Entity {
   10 kind: LimitKind
   11 window: LimitWindow
   /// Minutes for watch time, a count for sessions.
@@ -209,7 +209,7 @@ enum AccountStatus {
 }
 
 /// A login on a plugin's site. Credentials stay on the device that logged in.
-model Account extends Record {
+model Account extends Entity {
   10 plugin: string
   11 label: string
   12 status: AccountStatus

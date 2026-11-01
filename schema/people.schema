@@ -3,7 +3,7 @@
 
 namespace veil
 
-import { Record, Asset } from "./common"
+import { Entity, Asset } from "./common"
 import { Tag } from "./classification"
 
 /// Body and career facts, filled by plugins as far as they know them.
@@ -27,7 +27,7 @@ model PerformerAttributes {
 }
 
 /// A person who appears in media.
-model Performer extends Record {
+model Performer extends Entity {
   10 name: string
 
   11 aliases: [string]
@@ -45,7 +45,7 @@ model Performer extends Record {
 }
 
 /// A production company, channel or network.
-model Studio extends Record {
+model Studio extends Entity {
   10 name: string
 
   11 aliases: [string]
@@ -73,7 +73,7 @@ model CamLive {
 /// A room on one cam site. Live state comes from the site's plugin;
 /// recordings become Videos with recordedFrom set.
 @index(fields: ["plugin", "username"], unique: true)
-model CamModel extends Record {
+model CamModel extends Entity {
   10 plugin: string
   11 username: string
   12 displayName: string
@@ -93,7 +93,7 @@ model CamModel extends Record {
 
 /// A site's own grouping of videos: a movie, a series, a compilation.
 /// Unlike a Collection it comes from sites, not from the user.
-model Group extends Record {
+model Group extends Entity {
   10 title: string
 
   11 details: string?

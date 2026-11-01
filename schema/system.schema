@@ -2,7 +2,7 @@
 
 namespace veil
 
-import { Record, RecordRef, MediaKind } from "./common"
+import { Entity, RecordRef, MediaKind } from "./common"
 
 enum Platform {
   1 server
@@ -13,7 +13,7 @@ enum Platform {
 }
 
 /// An install of Veil. Sync, accounts, storage and events are per device.
-model Device extends Record {
+model Device extends Entity {
   10 name: string
   11 platform: Platform
   12 lastSeenAt: timestamp?
@@ -26,7 +26,7 @@ enum JobKind {
   1 download
   2 record
   3 scrape
-  4 subscriptionRun
+  4 followRun
   5 fingerprint
   6 embed
   7 trickplay
@@ -46,7 +46,7 @@ enum JobStatus {
 
 /// Background work, run on one device.
 @index(fields: ["status", "runAt"])
-model Job extends Record {
+model Job extends Entity {
   10 kind: JobKind
   11 status: JobStatus
   12 subject: RecordRef?
@@ -66,7 +66,7 @@ model Job extends Record {
 
 /// Access for other clients: a phone streaming from the home server,
 /// scripts, agents over MCP.
-model ApiToken extends Record {
+model ApiToken extends Entity {
   10 name: string
   /// "read", "write", "stream", "admin".
   11 scopes: [string]
@@ -116,7 +116,7 @@ enum PluginOrigin {
 
 /// An installed plugin.
 @index(fields: ["name"], unique: true)
-model Plugin extends Record {
+model Plugin extends Entity {
   10 name: string
   11 displayName: string?
   12 version: semver

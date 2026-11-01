@@ -1,4 +1,4 @@
-// common.schema — building blocks every other file uses: the record base,
+// common.schema — building blocks every other file uses: the Entity base,
 // polymorphic references, assets and sources.
 //
 // Decorators only appear where they change generated output:
@@ -56,7 +56,7 @@ enum Actor {
 /// across devices once sync arrives. Deleting trashes a record (deletedAt);
 /// it's purged once the trash retention passes.
 @abstract
-model Record {
+model Entity {
   @primaryKey
   1 id: uuid
 
@@ -91,7 +91,7 @@ model Asset {
 /// Where a record came from: one entry per site it was scraped or merged
 /// from. Merging two records moves their sources onto the survivor.
 @index(fields: ["plugin", "externalId"], unique: true)
-model Source extends Record {
+model Source extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 

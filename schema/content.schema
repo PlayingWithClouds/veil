@@ -3,7 +3,7 @@
 
 namespace veil
 
-import { Record, Asset, RecordRef } from "./common"
+import { Entity, Asset, RecordRef } from "./common"
 import { Tag } from "./classification"
 import { Performer, Studio, CamModel, Group } from "./people"
 
@@ -22,7 +22,7 @@ enum MediaStatus {
 /// from the tags. Plugins fill the descriptive fields; FieldSource records
 /// which source owns each one.
 @abstract
-model Media extends Record {
+model Media extends Entity {
   10 title: string
 
   11 details: string?
@@ -93,7 +93,7 @@ model Video extends Media {
 
 /// A video's place in a site group.
 @index(fields: ["group", "video"], unique: true)
-model GroupItem extends Record {
+model GroupItem extends Entity {
   10 group: ref<Group>
   11 video: ref<Video>
 
@@ -110,7 +110,7 @@ model Gallery extends Media {
 
 /// A photo. Always belongs to a gallery.
 @index(fields: ["gallery", "position"])
-model Image extends Record {
+model Image extends Entity {
   10 gallery: ref<Gallery>
 
   11 position: i32
@@ -132,7 +132,7 @@ model Story extends Media {
 }
 
 @index(fields: ["story", "position"], unique: true)
-model StoryChapter extends Record {
+model StoryChapter extends Entity {
   10 story: ref<Story>
 
   11 position: i32

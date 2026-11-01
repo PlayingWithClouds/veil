@@ -4,7 +4,7 @@
 
 namespace veil
 
-import { Record, RecordKind, Actor, Asset, Source } from "./common"
+import { Entity, RecordKind, Actor, Asset, Source } from "./common"
 import { Tag } from "./classification"
 import { Performer } from "./people"
 import { Video } from "./content"
@@ -13,7 +13,7 @@ import { Device } from "./system"
 /// A playable stream a source offers, ranked by quality and measured speed.
 /// Signed URLs expire and are resolved again from the source page.
 @index(fields: ["subjectKind", "subjectId"])
-model Stream extends Record {
+model Stream extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
@@ -40,7 +40,7 @@ enum StorageKind {
 }
 
 /// A place on one device where Veil keeps files.
-model StorageLocation extends Record {
+model StorageLocation extends Entity {
   10 device: ref<Device>
 
   11 kind: StorageKind
@@ -51,7 +51,7 @@ model StorageLocation extends Record {
 }
 
 /// A folder of the user's own files, scanned into the library.
-model LibraryRoot extends Record {
+model LibraryRoot extends Entity {
   10 location: ref<StorageLocation>
 
   11 path: string
@@ -65,7 +65,7 @@ model LibraryRoot extends Record {
 
 /// A stored file of a media record (or one of its images).
 @index(fields: ["location", "path"], unique: true)
-model MediaFile extends Record {
+model MediaFile extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
@@ -96,7 +96,7 @@ enum SegmentOrigin {
 /// A time range in a video or audio: a scene within a compilation, a chapter,
 /// or a marker (end omitted). Credits on a segment narrow the media's own.
 @index(fields: ["subjectKind", "subjectId"])
-model Segment extends Record {
+model Segment extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
@@ -113,7 +113,7 @@ model Segment extends Record {
 
 /// A moment the user saved from a video, playable in the shorts feed and
 /// exportable as a file.
-model Clip extends Record {
+model Clip extends Entity {
   10 video: ref<Video>
 
   11 startSeconds: f64
@@ -132,7 +132,7 @@ enum SubtitleOrigin {
 }
 
 @index(fields: ["subjectKind", "subjectId"])
-model Subtitle extends Record {
+model Subtitle extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
@@ -150,7 +150,7 @@ enum ScriptKind {
 
 /// A motion script for connected toys, synced to the media's timeline.
 @index(fields: ["subjectKind", "subjectId"])
-model Script extends Record {
+model Script extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 

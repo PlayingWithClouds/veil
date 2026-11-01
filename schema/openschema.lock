@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-01T18:58:46.579Z",
+  "updatedAt": "2026-11-01T19:04:31.259Z",
   "baseline": false,
-  "digest": "sha256-14941b0f9590d71fbc718645997e77c71d9bbb55877aad8e81b659808da44280",
+  "digest": "sha256-ba9a89fa9c19ab7d485c60aeef0fff16fedd1ae76cf7ab0e80f9e90fb8384947",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -420,7 +420,7 @@
         },
         "4": {
           "state": "active",
-          "name": "subscriptionRun",
+          "name": "followRun",
           "type": null,
           "encoding": null,
           "since": "2026-11-01T18:20:52.420Z"
@@ -1862,6 +1862,39 @@
         }
       }
     },
+    "model:veil.Entity": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "id",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "createdAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "updatedAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "deletedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        }
+      }
+    },
     "model:veil.Event": {
       "kind": "model",
       "ordinals": {
@@ -2251,6 +2284,81 @@
           "type": "f64?",
           "encoding": "singular:i64",
           "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Follow": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "filter",
+          "type": "Filter",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "targetKind",
+          "type": "RecordKind?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "targetId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "intervalHours",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "notify",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "lastRunAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "nextRunAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:04:31.259Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "lastError",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:04:31.259Z"
         }
       }
     },

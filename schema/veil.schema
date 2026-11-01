@@ -2,20 +2,20 @@
 //   openschema schema/veil.schema --target <target> --out <dir>
 //
 // Domain files:
-//   common          record base, references, assets, sources
+//   common          Entity base, references, assets, sources
 //   classification  tags, categories, custom field definitions
 //   people          performers, studios, cam models, groups
 //   content         media: videos, galleries, images, audio, stories, posts
 //   provenance      field sources, revisions, fingerprints, embeddings, alike, comments
 //   playback        streams, files, storage, library roots, segments, clips, subtitles, scripts
-//   user            user state, collections, filters, subscriptions, events, limits, accounts
+//   user            user state, collections, filters, follows, events, limits, accounts
 //   automation      automations, runs, notifications
 //   system          devices, jobs, API tokens, plugins
 //   features        matches and the feature operations
 
 namespace veil
 
-import { Record } from "./common"
+import { Entity } from "./common"
 import { Tag } from "./classification"
 import { Performer } from "./people"
 import { Video } from "./content"
