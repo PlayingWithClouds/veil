@@ -1,6 +1,0 @@
-# The local library: scenes downloaded to the NAS.
-
-extend type Query {
-  # Scenes with a completed download job, newest download first.
-  downloadedScenes: [Scene!]!
-}

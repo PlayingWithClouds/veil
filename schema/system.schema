@@ -34,6 +34,8 @@ enum JobKind {
   9 libraryScan
   10 automationRun
   11 snapshot
+  12 enrich
+  13 speedCheck
 }
 
 enum JobStatus {
@@ -46,6 +48,7 @@ enum JobStatus {
 
 /// Background work, run on one device.
 @index(fields: ["status", "runAt"])
+@index(fields: ["dedupeKey"], unique: true)
 model Job extends Entity {
   10 kind: JobKind
   11 status: JobStatus
@@ -62,6 +65,29 @@ model Job extends Entity {
   19 finishedAt: timestamp?
 
   20 device: ref<Device>?
+
+  /// The plugin the job runs, when it runs one.
+  21 plugin: string?
+  /// At most one job per key; enqueueing the same key again reuses it.
+  22 dedupeKey: string?
+  23 priority: i32
+}
+
+/// A global or per-plugin setting. Plugin is empty for global settings.
+@index(fields: ["plugin", "key"], unique: true)
+model Setting extends Entity {
+  10 plugin: string
+  11 key: string
+  12 value: json?
+}
+
+/// A short-lived cached value: stream sessions, resolved URLs, profile pages.
+model CacheEntry {
+  @primaryKey
+  1 key: string
+  2 value: string
+  /// Unix seconds; null never expires.
+  3 expiresAt: i64?
 }
 
 /// Access for other clients: a phone streaming from the home server,

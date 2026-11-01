@@ -62,7 +62,9 @@ export type JobKind =
   | "transcode"
   | "libraryScan"
   | "automationRun"
-  | "snapshot";
+  | "snapshot"
+  | "enrich"
+  | "speedCheck";
 
 export type JobStatus =
   | "queued"
@@ -342,6 +344,21 @@ export interface Job extends Entity {
   startedAt?: string;
   finishedAt?: string;
   device?: string;
+  plugin?: string;
+  dedupeKey?: string;
+  priority: number;
+}
+
+export interface Setting extends Entity {
+  plugin: string;
+  key: string;
+  value?: unknown;
+}
+
+export interface CacheEntry {
+  key: string;
+  value: string;
+  expiresAt?: number;
 }
 
 export interface ApiToken extends Entity {

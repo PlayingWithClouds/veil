@@ -1,12 +1,14 @@
-// Package db is the SQLite storage layer: connection setup, embedded schema
-// migrations, and small query helpers that keep the "table:id" record model.
+// Package db is the SQLite storage layer: connection setup, embedded
+// migrations generated from schema/veil.schema, and small query helpers.
 //
-// Conventions:
-//   - Every table has `id TEXT PRIMARY KEY` holding "table:id"; link columns
-//     hold the linked row's "table:id".
-//   - Columns declared JSON hold arrays/objects and are decoded on read;
-//     columns declared BOOLEAN are decoded to bool.
+// Conventions (all from the schema):
+//   - Tables and columns are named exactly as the schema's models and fields
+//     ("Video", "createdAt"); always quote them (Quote).
+//   - Ids are uuids; references (ref<T>) hold the referenced row's id.
+//   - Lists, maps and value objects are JSON text; booleans are 0/1. Reads
+//     decode them by the target struct's field types (DecodeRow).
 //   - Timestamps are TEXT in TimeFormat (UTC, fixed width, so they sort).
+//   - Rows are trashed (deletedAt) rather than deleted.
 //   - Queries bind named parameters as $name from a Vars map.
 package db
 
@@ -16,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -36,7 +37,6 @@ type executor interface {
 type DB struct {
 	pool     *sql.DB
 	executor executor
-	schema   *schemaCache
 }
 
 // Open opens (creating if needed) the database at path and applies pending
@@ -49,7 +49,7 @@ func Open(ctx context.Context, path string) (*DB, error) {
 		"?_pragma=journal_mode(WAL)" +
 		"&_pragma=busy_timeout(10000)" +
 		"&_pragma=synchronous(NORMAL)" +
-		"&_pragma=foreign_keys(0)" +
+		"&_pragma=foreign_keys(1)" +
 		"&_txlock=immediate"
 	pool, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -60,7 +60,7 @@ func Open(ctx context.Context, path string) (*DB, error) {
 		pool.Close()
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
-	database := &DB{pool: pool, executor: pool, schema: &schemaCache{}}
+	database := &DB{pool: pool, executor: pool}
 	if err := database.migrate(ctx); err != nil {
 		pool.Close()
 		return nil, err
@@ -79,7 +79,7 @@ func (d *DB) Tx(ctx context.Context, fn func(tx *DB) error) error {
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	if err := fn(&DB{pool: d.pool, executor: transaction, schema: d.schema}); err != nil {
+	if err := fn(&DB{pool: d.pool, executor: transaction}); err != nil {
 		transaction.Rollback()
 		return err
 	}
@@ -94,38 +94,4 @@ func Now() string {
 // FormatTime renders t in TimeFormat.
 func FormatTime(t time.Time) string {
 	return t.UTC().Format(TimeFormat)
-}
-
-// schemaCache memoizes PRAGMA table_info per table; the schema is fixed once
-// migrations have run.
-type schemaCache struct {
-	tables sync.Map // table name -> map[string]string (column -> declared type)
-}
-
-// columns returns the declared type of every column in table.
-func (d *DB) columns(ctx context.Context, table string) (map[string]string, error) {
-	if cached, ok := d.schema.tables.Load(table); ok {
-		return cached.(map[string]string), nil
-	}
-	rows, err := d.pool.QueryContext(ctx, "SELECT name, type FROM pragma_table_info(?)", table)
-	if err != nil {
-		return nil, fmt.Errorf("table info %s: %w", table, err)
-	}
-	defer rows.Close()
-	columnTypes := map[string]string{}
-	for rows.Next() {
-		var name, declaredType string
-		if err := rows.Scan(&name, &declaredType); err != nil {
-			return nil, err
-		}
-		columnTypes[name] = declaredType
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if len(columnTypes) == 0 {
-		return nil, fmt.Errorf("unknown table %q", table)
-	}
-	d.schema.tables.Store(table, columnTypes)
-	return columnTypes, nil
 }

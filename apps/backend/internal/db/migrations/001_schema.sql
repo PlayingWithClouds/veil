@@ -1,3 +1,61 @@
+-- Generated migration — 102 operation(s).
+
+-- enum CollectionKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum SortField: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum EventKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum LimitKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum LimitWindow: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum LimitAction: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum AccountStatus: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum Platform: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum JobKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum JobStatus: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum ContributionKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum PluginOrigin: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum RecordKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum MediaKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum Actor: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum MediaStatus: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum VrProjection: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum VrStereo: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum FieldType: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum TriggerKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum RunStatus: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum ChannelKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum StorageKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum SegmentOrigin: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum SubtitleOrigin: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum ScriptKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum FingerprintAlgorithm: stored as TEXT with a CHECK on each column, so there is no type to create.
+
+-- enum EmbeddingKind: stored as TEXT with a CHECK on each column, so there is no type to create.
+
 CREATE TABLE UserState (
   id TEXT NOT NULL PRIMARY KEY,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -14,7 +72,6 @@ CREATE TABLE UserState (
   lastViewedAt TEXT,
   fields TEXT NOT NULL CHECK (json_valid(fields))
 );
-CREATE UNIQUE INDEX UserState_subjectKind_subjectId_idx ON UserState (subjectKind, subjectId);
 
 CREATE TABLE Collection (
   id TEXT NOT NULL PRIMARY KEY,
@@ -37,7 +94,6 @@ CREATE TABLE CollectionItem (
   subjectId TEXT NOT NULL,
   position INTEGER NOT NULL
 );
-CREATE INDEX CollectionItem_collection_position_idx ON CollectionItem (collection, position);
 
 CREATE TABLE SavedFilter (
   id TEXT NOT NULL PRIMARY KEY,
@@ -79,8 +135,6 @@ CREATE TABLE Event (
   device TEXT REFERENCES Device(id),
   sessionId TEXT
 );
-CREATE INDEX Event_kind_at_idx ON Event (kind, at);
-CREATE INDEX Event_subjectKind_subjectId_idx ON Event (subjectKind, subjectId);
 
 CREATE TABLE "Limit" (
   id TEXT NOT NULL PRIMARY KEY,
@@ -126,7 +180,7 @@ CREATE TABLE Job (
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   deletedAt TEXT,
-  kind TEXT NOT NULL CHECK (kind IN ('download', 'record', 'scrape', 'followRun', 'fingerprint', 'embed', 'trickplay', 'transcode', 'libraryScan', 'automationRun', 'snapshot')),
+  kind TEXT NOT NULL CHECK (kind IN ('download', 'record', 'scrape', 'followRun', 'fingerprint', 'embed', 'trickplay', 'transcode', 'libraryScan', 'automationRun', 'snapshot', 'enrich', 'speedCheck')),
   status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled')),
   subject TEXT CHECK (json_valid(subject)),
   payload TEXT CHECK (json_valid(payload)),
@@ -136,9 +190,27 @@ CREATE TABLE Job (
   runAt TEXT NOT NULL,
   startedAt TEXT,
   finishedAt TEXT,
-  device TEXT REFERENCES Device(id)
+  device TEXT REFERENCES Device(id),
+  plugin TEXT,
+  dedupeKey TEXT,
+  priority INTEGER NOT NULL
 );
-CREATE INDEX Job_status_runAt_idx ON Job (status, runAt);
+
+CREATE TABLE Setting (
+  id TEXT NOT NULL PRIMARY KEY,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  deletedAt TEXT,
+  plugin TEXT NOT NULL,
+  "key" TEXT NOT NULL,
+  value TEXT CHECK (json_valid(value))
+);
+
+CREATE TABLE CacheEntry (
+  "key" TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL,
+  expiresAt INTEGER
+);
 
 CREATE TABLE ApiToken (
   id TEXT NOT NULL PRIMARY KEY,
@@ -165,7 +237,6 @@ CREATE TABLE Plugin (
   contributions TEXT NOT NULL CHECK (json_valid(contributions)),
   settings TEXT CHECK (json_valid(settings))
 );
-CREATE UNIQUE INDEX Plugin_name_idx ON Plugin (name);
 
 CREATE TABLE Source (
   id TEXT NOT NULL PRIMARY KEY,
@@ -182,7 +253,6 @@ CREATE TABLE Source (
   snapshot TEXT CHECK (json_valid(snapshot)),
   fetchedAt TEXT
 );
-CREATE UNIQUE INDEX Source_plugin_externalId_idx ON Source (plugin, externalId);
 
 CREATE TABLE Video (
   id TEXT NOT NULL PRIMARY KEY,
@@ -216,7 +286,6 @@ CREATE TABLE GroupItem (
   video TEXT NOT NULL REFERENCES Video(id),
   position INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX GroupItem_group_video_idx ON GroupItem ("group", video);
 
 CREATE TABLE Gallery (
   id TEXT NOT NULL PRIMARY KEY,
@@ -246,7 +315,6 @@ CREATE TABLE Image (
   width INTEGER,
   height INTEGER
 );
-CREATE INDEX Image_gallery_position_idx ON Image (gallery, position);
 
 CREATE TABLE Audio (
   id TEXT NOT NULL PRIMARY KEY,
@@ -293,7 +361,6 @@ CREATE TABLE StoryChapter (
   text TEXT NOT NULL,
   wordCount INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX StoryChapter_story_position_idx ON StoryChapter (story, position);
 
 CREATE TABLE Post (
   id TEXT NOT NULL PRIMARY KEY,
@@ -361,7 +428,6 @@ CREATE TABLE CamModel (
   autoRecord INTEGER NOT NULL,
   recordQuality TEXT
 );
-CREATE UNIQUE INDEX CamModel_plugin_username_idx ON CamModel (plugin, username);
 
 CREATE TABLE "Group" (
   id TEXT NOT NULL PRIMARY KEY,
@@ -433,7 +499,6 @@ CREATE TABLE AutomationRun (
   triggerData TEXT CHECK (json_valid(triggerData)),
   steps TEXT NOT NULL CHECK (json_valid(steps))
 );
-CREATE INDEX AutomationRun_automation_startedAt_idx ON AutomationRun (automation, startedAt);
 
 CREATE TABLE NotificationChannel (
   id TEXT NOT NULL PRIMARY KEY,
@@ -458,7 +523,6 @@ CREATE TABLE Notification (
   subject TEXT CHECK (json_valid(subject)),
   read INTEGER NOT NULL
 );
-CREATE INDEX Notification_read_at_idx ON Notification (read, at);
 
 CREATE TABLE Stream (
   id TEXT NOT NULL PRIMARY KEY,
@@ -476,7 +540,6 @@ CREATE TABLE Stream (
   expiresAt TEXT,
   speedKbps INTEGER
 );
-CREATE INDEX Stream_subjectKind_subjectId_idx ON Stream (subjectKind, subjectId);
 
 CREATE TABLE StorageLocation (
   id TEXT NOT NULL PRIMARY KEY,
@@ -520,7 +583,6 @@ CREATE TABLE MediaFile (
   libraryRoot TEXT REFERENCES LibraryRoot(id),
   missing INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX MediaFile_location_path_idx ON MediaFile (location, path);
 
 CREATE TABLE Segment (
   id TEXT NOT NULL PRIMARY KEY,
@@ -536,7 +598,6 @@ CREATE TABLE Segment (
   performers TEXT NOT NULL CHECK (json_valid(performers)),
   origin TEXT NOT NULL CHECK (origin IN ('user', 'plugin', 'ai'))
 );
-CREATE INDEX Segment_subjectKind_subjectId_idx ON Segment (subjectKind, subjectId);
 
 CREATE TABLE Clip (
   id TEXT NOT NULL PRIMARY KEY,
@@ -563,7 +624,6 @@ CREATE TABLE Subtitle (
   asset TEXT NOT NULL CHECK (json_valid(asset)),
   origin TEXT NOT NULL CHECK (origin IN ('site', 'generated', 'translated'))
 );
-CREATE INDEX Subtitle_subjectKind_subjectId_idx ON Subtitle (subjectKind, subjectId);
 
 CREATE TABLE Script (
   id TEXT NOT NULL PRIMARY KEY,
@@ -577,7 +637,6 @@ CREATE TABLE Script (
   axis TEXT,
   writtenBy TEXT NOT NULL CHECK (writtenBy IN ('user', 'plugin', 'automation', 'system'))
 );
-CREATE INDEX Script_subjectKind_subjectId_idx ON Script (subjectKind, subjectId);
 
 CREATE TABLE FieldSource (
   id TEXT NOT NULL PRIMARY KEY,
@@ -591,7 +650,6 @@ CREATE TABLE FieldSource (
   source TEXT REFERENCES Source(id),
   locked INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX FieldSource_subjectKind_subjectId_fieldOrdinal_idx ON FieldSource (subjectKind, subjectId, fieldOrdinal);
 
 CREATE TABLE Revision (
   id TEXT NOT NULL PRIMARY KEY,
@@ -607,7 +665,6 @@ CREATE TABLE Revision (
   actorName TEXT,
   automationRunId TEXT
 );
-CREATE INDEX Revision_subjectKind_subjectId_idx ON Revision (subjectKind, subjectId);
 
 CREATE TABLE Fingerprint (
   id TEXT NOT NULL PRIMARY KEY,
@@ -621,7 +678,6 @@ CREATE TABLE Fingerprint (
   value TEXT NOT NULL,
   durationSeconds REAL
 );
-CREATE INDEX Fingerprint_algorithm_value_idx ON Fingerprint (algorithm, value);
 
 CREATE TABLE Embedding (
   id TEXT NOT NULL PRIMARY KEY,
@@ -636,7 +692,6 @@ CREATE TABLE Embedding (
   atSeconds REAL,
   region TEXT CHECK (json_valid(region))
 );
-CREATE INDEX Embedding_kind_model_idx ON Embedding (kind, model);
 
 CREATE TABLE Alike (
   id TEXT NOT NULL PRIMARY KEY,
@@ -650,7 +705,6 @@ CREATE TABLE Alike (
   reason TEXT,
   dismissed INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX Alike_subjectKind_firstId_secondId_idx ON Alike (subjectKind, firstId, secondId);
 
 CREATE TABLE Comment (
   id TEXT NOT NULL PRIMARY KEY,
@@ -665,4 +719,55 @@ CREATE TABLE Comment (
   replyTo TEXT,
   mentions TEXT NOT NULL CHECK (json_valid(mentions))
 );
+
+CREATE UNIQUE INDEX UserState_subjectKind_subjectId_idx ON UserState (subjectKind, subjectId);
+
+CREATE INDEX CollectionItem_collection_position_idx ON CollectionItem (collection, position);
+
+CREATE INDEX Event_kind_at_idx ON Event (kind, at);
+
+CREATE INDEX Event_subjectKind_subjectId_idx ON Event (subjectKind, subjectId);
+
+CREATE INDEX Job_status_runAt_idx ON Job (status, runAt);
+
+CREATE UNIQUE INDEX Job_dedupeKey_idx ON Job (dedupeKey);
+
+CREATE UNIQUE INDEX Setting_plugin_key_idx ON Setting (plugin, "key");
+
+CREATE UNIQUE INDEX Plugin_name_idx ON Plugin (name);
+
+CREATE UNIQUE INDEX Source_plugin_externalId_idx ON Source (plugin, externalId);
+
+CREATE UNIQUE INDEX GroupItem_group_video_idx ON GroupItem ("group", video);
+
+CREATE INDEX Image_gallery_position_idx ON Image (gallery, position);
+
+CREATE UNIQUE INDEX StoryChapter_story_position_idx ON StoryChapter (story, position);
+
+CREATE UNIQUE INDEX CamModel_plugin_username_idx ON CamModel (plugin, username);
+
+CREATE INDEX AutomationRun_automation_startedAt_idx ON AutomationRun (automation, startedAt);
+
+CREATE INDEX Notification_read_at_idx ON Notification (read, at);
+
+CREATE INDEX Stream_subjectKind_subjectId_idx ON Stream (subjectKind, subjectId);
+
+CREATE UNIQUE INDEX MediaFile_location_path_idx ON MediaFile (location, path);
+
+CREATE INDEX Segment_subjectKind_subjectId_idx ON Segment (subjectKind, subjectId);
+
+CREATE INDEX Subtitle_subjectKind_subjectId_idx ON Subtitle (subjectKind, subjectId);
+
+CREATE INDEX Script_subjectKind_subjectId_idx ON Script (subjectKind, subjectId);
+
+CREATE UNIQUE INDEX FieldSource_subjectKind_subjectId_fieldOrdinal_idx ON FieldSource (subjectKind, subjectId, fieldOrdinal);
+
+CREATE INDEX Revision_subjectKind_subjectId_idx ON Revision (subjectKind, subjectId);
+
+CREATE INDEX Fingerprint_algorithm_value_idx ON Fingerprint (algorithm, value);
+
+CREATE INDEX Embedding_kind_model_idx ON Embedding (kind, model);
+
+CREATE UNIQUE INDEX Alike_subjectKind_firstId_secondId_idx ON Alike (subjectKind, firstId, secondId);
+
 CREATE INDEX Comment_source_idx ON Comment (source);

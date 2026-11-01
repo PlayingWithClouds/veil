@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-01T19:04:31.259Z",
+  "updatedAt": "2026-11-01T19:37:20.887Z",
   "baseline": false,
-  "digest": "sha256-ba9a89fa9c19ab7d485c60aeef0fff16fedd1ae76cf7ab0e80f9e90fb8384947",
+  "digest": "sha256-9c67d931ab061c4692ed8586337ba587b472d67929fe6a59565b317fb1129e50",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -473,6 +473,20 @@
           "type": null,
           "encoding": null,
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "enrich",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "speedCheck",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T19:37:20.887Z"
         }
       }
     },
@@ -1403,6 +1417,32 @@
           "type": "[StepResult]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.CacheEntry": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "key",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "value",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "expiresAt",
+          "type": "i64?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:37:20.887Z"
         }
       }
     },
@@ -2566,6 +2606,27 @@
           "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "21": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "22": {
+          "state": "active",
+          "name": "dedupeKey",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "23": {
+          "state": "active",
+          "name": "priority",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T19:37:20.887Z"
         }
       }
     },
@@ -3447,6 +3508,32 @@
           "type": "SegmentOrigin",
           "encoding": "singular:varint",
           "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Setting": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "key",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "value",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T19:37:20.887Z"
         }
       }
     },
