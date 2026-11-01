@@ -9,7 +9,7 @@ import { Device } from "./system"
 
 /// The user's state on one record: rating, favourite, notes, progress, block,
 /// and custom field values.
-@table("user_state") @revisioned @index(fields: ["subjectKind", "subjectId"], unique: true)
+@table("user_state") @index(fields: ["subjectKind", "subjectId"], unique: true)
 model UserState extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -43,7 +43,7 @@ enum CollectionKind {
 }
 
 /// An ordered list of media.
-@table("collection") @revisioned
+@table("collection")
 model Collection extends Record {
   10 name: string
   11 kind: CollectionKind
@@ -123,7 +123,7 @@ model Filter {
 }
 
 /// A named filter. Every saved filter can also be played as a smart playlist.
-@table("saved_filter") @revisioned
+@table("saved_filter")
 model SavedFilter extends Record {
   10 name: string
   11 filter: Filter
@@ -132,7 +132,7 @@ model SavedFilter extends Record {
 
 /// Following anything: a performer, studio, cam model, category or search is
 /// a subscription on a filter that runs on the sites and feeds notifications.
-@table("subscription") @revisioned
+@table("subscription")
 model Subscription extends Record {
   10 name: string
   11 filter: Filter

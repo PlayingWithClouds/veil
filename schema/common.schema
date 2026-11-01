@@ -1,13 +1,17 @@
 // common.schema — building blocks every other file uses: the record base,
 // polymorphic references, assets and sources.
 //
-// Veil decorators (read by Veil tooling, ignored by stock generators):
-//   @abstract    shared base that is never stored on its own; GraphQL interface
-//                (openschema#3)
-//   @value       value object stored inline as JSON, never a table
-//   @sourced     field filled from plugin sources; provenance kept in FieldSource
-//   @revisioned  every write to the model is recorded as a Revision
-//   @softDelete  rows are trashed (deletedAt) and purged after the retention
+// Decorators only appear where they change generated output:
+//   @abstract  shared base, never stored on its own; GraphQL interface
+//              (openschema#3)
+//   @value     value object stored inline as JSON, never a table
+//   @index     composite index on a table
+//   @link      reference to another record, stored as its id
+//
+// Backend behaviour lives in comments: every write is recorded as a Revision
+// (except high-volume logs: events, jobs, streams), and plugins fill the
+// descriptive fields of media, performers, studios and groups, with
+// FieldSource tracking which source owns each.
 
 namespace veil
 
@@ -49,8 +53,9 @@ enum Actor {
 }
 
 /// Fields every stored record has. Ids are uuids so records stay unique
-/// across devices once sync arrives.
-@abstract @softDelete
+/// across devices once sync arrives. Deleting trashes a record (deletedAt);
+/// it's purged once the trash retention passes.
+@abstract
 model Record {
   @primaryKey
   1 id: uuid

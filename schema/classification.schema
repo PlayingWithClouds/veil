@@ -6,7 +6,7 @@ namespace veil
 import { Record, Asset, RecordKind } from "./common"
 
 /// A site's own label. Never curated or browsed, only used to filter.
-@table("tag") @revisioned
+@table("tag")
 model Tag extends Record {
   @unique
   10 name: string
@@ -16,7 +16,7 @@ model Tag extends Record {
 /// Our own taxonomy, defined by us rather than any site. Media belongs to a
 /// category when it carries any of the category's tags, so new site tags only
 /// need mapping, never re-tagging.
-@table("category") @revisioned
+@table("category")
 model Category extends Record {
   10 name: string
 

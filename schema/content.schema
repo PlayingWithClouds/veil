@@ -19,28 +19,25 @@ enum MediaStatus {
 }
 
 /// Fields every piece of media shares. Categories are not stored: they follow
-/// from the tags.
-@abstract @revisioned
+/// from the tags. Plugins fill the descriptive fields; FieldSource records
+/// which source owns each one.
+@abstract
 model Media extends Record {
-  @sourced
   10 title: string
 
-  @sourced
   11 details: string?
 
-  @sourced
   12 date: date?
 
-  @sourced
   13 cover: Asset?
 
-  @sourced @link
+  @link
   14 studio: Studio?
 
-  @sourced @link
+  @link
   15 performers: [Performer]
 
-  @sourced @link
+  @link
   16 tags: [Tag]
 
   17 status: MediaStatus
@@ -82,7 +79,6 @@ model Trickplay {
 
 @table("video")
 model Video extends Media {
-  @sourced
   30 durationSeconds: f64?
 
   31 width: i32?
@@ -90,7 +86,6 @@ model Video extends Media {
   33 vr: VrFormat?
 
   /// Short hover clip.
-  @sourced
   34 preview: Asset?
 
   35 trickplay: Trickplay?
@@ -141,7 +136,6 @@ model Image extends Record {
 /// Erotic audio and ASMR. Performers are the voices.
 @table("audio")
 model Audio extends Media {
-  @sourced
   30 durationSeconds: f64?
 }
 

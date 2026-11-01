@@ -48,7 +48,7 @@ model Step {
 
 /// A multi-step automation: when the trigger fires, the steps run in order,
 /// each seeing the previous step's output.
-@table("automation") @revisioned
+@table("automation")
 model Automation extends Record {
   10 name: string
   11 enabled: bool
