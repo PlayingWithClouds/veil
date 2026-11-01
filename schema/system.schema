@@ -13,7 +13,6 @@ enum Platform {
 }
 
 /// An install of Veil. Sync, accounts, storage and events are per device.
-@table("device")
 model Device extends Record {
   10 name: string
   11 platform: Platform
@@ -46,7 +45,7 @@ enum JobStatus {
 }
 
 /// Background work, run on one device.
-@table("job") @index(fields: ["status", "runAt"])
+@index(fields: ["status", "runAt"])
 model Job extends Record {
   10 kind: JobKind
   11 status: JobStatus
@@ -62,13 +61,11 @@ model Job extends Record {
   18 startedAt: timestamp?
   19 finishedAt: timestamp?
 
-  @link
-  20 device: Device?
+  20 device: ref<Device>?
 }
 
 /// Access for other clients: a phone streaming from the home server,
 /// scripts, agents over MCP.
-@table("api_token")
 model ApiToken extends Record {
   10 name: string
   /// "read", "write", "stream", "admin".
@@ -118,7 +115,7 @@ enum PluginOrigin {
 }
 
 /// An installed plugin.
-@table("plugin") @index(fields: ["name"], unique: true)
+@index(fields: ["name"], unique: true)
 model Plugin extends Record {
   10 name: string
   11 displayName: string?

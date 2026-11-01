@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-01T18:20:52.420Z",
+  "updatedAt": "2026-11-01T18:58:46.579Z",
   "baseline": false,
-  "digest": "sha256-3d04aa4c299c5d8151db4dd04f89b843f9c4c7ac279c1d990f17320991e5d252",
+  "digest": "sha256-14941b0f9590d71fbc718645997e77c71d9bbb55877aad8e81b659808da44280",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -1139,7 +1139,7 @@
         "13": {
           "state": "active",
           "name": "device",
-          "type": "Device",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1358,7 +1358,7 @@
         "10": {
           "state": "active",
           "name": "automation",
-          "type": "Automation",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1466,7 +1466,7 @@
         "13": {
           "state": "active",
           "name": "performer",
-          "type": "Performer?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1541,14 +1541,14 @@
         "12": {
           "state": "active",
           "name": "parent",
-          "type": "Category?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "13": {
           "state": "active",
           "name": "matchTags",
-          "type": "[Tag]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1574,7 +1574,7 @@
         "10": {
           "state": "active",
           "name": "video",
-          "type": "Video",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1609,7 +1609,7 @@
         "15": {
           "state": "active",
           "name": "file",
-          "type": "MediaFile?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -1654,7 +1654,7 @@
         "10": {
           "state": "active",
           "name": "collection",
-          "type": "Collection",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1687,7 +1687,7 @@
         "10": {
           "state": "active",
           "name": "source",
-          "type": "Source",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -1729,7 +1729,7 @@
         "16": {
           "state": "active",
           "name": "mentions",
-          "type": "[Performer]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -1903,7 +1903,7 @@
         "15": {
           "state": "active",
           "name": "device",
-          "type": "Device?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2049,7 +2049,7 @@
         "14": {
           "state": "active",
           "name": "source",
-          "type": "Source?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2267,7 +2267,7 @@
         "31": {
           "state": "active",
           "name": "video",
-          "type": "Video?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -2307,7 +2307,7 @@
         "14": {
           "state": "active",
           "name": "studio",
-          "type": "Studio?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -2319,14 +2319,14 @@
         "10": {
           "state": "active",
           "name": "group",
-          "type": "Group",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "11": {
           "state": "active",
           "name": "video",
-          "type": "Video",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2345,7 +2345,7 @@
         "10": {
           "state": "active",
           "name": "gallery",
-          "type": "Gallery",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2455,7 +2455,7 @@
         "20": {
           "state": "active",
           "name": "device",
-          "type": "Device?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -2467,7 +2467,7 @@
         "10": {
           "state": "active",
           "name": "location",
-          "type": "StorageLocation",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2634,21 +2634,21 @@
         "14": {
           "state": "active",
           "name": "studio",
-          "type": "Studio?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "15": {
           "state": "active",
           "name": "performers",
-          "type": "[Performer]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "16": {
           "state": "active",
           "name": "tags",
-          "type": "[Tag]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2681,7 +2681,7 @@
         "12": {
           "state": "active",
           "name": "location",
-          "type": "StorageLocation",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2737,7 +2737,7 @@
         "20": {
           "state": "active",
           "name": "libraryRoot",
-          "type": "LibraryRoot?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -2878,7 +2878,7 @@
         "16": {
           "state": "active",
           "name": "tags",
-          "type": "[Tag]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -3054,7 +3054,7 @@
         "30": {
           "state": "active",
           "name": "creator",
-          "type": "Performer",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3322,14 +3322,14 @@
         "15": {
           "state": "active",
           "name": "tag",
-          "type": "Tag?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "16": {
           "state": "active",
           "name": "performers",
-          "type": "[Performer]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3508,7 +3508,7 @@
         "10": {
           "state": "active",
           "name": "device",
-          "type": "Device",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3574,7 +3574,7 @@
         "10": {
           "state": "active",
           "name": "story",
-          "type": "Story",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3628,7 +3628,7 @@
         "12": {
           "state": "active",
           "name": "source",
-          "type": "Source",
+          "type": "uuid",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3717,7 +3717,7 @@
         "14": {
           "state": "active",
           "name": "parent",
-          "type": "Studio?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
@@ -3731,7 +3731,7 @@
         "16": {
           "state": "active",
           "name": "tags",
-          "type": "[Tag]",
+          "type": "[uuid]",
           "encoding": "repeated:len-element",
           "since": "2026-11-01T18:20:52.420Z"
         }
@@ -4088,14 +4088,14 @@
         "36": {
           "state": "active",
           "name": "gallery",
-          "type": "Gallery?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         },
         "37": {
           "state": "active",
           "name": "recordedFrom",
-          "type": "CamModel?",
+          "type": "uuid?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
         }

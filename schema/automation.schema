@@ -48,7 +48,6 @@ model Step {
 
 /// A multi-step automation: when the trigger fires, the steps run in order,
 /// each seeing the previous step's output.
-@table("automation")
 model Automation extends Record {
   10 name: string
   11 enabled: bool
@@ -76,10 +75,9 @@ model StepResult {
 }
 
 /// One run of an automation. Undoing it reverts the revisions it wrote.
-@table("automation_run") @index(fields: ["automation", "startedAt"])
+@index(fields: ["automation", "startedAt"])
 model AutomationRun extends Record {
-  @link
-  10 automation: Automation
+  10 automation: ref<Automation>
 
   11 startedAt: timestamp
   12 finishedAt: timestamp?
@@ -98,7 +96,6 @@ enum ChannelKind {
 }
 
 /// Where notifications go.
-@table("notification_channel")
 model NotificationChannel extends Record {
   10 kind: ChannelKind
   11 name: string
@@ -107,7 +104,7 @@ model NotificationChannel extends Record {
   13 enabled: bool
 }
 
-@table("notification") @index(fields: ["read", "at"])
+@index(fields: ["read", "at"])
 model Notification extends Record {
   10 at: timestamp
   /// "newMedia", "camLive", "downloadDone", "automationFailed", …

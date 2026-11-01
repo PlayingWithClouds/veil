@@ -6,7 +6,7 @@
 //              (openschema#3)
 //   @value     value object stored inline as JSON, never a table
 //   @index     composite index on a table
-//   @link      reference to another record, stored as its id
+//   ref<T>     (a type, not a decorator) the id of a T record
 //
 // Backend behaviour lives in comments: every write is recorded as a Revision
 // (except high-volume logs: events, jobs, streams), and plugins fill the
@@ -90,7 +90,7 @@ model Asset {
 
 /// Where a record came from: one entry per site it was scraped or merged
 /// from. Merging two records moves their sources onto the survivor.
-@table("source") @index(fields: ["plugin", "externalId"], unique: true)
+@index(fields: ["plugin", "externalId"], unique: true)
 model Source extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid

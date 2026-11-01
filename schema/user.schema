@@ -9,7 +9,7 @@ import { Device } from "./system"
 
 /// The user's state on one record: rating, favourite, notes, progress, block,
 /// and custom field values.
-@table("user_state") @index(fields: ["subjectKind", "subjectId"], unique: true)
+@index(fields: ["subjectKind", "subjectId"], unique: true)
 model UserState extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -43,7 +43,6 @@ enum CollectionKind {
 }
 
 /// An ordered list of media.
-@table("collection")
 model Collection extends Record {
   10 name: string
   11 kind: CollectionKind
@@ -51,10 +50,9 @@ model Collection extends Record {
   13 cover: Asset?
 }
 
-@table("collection_item") @index(fields: ["collection", "position"])
+@index(fields: ["collection", "position"])
 model CollectionItem extends Record {
-  @link
-  10 collection: Collection
+  10 collection: ref<Collection>
 
   11 subjectKind: RecordKind
   12 subjectId: uuid
@@ -123,7 +121,6 @@ model Filter {
 }
 
 /// A named filter. Every saved filter can also be played as a smart playlist.
-@table("saved_filter")
 model SavedFilter extends Record {
   10 name: string
   11 filter: Filter
@@ -132,7 +129,6 @@ model SavedFilter extends Record {
 
 /// Following anything: a performer, studio, cam model, category or search is
 /// a subscription on a filter that runs on the sites and feeds notifications.
-@table("subscription")
 model Subscription extends Record {
   10 name: string
   11 filter: Filter
@@ -165,7 +161,7 @@ enum EventKind {
 
 /// One thing the user did. History, o-count, most-replayed, recent searches,
 /// stats, limits and the recommendation signals are all queries over this log.
-@table("event") @index(fields: ["kind", "at"]) @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["kind", "at"]) @index(fields: ["subjectKind", "subjectId"])
 model Event extends Record {
   10 at: timestamp
   11 kind: EventKind
@@ -175,8 +171,7 @@ model Event extends Record {
   /// Kind-specific detail: watched spans, the search text, the choice.
   14 data: json?
 
-  @link
-  15 device: Device?
+  15 device: ref<Device>?
 
   16 sessionId: uuid?
 }
@@ -197,7 +192,6 @@ enum LimitAction {
 }
 
 /// A usage limit, checked against the event log.
-@table("usage_limit")
 model Limit extends Record {
   10 kind: LimitKind
   11 window: LimitWindow
@@ -215,14 +209,12 @@ enum AccountStatus {
 }
 
 /// A login on a plugin's site. Credentials stay on the device that logged in.
-@table("account")
 model Account extends Record {
   10 plugin: string
   11 label: string
   12 status: AccountStatus
 
-  @link
-  13 device: Device
+  13 device: ref<Device>
 
   /// Encrypted; never leaves the device or the API.
   @invisible

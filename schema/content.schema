@@ -31,14 +31,9 @@ model Media extends Record {
 
   13 cover: Asset?
 
-  @link
-  14 studio: Studio?
-
-  @link
-  15 performers: [Performer]
-
-  @link
-  16 tags: [Tag]
+  14 studio: ref<Studio>?
+  15 performers: [ref<Performer>]
+  16 tags: [ref<Tag>]
 
   17 status: MediaStatus
 }
@@ -77,7 +72,6 @@ model Trickplay {
   6 intervalSeconds: f32
 }
 
-@table("video")
 model Video extends Media {
   30 durationSeconds: f64?
 
@@ -91,41 +85,33 @@ model Video extends Media {
   35 trickplay: Trickplay?
 
   /// The photo set shot alongside it.
-  @link
-  36 gallery: Gallery?
+  36 gallery: ref<Gallery>?
 
   /// Set when this is a cam recording.
-  @link
-  37 recordedFrom: CamModel?
+  37 recordedFrom: ref<CamModel>?
 }
 
 /// A video's place in a site group.
-@table("group_item") @index(fields: ["group", "video"], unique: true)
+@index(fields: ["group", "video"], unique: true)
 model GroupItem extends Record {
-  @link
-  10 group: Group
-
-  @link
-  11 video: Video
+  10 group: ref<Group>
+  11 video: ref<Video>
 
   12 position: i32
 }
 
 /// A photo set.
-@table("gallery")
 model Gallery extends Media {
   30 imageCount: i32
 
   /// The video shot alongside it.
-  @link
-  31 video: Video?
+  31 video: ref<Video>?
 }
 
 /// A photo. Always belongs to a gallery.
-@table("image") @index(fields: ["gallery", "position"])
+@index(fields: ["gallery", "position"])
 model Image extends Record {
-  @link
-  10 gallery: Gallery
+  10 gallery: ref<Gallery>
 
   11 position: i32
   12 asset: Asset
@@ -134,23 +120,20 @@ model Image extends Record {
 }
 
 /// Erotic audio and ASMR. Performers are the voices.
-@table("audio")
 model Audio extends Media {
   30 durationSeconds: f64?
 }
 
 /// Erotic fiction, read chapter by chapter.
-@table("story")
 model Story extends Media {
   30 chapterCount: i32
   31 wordCount: i32?
   32 complete: bool
 }
 
-@table("story_chapter") @index(fields: ["story", "position"], unique: true)
+@index(fields: ["story", "position"], unique: true)
 model StoryChapter extends Record {
-  @link
-  10 story: Story
+  10 story: ref<Story>
 
   11 position: i32
   12 title: string?
@@ -160,10 +143,8 @@ model StoryChapter extends Record {
 
 /// A post on a creator platform. It wraps ordinary media; the creator is a
 /// Performer, so following a creator is following a performer.
-@table("post")
 model Post extends Media {
-  @link
-  30 creator: Performer
+  30 creator: ref<Performer>
 
   31 text: string?
 

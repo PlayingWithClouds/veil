@@ -12,13 +12,12 @@ import { Device } from "./system"
 
 /// A playable stream a source offers, ranked by quality and measured speed.
 /// Signed URLs expire and are resolved again from the source page.
-@table("stream") @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["subjectKind", "subjectId"])
 model Stream extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
-  @link
-  12 source: Source
+  12 source: ref<Source>
 
   13 url: string
   14 mimeType: string
@@ -41,10 +40,8 @@ enum StorageKind {
 }
 
 /// A place on one device where Veil keeps files.
-@table("storage_location")
 model StorageLocation extends Record {
-  @link
-  10 device: Device
+  10 device: ref<Device>
 
   11 kind: StorageKind
   /// A local path or a remote URI (NAS share, object storage).
@@ -54,10 +51,8 @@ model StorageLocation extends Record {
 }
 
 /// A folder of the user's own files, scanned into the library.
-@table("library_root")
 model LibraryRoot extends Record {
-  @link
-  10 location: StorageLocation
+  10 location: ref<StorageLocation>
 
   11 path: string
   12 scanIntervalMinutes: i32?
@@ -69,13 +64,12 @@ model LibraryRoot extends Record {
 }
 
 /// A stored file of a media record (or one of its images).
-@table("media_file") @index(fields: ["location", "path"], unique: true)
+@index(fields: ["location", "path"], unique: true)
 model MediaFile extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
 
-  @link
-  12 location: StorageLocation
+  12 location: ref<StorageLocation>
 
   /// Relative to the location.
   13 path: string
@@ -87,8 +81,7 @@ model MediaFile extends Record {
   19 durationSeconds: f64?
 
   /// Found in a library root rather than downloaded.
-  @link
-  20 libraryRoot: LibraryRoot?
+  20 libraryRoot: ref<LibraryRoot>?
 
   /// The file vanished from disk since the last scan.
   21 missing: bool
@@ -102,7 +95,7 @@ enum SegmentOrigin {
 
 /// A time range in a video or audio: a scene within a compilation, a chapter,
 /// or a marker (end omitted). Credits on a segment narrow the media's own.
-@table("segment") @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["subjectKind", "subjectId"])
 model Segment extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -112,21 +105,16 @@ model Segment extends Record {
 
   14 title: string?
 
-  @link
-  15 tag: Tag?
-
-  @link
-  16 performers: [Performer]
+  15 tag: ref<Tag>?
+  16 performers: [ref<Performer>]
 
   17 origin: SegmentOrigin
 }
 
 /// A moment the user saved from a video, playable in the shorts feed and
 /// exportable as a file.
-@table("clip")
 model Clip extends Record {
-  @link
-  10 video: Video
+  10 video: ref<Video>
 
   11 startSeconds: f64
   12 endSeconds: f64
@@ -134,8 +122,7 @@ model Clip extends Record {
   14 cover: Asset?
 
   /// The exported mp4 or GIF.
-  @link
-  15 file: MediaFile?
+  15 file: ref<MediaFile>?
 }
 
 enum SubtitleOrigin {
@@ -144,7 +131,7 @@ enum SubtitleOrigin {
   3 translated
 }
 
-@table("subtitle") @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["subjectKind", "subjectId"])
 model Subtitle extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -162,7 +149,7 @@ enum ScriptKind {
 }
 
 /// A motion script for connected toys, synced to the media's timeline.
-@table("script") @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["subjectKind", "subjectId"])
 model Script extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid

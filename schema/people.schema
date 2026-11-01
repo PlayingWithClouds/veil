@@ -27,7 +27,6 @@ model PerformerAttributes {
 }
 
 /// A person who appears in media.
-@table("performer")
 model Performer extends Record {
   10 name: string
 
@@ -42,12 +41,10 @@ model Performer extends Record {
   /// Socials and official sites.
   15 links: [string]
 
-  @link
-  16 tags: [Tag]
+  16 tags: [ref<Tag>]
 }
 
 /// A production company, channel or network.
-@table("studio")
 model Studio extends Record {
   10 name: string
 
@@ -57,13 +54,11 @@ model Studio extends Record {
 
   13 details: string?
 
-  @link
-  14 parent: Studio?
+  14 parent: ref<Studio>?
 
   15 url: string?
 
-  @link
-  16 tags: [Tag]
+  16 tags: [ref<Tag>]
 }
 
 /// What a cam room is doing right now; null on the model when offline.
@@ -77,15 +72,14 @@ model CamLive {
 
 /// A room on one cam site. Live state comes from the site's plugin;
 /// recordings become Videos with recordedFrom set.
-@table("cam_model") @index(fields: ["plugin", "username"], unique: true)
+@index(fields: ["plugin", "username"], unique: true)
 model CamModel extends Record {
   10 plugin: string
   11 username: string
   12 displayName: string
 
   /// The same person in the library, once known.
-  @link
-  13 performer: Performer?
+  13 performer: ref<Performer>?
 
   14 thumbnail: Asset?
   15 tags: [string]
@@ -99,7 +93,6 @@ model CamModel extends Record {
 
 /// A site's own grouping of videos: a movie, a series, a compilation.
 /// Unlike a Collection it comes from sites, not from the user.
-@table("group")
 model Group extends Record {
   10 title: string
 
@@ -109,6 +102,5 @@ model Group extends Record {
 
   13 cover: Asset?
 
-  @link
-  14 studio: Studio?
+  14 studio: ref<Studio>?
 }

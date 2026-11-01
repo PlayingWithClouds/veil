@@ -10,7 +10,7 @@ import { Performer } from "./people"
 /// Which source a field's value currently comes from. Re-scrapes only update
 /// fields their source owns; a locked field keeps the user's value forever.
 /// Fields are named by ordinal, so renaming a field keeps its provenance.
-@table("field_source") @index(fields: ["subjectKind", "subjectId", "fieldOrdinal"], unique: true)
+@index(fields: ["subjectKind", "subjectId", "fieldOrdinal"], unique: true)
 model FieldSource extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -19,14 +19,13 @@ model FieldSource extends Record {
   13 writtenBy: Actor
 
   /// The winning source when a plugin wrote it.
-  @link
-  14 source: Source?
+  14 source: ref<Source>?
 
   15 locked: bool
 }
 
 /// One field change. Undoing an automation run reverts its revisions.
-@table("revision") @index(fields: ["subjectKind", "subjectId"])
+@index(fields: ["subjectKind", "subjectId"])
 model Revision extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -50,7 +49,7 @@ enum FingerprintAlgorithm {
 
 /// A content hash of a file or stream. Matching fingerprints prove two
 /// records are the same media, which strict merging relies on.
-@table("fingerprint") @index(fields: ["algorithm", "value"])
+@index(fields: ["algorithm", "value"])
 model Fingerprint extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -71,7 +70,7 @@ enum EmbeddingKind {
 
 /// A vector for similarity search: faces for identification, frames for
 /// "more like this", text for semantic search.
-@table("embedding") @index(fields: ["kind", "model"])
+@index(fields: ["kind", "model"])
 model Embedding extends Record {
   10 subjectKind: RecordKind
   11 subjectId: uuid
@@ -87,7 +86,7 @@ model Embedding extends Record {
 }
 
 /// Two records that are probably the same. Hidden from lists, never merged.
-@table("alike") @index(fields: ["subjectKind", "firstId", "secondId"], unique: true)
+@index(fields: ["subjectKind", "firstId", "secondId"], unique: true)
 model Alike extends Record {
   10 subjectKind: RecordKind
   11 firstId: uuid
@@ -101,10 +100,9 @@ model Alike extends Record {
 
 /// A comment from a site, kept per source. Names in it can point to the
 /// performer.
-@table("comment") @index(fields: ["source"])
+@index(fields: ["source"])
 model Comment extends Record {
-  @link
-  10 source: Source
+  10 source: ref<Source>
 
   11 author: string?
   12 text: string
@@ -113,6 +111,5 @@ model Comment extends Record {
   15 replyTo: uuid?
 
   /// Library performers named in the text.
-  @link
-  16 mentions: [Performer]
+  16 mentions: [ref<Performer>]
 }
