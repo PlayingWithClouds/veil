@@ -1,0 +1,106 @@
+// common.schema — building blocks every other file uses: the record base,
+// polymorphic references, assets and sources.
+//
+// Veil decorators (read by Veil tooling, ignored by stock generators):
+//   @abstract    shared base that is never stored on its own; GraphQL interface
+//                (openschema#3)
+//   @value       value object stored inline as JSON, never a table
+//   @sourced     field filled from plugin sources; provenance kept in FieldSource
+//   @revisioned  every write to the model is recorded as a Revision
+//   @softDelete  rows are trashed (deletedAt) and purged after the retention
+
+namespace veil
+
+/// Every kind of stored record. Polymorphic references (subjectKind +
+/// subjectId) name the table through this.
+enum RecordKind {
+  1 video
+  2 gallery
+  3 image
+  4 audio
+  5 story
+  6 post
+  7 performer
+  8 studio
+  9 camModel
+  10 group
+  11 tag
+  12 category
+  13 collection
+  14 segment
+  15 clip
+}
+
+/// The kinds of media: the things you watch, view, listen to or read.
+enum MediaKind {
+  1 video
+  2 gallery
+  3 audio
+  4 story
+  5 post
+}
+
+/// Who or what wrote a value.
+enum Actor {
+  1 user
+  2 plugin
+  3 automation
+  4 system
+}
+
+/// Fields every stored record has. Ids are uuids so records stay unique
+/// across devices once sync arrives.
+@abstract @softDelete
+model Record {
+  @primaryKey
+  1 id: uuid
+
+  @default(now())
+  2 createdAt: timestamp
+
+  @default(now())
+  3 updatedAt: timestamp
+
+  /// Set when trashed; the row is purged once the trash retention passes.
+  4 deletedAt: timestamp?
+}
+
+/// A reference to any record, for lists that mix kinds.
+@value
+model RecordRef {
+  1 kind: RecordKind
+  2 id: uuid
+}
+
+/// A picture or clip: a stored blob (`blob://…`) or a remote URL.
+@value
+model Asset {
+  1 uri: string
+  2 mimeType: string?
+  3 width: i32?
+  4 height: i32?
+  /// Compact placeholder shown while the asset loads.
+  5 blurhash: string?
+}
+
+/// Where a record came from: one entry per site it was scraped or merged
+/// from. Merging two records moves their sources onto the survivor.
+@table("source") @index(fields: ["plugin", "externalId"], unique: true)
+model Source extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  /// Plugin name, e.g. "xvideos".
+  12 plugin: string
+  /// The plugin's stable id for the record on its site.
+  13 externalId: string
+  14 url: string
+
+  /// Short label and thumbnail, so a source can be shown as evidence.
+  15 title: string?
+  16 image: Asset?
+
+  /// Archived copy of the page and media, in case the site removes it.
+  17 snapshot: Asset?
+  18 fetchedAt: timestamp?
+}

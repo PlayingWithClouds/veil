@@ -1,0 +1,237 @@
+// user.schema — everything the (single) user adds: per-record state,
+// collections, filters, subscriptions, the event log, limits and accounts.
+
+namespace veil
+
+import { Record, RecordKind, MediaKind, Asset } from "./common"
+import { MediaStatus } from "./content"
+import { Device } from "./system"
+
+/// The user's state on one record: rating, favourite, notes, progress, block,
+/// and custom field values.
+@table("user_state") @revisioned @index(fields: ["subjectKind", "subjectId"], unique: true)
+model UserState extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  /// One overall rating, 0..10.
+  @minValue(0) @maxValue(10)
+  12 rating: f32?
+
+  13 favorite: bool
+  14 notes: string?
+
+  /// Hidden from every list and feed (tags, performers, studios).
+  15 blocked: bool
+
+  /// Resume point: seconds into a video or audio, image index in a gallery,
+  /// chapter in a story.
+  16 progress: f64?
+  17 viewCount: i32
+  18 lastViewedAt: timestamp?
+
+  /// Custom field values by FieldDef id.
+  19 fields: {string: json}
+}
+
+enum CollectionKind {
+  1 user
+  /// Built in: things to watch later.
+  2 watchlist
+  /// Built in: what plays next.
+  3 queue
+}
+
+/// An ordered list of media.
+@table("collection") @revisioned
+model Collection extends Record {
+  10 name: string
+  11 kind: CollectionKind
+  12 details: string?
+  13 cover: Asset?
+}
+
+@table("collection_item") @index(fields: ["collection", "position"])
+model CollectionItem extends Record {
+  @link
+  10 collection: Collection
+
+  11 subjectKind: RecordKind
+  12 subjectId: uuid
+  13 position: i32
+}
+
+enum SortField {
+  1 relevance
+  2 date
+  3 addedAt
+  4 title
+  5 rating
+  6 duration
+  7 viewCount
+  8 lastViewedAt
+  9 random
+}
+
+@value
+model Sort {
+  1 field: SortField
+  2 descending: bool
+}
+
+/// A condition on a custom field.
+@value
+model FieldCondition {
+  1 fieldDefId: uuid
+  /// "eq", "ne", "lt", "gt", "contains", "set", "unset".
+  2 operator: string
+  3 value: json?
+}
+
+/// One filter shape for every list: library pages, search, category pages,
+/// saved and smart filters, subscriptions, automation conditions and plugin
+/// listings.
+@value
+model Filter {
+  1 kinds: [MediaKind]
+  2 text: string?
+
+  3 performerIds: [uuid]?
+  4 studioIds: [uuid]?
+  5 categoryIds: [uuid]?
+  6 includeTagIds: [uuid]?
+  7 excludeTagIds: [uuid]?
+
+  /// Plugin names.
+  8 sources: [string]?
+
+  9 dateFrom: date?
+  10 dateTo: date?
+  11 minDurationSeconds: i32?
+  12 maxDurationSeconds: i32?
+  13 minRating: f32?
+  14 status: [MediaStatus]?
+
+  /// Only media with a stored file.
+  15 inLibrary: bool?
+  16 favorite: bool?
+  17 unwatched: bool?
+  18 vr: bool?
+  19 fields: [FieldCondition]?
+
+  20 sort: Sort?
+}
+
+/// A named filter. Every saved filter can also be played as a smart playlist.
+@table("saved_filter") @revisioned
+model SavedFilter extends Record {
+  10 name: string
+  11 filter: Filter
+  12 pinned: bool
+}
+
+/// Following anything: a performer, studio, cam model, category or search is
+/// a subscription on a filter that runs on the sites and feeds notifications.
+@table("subscription") @revisioned
+model Subscription extends Record {
+  10 name: string
+  11 filter: Filter
+
+  /// What was followed, when it's a single record (a performer, a cam model).
+  12 targetKind: RecordKind?
+  13 targetId: uuid?
+
+  14 intervalHours: i32
+  15 enabled: bool
+  16 notify: bool
+
+  17 lastRunAt: timestamp?
+  18 nextRunAt: timestamp?
+  19 lastError: string?
+}
+
+enum EventKind {
+  1 view
+  2 progress
+  3 finish
+  4 o
+  5 search
+  6 impression
+  7 choice
+  8 heatSpan
+  9 skip
+  10 like
+}
+
+/// One thing the user did. History, o-count, most-replayed, recent searches,
+/// stats, limits and the recommendation signals are all queries over this log.
+@table("event") @index(fields: ["kind", "at"]) @index(fields: ["subjectKind", "subjectId"])
+model Event extends Record {
+  10 at: timestamp
+  11 kind: EventKind
+  12 subjectKind: RecordKind?
+  13 subjectId: uuid?
+
+  /// Kind-specific detail: watched spans, the search text, the choice.
+  14 data: json?
+
+  @link
+  15 device: Device?
+
+  16 sessionId: uuid?
+}
+
+enum LimitKind {
+  1 watchTime
+  2 sessions
+}
+
+enum LimitWindow {
+  1 day
+  2 week
+}
+
+enum LimitAction {
+  1 remind
+  2 lock
+}
+
+/// A usage limit, checked against the event log.
+@table("usage_limit")
+model Limit extends Record {
+  10 kind: LimitKind
+  11 window: LimitWindow
+  /// Minutes for watch time, a count for sessions.
+  12 amount: i32
+  13 action: LimitAction
+  14 enabled: bool
+}
+
+enum AccountStatus {
+  1 ok
+  2 expired
+  3 needsLogin
+  4 failed
+}
+
+/// A login on a plugin's site. Credentials stay on the device that logged in.
+@table("account")
+model Account extends Record {
+  10 plugin: string
+  11 label: string
+  12 status: AccountStatus
+
+  @link
+  13 device: Device
+
+  /// Encrypted; never leaves the device or the API.
+  @invisible
+  14 credentials: bytes?
+
+  /// Cookies or tokens the plugin gets injected; encrypted.
+  @invisible
+  15 session: bytes?
+
+  16 expiresAt: timestamp?
+  17 lastCheckedAt: timestamp?
+}

@@ -1,0 +1,119 @@
+// automation.schema — multi-step automations, their runs, and notifications.
+
+namespace veil
+
+import { Record, RecordRef } from "./common"
+import { Filter } from "./user"
+
+enum TriggerKind {
+  /// A user event happened (EventKind in eventKinds).
+  1 event
+  /// A cron schedule.
+  2 schedule
+  /// A subscription found new media.
+  3 newMedia
+  /// A followed cam model went live.
+  4 camLive
+  /// A file appeared in a library root.
+  5 fileAdded
+  /// A wanted record was found.
+  6 wantedFound
+  /// Contributed by a plugin (pluginTrigger names it).
+  7 plugin
+}
+
+@value
+model Trigger {
+  1 kind: TriggerKind
+  /// Cron expression for schedule triggers.
+  2 cron: string?
+  3 eventKinds: [string]?
+  /// Only fire for records matching this filter.
+  4 filter: Filter?
+  /// "<plugin>:<trigger>" for plugin triggers.
+  5 pluginTrigger: string?
+}
+
+/// One step. Built-in actions: download, record, tag, addToCollection,
+/// notify, moveFile, delete, archive, lookup, runPlugin; plugins add
+/// "<plugin>:<action>".
+@value
+model Step {
+  1 action: string
+  2 args: json?
+  /// Skip the step unless its input matches.
+  3 condition: Filter?
+  4 continueOnError: bool
+}
+
+/// A multi-step automation: when the trigger fires, the steps run in order,
+/// each seeing the previous step's output.
+@table("automation") @revisioned
+model Automation extends Record {
+  10 name: string
+  11 enabled: bool
+  12 trigger: Trigger
+  13 steps: [Step]
+  /// Built-in automations (the wanted hunt) can be tuned but not deleted.
+  14 builtIn: bool
+}
+
+enum RunStatus {
+  1 running
+  2 succeeded
+  3 failed
+  4 undone
+}
+
+@value
+model StepResult {
+  1 action: string
+  2 ok: bool
+  3 output: json?
+  4 error: string?
+  /// Records the step touched.
+  5 touched: [RecordRef]
+}
+
+/// One run of an automation. Undoing it reverts the revisions it wrote.
+@table("automation_run") @index(fields: ["automation", "startedAt"])
+model AutomationRun extends Record {
+  @link
+  10 automation: Automation
+
+  11 startedAt: timestamp
+  12 finishedAt: timestamp?
+  13 status: RunStatus
+  /// Preview only: steps reported what they would do.
+  14 dryRun: bool
+  15 triggerData: json?
+  16 steps: [StepResult]
+}
+
+enum ChannelKind {
+  1 inApp
+  2 push
+  3 ntfy
+  4 webhook
+}
+
+/// Where notifications go.
+@table("notification_channel")
+model NotificationChannel extends Record {
+  10 kind: ChannelKind
+  11 name: string
+  /// Topic and server for ntfy, URL for webhooks, device for push.
+  12 config: json?
+  13 enabled: bool
+}
+
+@table("notification") @index(fields: ["read", "at"])
+model Notification extends Record {
+  10 at: timestamp
+  /// "newMedia", "camLive", "downloadDone", "automationFailed", …
+  11 kind: string
+  12 title: string
+  13 body: string?
+  14 subject: RecordRef?
+  15 read: bool
+}

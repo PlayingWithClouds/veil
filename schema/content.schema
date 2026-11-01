@@ -1,0 +1,183 @@
+// content.schema — the media: videos, galleries and their images, audio,
+// stories, and creator-platform posts.
+
+namespace veil
+
+import { Record, Asset, RecordRef } from "./common"
+import { Tag } from "./classification"
+import { Performer, Studio, CamModel, Group } from "./people"
+
+/// Whether we have the media or only know it exists.
+enum MediaStatus {
+  /// Playable or viewable from a stored file or a live source.
+  1 available
+  /// Known to exist (a filmography, a catalog) but not found yet; the
+  /// wanted hunt keeps searching for it.
+  2 wanted
+  /// Was available, every source and file is gone.
+  3 unavailable
+}
+
+/// Fields every piece of media shares. Categories are not stored: they follow
+/// from the tags.
+@abstract @revisioned
+model Media extends Record {
+  @sourced
+  10 title: string
+
+  @sourced
+  11 details: string?
+
+  @sourced
+  12 date: date?
+
+  @sourced
+  13 cover: Asset?
+
+  @sourced @link
+  14 studio: Studio?
+
+  @sourced @link
+  15 performers: [Performer]
+
+  @sourced @link
+  16 tags: [Tag]
+
+  17 status: MediaStatus
+}
+
+/// How a VR video is projected.
+enum VrProjection {
+  1 equirectangular180
+  2 equirectangular360
+  3 fisheye
+  4 cubemap
+}
+
+/// How a VR video packs the two eyes.
+enum VrStereo {
+  1 mono
+  2 sideBySide
+  3 topBottom
+}
+
+@value
+model VrFormat {
+  1 projection: VrProjection
+  2 stereo: VrStereo
+  3 fieldOfView: i32?
+}
+
+/// The thumbnail grid shown while scrubbing the seek bar: frames every
+/// intervalSeconds, packed into one or more sprite sheets.
+@value
+model Trickplay {
+  1 sheets: [Asset]
+  2 columns: i32
+  3 rows: i32
+  4 tileWidth: i32
+  5 tileHeight: i32
+  6 intervalSeconds: f32
+}
+
+@table("video")
+model Video extends Media {
+  @sourced
+  30 durationSeconds: f64?
+
+  31 width: i32?
+  32 height: i32?
+  33 vr: VrFormat?
+
+  /// Short hover clip.
+  @sourced
+  34 preview: Asset?
+
+  35 trickplay: Trickplay?
+
+  /// The photo set shot alongside it.
+  @link
+  36 gallery: Gallery?
+
+  /// Set when this is a cam recording.
+  @link
+  37 recordedFrom: CamModel?
+}
+
+/// A video's place in a site group.
+@table("group_item") @index(fields: ["group", "video"], unique: true)
+model GroupItem extends Record {
+  @link
+  10 group: Group
+
+  @link
+  11 video: Video
+
+  12 position: i32
+}
+
+/// A photo set.
+@table("gallery")
+model Gallery extends Media {
+  30 imageCount: i32
+
+  /// The video shot alongside it.
+  @link
+  31 video: Video?
+}
+
+/// A photo. Always belongs to a gallery.
+@table("image") @index(fields: ["gallery", "position"])
+model Image extends Record {
+  @link
+  10 gallery: Gallery
+
+  11 position: i32
+  12 asset: Asset
+  13 width: i32?
+  14 height: i32?
+}
+
+/// Erotic audio and ASMR. Performers are the voices.
+@table("audio")
+model Audio extends Media {
+  @sourced
+  30 durationSeconds: f64?
+}
+
+/// Erotic fiction, read chapter by chapter.
+@table("story")
+model Story extends Media {
+  30 chapterCount: i32
+  31 wordCount: i32?
+  32 complete: bool
+}
+
+@table("story_chapter") @index(fields: ["story", "position"], unique: true)
+model StoryChapter extends Record {
+  @link
+  10 story: Story
+
+  11 position: i32
+  12 title: string?
+  13 text: string
+  14 wordCount: i32
+}
+
+/// A post on a creator platform. It wraps ordinary media; the creator is a
+/// Performer, so following a creator is following a performer.
+@table("post")
+model Post extends Media {
+  @link
+  30 creator: Performer
+
+  31 text: string?
+
+  /// Videos, galleries, audio or stories attached to the post.
+  32 attachments: [RecordRef]
+
+  /// Paywalled for the logged-in account.
+  33 locked: bool
+  34 priceCents: i64?
+  35 currency: string?
+}

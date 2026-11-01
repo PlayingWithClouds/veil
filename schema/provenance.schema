@@ -1,0 +1,118 @@
+// provenance.schema — where values came from and how they changed:
+// per-field provenance, revisions, fingerprints, embeddings, loose
+// duplicates, and site comments.
+
+namespace veil
+
+import { Record, RecordKind, Actor, Source } from "./common"
+import { Performer } from "./people"
+
+/// Which source a field's value currently comes from. Re-scrapes only update
+/// fields their source owns; a locked field keeps the user's value forever.
+/// Fields are named by ordinal, so renaming a field keeps its provenance.
+@table("field_source") @index(fields: ["subjectKind", "subjectId", "fieldOrdinal"], unique: true)
+model FieldSource extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+  12 fieldOrdinal: u32
+
+  13 writtenBy: Actor
+
+  /// The winning source when a plugin wrote it.
+  @link
+  14 source: Source?
+
+  15 locked: bool
+}
+
+/// One field change. Undoing an automation run reverts its revisions.
+@table("revision") @index(fields: ["subjectKind", "subjectId"])
+model Revision extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+  12 fieldOrdinal: u32
+
+  13 before: json?
+  14 after: json?
+
+  15 writtenBy: Actor
+  /// Plugin or automation name.
+  16 actorName: string?
+  17 automationRunId: uuid?
+}
+
+enum FingerprintAlgorithm {
+  1 phash
+  2 oshash
+  3 md5
+  4 audio
+}
+
+/// A content hash of a file or stream. Matching fingerprints prove two
+/// records are the same media, which strict merging relies on.
+@table("fingerprint") @index(fields: ["algorithm", "value"])
+model Fingerprint extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  /// The file it was computed from; null when computed from a stream.
+  12 fileId: uuid?
+
+  13 algorithm: FingerprintAlgorithm
+  14 value: string
+  15 durationSeconds: f64?
+}
+
+enum EmbeddingKind {
+  1 face
+  2 visual
+  3 text
+}
+
+/// A vector for similarity search: faces for identification, frames for
+/// "more like this", text for semantic search.
+@table("embedding") @index(fields: ["kind", "model"])
+model Embedding extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+  12 kind: EmbeddingKind
+
+  /// Model name and version, so vectors from different models never mix.
+  13 model: string
+  14 vector: bytes
+
+  /// Where in the media: a frame time and, for faces, the box.
+  15 atSeconds: f64?
+  16 region: json?
+}
+
+/// Two records that are probably the same. Hidden from lists, never merged.
+@table("alike") @index(fields: ["subjectKind", "firstId", "secondId"], unique: true)
+model Alike extends Record {
+  10 subjectKind: RecordKind
+  11 firstId: uuid
+  12 secondId: uuid
+  13 score: f32
+  14 reason: string?
+
+  /// The user said they're different.
+  15 dismissed: bool
+}
+
+/// A comment from a site, kept per source. Names in it can point to the
+/// performer.
+@table("comment") @index(fields: ["source"])
+model Comment extends Record {
+  @link
+  10 source: Source
+
+  11 author: string?
+  12 text: string
+  13 postedAt: timestamp?
+  14 likes: i32?
+  15 replyTo: uuid?
+
+  /// Library performers named in the text.
+  @link
+  16 mentions: [Performer]
+}

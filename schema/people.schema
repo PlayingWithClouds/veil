@@ -1,0 +1,129 @@
+// people.schema — who appears and who made it: performers, studios, cam
+// models, and site groups (movies, series, compilations).
+
+namespace veil
+
+import { Record, Asset } from "./common"
+import { Tag } from "./classification"
+
+/// Body and career facts, filled by plugins as far as they know them.
+@value
+model PerformerAttributes {
+  1 gender: string?
+  2 birthdate: date?
+  3 deathDate: date?
+  4 country: string?
+  5 ethnicity: string?
+  6 eyeColor: string?
+  7 hairColor: string?
+  8 heightCm: i32?
+  9 weightKg: i32?
+  10 measurements: string?
+  11 fakeTits: string?
+  12 tattoos: string?
+  13 piercings: string?
+  14 careerStart: i32?
+  15 careerEnd: i32?
+}
+
+/// A person who appears in media.
+@table("performer") @revisioned
+model Performer extends Record {
+  @sourced
+  10 name: string
+
+  @sourced
+  11 aliases: [string]
+
+  @sourced
+  12 image: Asset?
+
+  @sourced
+  13 details: string?
+
+  @sourced
+  14 attributes: PerformerAttributes
+
+  /// Socials and official sites.
+  @sourced
+  15 links: [string]
+
+  @sourced @link
+  16 tags: [Tag]
+}
+
+/// A production company, channel or network.
+@table("studio") @revisioned
+model Studio extends Record {
+  @sourced
+  10 name: string
+
+  @sourced
+  11 aliases: [string]
+
+  @sourced
+  12 image: Asset?
+
+  @sourced
+  13 details: string?
+
+  @sourced @link
+  14 parent: Studio?
+
+  @sourced
+  15 url: string?
+
+  @sourced @link
+  16 tags: [Tag]
+}
+
+/// What a cam room is doing right now; null on the model when offline.
+@value
+model CamLive {
+  1 viewers: i32
+  2 subject: string?
+  3 startedAt: timestamp?
+  4 thumbnail: Asset?
+}
+
+/// A room on one cam site. Live state comes from the site's plugin;
+/// recordings become Videos with recordedFrom set.
+@table("cam_model") @revisioned @index(fields: ["plugin", "username"], unique: true)
+model CamModel extends Record {
+  10 plugin: string
+  11 username: string
+  12 displayName: string
+
+  /// The same person in the library, once known.
+  @link
+  13 performer: Performer?
+
+  14 thumbnail: Asset?
+  15 tags: [string]
+  16 gender: string?
+  17 live: CamLive?
+  18 lastSeenOnlineAt: timestamp?
+
+  19 autoRecord: bool
+  20 recordQuality: string?
+}
+
+/// A site's own grouping of videos: a movie, a series, a compilation.
+/// Unlike a Collection it comes from sites, not from the user.
+@table("group") @revisioned
+model Group extends Record {
+  @sourced
+  10 title: string
+
+  @sourced
+  11 details: string?
+
+  @sourced
+  12 date: date?
+
+  @sourced
+  13 cover: Asset?
+
+  @sourced @link
+  14 studio: Studio?
+}

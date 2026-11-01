@@ -1,0 +1,4131 @@
+{
+  "lockfileVersion": 1,
+  "generator": "openschema 0.1.0",
+  "createdAt": "2026-11-01T18:16:57.204Z",
+  "updatedAt": "2026-11-01T18:20:52.420Z",
+  "baseline": false,
+  "digest": "sha256-3d04aa4c299c5d8151db4dd04f89b843f9c4c7ac279c1d990f17320991e5d252",
+  "spaces": {
+    "enum:veil.AccountStatus": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "ok",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "expired",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "needsLogin",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "failed",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.Actor": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "user",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "plugin",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "automation",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "system",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "enum:veil.ChannelKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "inApp",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "push",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "ntfy",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "webhook",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.CollectionKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "user",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "watchlist",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "queue",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.ContributionKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "source",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "lookup",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "stream",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "cams",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "trigger",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "action",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "feed",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "field",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "login",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "view",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.EmbeddingKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "face",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "visual",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "text",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.EventKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "view",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "progress",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "finish",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "o",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "search",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "impression",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "choice",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "heatSpan",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "skip",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "like",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.FieldType": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "text",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "number",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "boolean",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "date",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "choice",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "choices",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "url",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.FingerprintAlgorithm": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "phash",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "oshash",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "md5",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "audio",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.JobKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "download",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "record",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "scrape",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "subscriptionRun",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "fingerprint",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "embed",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "trickplay",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "transcode",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "libraryScan",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "automationRun",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "snapshot",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.JobStatus": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "queued",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "running",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "succeeded",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "failed",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "cancelled",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.LimitAction": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "remind",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "lock",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.LimitKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "watchTime",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "sessions",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.LimitWindow": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "day",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "week",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.MediaKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "video",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "gallery",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "audio",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "story",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "post",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "enum:veil.MediaStatus": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "available",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "wanted",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "unavailable",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.Platform": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "server",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "desktop",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "android",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "tv",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "vr",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.PluginOrigin": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "store",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "local",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.RecordKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "video",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "gallery",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "image",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "audio",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "story",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "post",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "performer",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "studio",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "camModel",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "group",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "tag",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "category",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "collection",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "segment",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "clip",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "enum:veil.RunStatus": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "running",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "succeeded",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "failed",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "undone",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.ScriptKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "funscript",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.SegmentOrigin": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "user",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "plugin",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "ai",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.SortField": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "relevance",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "date",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "addedAt",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "title",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "rating",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "duration",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "viewCount",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "lastViewedAt",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "random",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.StorageKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "library",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "cache",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "archive",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.SubtitleOrigin": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "site",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "generated",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "translated",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.TriggerKind": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "event",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "schedule",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "newMedia",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "camLive",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "fileAdded",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "wantedFound",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "plugin",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.VrProjection": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "equirectangular180",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "equirectangular360",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "fisheye",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "cubemap",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "enum:veil.VrStereo": {
+      "kind": "enum",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "mono",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "sideBySide",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "topBottom",
+          "type": null,
+          "encoding": null,
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Account": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "label",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "status",
+          "type": "AccountStatus",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "device",
+          "type": "Device",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "credentials",
+          "type": "bytes?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "session",
+          "type": "bytes?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "expiresAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "lastCheckedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Alike": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "firstId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "secondId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "score",
+          "type": "f32",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "reason",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "dismissed",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.ApiToken": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "scopes",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "tokenHash",
+          "type": "bytes",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "lastUsedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "expiresAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Asset": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "uri",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "mimeType",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "width",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "height",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "blurhash",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "model:veil.Audio": {
+      "kind": "model",
+      "ordinals": {
+        "30": {
+          "state": "active",
+          "name": "durationSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Automation": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "trigger",
+          "type": "Trigger",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "steps",
+          "type": "[Step]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "builtIn",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.AutomationRun": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "automation",
+          "type": "Automation",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "startedAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "finishedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "status",
+          "type": "RunStatus",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "dryRun",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "triggerData",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "steps",
+          "type": "[StepResult]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.CamLive": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "viewers",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "subject",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "startedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "thumbnail",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.CamModel": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "username",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "displayName",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "performer",
+          "type": "Performer?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "thumbnail",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "tags",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "gender",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "live",
+          "type": "CamLive?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "lastSeenOnlineAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "autoRecord",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "20": {
+          "state": "active",
+          "name": "recordQuality",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Category": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "slug",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "parent",
+          "type": "Category?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "matchTags",
+          "type": "[Tag]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "cover",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Clip": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "video",
+          "type": "Video",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "startSeconds",
+          "type": "f64",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "endSeconds",
+          "type": "f64",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "title",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "cover",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "file",
+          "type": "MediaFile?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Collection": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "kind",
+          "type": "CollectionKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "details",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "cover",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.CollectionItem": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "collection",
+          "type": "Collection",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Comment": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "source",
+          "type": "Source",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "author",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "text",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "postedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "likes",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "replyTo",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "mentions",
+          "type": "[Performer]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Contribution": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "kind",
+          "type": "ContributionKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "mediaKinds",
+          "type": "[MediaKind]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "domains",
+          "type": "[string]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Device": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "platform",
+          "type": "Platform",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "lastSeenAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "lastSyncAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "current",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Embedding": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "kind",
+          "type": "EmbeddingKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "model",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "vector",
+          "type": "bytes",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "atSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "region",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Event": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "at",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "kind",
+          "type": "EventKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "data",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "device",
+          "type": "Device?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "sessionId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Evidence": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "url",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "title",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "image",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "detail",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.FieldCondition": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "fieldDefId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "operator",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "value",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.FieldDef": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "kinds",
+          "type": "[RecordKind]",
+          "encoding": "repeated:packed",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "fieldType",
+          "type": "FieldType",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "options",
+          "type": "[string]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.FieldSource": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "fieldOrdinal",
+          "type": "u32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "writtenBy",
+          "type": "Actor",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "source",
+          "type": "Source?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "locked",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Filter": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "kinds",
+          "type": "[MediaKind]",
+          "encoding": "repeated:packed",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "text",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "performerIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "studioIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "categoryIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "includeTagIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "excludeTagIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "sources",
+          "type": "[string]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "dateFrom",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "dateTo",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "minDurationSeconds",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "maxDurationSeconds",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "minRating",
+          "type": "f32?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "status",
+          "type": "[MediaStatus]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "inLibrary",
+          "type": "bool?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "favorite",
+          "type": "bool?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "unwatched",
+          "type": "bool?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "vr",
+          "type": "bool?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "fields",
+          "type": "[FieldCondition]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "20": {
+          "state": "active",
+          "name": "sort",
+          "type": "Sort?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Fingerprint": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "fileId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "algorithm",
+          "type": "FingerprintAlgorithm",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "value",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "durationSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Gallery": {
+      "kind": "model",
+      "ordinals": {
+        "30": {
+          "state": "active",
+          "name": "imageCount",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "31": {
+          "state": "active",
+          "name": "video",
+          "type": "Video?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Group": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "title",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "details",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "date",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "cover",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "studio",
+          "type": "Studio?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.GroupItem": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "group",
+          "type": "Group",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "video",
+          "type": "Video",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Image": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "gallery",
+          "type": "Gallery",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "asset",
+          "type": "Asset",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "width",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "height",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Job": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "kind",
+          "type": "JobKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "status",
+          "type": "JobStatus",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "subject",
+          "type": "RecordRef?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "payload",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "progress",
+          "type": "f32",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "error",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "attempts",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "runAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "startedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "finishedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "20": {
+          "state": "active",
+          "name": "device",
+          "type": "Device?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.LibraryRoot": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "location",
+          "type": "StorageLocation",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "path",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "scanIntervalMinutes",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "lastScanAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "organizeTemplate",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Limit": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "kind",
+          "type": "LimitKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "window",
+          "type": "LimitWindow",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "amount",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "action",
+          "type": "LimitAction",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.LookupQuery": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "text",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "imageBase64",
+          "type": "bytes?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "mimeType",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "plugins",
+          "type": "[string]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Match": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "item",
+          "type": "RecordRef",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "score",
+          "type": "f32?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "evidence",
+          "type": "[Evidence]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Media": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "title",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "details",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "date",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "cover",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "studio",
+          "type": "Studio?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "performers",
+          "type": "[Performer]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "tags",
+          "type": "[Tag]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "status",
+          "type": "MediaStatus",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.MediaFile": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "location",
+          "type": "StorageLocation",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "path",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "sizeBytes",
+          "type": "i64",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "mimeType",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "quality",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "width",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "height",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "durationSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "20": {
+          "state": "active",
+          "name": "libraryRoot",
+          "type": "LibraryRoot?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "21": {
+          "state": "active",
+          "name": "missing",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Notification": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "at",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "kind",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "title",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "body",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "subject",
+          "type": "RecordRef?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "read",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.NotificationChannel": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "kind",
+          "type": "ChannelKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "config",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Performer": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "aliases",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "image",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "details",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "attributes",
+          "type": "PerformerAttributes",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "links",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "tags",
+          "type": "[Tag]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.PerformerAttributes": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "gender",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "birthdate",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "deathDate",
+          "type": "date?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "country",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "ethnicity",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "eyeColor",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "7": {
+          "state": "active",
+          "name": "hairColor",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "8": {
+          "state": "active",
+          "name": "heightCm",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "9": {
+          "state": "active",
+          "name": "weightKg",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "10": {
+          "state": "active",
+          "name": "measurements",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "fakeTits",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "tattoos",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "piercings",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "careerStart",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "careerEnd",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Plugin": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "displayName",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "version",
+          "type": "semver",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "origin",
+          "type": "PluginOrigin",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "contributions",
+          "type": "[Contribution]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "settings",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Post": {
+      "kind": "model",
+      "ordinals": {
+        "30": {
+          "state": "active",
+          "name": "creator",
+          "type": "Performer",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "31": {
+          "state": "active",
+          "name": "text",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "32": {
+          "state": "active",
+          "name": "attachments",
+          "type": "[RecordRef]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "33": {
+          "state": "active",
+          "name": "locked",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "34": {
+          "state": "active",
+          "name": "priceCents",
+          "type": "i64?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "35": {
+          "state": "active",
+          "name": "currency",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Record": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "id",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "createdAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "updatedAt",
+          "type": "timestamp",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "deletedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "model:veil.RecordRef": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "kind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "id",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "model:veil.Revision": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "fieldOrdinal",
+          "type": "u32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "before",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "after",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "writtenBy",
+          "type": "Actor",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "actorName",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "automationRunId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.SavedFilter": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "filter",
+          "type": "Filter",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "pinned",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Script": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "kind",
+          "type": "ScriptKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "asset",
+          "type": "Asset",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "axis",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "writtenBy",
+          "type": "Actor",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Segment": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "startSeconds",
+          "type": "f64",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "endSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "title",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "tag",
+          "type": "Tag?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "performers",
+          "type": "[Performer]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "origin",
+          "type": "SegmentOrigin",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Sort": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "field",
+          "type": "SortField",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "descending",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Source": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "plugin",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "externalId",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "url",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "title",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "image",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "snapshot",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:16:57.204Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "fetchedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:16:57.204Z"
+        }
+      }
+    },
+    "model:veil.Step": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "action",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "args",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "condition",
+          "type": "Filter?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "continueOnError",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.StepResult": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "action",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "ok",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "output",
+          "type": "json?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "error",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "touched",
+          "type": "[RecordRef]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.StorageLocation": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "device",
+          "type": "Device",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "kind",
+          "type": "StorageKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "uri",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "quotaBytes",
+          "type": "i64?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "usedBytes",
+          "type": "i64",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Story": {
+      "kind": "model",
+      "ordinals": {
+        "30": {
+          "state": "active",
+          "name": "chapterCount",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "31": {
+          "state": "active",
+          "name": "wordCount",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "32": {
+          "state": "active",
+          "name": "complete",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.StoryChapter": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "story",
+          "type": "Story",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "title",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "text",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "wordCount",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Stream": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "source",
+          "type": "Source",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "url",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "mimeType",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "quality",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "height",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "headers",
+          "type": "{string:string}",
+          "encoding": "map:entry",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "expiresAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "speedKbps",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Studio": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "aliases",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "image",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "details",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "parent",
+          "type": "Studio?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "url",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "tags",
+          "type": "[Tag]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Subscription": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "filter",
+          "type": "Filter",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "targetKind",
+          "type": "RecordKind?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "targetId",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "intervalHours",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "enabled",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "notify",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "lastRunAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "nextRunAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "lastError",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Subtitle": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "language",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "format",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "asset",
+          "type": "Asset",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "origin",
+          "type": "SubtitleOrigin",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Tag": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "aliases",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Trickplay": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "sheets",
+          "type": "[Asset]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "columns",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "rows",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "tileWidth",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "tileHeight",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "6": {
+          "state": "active",
+          "name": "intervalSeconds",
+          "type": "f32",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Trigger": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "kind",
+          "type": "TriggerKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "cron",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "eventKinds",
+          "type": "[string]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "filter",
+          "type": "Filter?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "5": {
+          "state": "active",
+          "name": "pluginTrigger",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.UserState": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "rating",
+          "type": "f32?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "favorite",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "notes",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "blocked",
+          "type": "bool",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "progress",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "viewCount",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "18": {
+          "state": "active",
+          "name": "lastViewedAt",
+          "type": "timestamp?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "fields",
+          "type": "{string:json}",
+          "encoding": "map:entry",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Video": {
+      "kind": "model",
+      "ordinals": {
+        "30": {
+          "state": "active",
+          "name": "durationSeconds",
+          "type": "f64?",
+          "encoding": "singular:i64",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "31": {
+          "state": "active",
+          "name": "width",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "32": {
+          "state": "active",
+          "name": "height",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "33": {
+          "state": "active",
+          "name": "vr",
+          "type": "VrFormat?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "34": {
+          "state": "active",
+          "name": "preview",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "35": {
+          "state": "active",
+          "name": "trickplay",
+          "type": "Trickplay?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "36": {
+          "state": "active",
+          "name": "gallery",
+          "type": "Gallery?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "37": {
+          "state": "active",
+          "name": "recordedFrom",
+          "type": "CamModel?",
+          "encoding": "singular:len",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.VrFormat": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "projection",
+          "type": "VrProjection",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "stereo",
+          "type": "VrStereo",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "fieldOfView",
+          "type": "i32?",
+          "encoding": "singular:varint",
+          "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    }
+  }
+}

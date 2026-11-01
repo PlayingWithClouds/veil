@@ -1,0 +1,176 @@
+// playback.schema — how media plays and where its files live: streams,
+// stored files, storage locations, library folders, and the time-based
+// extras (segments, clips, subtitles, scripts).
+
+namespace veil
+
+import { Record, RecordKind, Actor, Asset, Source } from "./common"
+import { Tag } from "./classification"
+import { Performer } from "./people"
+import { Video } from "./content"
+import { Device } from "./system"
+
+/// A playable stream a source offers, ranked by quality and measured speed.
+/// Signed URLs expire and are resolved again from the source page.
+@table("stream") @index(fields: ["subjectKind", "subjectId"])
+model Stream extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  @link
+  12 source: Source
+
+  13 url: string
+  14 mimeType: string
+  15 quality: string?
+  16 height: i32?
+  17 headers: {string: string}
+  18 expiresAt: timestamp?
+
+  /// Last measured throughput, used to rank streams.
+  19 speedKbps: i32?
+}
+
+enum StorageKind {
+  /// Kept: the user's library.
+  1 library
+  /// Evicted when over quota.
+  2 cache
+  /// Source snapshots.
+  3 archive
+}
+
+/// A place on one device where Veil keeps files.
+@table("storage_location")
+model StorageLocation extends Record {
+  @link
+  10 device: Device
+
+  11 kind: StorageKind
+  /// A local path or a remote URI (NAS share, object storage).
+  12 uri: string
+  13 quotaBytes: i64?
+  14 usedBytes: i64
+}
+
+/// A folder of the user's own files, scanned into the library.
+@table("library_root")
+model LibraryRoot extends Record {
+  @link
+  10 location: StorageLocation
+
+  11 path: string
+  12 scanIntervalMinutes: i32?
+  13 lastScanAt: timestamp?
+
+  /// Rename and move template, e.g. "{studio}/{date} {title}.{ext}".
+  /// Null leaves files where they are.
+  14 organizeTemplate: string?
+}
+
+/// A stored file of a media record (or one of its images).
+@table("media_file") @index(fields: ["location", "path"], unique: true)
+model MediaFile extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  @link
+  12 location: StorageLocation
+
+  /// Relative to the location.
+  13 path: string
+  14 sizeBytes: i64
+  15 mimeType: string
+  16 quality: string?
+  17 width: i32?
+  18 height: i32?
+  19 durationSeconds: f64?
+
+  /// Found in a library root rather than downloaded.
+  @link
+  20 libraryRoot: LibraryRoot?
+
+  /// The file vanished from disk since the last scan.
+  21 missing: bool
+}
+
+enum SegmentOrigin {
+  1 user
+  2 plugin
+  3 ai
+}
+
+/// A time range in a video or audio: a scene within a compilation, a chapter,
+/// or a marker (end omitted). Credits on a segment narrow the media's own.
+@table("segment") @index(fields: ["subjectKind", "subjectId"])
+model Segment extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  12 startSeconds: f64
+  13 endSeconds: f64?
+
+  14 title: string?
+
+  @link
+  15 tag: Tag?
+
+  @link
+  16 performers: [Performer]
+
+  17 origin: SegmentOrigin
+}
+
+/// A moment the user saved from a video, playable in the shorts feed and
+/// exportable as a file.
+@table("clip")
+model Clip extends Record {
+  @link
+  10 video: Video
+
+  11 startSeconds: f64
+  12 endSeconds: f64
+  13 title: string?
+  14 cover: Asset?
+
+  /// The exported mp4 or GIF.
+  @link
+  15 file: MediaFile?
+}
+
+enum SubtitleOrigin {
+  1 site
+  2 generated
+  3 translated
+}
+
+@table("subtitle") @index(fields: ["subjectKind", "subjectId"])
+model Subtitle extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  /// BCP 47, e.g. "en", "ja".
+  12 language: string
+  /// "vtt", "srt", "ass".
+  13 format: string
+  14 asset: Asset
+  15 origin: SubtitleOrigin
+}
+
+enum ScriptKind {
+  1 funscript
+}
+
+/// A motion script for connected toys, synced to the media's timeline.
+@table("script") @index(fields: ["subjectKind", "subjectId"])
+model Script extends Record {
+  10 subjectKind: RecordKind
+  11 subjectId: uuid
+
+  12 kind: ScriptKind
+  13 asset: Asset
+
+  /// Axis name for multi-axis scripts, e.g. "stroke", "twist".
+  14 axis: string?
+  15 writtenBy: Actor
+}

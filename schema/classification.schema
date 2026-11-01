@@ -1,0 +1,57 @@
+// classification.schema — site tags, our own categories, and the user's
+// custom fields.
+
+namespace veil
+
+import { Record, Asset, RecordKind } from "./common"
+
+/// A site's own label. Never curated or browsed, only used to filter.
+@table("tag") @revisioned
+model Tag extends Record {
+  @unique
+  10 name: string
+  11 aliases: [string]
+}
+
+/// Our own taxonomy, defined by us rather than any site. Media belongs to a
+/// category when it carries any of the category's tags, so new site tags only
+/// need mapping, never re-tagging.
+@table("category") @revisioned
+model Category extends Record {
+  10 name: string
+
+  @unique
+  11 slug: string
+
+  @link
+  12 parent: Category?
+
+  @link
+  13 matchTags: [Tag]
+
+  14 cover: Asset?
+  15 position: i32
+}
+
+/// The value type of a custom field.
+enum FieldType {
+  1 text
+  2 number
+  3 boolean
+  4 date
+  5 choice
+  6 choices
+  7 url
+}
+
+/// A field the user added to some kinds of records. Values live in
+/// UserState.fields under the definition's id, so filters and automation
+/// conditions can use them.
+@table("field_def")
+model FieldDef extends Record {
+  10 name: string
+  11 kinds: [RecordKind]
+  12 fieldType: FieldType
+  /// Allowed values for choice fields.
+  13 options: [string]?
+}

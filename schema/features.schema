@@ -1,0 +1,53 @@
+// features.schema — features are functions over the core records: they take
+// an input and return matches, each saying why it's there. Plugins add
+// lookups; the backend adds feeds.
+
+namespace veil
+
+import { RecordRef, Asset } from "./common"
+import { Filter } from "./user"
+
+/// Why a match is there: a solved NameThatPorn thread, a face match, "because
+/// you watched …".
+@value
+model Evidence {
+  /// Plugin name, or "veil" for the backend's own features.
+  1 plugin: string
+  2 url: string?
+  3 title: string?
+  4 image: Asset?
+  /// e.g. "94% face match", "accepted answer".
+  5 detail: string?
+}
+
+/// A record a feature found, with its score and evidence.
+@value
+model Match {
+  1 item: RecordRef
+  @minValue(0) @maxValue(1)
+  2 score: f32?
+  3 evidence: [Evidence]
+}
+
+/// A lookup input: text, a picture, or both.
+@value
+model LookupQuery {
+  1 text: string?
+  2 imageBase64: bytes?
+  3 mimeType: string?
+  /// Restrict to these plugins.
+  4 plugins: [string]?
+}
+
+/// Every identification plugin, merged: face search, NameThatPorn, …
+@query op lookup(query: LookupQuery): [Match]
+
+/// Ranked recommendations, each with its reasons.
+@query op recommendations(limit: i32?, offset: i32?): [Match]
+
+/// Records related to one record (same performer, similar frames, …).
+@query op related(item: RecordRef, limit: i32?): [Match]
+
+/// The vertical shorts feed: clips, segments, short vertical videos and post
+/// attachments.
+@query op shorts(filter: Filter?, limit: i32?): [Match]

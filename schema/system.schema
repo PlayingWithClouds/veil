@@ -1,0 +1,130 @@
+// system.schema — devices, background jobs, API tokens and plugins.
+
+namespace veil
+
+import { Record, RecordRef, MediaKind } from "./common"
+
+enum Platform {
+  1 server
+  2 desktop
+  3 android
+  4 tv
+  5 vr
+}
+
+/// An install of Veil. Sync, accounts, storage and events are per device.
+@table("device")
+model Device extends Record {
+  10 name: string
+  11 platform: Platform
+  12 lastSeenAt: timestamp?
+  13 lastSyncAt: timestamp?
+  /// This install's own row.
+  14 current: bool
+}
+
+enum JobKind {
+  1 download
+  2 record
+  3 scrape
+  4 subscriptionRun
+  5 fingerprint
+  6 embed
+  7 trickplay
+  8 transcode
+  9 libraryScan
+  10 automationRun
+  11 snapshot
+}
+
+enum JobStatus {
+  1 queued
+  2 running
+  3 succeeded
+  4 failed
+  5 cancelled
+}
+
+/// Background work, run on one device.
+@table("job") @index(fields: ["status", "runAt"])
+model Job extends Record {
+  10 kind: JobKind
+  11 status: JobStatus
+  12 subject: RecordRef?
+  13 payload: json?
+
+  @minValue(0) @maxValue(1)
+  14 progress: f32
+  15 error: string?
+  16 attempts: i32
+
+  17 runAt: timestamp
+  18 startedAt: timestamp?
+  19 finishedAt: timestamp?
+
+  @link
+  20 device: Device?
+}
+
+/// Access for other clients: a phone streaming from the home server,
+/// scripts, agents over MCP.
+@table("api_token")
+model ApiToken extends Record {
+  10 name: string
+  /// "read", "write", "stream", "admin".
+  11 scopes: [string]
+
+  @invisible
+  12 tokenHash: bytes
+
+  13 lastUsedAt: timestamp?
+  14 expiresAt: timestamp?
+}
+
+enum ContributionKind {
+  /// Finds and lists records on a site (find/list capabilities).
+  1 source
+  /// Text or image → matches (face search, namethatporn).
+  2 lookup
+  /// Resolves pages to playable streams.
+  3 stream
+  /// Lists live cam rooms.
+  4 cams
+  5 trigger
+  6 action
+  /// A feed or home shelf.
+  7 feed
+  /// Field definitions the plugin fills.
+  8 field
+  /// A login flow for accounts.
+  9 login
+  /// A declarative view (form, list, detail) rendered natively by each client.
+  10 view
+}
+
+/// One thing a plugin adds to Veil.
+@value
+model Contribution {
+  1 kind: ContributionKind
+  2 name: string
+  3 mediaKinds: [MediaKind]?
+  /// Domains served, for sources and streams.
+  4 domains: [string]?
+}
+
+enum PluginOrigin {
+  1 store
+  2 local
+}
+
+/// An installed plugin.
+@table("plugin") @index(fields: ["name"], unique: true)
+model Plugin extends Record {
+  10 name: string
+  11 displayName: string?
+  12 version: semver
+  13 enabled: bool
+  14 origin: PluginOrigin
+  15 contributions: [Contribution]
+  16 settings: json?
+}
