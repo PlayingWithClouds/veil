@@ -1,5 +1,4 @@
 shutterly
-go.sum
 *.env
 .env
 web/node_modules/
