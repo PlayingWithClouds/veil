@@ -40,7 +40,7 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 - Plugins run in goja, not Node: web APIs, SDK, pure-JS packages only. `node-html-parser` is a native Go subset (`embedded_html.go`); passing `bun test` doesn't prove parsing works.
 - Plugins ship as GitHub release assets, never npm. Fix = bump `version`, `bun scripts/publish-plugins.ts <plugin>` in `apps/backend`.
 - Face identification names anybody on public face search websites. These websites are themselves responsible for the data they publish.
-- UI uses the existing design system. Web: tokens/classes in `apps/web/src/routes/layout.css`; reuse `SceneCard`, `TagChips`, `MemberCard`, `CollectionDialog`, `Lightbox`. Android: only `ui/theme` tokens and `ui/design` components (`DesignTokenUsageTest`).
+- UI uses the existing design system. Web: tokens/classes in `apps/web/src/routes/layout.css`; reuse `SceneCard`, `GalleryCard`, `TagChips`, `MemberCard`, `Lightbox`. Android: only `ui/theme` tokens and `ui/design` components (`DesignTokenUsageTest`).
 
 ## Scope
 
