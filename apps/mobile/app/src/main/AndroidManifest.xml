@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- EmbeddedBackend reads the network's DNS servers. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- The self-updater installs new releases through a PackageInstaller session (update/UpdateInstaller.kt). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".VeilApplication"
@@ -20,6 +22,11 @@
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density" />
+
+        <!-- Installer session results for the self-updater; reached only through the app's own PendingIntent. -->
+        <receiver
+            android:name=".update.UpdateStatusReceiver"
+            android:exported="false" />
 
         <!--
             Launcher entries. Exactly one is enabled at a time (Settings → Privacy → App name and

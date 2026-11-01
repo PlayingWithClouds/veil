@@ -127,14 +127,20 @@ fun VeilMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
     )
 }
 
-/** One entry of a [VeilMenu], with an optional leading icon and a check mark when [selected]. */
+/**
+ * One entry of a [VeilMenu], with an optional leading icon, a check mark when [selected] and a
+ * [NoticeDot] when [marked].
+ */
 @Composable
-fun VeilMenuItem(label: String, onClick: () -> Unit, icon: ImageVector? = null, selected: Boolean = false) {
+fun VeilMenuItem(label: String, onClick: () -> Unit, icon: ImageVector? = null, selected: Boolean = false, marked: Boolean = false) {
     var leading: (@Composable () -> Unit)? = null
     if (icon != null) {
         leading = { Icon(icon, contentDescription = null, tint = VeilColors.content, modifier = Modifier.size(20.dp)) }
     }
     var trailing: (@Composable () -> Unit)? = null
+    if (marked) {
+        trailing = { NoticeDot() }
+    }
     if (selected) {
         trailing = { Icon(VeilIcons.Check, contentDescription = null, tint = VeilColors.accent, modifier = Modifier.size(18.dp)) }
     }

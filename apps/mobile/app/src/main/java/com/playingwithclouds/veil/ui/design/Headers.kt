@@ -153,3 +153,9 @@ fun Badge(
         fontWeight = FontWeight.SemiBold,
     )
 }
+
+/** A small accent dot marking something new, such as an available update, on an icon or menu entry. */
+@Composable
+fun NoticeDot(modifier: Modifier = Modifier) {
+    Box(modifier.size(8.dp).clip(VeilShapes.capsule).background(VeilColors.accent))
+}

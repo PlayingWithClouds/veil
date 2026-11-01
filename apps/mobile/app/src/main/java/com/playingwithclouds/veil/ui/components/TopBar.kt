@@ -2,21 +2,27 @@ package com.playingwithclouds.veil.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.design.DetailBar
 import com.playingwithclouds.veil.ui.design.IconTap
+import com.playingwithclouds.veil.ui.design.NoticeDot
 import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.update.UpdateChecker
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilMenu
 import com.playingwithclouds.veil.ui.design.VeilMenuItem
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /** The bar of every detail screen: a round back button, the title and round actions. */
 @Composable
@@ -40,16 +46,20 @@ fun SearchButton(navigator: AppNavigator, bare: Boolean = false) {
 
 /**
  * The gear of the tab screens: a menu with Cams, Random, Previews, Taste, Plugins and Settings. [bare] draws just the
- * icon, for the compact Home bar.
+ * icon, for the compact Home bar. A dot on the gear and on Settings marks an update the user hasn't skipped.
  */
 @Composable
 fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
     var open by remember { mutableStateOf(false) }
+    val updateMarked by UpdateChecker.hasUnseenUpdate.collectAsStateWithLifecycle()
     Box {
         if (bare) {
             IconTap(VeilIcons.Settings, contentDescription = "More", onClick = { open = true }, tint = VeilColors.content)
         } else {
             RoundIconButton(VeilIcons.Settings, contentDescription = "More", onClick = { open = true })
+        }
+        if (updateMarked) {
+            NoticeDot(Modifier.align(Alignment.TopEnd).padding(VeilSpacing.extraSmall))
         }
         VeilMenu(expanded = open, onDismissRequest = { open = false }) {
             VeilMenuItem("Cams", icon = VeilIcons.Cams, onClick = {
@@ -72,7 +82,7 @@ fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
                 open = false
                 navigator.openPlugins()
             })
-            VeilMenuItem("Settings", icon = VeilIcons.Settings, onClick = {
+            VeilMenuItem("Settings", icon = VeilIcons.Settings, marked = updateMarked, onClick = {
                 open = false
                 navigator.openSettings()
             })

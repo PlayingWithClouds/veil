@@ -35,7 +35,7 @@ import com.playingwithclouds.veil.ui.design.VeilTextField
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-/** Server choice, job and download settings, and the blocklist. */
+/** Server choice, privacy, job and download settings, the blocklist, appearance and app updates. */
 @Composable
 fun SettingsScreen(navigator: AppNavigator) {
     val viewModel = viewModel { SettingsViewModel() }
@@ -62,6 +62,8 @@ fun SettingsScreen(navigator: AppNavigator) {
             BlocklistSection(blocklist, viewModel)
             SectionHeading("Appearance")
             SecondaryButton("Design kit", onClick = navigator::openDesignKit)
+            SectionHeading("Updates")
+            UpdatesSection()
         }
     }
 }

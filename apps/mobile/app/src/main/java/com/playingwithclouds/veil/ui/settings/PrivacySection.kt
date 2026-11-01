@@ -223,6 +223,6 @@ private fun <T> FlowOptions(options: List<T>, labelOf: (T) -> String, isSelected
 
 /** A muted explanation under a setting. */
 @Composable
-private fun Hint(text: String) {
+internal fun Hint(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint)
 }
