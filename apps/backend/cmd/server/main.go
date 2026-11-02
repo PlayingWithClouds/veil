@@ -348,7 +348,7 @@ func main() {
 	registry, pluginStore := openPlugins(ctx, dataDir, runner, storeClient, settingsService)
 
 	lib := library.New(database)
-	flow := pipeline.New(lib, registry, runner)
+	flow := pipeline.New(lib, registry, runner, cacheClient)
 
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.
 	streamCache := stream.NewCacheService(cacheClient, storeClient)

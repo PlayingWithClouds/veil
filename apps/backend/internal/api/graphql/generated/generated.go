@@ -921,6 +921,15 @@ type ComplexityRoot struct {
 		WrittenBy func(childComplexity int) int
 	}
 
+	SearchBatch struct {
+		Exhausted func(childComplexity int) int
+		Final     func(childComplexity int) int
+		Listed    func(childComplexity int) int
+		Plugin    func(childComplexity int) int
+		Sites     func(childComplexity int) int
+		Stored    func(childComplexity int) int
+	}
+
 	Segment struct {
 		EndSeconds   func(childComplexity int) int
 		Id           func(childComplexity int) int
@@ -1043,6 +1052,7 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		NotificationAdded func(childComplexity int) int
+		SearchResults     func(childComplexity int, kind model.ListKind, query string, page *int, limit *int, plugins []string) int
 	}
 
 	Subtitle struct {
@@ -1570,6 +1580,7 @@ type StudioResolver interface {
 }
 type SubscriptionResolver interface {
 	NotificationAdded(ctx context.Context) (<-chan *schema.Notification, error)
+	SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string) (<-chan *model.SearchBatch, error)
 }
 type TagResolver interface {
 	VideoCount(ctx context.Context, obj *schema.Tag) (int, error)
@@ -6543,6 +6554,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Script.WrittenBy(childComplexity), true
 
+	case "SearchBatch.exhausted":
+		if e.ComplexityRoot.SearchBatch.Exhausted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Exhausted(childComplexity), true
+	case "SearchBatch.final":
+		if e.ComplexityRoot.SearchBatch.Final == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Final(childComplexity), true
+	case "SearchBatch.listed":
+		if e.ComplexityRoot.SearchBatch.Listed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Listed(childComplexity), true
+	case "SearchBatch.plugin":
+		if e.ComplexityRoot.SearchBatch.Plugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Plugin(childComplexity), true
+	case "SearchBatch.sites":
+		if e.ComplexityRoot.SearchBatch.Sites == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Sites(childComplexity), true
+	case "SearchBatch.stored":
+		if e.ComplexityRoot.SearchBatch.Stored == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Stored(childComplexity), true
+
 	case "Segment.endSeconds":
 		if e.ComplexityRoot.Segment.EndSeconds == nil {
 			break
@@ -7092,6 +7140,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.NotificationAdded(childComplexity), true
+	case "Subscription.searchResults":
+		if e.ComplexityRoot.Subscription.SearchResults == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_searchResults_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Subscription.SearchResults(childComplexity, args["kind"].(model.ListKind), args["query"].(string), args["page"].(*int), args["limit"].(*int), args["plugins"].([]string)), true
 
 	case "Subtitle.asset":
 		if e.ComplexityRoot.Subtitle.Asset == nil {
@@ -8606,7 +8665,8 @@ extend type Mutation {
   fetchPerformer(id: ID!, refresh: Boolean): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
-  # Searches every plugin that lists this kind and stores the results.
+  # Searches every plugin that lists this kind and stores the results, sites
+  # taking turns. A site that answered within 6 hours isn't asked again.
   search(kind: ListKind!, query: String!, limit: Int): Listed!
 
   # The user's edits. Every field an edit sets is locked: later scrapes
@@ -8621,6 +8681,28 @@ extend type Mutation {
   lockField(subject: RecordRefInput!, field: String!, locked: Boolean!): [FieldSource!]!
   # Puts a field back to its value before the revision, locked.
   revertRevision(id: ID!): Boolean!
+}
+
+extend type Subscription {
+  # One page of a search (page 0 first, limit items per site, default 20)
+  # across every site that lists this kind, or only the named plugins: each
+  # site's results as they come, then the subscription completes. A site that
+  # answered the same page within 6 hours isn't asked; its answer then is sent.
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!]): SearchBatch!
+}
+
+# Part of one site's answer to a search page.
+type SearchBatch {
+  plugin: String!
+  listed: Listed!
+  # How many sites this page asked.
+  sites: Int!
+  # From the site's answer within the last 6 hours, not asked now.
+  stored: Boolean!
+  # The site's last batch for this page.
+  final: Boolean!
+  # The site has no further pages for this search.
+  exhausted: Boolean!
 }
 
 # A change to a video or gallery. Omitted fields stay; an empty string
@@ -11088,6 +11170,24 @@ func (ec *executionContext) childFields_Script(ctx context.Context, field graphq
 		return ec.fieldContext_Script_writtenBy(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Script", field.Name)
+}
+
+func (ec *executionContext) childFields_SearchBatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "plugin":
+		return ec.fieldContext_SearchBatch_plugin(ctx, field)
+	case "listed":
+		return ec.fieldContext_SearchBatch_listed(ctx, field)
+	case "sites":
+		return ec.fieldContext_SearchBatch_sites(ctx, field)
+	case "stored":
+		return ec.fieldContext_SearchBatch_stored(ctx, field)
+	case "final":
+		return ec.fieldContext_SearchBatch_final(ctx, field)
+	case "exhausted":
+		return ec.fieldContext_SearchBatch_exhausted(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SearchBatch", field.Name)
 }
 
 func (ec *executionContext) childFields_Segment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -15683,6 +15783,52 @@ func (ec *executionContext) field_Studio_revisions_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["offset"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Subscription_searchResults_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.ListKind, error) {
+			return ec.unmarshalNListKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐListKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["page"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "plugins",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["plugins"] = arg4
 	return args, nil
 }
 
@@ -35888,6 +36034,153 @@ func (ec *executionContext) fieldContext_Script_writtenBy(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Script", field, false, false, errors.New("field of type Actor does not have child fields"))
 }
 
+func (ec *executionContext) _SearchBatch_plugin(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_plugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Plugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_plugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SearchBatch_listed(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_listed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Listed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Listed) graphql.Marshaler {
+			return ec.marshalNListed2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐListed(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_listed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SearchBatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Listed(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SearchBatch_sites(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_sites(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sites, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_sites(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _SearchBatch_stored(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_stored(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stored, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_stored(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _SearchBatch_final(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_final(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Final, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_final(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _SearchBatch_exhausted(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_exhausted(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Exhausted, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_exhausted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Segment_id(ctx context.Context, field graphql.CollectedField, obj *schema.Segment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38175,6 +38468,50 @@ func (ec *executionContext) fieldContext_Subscription_notificationAdded(_ contex
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Notification(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_searchResults(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Subscription_searchResults(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Subscription().SearchResults(ctx, fc.Args["kind"].(model.ListKind), fc.Args["query"].(string), fc.Args["page"].(*int), fc.Args["limit"].(*int), fc.Args["plugins"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.SearchBatch) graphql.Marshaler {
+			return ec.marshalNSearchBatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSearchBatch(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Subscription_searchResults(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SearchBatch(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_searchResults_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -52928,6 +53265,70 @@ func (ec *executionContext) _Script(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var searchBatchImplementors = []string{"SearchBatch"}
+
+func (ec *executionContext) _SearchBatch(ctx context.Context, sel ast.SelectionSet, obj *model.SearchBatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, searchBatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SearchBatch")
+		case "plugin":
+			out.Values[i] = ec._SearchBatch_plugin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "listed":
+			out.Values[i] = ec._SearchBatch_listed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sites":
+			out.Values[i] = ec._SearchBatch_sites(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stored":
+			out.Values[i] = ec._SearchBatch_stored(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "final":
+			out.Values[i] = ec._SearchBatch_final(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exhausted":
+			out.Values[i] = ec._SearchBatch_exhausted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var segmentImplementors = []string{"Segment", "Record"}
 
 func (ec *executionContext) _Segment(ctx context.Context, sel ast.SelectionSet, obj *schema.Segment) graphql.Marshaler {
@@ -54307,6 +54708,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	switch fields[0].Name {
 	case "notificationAdded":
 		return ec._Subscription_notificationAdded(ctx, fields[0])
+	case "searchResults":
+		return ec._Subscription_searchResults(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -58565,6 +58968,20 @@ func (ec *executionContext) marshalNScriptKind2githubᚗcomᚋplayingwithclouds�
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNSearchBatch2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSearchBatch(ctx context.Context, sel ast.SelectionSet, v model.SearchBatch) graphql.Marshaler {
+	return ec._SearchBatch(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSearchBatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐSearchBatch(ctx context.Context, sel ast.SelectionSet, v *model.SearchBatch) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SearchBatch(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSegment2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegment(ctx context.Context, sel ast.SelectionSet, v schema.Segment) graphql.Marshaler {

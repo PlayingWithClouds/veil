@@ -9,6 +9,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/blobcache"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/library"
+	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
 	"github.com/playingwithclouds/veil/internal/user"
@@ -367,6 +368,30 @@ func (r *Resolver) listed(ctx context.Context, refs []schema.RecordRef) (*model.
 		}
 	}
 	return result, nil
+}
+
+// defaultSearchLimit is how many results a search page asks each site for.
+const defaultSearchLimit = 20
+
+// searchBatchStream turns a search's batches into the subscription's, with
+// their records loaded, until the search ends or the subscriber leaves.
+func (r *Resolver) searchBatchStream(ctx context.Context, batches <-chan pipeline.SearchBatch, sites int) <-chan *model.SearchBatch {
+	forwarded := make(chan *model.SearchBatch)
+	go func() {
+		defer close(forwarded)
+		for batch := range batches {
+			listed, err := r.listed(ctx, batch.Refs)
+			if err != nil {
+				return
+			}
+			select {
+			case forwarded <- &model.SearchBatch{Plugin: batch.Plugin, Listed: listed, Sites: sites, Stored: batch.Stored, Final: batch.Final, Exhausted: batch.Exhausted}:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return forwarded
 }
 
 // addListed loads one referenced record into its group; missing ones are skipped.

@@ -5,7 +5,7 @@
 	through the URL (libraryFilter: ?tag=, ?not=, ?performer=, ?studio=,
 	?site=, ?len=, ?res=, ?rating=, ?unwatched, ?fav, ?sort=). ?saved= plays a
 	saved filter in the grid alone. A search (?q=, from the top bar) asks every
-	site and shows what they returned. "Browse a site" stores a page of one
+	site, streamed and endless (SearchResults). "Browse a site" stores a page of one
 	site's catalog.
 -->
 <script lang="ts">
@@ -16,10 +16,11 @@
 	import HeaderFilters from '$lib/components/HeaderFilters.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
-	import { fetchVideosMatching, search, browse, type VideoCardRow } from '$lib/library';
+	import SearchResults from '$lib/components/SearchResults.svelte';
+	import { fetchVideosMatching, browse, type VideoCardRow } from '$lib/library';
 	import { fetchSavedFilter, type SavedFilterDetail } from '$lib/home';
 	import { filterFromParams, isFiltered } from '$lib/libraryFilter';
-	import { logEvent, resetShown } from '$lib/events';
+	import { resetShown } from '$lib/events';
 	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { isCompact } from '$lib/stores/viewport';
@@ -43,7 +44,6 @@
 	let filterInput = $derived<FilterInput>(JSON.parse(filterKey));
 	let filtered = $derived(isFiltered(page.url.searchParams) || Boolean(savedId));
 	let showRows = $derived(!query && !savedId);
-	let gridSurface = $derived(query ? 'search' : 'library');
 	let videoSites = $derived(listers($sites, 'VIDEO'));
 	let title = $derived.by(() => {
 		if (query) return `Results for “${query}”`;
@@ -66,22 +66,15 @@
 		return fetchVideosMatching(filter, PAGE_SIZE, offset);
 	}
 
-	/** Loads the first page: search results for a query, else the library. */
+	/** Loads the first page of the library grid; a search has its own results. */
 	async function loadFirst(searchText: string, filter: FilterInput, savedFilterId: string) {
-		resetShown('search');
 		resetShown('library');
 		videos = [];
 		exhausted = false;
 		error = null;
+		if (searchText) return;
 		loading = true;
 		try {
-			if (searchText) {
-				logEvent({ kind: 'search', data: { text: searchText } });
-				const listed = await search('VIDEO', searchText);
-				videos = listed.videos;
-				exhausted = true;
-				return;
-			}
 			savedFilter = null;
 			if (savedFilterId) savedFilter = await fetchSavedFilter(savedFilterId);
 			const firstPage = await fetchPage(filter, 0);
@@ -177,31 +170,33 @@
 		<p class="text-error text-sm">{error}</p>
 	{/if}
 
-	<div
-		class="-mt-2 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 max-md:grid-cols-1"
-	>
-		{#each videos as video, position (video.id)}
-			<SceneCard
-				{video}
-				shown={{ surface: gridSurface, position }}
-				onclick={() => goto(videoUrl(video.id))}
-			/>
-		{/each}
-	</div>
+	{#if query}
+		<SearchResults {query} />
+	{:else}
+		<div
+			class="-mt-2 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 max-md:grid-cols-1"
+		>
+			{#each videos as video, position (video.id)}
+				<SceneCard
+					{video}
+					shown={{ surface: 'library', position }}
+					onclick={() => goto(videoUrl(video.id))}
+				/>
+			{/each}
+		</div>
 
-	{#if loading && videos.length === 0}
-		<p class="text-base-content/50 text-sm">Loading…</p>
-	{:else if !loading && videos.length === 0}
-		<p class="text-base-content/50 text-sm">
-			{#if query}
-				No site found anything for this search.
-			{:else if filtered}
-				Nothing matches this filter.
-			{:else}
-				The library is empty. Browse a site, or search the sites from the top bar.
-			{/if}
-		</p>
+		{#if loading && videos.length === 0}
+			<p class="text-base-content/50 text-sm">Loading…</p>
+		{:else if !loading && videos.length === 0}
+			<p class="text-base-content/50 text-sm">
+				{#if filtered}
+					Nothing matches this filter.
+				{:else}
+					The library is empty. Browse a site, or search the sites from the top bar.
+				{/if}
+			</p>
+		{/if}
+
+		<ScrollSentinel onvisible={loadMore} loading={loading && videos.length > 0} done={exhausted} />
 	{/if}
-
-	<ScrollSentinel onvisible={loadMore} loading={loading && videos.length > 0} done={exhausted} />
 </div>

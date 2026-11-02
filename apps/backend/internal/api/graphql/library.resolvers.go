@@ -362,6 +362,16 @@ func (r *studioResolver) Revisions(ctx context.Context, obj *schema.Studio, limi
 	return r.revisionsOf(ctx, schema.RecordKindStudio, obj.Id, limit, offset)
 }
 
+// SearchResults is the resolver for the searchResults field.
+func (r *subscriptionResolver) SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string) (<-chan *model.SearchBatch, error) {
+	pageLimit := number(limit)
+	if pageLimit <= 0 {
+		pageLimit = defaultSearchLimit
+	}
+	batches, sites := r.pipeline.SearchStream(ctx, listEntity(kind), query, number(page), pageLimit, plugins)
+	return r.searchBatchStream(ctx, batches, sites), nil
+}
+
 // VideoCount is the resolver for the videoCount field.
 func (r *tagResolver) VideoCount(ctx context.Context, obj *schema.Tag) (int, error) {
 	return r.library.CountMedia(ctx, schema.RecordKindVideo, schema.Filter{IncludeTagIds: []string{obj.Id}})

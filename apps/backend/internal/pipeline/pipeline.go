@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
@@ -30,11 +31,13 @@ type Pipeline struct {
 	// identified holds when each plugin last answered about a performer
 	// ("plugin|id" → time.Time), so opening a page doesn't ask every site again.
 	identified sync.Map
+	// searches keeps each site's answer to a search page for searchFresh.
+	searches *cache.Client
 }
 
-// New returns a pipeline.
-func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runner) *Pipeline {
-	return &Pipeline{library: lib, registry: registry, runner: runner}
+// New returns a pipeline that keeps search answers in searches.
+func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runner, searches *cache.Client) *Pipeline {
+	return &Pipeline{library: lib, registry: registry, runner: runner, searches: searches}
 }
 
 // Visit reads the page behind each of a record's sources that hasn't been
@@ -119,35 +122,6 @@ func (p *Pipeline) List(ctx context.Context, pluginName string, entity plugins.M
 		return nil, err
 	}
 	return p.storeListed(ctx, pluginName, result.Items), nil
-}
-
-// Search asks every active plugin that lists entity for query at once and
-// stores what comes back. Plugins that fail or take too long are skipped.
-func (p *Pipeline) Search(ctx context.Context, entity plugins.MediaType, query string, limit int) []schema.RecordRef {
-	searchers := p.registry.WithCapability(plugins.ListCapability(entity))
-	found := make([][]schema.RecordRef, len(searchers))
-	var group sync.WaitGroup
-	for index, plugin := range searchers {
-		group.Add(1)
-		go func() {
-			defer group.Done()
-			found[index] = p.searchOne(ctx, plugin, entity, query, limit)
-		}()
-	}
-	group.Wait()
-	return interleave(found)
-}
-
-// searchOne runs one plugin's search with a timeout.
-func (p *Pipeline) searchOne(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, query string, limit int) []schema.RecordRef {
-	searchContext, cancel := context.WithTimeout(ctx, searchTimeout)
-	defer cancel()
-	result, err := p.runner.List(searchContext, plugin, entity, plugins.ListArgs{Query: query, Limit: limit})
-	if err != nil {
-		log.Printf("search %s %q: %v", plugin.Meta.Name, query, err)
-		return nil
-	}
-	return p.storeListed(ctx, plugin.Meta.Name, result.Items)
 }
 
 // storeListed stores listing items as stubs, skipping the ones that fail.

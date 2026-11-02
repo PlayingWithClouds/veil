@@ -270,6 +270,15 @@ type Scraped struct {
 	ID   string `json:"id"`
 }
 
+type SearchBatch struct {
+	Plugin    string  `json:"plugin"`
+	Listed    *Listed `json:"listed"`
+	Sites     int     `json:"sites"`
+	Stored    bool    `json:"stored"`
+	Final     bool    `json:"final"`
+	Exhausted bool    `json:"exhausted"`
+}
+
 type SegmentInput struct {
 	StartSeconds *float64 `json:"startSeconds,omitempty"`
 	EndSeconds   *float64 `json:"endSeconds,omitempty"`

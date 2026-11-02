@@ -239,6 +239,7 @@ export interface Scraped {
 
 export interface Subscription {
     notificationAdded: Notification
+    searchResults: SearchBatch
     __typename: 'Subscription'
 }
 
@@ -681,6 +682,16 @@ export interface Source {
     image: (Asset | null)
     fetchedAt: (Scalars['String'] | null)
     __typename: 'Source'
+}
+
+export interface SearchBatch {
+    plugin: Scalars['String']
+    listed: Listed
+    sites: Scalars['Int']
+    stored: Scalars['Boolean']
+    final: Scalars['Boolean']
+    exhausted: Scalars['Boolean']
+    __typename: 'SearchBatch'
 }
 
 export interface FieldSource {
@@ -1482,6 +1493,7 @@ export interface ScrapedGenqlSelection{
 
 export interface SubscriptionGenqlSelection{
     notificationAdded?: NotificationGenqlSelection
+    searchResults?: (SearchBatchGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], page?: (Scalars['Int'] | null), limit?: (Scalars['Int'] | null), plugins?: (Scalars['String'][] | null)} })
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -1963,6 +1975,17 @@ export interface SourceGenqlSelection{
     title?: boolean | number
     image?: AssetGenqlSelection
     fetchedAt?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface SearchBatchGenqlSelection{
+    plugin?: boolean | number
+    listed?: ListedGenqlSelection
+    sites?: boolean | number
+    stored?: boolean | number
+    final?: boolean | number
+    exhausted?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2924,6 +2947,14 @@ export interface SavedFilterGenqlSelection{
     export const isSource = (obj?: { __typename?: any } | null): obj is Source => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isSource"')
       return Source_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SearchBatch_possibleTypes: string[] = ['SearchBatch']
+    export const isSearchBatch = (obj?: { __typename?: any } | null): obj is SearchBatch => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSearchBatch"')
+      return SearchBatch_possibleTypes.includes(obj.__typename)
     }
     
 

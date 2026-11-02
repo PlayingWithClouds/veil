@@ -14,8 +14,10 @@
 
 	let marker = $state<HTMLElement | null>(null);
 
+	// Observing again after each load reports a marker still in view, which
+	// the observer alone only reports on entering it.
 	$effect(() => {
-		if (!marker || done) return;
+		if (!marker || done || loading) return;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0]?.isIntersecting) onvisible();

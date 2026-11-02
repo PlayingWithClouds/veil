@@ -37,7 +37,8 @@ extend type Mutation {
   fetchPerformer(id: ID!, refresh: Boolean): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
-  # Searches every plugin that lists this kind and stores the results.
+  # Searches every plugin that lists this kind and stores the results, sites
+  # taking turns. A site that answered within 6 hours isn't asked again.
   search(kind: ListKind!, query: String!, limit: Int): Listed!
 
   # The user's edits. Every field an edit sets is locked: later scrapes
@@ -52,6 +53,28 @@ extend type Mutation {
   lockField(subject: RecordRefInput!, field: String!, locked: Boolean!): [FieldSource!]!
   # Puts a field back to its value before the revision, locked.
   revertRevision(id: ID!): Boolean!
+}
+
+extend type Subscription {
+  # One page of a search (page 0 first, limit items per site, default 20)
+  # across every site that lists this kind, or only the named plugins: each
+  # site's results as they come, then the subscription completes. A site that
+  # answered the same page within 6 hours isn't asked; its answer then is sent.
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!]): SearchBatch!
+}
+
+# Part of one site's answer to a search page.
+type SearchBatch {
+  plugin: String!
+  listed: Listed!
+  # How many sites this page asked.
+  sites: Int!
+  # From the site's answer within the last 6 hours, not asked now.
+  stored: Boolean!
+  # The site's last batch for this page.
+  final: Boolean!
+  # The site has no further pages for this search.
+  exhausted: Boolean!
 }
 
 # A change to a video or gallery. Omitted fields stay; an empty string

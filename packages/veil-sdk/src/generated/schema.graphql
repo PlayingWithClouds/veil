@@ -221,6 +221,7 @@ type Scraped {
 
 type Subscription {
   notificationAdded: Notification!
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!]): SearchBatch!
 }
 
 type Follow {
@@ -765,6 +766,15 @@ type Source {
   title: String
   image: Asset
   fetchedAt: String
+}
+
+type SearchBatch {
+  plugin: String!
+  listed: Listed!
+  sites: Int!
+  stored: Boolean!
+  final: Boolean!
+  exhausted: Boolean!
 }
 
 input MediaEdit {
