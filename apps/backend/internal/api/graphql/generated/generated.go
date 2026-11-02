@@ -35,6 +35,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	Account() AccountResolver
 	ActiveRecording() ActiveRecordingResolver
 	AlikePair() AlikePairResolver
 	Asset() AssetResolver
@@ -86,6 +87,7 @@ type ComplexityRoot struct {
 		LastCheckedAt func(childComplexity int) int
 		Plugin        func(childComplexity int) int
 		Status        func(childComplexity int) int
+		StoresLogin   func(childComplexity int) int
 	}
 
 	ActiveRecording struct {
@@ -619,6 +621,7 @@ type ComplexityRoot struct {
 		FingerprintFile           func(childComplexity int, fileID string) int
 		FollowRecord              func(childComplexity int, subject schema.RecordRef, intervalHours *int, notify *bool) int
 		FollowSearch              func(childComplexity int, text string, intervalHours *int, notify *bool) int
+		ImportAccountCookies      func(childComplexity int, plugin string, cookies string) int
 		InstallPlugin             func(childComplexity int, packageName string) int
 		LearnFaces                func(childComplexity int, videoID string, model *string) int
 		LinkCamPerformer          func(childComplexity int, id string, performerID *string) int
@@ -775,6 +778,7 @@ type ComplexityRoot struct {
 		Enabled        func(childComplexity int) int
 		IconURL        func(childComplexity int) int
 		LocalBuild     func(childComplexity int) int
+		Login          func(childComplexity int) int
 		Name           func(childComplexity int) int
 		PackageName    func(childComplexity int) int
 		RequiresSolver func(childComplexity int) int
@@ -790,6 +794,11 @@ type ComplexityRoot struct {
 		Name       func(childComplexity int) int
 		Plugin     func(childComplexity int) int
 		Title      func(childComplexity int) int
+	}
+
+	PluginLogin struct {
+		Cookies func(childComplexity int) int
+		Fields  func(childComplexity int) int
 	}
 
 	PluginPackage struct {
@@ -1293,6 +1302,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type AccountResolver interface {
+	StoresLogin(ctx context.Context, obj *schema.Account) (bool, error)
+}
 type ActiveRecordingResolver interface {
 	Job(ctx context.Context, obj *cams.ActiveRecording) (*jobs.Job, error)
 	CamModel(ctx context.Context, obj *cams.ActiveRecording) (*schema.CamModel, error)
@@ -1493,6 +1505,7 @@ type MutationResolver interface {
 	CreateAPIToken(ctx context.Context, name string, scopes []string, expiresAt *string) (*model.CreatedAPIToken, error)
 	RevokeAPIToken(ctx context.Context, id string) (bool, error)
 	LoginAccount(ctx context.Context, plugin string, values interface{}) (*schema.Account, error)
+	ImportAccountCookies(ctx context.Context, plugin string, cookies string) (*schema.Account, error)
 	CheckAccount(ctx context.Context, id string) (*schema.Account, error)
 	LogoutAccount(ctx context.Context, id string) (bool, error)
 	SubmitPluginView(ctx context.Context, plugin string, view string, action string, values interface{}, input interface{}) (*model.PluginViewResult, error)
@@ -1798,6 +1811,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.Status(childComplexity), true
+	case "Account.storesLogin":
+		if e.ComplexityRoot.Account.StoresLogin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.StoresLogin(childComplexity), true
 
 	case "ActiveRecording.camModel":
 		if e.ComplexityRoot.ActiveRecording.CamModel == nil {
@@ -4438,6 +4457,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.FollowSearch(childComplexity, args["text"].(string), args["intervalHours"].(*int), args["notify"].(*bool)), true
+	case "Mutation.importAccountCookies":
+		if e.ComplexityRoot.Mutation.ImportAccountCookies == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importAccountCookies_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ImportAccountCookies(childComplexity, args["plugin"].(string), args["cookies"].(string)), true
 	case "Mutation.installPlugin":
 		if e.ComplexityRoot.Mutation.InstallPlugin == nil {
 			break
@@ -5573,6 +5603,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Plugin.LocalBuild(childComplexity), true
+	case "Plugin.login":
+		if e.ComplexityRoot.Plugin.Login == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Plugin.Login(childComplexity), true
 	case "Plugin.name":
 		if e.ComplexityRoot.Plugin.Name == nil {
 			break
@@ -5646,6 +5682,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PluginContribution.Title(childComplexity), true
+
+	case "PluginLogin.cookies":
+		if e.ComplexityRoot.PluginLogin.Cookies == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginLogin.Cookies(childComplexity), true
+	case "PluginLogin.fields":
+		if e.ComplexityRoot.PluginLogin.Fields == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginLogin.Fields(childComplexity), true
 
 	case "PluginPackage.description":
 		if e.ComplexityRoot.PluginPackage.Description == nil {
@@ -9981,8 +10030,13 @@ extend type Mutation {
   # Admin only. The token is shown this once.
   createApiToken(name: String!, scopes: [String!]!, expiresAt: String): CreatedApiToken!
   revokeApiToken(id: ID!): Boolean!
-  # Signs into a plugin's site with the values of its login view.
+  # Signs into a plugin's site with the values of its login form. The values
+  # are kept encrypted on this device, to log in again when the site ends the
+  # session.
   loginAccount(plugin: String!, values: JSON!): Account!
+  # Keeps cookies exported from a browser (cookies.txt, a JSON export, or a
+  # Cookie header) as the plugin's session; only those of its own domains.
+  importAccountCookies(plugin: String!, cookies: String!): Account!
   # Asks the plugin whether the session still works.
   checkAccount(id: ID!): Account!
   logoutAccount(id: ID!): Boolean!
@@ -10019,6 +10073,9 @@ type Account {
   status: AccountStatus!
   expiresAt: String
   lastCheckedAt: String
+  # Keeps the login form's values to log in again by itself; false for
+  # imported cookies, which need importing again once the site ends them.
+  storesLogin: Boolean!
 }
 
 type PluginContribution {
@@ -10291,6 +10348,16 @@ type Plugin {
   available: Boolean!
   settings: [PluginSettingField!]!
   settingValues: [PluginSettingValue!]!
+  # How the site is logged into; null for sites without accounts.
+  login: PluginLogin
+}
+
+# A site's login: a form (loginAccount), imported browser cookies
+# (importAccountCookies), or both.
+type PluginLogin {
+  # Empty when only cookies can be imported.
+  fields: [PluginSettingField!]!
+  cookies: Boolean!
 }
 
 type PluginSettingField {
@@ -10741,6 +10808,8 @@ func (ec *executionContext) childFields_Account(ctx context.Context, field graph
 		return ec.fieldContext_Account_expiresAt(ctx, field)
 	case "lastCheckedAt":
 		return ec.fieldContext_Account_lastCheckedAt(ctx, field)
+	case "storesLogin":
+		return ec.fieldContext_Account_storesLogin(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 }
@@ -11877,6 +11946,8 @@ func (ec *executionContext) childFields_Plugin(ctx context.Context, field graphq
 		return ec.fieldContext_Plugin_settings(ctx, field)
 	case "settingValues":
 		return ec.fieldContext_Plugin_settingValues(ctx, field)
+	case "login":
+		return ec.fieldContext_Plugin_login(ctx, field)
 	case "contributions":
 		return ec.fieldContext_Plugin_contributions(ctx, field)
 	case "account":
@@ -11901,6 +11972,16 @@ func (ec *executionContext) childFields_PluginContribution(ctx context.Context, 
 		return ec.fieldContext_PluginContribution_domains(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PluginContribution", field.Name)
+}
+
+func (ec *executionContext) childFields_PluginLogin(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "fields":
+		return ec.fieldContext_PluginLogin_fields(ctx, field)
+	case "cookies":
+		return ec.fieldContext_PluginLogin_cookies(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PluginLogin", field.Name)
 }
 
 func (ec *executionContext) childFields_PluginPackage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -13998,6 +14079,28 @@ func (ec *executionContext) field_Mutation_followSearch_args(ctx context.Context
 		return nil, err
 	}
 	args["notify"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_importAccountCookies_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "plugin",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["plugin"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "cookies",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["cookies"] = arg1
 	return args, nil
 }
 
@@ -17339,6 +17442,29 @@ func (ec *executionContext) _Account_lastCheckedAt(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_Account_lastCheckedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Account", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Account_storesLogin(ctx context.Context, field graphql.CollectedField, obj *schema.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Account_storesLogin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Account().StoresLogin(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Account_storesLogin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Account", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _ActiveRecording_job(ctx context.Context, field graphql.CollectedField, obj *cams.ActiveRecording) (ret graphql.Marshaler) {
@@ -29324,6 +29450,50 @@ func (ec *executionContext) fieldContext_Mutation_loginAccount(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_importAccountCookies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_importAccountCookies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ImportAccountCookies(ctx, fc.Args["plugin"].(string), fc.Args["cookies"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Account) graphql.Marshaler {
+			return ec.marshalNAccount2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAccount(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_importAccountCookies(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Account(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importAccountCookies_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_checkAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32761,6 +32931,38 @@ func (ec *executionContext) fieldContext_Plugin_settingValues(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Plugin_login(ctx context.Context, field graphql.CollectedField, obj *model.Plugin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Plugin_login(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Login, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PluginLogin) graphql.Marshaler {
+			return ec.marshalOPluginLogin2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginLogin(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Plugin_login(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PluginLogin(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Plugin_contributions(ctx context.Context, field graphql.CollectedField, obj *model.Plugin) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32961,6 +33163,61 @@ func (ec *executionContext) _PluginContribution_domains(ctx context.Context, fie
 }
 func (ec *executionContext) fieldContext_PluginContribution_domains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PluginContribution", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginLogin_fields(ctx context.Context, field graphql.CollectedField, obj *model.PluginLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginLogin_fields(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Fields, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PluginSettingField) graphql.Marshaler {
+			return ec.marshalNPluginSettingField2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSettingFieldᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PluginLogin_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginLogin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PluginSettingField(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginLogin_cookies(ctx context.Context, field graphql.CollectedField, obj *model.PluginLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginLogin_cookies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Cookies, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PluginLogin_cookies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginLogin", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _PluginPackage_name(ctx context.Context, field graphql.CollectedField, obj *model.PluginPackage) (ret graphql.Marshaler) {
@@ -47347,27 +47604,63 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._Account_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "plugin":
 			out.Values[i] = ec._Account_plugin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "label":
 			out.Values[i] = ec._Account_label(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "status":
 			out.Values[i] = ec._Account_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "expiresAt":
 			out.Values[i] = ec._Account_expiresAt(ctx, field, obj)
 		case "lastCheckedAt":
 			out.Values[i] = ec._Account_lastCheckedAt(ctx, field, obj)
+		case "storesLogin":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Account_storesLogin(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -52960,6 +53253,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "importAccountCookies":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importAccountCookies(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "checkAccount":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_checkAccount(ctx, field)
@@ -54076,6 +54376,8 @@ func (ec *executionContext) _Plugin(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "login":
+			out.Values[i] = ec._Plugin_login(ctx, field, obj)
 		case "contributions":
 			field := field
 
@@ -54203,6 +54505,50 @@ func (ec *executionContext) _PluginContribution(ctx context.Context, sel ast.Sel
 			}
 		case "domains":
 			out.Values[i] = ec._PluginContribution_domains(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pluginLoginImplementors = []string{"PluginLogin"}
+
+func (ec *executionContext) _PluginLogin(ctx context.Context, sel ast.SelectionSet, obj *model.PluginLogin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginLoginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginLogin")
+		case "fields":
+			out.Values[i] = ec._PluginLogin_fields(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cookies":
+			out.Values[i] = ec._PluginLogin_cookies(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -65099,6 +65445,13 @@ func (ec *executionContext) marshalOPlugin2ᚖgithubᚗcomᚋplayingwithclouds�
 		return graphql.Null
 	}
 	return ec._Plugin(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPluginLogin2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginLogin(ctx context.Context, sel ast.SelectionSet, v *model.PluginLogin) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PluginLogin(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPluginView2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginView(ctx context.Context, sel ast.SelectionSet, v *model.PluginView) graphql.Marshaler {

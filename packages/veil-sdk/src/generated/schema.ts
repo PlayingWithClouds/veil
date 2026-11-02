@@ -196,6 +196,7 @@ export interface Mutation {
     createApiToken: CreatedApiToken
     revokeApiToken: Scalars['Boolean']
     loginAccount: Account
+    importAccountCookies: Account
     checkAccount: Account
     logoutAccount: Scalars['Boolean']
     submitPluginView: PluginViewResult
@@ -1062,6 +1063,7 @@ export interface Account {
     status: AccountStatus
     expiresAt: (Scalars['String'] | null)
     lastCheckedAt: (Scalars['String'] | null)
+    storesLogin: Scalars['Boolean']
     __typename: 'Account'
 }
 
@@ -1136,6 +1138,7 @@ export interface Plugin {
     available: Scalars['Boolean']
     settings: PluginSettingField[]
     settingValues: PluginSettingValue[]
+    login: (PluginLogin | null)
     __typename: 'Plugin'
 }
 
@@ -1206,6 +1209,12 @@ export interface PluginPackage {
     description: (Scalars['String'] | null)
     installedVersion: (Scalars['String'] | null)
     __typename: 'PluginPackage'
+}
+
+export interface PluginLogin {
+    fields: PluginSettingField[]
+    cookies: Scalars['Boolean']
+    __typename: 'PluginLogin'
 }
 
 export interface PluginSettingField {
@@ -1567,6 +1576,7 @@ export interface MutationGenqlSelection{
     createApiToken?: (CreatedApiTokenGenqlSelection & { __args: {name: Scalars['String'], scopes: Scalars['String'][], expiresAt?: (Scalars['String'] | null)} })
     revokeApiToken?: { __args: {id: Scalars['ID']} }
     loginAccount?: (AccountGenqlSelection & { __args: {plugin: Scalars['String'], values: Scalars['JSON']} })
+    importAccountCookies?: (AccountGenqlSelection & { __args: {plugin: Scalars['String'], cookies: Scalars['String']} })
     checkAccount?: (AccountGenqlSelection & { __args: {id: Scalars['ID']} })
     logoutAccount?: { __args: {id: Scalars['ID']} }
     submitPluginView?: (PluginViewResultGenqlSelection & { __args: {plugin: Scalars['String'], view: Scalars['String'], action: Scalars['String'], values?: (Scalars['JSON'] | null), input?: (Scalars['JSON'] | null)} })
@@ -2515,6 +2525,7 @@ export interface AccountGenqlSelection{
     status?: boolean | number
     expiresAt?: boolean | number
     lastCheckedAt?: boolean | number
+    storesLogin?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2596,6 +2607,7 @@ export interface PluginGenqlSelection{
     available?: boolean | number
     settings?: PluginSettingFieldGenqlSelection
     settingValues?: PluginSettingValueGenqlSelection
+    login?: PluginLoginGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2673,6 +2685,13 @@ export interface PluginPackageGenqlSelection{
     version?: boolean | number
     description?: boolean | number
     installedVersion?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface PluginLoginGenqlSelection{
+    fields?: PluginSettingFieldGenqlSelection
+    cookies?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3572,6 +3591,14 @@ export interface SavedFilterGenqlSelection{
     export const isPluginPackage = (obj?: { __typename?: any } | null): obj is PluginPackage => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPluginPackage"')
       return PluginPackage_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const PluginLogin_possibleTypes: string[] = ['PluginLogin']
+    export const isPluginLogin = (obj?: { __typename?: any } | null): obj is PluginLogin => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isPluginLogin"')
+      return PluginLogin_possibleTypes.includes(obj.__typename)
     }
     
 

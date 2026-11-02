@@ -218,7 +218,8 @@ func (s *session) responseObject(response *fetchResponse) *goja.Object {
 	return object
 }
 
-// headersObject is a read-only Headers: get (comma-joined), has, forEach.
+// headersObject is a read-only Headers: get (comma-joined), getSetCookie
+// (each Set-Cookie apart, since cookie dates contain commas), has, forEach.
 func (s *session) headersObject(header http.Header) *goja.Object {
 	object := s.vm.NewObject()
 	_ = object.Set("get", func(name string) goja.Value {
@@ -227,6 +228,9 @@ func (s *session) headersObject(header http.Header) *goja.Object {
 			return goja.Null()
 		}
 		return s.vm.ToValue(strings.Join(values, ", "))
+	})
+	_ = object.Set("getSetCookie", func() []string {
+		return append([]string{}, header.Values("Set-Cookie")...)
 	})
 	_ = object.Set("has", func(name string) bool {
 		return len(header.Values(name)) > 0

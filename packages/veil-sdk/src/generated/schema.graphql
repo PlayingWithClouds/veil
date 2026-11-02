@@ -181,6 +181,7 @@ type Mutation {
   createApiToken(name: String!, scopes: [String!]!, expiresAt: String): CreatedApiToken!
   revokeApiToken(id: ID!): Boolean!
   loginAccount(plugin: String!, values: JSON!): Account!
+  importAccountCookies(plugin: String!, cookies: String!): Account!
   checkAccount(id: ID!): Account!
   logoutAccount(id: ID!): Boolean!
   submitPluginView(plugin: String!, view: String!, action: String!, values: JSON, input: JSON): PluginViewResult!
@@ -1214,6 +1215,7 @@ type Account {
   status: AccountStatus!
   expiresAt: String
   lastCheckedAt: String
+  storesLogin: Boolean!
 }
 
 type PluginContribution {
@@ -1281,6 +1283,7 @@ type Plugin {
   available: Boolean!
   settings: [PluginSettingField!]!
   settingValues: [PluginSettingValue!]!
+  login: PluginLogin
 }
 
 enum SegmentOrigin {
@@ -1386,6 +1389,11 @@ type PluginPackage {
   version: String!
   description: String
   installedVersion: String
+}
+
+type PluginLogin {
+  fields: [PluginSettingField!]!
+  cookies: Boolean!
 }
 
 type PluginSettingField {

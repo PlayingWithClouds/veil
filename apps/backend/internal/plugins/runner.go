@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -15,9 +16,15 @@ type PluginSettingsProvider interface {
 }
 
 // AccountProvider supplies the session of the plugin's account on this
-// device, or nil when it has none.
+// device (nil when it has none), keeps the sessions plugins renew, and logs
+// in again when a site refuses one.
 type AccountProvider interface {
 	AccountSession(pluginName string) *AccountArgs
+	// SessionRenewed stores the session a plugin renewed during a call.
+	SessionRenewed(pluginName, session string)
+	// LoginAgain logs the plugin's account in again after its site wanted a
+	// login; false when it can't (no stored login, or the login failed).
+	LoginAgain(ctx context.Context, pluginName string) bool
 }
 
 // accountEnvVar is the env var a plugin finds its session in.
@@ -97,7 +104,17 @@ type invocation struct {
 type pluginResponse struct {
 	Result json.RawMessage `json:"result,omitempty"`
 	Error  string          `json:"error,omitempty"`
+	// NeedsLogin marks an error the site gave because it wants a login.
+	NeedsLogin bool `json:"needs_login,omitempty"`
 }
+
+// ErrNeedsLogin wraps the error of a call the site refused for want of a
+// login the backend couldn't renew.
+var ErrNeedsLogin = errors.New("needs a login")
+
+// sessionLinePrefix starts the line a plugin writes when it renewed its
+// account's session during a call (SDK sessionFetch).
+var sessionLinePrefix = []byte(`{"session"`)
 
 func (r *Runner) invoke(ctx context.Context, p *Plugin, cap Capability, args interface{}) (json.RawMessage, error) {
 	return r.invokeStreaming(ctx, p, cap, args, nil)
@@ -116,7 +133,7 @@ func (r *Runner) invokeStreaming(ctx context.Context, p *Plugin, cap Capability,
 		return nil, fmt.Errorf("plugin %q bad response: %w\nraw: %s", p.Meta.Name, err, stdout)
 	}
 	if resp.Error != "" {
-		return nil, fmt.Errorf("plugin %q: %s", p.Meta.Name, resp.Error)
+		return nil, resp.err(p.Meta.Name)
 	}
 	return resp.Result, nil
 }
@@ -133,8 +150,21 @@ func (r *Runner) loadMeta(ctx context.Context, dir, entryPoint string) (PluginMe
 }
 
 // execute runs one invocation of the plugin with the global and per-plugin
-// env vars, returning its raw stdout.
+// env vars, returning its raw stdout without session lines. When the site
+// wanted a login, the account logs in again and the call runs once more.
 func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation, onLine func([]byte)) ([]byte, error) {
+	stdout, err := r.executeOnce(ctx, p, call, onLine)
+	if err != nil || !wantsLogin(stdout) || r.accountProvider == nil || call.Capability == string(CapabilityAccountLogin) {
+		return stdout, err
+	}
+	if !r.accountProvider.LoginAgain(ctx, p.Meta.Name) {
+		return stdout, nil
+	}
+	return r.executeOnce(ctx, p, call, onLine)
+}
+
+// executeOnce runs one invocation and keeps the session the plugin renewed.
+func (r *Runner) executeOnce(ctx context.Context, p *Plugin, call invocation, onLine func([]byte)) ([]byte, error) {
 	payload, err := json.Marshal(call)
 	if err != nil {
 		return nil, err
@@ -145,7 +175,67 @@ func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation, onLine
 		env = append(env, r.settingsProvider.PluginEnv(p.Meta.Name)...)
 	}
 	env = append(env, r.accountEnv(p.Meta.Name)...)
-	return r.executor.run(ctx, p, payload, env, onLine)
+	stdout, err := r.executor.run(ctx, p, payload, env, withoutSessionLines(onLine))
+	stdout, session := takeSession(stdout)
+	if session != "" && r.accountProvider != nil {
+		r.accountProvider.SessionRenewed(p.Meta.Name, session)
+	}
+	return stdout, err
+}
+
+// withoutSessionLines passes every line but session lines on to onLine.
+func withoutSessionLines(onLine func([]byte)) func([]byte) {
+	if onLine == nil {
+		return nil
+	}
+	return func(line []byte) {
+		if bytes.HasPrefix(bytes.TrimSpace(line), sessionLinePrefix) {
+			return
+		}
+		onLine(line)
+	}
+}
+
+// takeSession removes session lines from a plugin's output and returns the
+// last session they carried, "" when there's none.
+func takeSession(stdout []byte) ([]byte, string) {
+	if !bytes.Contains(stdout, sessionLinePrefix) {
+		return stdout, ""
+	}
+	var kept [][]byte
+	session := ""
+	for _, line := range bytes.Split(stdout, []byte("\n")) {
+		renewed, isSession := sessionOf(line)
+		if !isSession {
+			kept = append(kept, line)
+			continue
+		}
+		session = renewed
+	}
+	return bytes.Join(kept, []byte("\n")), session
+}
+
+// sessionOf reads a session line; false for any other line.
+func sessionOf(line []byte) (string, bool) {
+	if !bytes.HasPrefix(bytes.TrimSpace(line), sessionLinePrefix) {
+		return "", false
+	}
+	var renewal struct {
+		Session string `json:"session"`
+	}
+	if json.Unmarshal(line, &renewal) != nil {
+		return "", false
+	}
+	return renewal.Session, true
+}
+
+// wantsLogin reports whether a call ended with the site wanting a login.
+func wantsLogin(stdout []byte) bool {
+	var response pluginResponse
+	if json.Unmarshal(lastLine(stdout), &response) != nil {
+		return false
+	}
+	return response.NeedsLogin
 }
 
 // lastLine returns the last non-blank line of a plugin's output.
@@ -343,8 +433,8 @@ func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url stri
 		if len(line) == 0 {
 			continue
 		}
-		if failure := scrapeLineError(line); failure != "" {
-			return nil, fmt.Errorf("plugin %q: %s", p.Meta.Name, failure)
+		if failure := scrapeLineError(line); failure.Error != "" {
+			return nil, failure.err(p.Meta.Name)
 		}
 		var item ScrapeResult
 		if err := json.Unmarshal(line, &item); err != nil {
@@ -358,16 +448,22 @@ func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url stri
 	return results, nil
 }
 
-// scrapeLineError is the message of a {"error": ...} line a find writes when it
-// fails (the SDK's usual error reply); empty for a ScrapeResult line.
-func scrapeLineError(line []byte) string {
-	var failure struct {
-		Error string `json:"error"`
-	}
+// scrapeLineError reads the {"error": ...} line a find writes when it fails
+// (the SDK's usual error reply); its Error is empty for a ScrapeResult line.
+func scrapeLineError(line []byte) pluginResponse {
+	var failure pluginResponse
 	if json.Unmarshal(line, &failure) != nil {
-		return ""
+		return pluginResponse{}
 	}
-	return failure.Error
+	return failure
+}
+
+// err is the error a failed response stands for.
+func (response pluginResponse) err(pluginName string) error {
+	if response.NeedsLogin {
+		return fmt.Errorf("plugin %q: %s: %w", pluginName, response.Error, ErrNeedsLogin)
+	}
+	return fmt.Errorf("plugin %q: %s", pluginName, response.Error)
 }
 
 func (r *Runner) Resolve(ctx context.Context, p *Plugin, url string) (*ResolveResult, error) {

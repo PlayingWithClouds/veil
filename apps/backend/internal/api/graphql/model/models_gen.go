@@ -252,6 +252,7 @@ type Plugin struct {
 	Available      bool                  `json:"available"`
 	Settings       []*PluginSettingField `json:"settings"`
 	SettingValues  []*PluginSettingValue `json:"settingValues"`
+	Login          *PluginLogin          `json:"login,omitempty"`
 	Contributions  []*PluginContribution `json:"contributions"`
 	Account        *schema.Account       `json:"account,omitempty"`
 }
@@ -263,6 +264,11 @@ type PluginContribution struct {
 	Title      *string  `json:"title,omitempty"`
 	MediaKinds []string `json:"mediaKinds"`
 	Domains    []string `json:"domains"`
+}
+
+type PluginLogin struct {
+	Fields  []*PluginSettingField `json:"fields"`
+	Cookies bool                  `json:"cookies"`
 }
 
 type PluginPackage struct {

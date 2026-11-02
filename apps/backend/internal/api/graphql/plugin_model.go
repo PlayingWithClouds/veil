@@ -31,7 +31,20 @@ func pluginToModel(plugin *plugins.Plugin, enabled, available bool, values map[s
 		Available:      available,
 		Settings:       settingFields(plugin.Meta.Settings),
 		SettingValues:  settingValues(values),
+		Login:          loginOf(plugin),
 	}
+}
+
+// loginOf describes how the plugin's site is logged into; nil without a login.
+func loginOf(plugin *plugins.Plugin) *model.PluginLogin {
+	if !plugin.HasLogin() {
+		return nil
+	}
+	login := &model.PluginLogin{Fields: []*model.PluginSettingField{}, Cookies: plugin.TakesCookies()}
+	if plugin.Serves(plugins.CapabilityAccountLogin) && plugin.Meta.Login != nil {
+		login.Fields = settingFields(plugin.Meta.Login.Fields)
+	}
+	return login
 }
 
 // settingFields describes the settings a plugin asks for.

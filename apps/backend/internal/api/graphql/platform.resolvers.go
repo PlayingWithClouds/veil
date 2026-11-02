@@ -8,11 +8,17 @@ package graphql
 import (
 	"context"
 
+	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
 	"github.com/playingwithclouds/veil/internal/tokens"
 )
+
+// StoresLogin is the resolver for the storesLogin field.
+func (r *accountResolver) StoresLogin(ctx context.Context, obj *schema.Account) (bool, error) {
+	return r.accounts.StoresLogin(ctx, obj.Id), nil
+}
 
 // UpdateSettings is the resolver for the updateSettings field.
 func (r *mutationResolver) UpdateSettings(ctx context.Context, values interface{}) (interface{}, error) {
@@ -61,6 +67,11 @@ func (r *mutationResolver) LoginAccount(ctx context.Context, plugin string, valu
 		return nil, err
 	}
 	return r.accounts.Login(ctx, plugin, fields)
+}
+
+// ImportAccountCookies is the resolver for the importAccountCookies field.
+func (r *mutationResolver) ImportAccountCookies(ctx context.Context, plugin string, cookies string) (*schema.Account, error) {
+	return r.accounts.ImportCookies(ctx, plugin, cookies)
 }
 
 // CheckAccount is the resolver for the checkAccount field.
@@ -156,3 +167,8 @@ func (r *queryResolver) PluginView(ctx context.Context, plugin string, view stri
 	}
 	return r.pluginViewOf(ctx, plugin, *rendered), nil
 }
+
+// Account returns generated.AccountResolver implementation.
+func (r *Resolver) Account() generated.AccountResolver { return &accountResolver{r} }
+
+type accountResolver struct{ *Resolver }

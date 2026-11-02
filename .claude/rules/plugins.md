@@ -50,6 +50,14 @@ stdin/stdout JSON: `{ "capability", "args" }` → `{ "result" } | { "error" }`.
 - Optional `rating` (0..10) and `view_count` on `Scene` and listing `DiscoveredItem`s; cards show them.
 - `scene:find` may fill `Scene.comments` (plain text, author, ISO date via SDK `relativeDate`, likes, `reply_to` index). The backend doesn't store them yet (scope issue "Site comments stay, per source").
 
+## Accounts
+
+Sites behind a login (`internal/accounts`, SDK `account.ts`). One account per plugin and device; session and form values sealed with `DATA_DIR/account.key`, never through the API.
+
+- `meta.login: { fields, cookies }`: `fields` is the form `account:login` turns into a session (SDK `jarFetch` on `newJar()`, return `loggedIn(jar, label)`); `cookies: true` lets the user import browser cookies (cookies.txt, extension JSON, `Cookie:` line), kept only for `meta.domains`. Both give a `CookieJar` session.
+- Later calls fetch with `sessionFetch`: it sends the jar's cookies and, when the site set new ones, the SDK writes a `{"session"}` line the runner stores (rotating cookies stay logged in).
+- Throw `NeedsLoginError` when the site wants a login: the runner has the account log in again with the stored form values and retries once; without them (imported cookies) the account turns `expired` and the call fails with `plugins.ErrNeedsLogin`.
+
 ## Identification plugins
 
 No backend feature consumes these yet; they return as lookups that answer with matches and evidence (scope issue "Lookups return matches with evidence").

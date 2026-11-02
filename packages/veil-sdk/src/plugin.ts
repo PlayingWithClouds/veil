@@ -1,4 +1,5 @@
 import { writeSync } from "fs";
+import { NeedsLoginError, renewedSession } from "./account.ts";
 import type {
   PluginMeta,
   ScrapeResult,
@@ -23,7 +24,6 @@ import type {
   LookupArgs,
   LookupResult,
   StoryChapter,
-  AccountArgs,
   AccountResult,
   ViewArgs,
   View,
@@ -87,31 +87,39 @@ export interface PluginHandlers {
   submitView?: (args: SubmitArgs) => Promise<SubmitResult>;
 }
 
-/**
- * The session of the plugin's account on this device (what account:login
- * returned), or undefined when the user hasn't logged in.
- */
-export function accountSession(): AccountArgs | undefined {
-  const encoded = process.env.VEIL_ACCOUNT;
-  if (encoded === undefined || encoded === "") {
-    return undefined;
-  }
-  return JSON.parse(encoded) as AccountArgs;
-}
-
 interface Invocation {
   capability: string;
   args?: Record<string, unknown>;
 }
 
+/** Hands the account's renewed session back before the reply (see sessionFetch). */
+function writeRenewedSession(): void {
+  const session = renewedSession();
+  if (session !== undefined) writeSync(1, JSON.stringify({ session }) + "\n");
+}
+
 function respond<T>(result: T): never {
+  writeRenewedSession();
   writeSync(1, JSON.stringify({ result }) + "\n");
   process.exit(0);
 }
 
 function fail(message: string): never {
+  writeRenewedSession();
   writeSync(1, JSON.stringify({ error: message }) + "\n");
   process.exit(0);
+}
+
+/** Fails because the site wants a login; the backend logs in again or asks the user to. */
+function failNeedsLogin(message: string): never {
+  writeSync(1, JSON.stringify({ error: message, needs_login: true }) + "\n");
+  process.exit(0);
+}
+
+/** Fails with a thrown error, telling a wanted login apart. */
+function failWith(err: unknown): never {
+  if (err instanceof NeedsLoginError) failNeedsLogin(err.message);
+  fail(err instanceof Error ? err.message : String(err));
 }
 
 function parseListArgs(args: Record<string, unknown> | undefined): ListArgs {
@@ -238,6 +246,7 @@ async function runFind(handlers: PluginHandlers, input: Invocation): Promise<nev
   if (!url) fail(`args.url required for ${input.capability}`);
 
   const items = await handlers.find(String(url));
+  writeRenewedSession();
   for (const item of items) {
     writeSync(1, JSON.stringify(item) + "\n");
   }
@@ -321,6 +330,6 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
 
     fail(`unsupported capability: ${input.capability}`);
   } catch (err) {
-    fail(err instanceof Error ? err.message : String(err));
+    failWith(err);
   }
 }

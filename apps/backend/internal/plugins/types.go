@@ -240,6 +240,18 @@ func (p *Plugin) Serves(capability Capability) bool {
 	return slices.Contains(p.Meta.Content, content)
 }
 
+// TakesCookies reports whether the site's cookies may be imported from a
+// browser as the plugin's session.
+func (p *Plugin) TakesCookies() bool {
+	return p.Meta.Login != nil && p.Meta.Login.Cookies
+}
+
+// HasLogin reports whether the plugin's site can be logged into, by form or
+// imported cookies.
+func (p *Plugin) HasLogin() bool {
+	return p.Serves(CapabilityAccountLogin) || p.TakesCookies()
+}
+
 // ServesForum reports whether the plugin reads an identification forum
 // (forum:find), also under the capability names it had before.
 func (p *Plugin) ServesForum() bool {
@@ -297,6 +309,36 @@ type PluginMeta struct {
 	// derives the rest (sources, lookups, streams, cams, login) from
 	// Capabilities.
 	Contributions []Contribution `json:"contributions,omitempty"`
+	// Login declares how the site is logged into; nil for sites without
+	// accounts.
+	Login *LoginSpec `json:"login,omitempty"`
+}
+
+// LoginSpec is how a plugin's site is logged into: a form the plugin turns
+// into a session (account:login), the site's cookies imported from a browser
+// for logins a form can't do (captcha, two-factor), or both.
+type LoginSpec struct {
+	// Fields of the login form; empty when only cookies can be imported.
+	Fields []PluginSettingField `json:"fields,omitempty"`
+	// Cookies allows importing cookies; the session is then a CookieJar.
+	Cookies bool `json:"cookies,omitempty"`
+}
+
+// CookieJar is the session of a plugin that logs in with cookies (SDK
+// jarFetch, sessionFetch). Imported browser cookies are stored the same way.
+type CookieJar struct {
+	Cookies []Cookie `json:"cookies"`
+}
+
+// Cookie is one stored cookie. Expires is Unix seconds, 0 for a cookie that
+// lasts the browser session.
+type Cookie struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	Domain  string `json:"domain"`
+	Path    string `json:"path,omitempty"`
+	Expires int64  `json:"expires,omitempty"`
+	Secure  bool   `json:"secure,omitempty"`
 }
 
 // Contribution is one thing a plugin declares it adds. Kind is one of

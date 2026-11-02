@@ -42,7 +42,7 @@ func (p *Plugin) Contributions() []Contribution {
 	if p.Serves(CapabilityCamList) {
 		contributions = append(contributions, Contribution{Kind: ContributionCams, Name: p.Meta.Name, Title: p.Meta.DisplayName})
 	}
-	if p.Serves(CapabilityAccountLogin) {
+	if p.HasLogin() {
 		contributions = append(contributions, Contribution{Kind: ContributionLogin, Name: p.Meta.Name, Title: p.Meta.DisplayName})
 	}
 	return append(contributions, p.Meta.Contributions...)

@@ -127,6 +127,38 @@ export interface PluginMeta {
    * login follow from capabilities.
    */
   contributions?: Contribution[];
+  /** How the site is logged into; omitted for sites without accounts. */
+  login?: LoginSpec;
+}
+
+/**
+ * How a plugin's site is logged into: a form the plugin turns into a session
+ * (account:login), the site's cookies imported from a browser for logins a
+ * form can't do (captcha, two-factor), or both.
+ */
+export interface LoginSpec {
+  /** fields of the login form; omitted when only cookies can be imported */
+  fields?: PluginSettingField[];
+  /** cookies may be imported; the session is then a CookieJar */
+  cookies?: boolean;
+}
+
+/**
+ * The session of a plugin that logs in with cookies (jarFetch, sessionFetch).
+ * Imported browser cookies are stored the same way.
+ */
+export interface CookieJar {
+  cookies: Cookie[];
+}
+
+/** One stored cookie. `expires` is Unix seconds, 0 for a browser-session cookie. */
+export interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path?: string;
+  expires?: number;
+  secure?: boolean;
 }
 
 /** One thing a plugin declares it adds. */

@@ -49,6 +49,16 @@ type Plugin {
   available: Boolean!
   settings: [PluginSettingField!]!
   settingValues: [PluginSettingValue!]!
+  # How the site is logged into; null for sites without accounts.
+  login: PluginLogin
+}
+
+# A site's login: a form (loginAccount), imported browser cookies
+# (importAccountCookies), or both.
+type PluginLogin {
+  # Empty when only cookies can be imported.
+  fields: [PluginSettingField!]!
+  cookies: Boolean!
 }
 
 type PluginSettingField {

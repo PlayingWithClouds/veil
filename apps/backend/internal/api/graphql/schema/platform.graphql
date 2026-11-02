@@ -21,8 +21,13 @@ extend type Mutation {
   # Admin only. The token is shown this once.
   createApiToken(name: String!, scopes: [String!]!, expiresAt: String): CreatedApiToken!
   revokeApiToken(id: ID!): Boolean!
-  # Signs into a plugin's site with the values of its login view.
+  # Signs into a plugin's site with the values of its login form. The values
+  # are kept encrypted on this device, to log in again when the site ends the
+  # session.
   loginAccount(plugin: String!, values: JSON!): Account!
+  # Keeps cookies exported from a browser (cookies.txt, a JSON export, or a
+  # Cookie header) as the plugin's session; only those of its own domains.
+  importAccountCookies(plugin: String!, cookies: String!): Account!
   # Asks the plugin whether the session still works.
   checkAccount(id: ID!): Account!
   logoutAccount(id: ID!): Boolean!
@@ -59,6 +64,9 @@ type Account {
   status: AccountStatus!
   expiresAt: String
   lastCheckedAt: String
+  # Keeps the login form's values to log in again by itself; false for
+  # imported cookies, which need importing again once the site ends them.
+  storesLogin: Boolean!
 }
 
 type PluginContribution {
