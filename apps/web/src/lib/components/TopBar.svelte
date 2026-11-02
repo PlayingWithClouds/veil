@@ -1,6 +1,7 @@
 <!--
 	Global top bar: logo on the left, the search (with "Who is this?") in the
-	middle, notifications on the right. A search opens home with ?q=, which
+	middle with the library filter's chip row under it (HeaderFilters),
+	notifications on the right. A search opens home with ?q=, which
 	asks every site and stores what they return. Phones get
 	a slim bar floating over the page that slides away while scrolling down
 	(chromeHidden), with a back button on detail pages.
@@ -15,6 +16,7 @@
 	import { activeNavIndex } from '$lib/navigation';
 	import WhoIsThis from '$lib/components/WhoIsThis.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
+	import HeaderFilters from '$lib/components/HeaderFilters.svelte';
 
 	let query = $state(page.url.searchParams.get('q') ?? '');
 
@@ -87,18 +89,21 @@
 		</div>
 	</header>
 {:else}
-	<header class="flex h-14 shrink-0 items-center gap-4 px-4">
-		<div class="flex w-56 shrink-0 items-center gap-3">
-			<a href="/" class="flex items-center gap-1.5">
-				<span class="text-primary"><FilmReelIcon size={24} weight="fill" /></span>
-				<span class="text-lg font-semibold tracking-tight">Veil</span>
-				<span class="text-error -mt-3 text-[10px] font-bold">18+</span>
+	<header class="flex shrink-0 items-start gap-4 px-4 py-3">
+		<div class="flex h-11 w-56 shrink-0 items-center pl-2">
+			<a href="/" class="flex items-center gap-2">
+				<span class="text-primary"><FilmReelIcon size={30} weight="fill" /></span>
+				<span class="text-2xl font-bold tracking-tight">Veil</span>
+				<span class="text-error -mt-4 text-[11px] font-bold">18+</span>
 			</a>
 		</div>
-		<div class="mx-auto flex w-full max-w-2xl items-center">
-			{@render searchBox()}
+		<div class="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-2.5">
+			<div class="flex h-11 items-center">
+				{@render searchBox()}
+			</div>
+			<HeaderFilters />
 		</div>
-		<div class="flex w-56 shrink-0 justify-end">
+		<div class="flex h-11 w-56 shrink-0 items-center justify-end">
 			<NotificationBell />
 		</div>
 	</header>

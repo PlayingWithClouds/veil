@@ -51,11 +51,14 @@ export async function fetchWatchAgain(limit = 20): Promise<VideoCardRow[]> {
 	return finished.slice(0, limit);
 }
 
-/** Recommended videos with their first reason. */
-export async function fetchRecommendedVideos(limit = 20): Promise<RecommendedVideo[]> {
+/** Recommended videos with their first reason, only those filter matches. */
+export async function fetchRecommendedVideos(
+	limit = 20,
+	filter: FilterInput = {}
+): Promise<RecommendedVideo[]> {
 	const data = await gqlClient.query({
 		recommendations: {
-			__args: { limit },
+			__args: { limit, filter },
 			record: { on_Video: { __typename: true, ...VIDEO_CARD } },
 			evidence: { detail: true }
 		}

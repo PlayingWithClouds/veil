@@ -38,9 +38,9 @@ func (r *mutationResolver) Lookup(ctx context.Context, input model.LookupInput) 
 }
 
 // Recommendations is the resolver for the recommendations field.
-func (r *queryResolver) Recommendations(ctx context.Context, limit *int, offset *int) ([]*schema.Match, error) {
+func (r *queryResolver) Recommendations(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Match, error) {
 	size, start := page(limit, offset)
-	matches, err := r.recommend.Recommendations(ctx, size, start)
+	matches, err := r.recommend.Recommendations(ctx, filterOrEmpty(filter), size, start)
 	return pointers(matches), err
 }
 

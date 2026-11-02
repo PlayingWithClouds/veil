@@ -853,7 +853,7 @@ type ComplexityRoot struct {
 		PostCount               func(childComplexity int, filter *schema.Filter) int
 		Posts                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 		RecentSearches          func(childComplexity int, limit *int) int
-		Recommendations         func(childComplexity int, limit *int, offset *int) int
+		Recommendations         func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 		Related                 func(childComplexity int, subject schema.RecordRef, limit *int) int
 		SameMedia               func(childComplexity int, subject schema.RecordRef) int
 		SavedFilter             func(childComplexity int, id string) int
@@ -1464,7 +1464,7 @@ type QueryResolver interface {
 	BuiltInCollection(ctx context.Context, kind schema.CollectionKind) (*schema.Collection, error)
 	CollectionsWith(ctx context.Context, subject schema.RecordRef) ([]*schema.Collection, error)
 	FieldDefs(ctx context.Context, kind *schema.RecordKind) ([]*schema.FieldDef, error)
-	Recommendations(ctx context.Context, limit *int, offset *int) ([]*schema.Match, error)
+	Recommendations(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Match, error)
 	Related(ctx context.Context, subject schema.RecordRef, limit *int) ([]*schema.Match, error)
 	Shorts(ctx context.Context, filter *schema.Filter, limit *int) ([]*recommend.Short, error)
 	Taste(ctx context.Context) (*recommend.Taste, error)
@@ -6122,7 +6122,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+		return e.ComplexityRoot.Query.Recommendations(childComplexity, args["filter"].(*schema.Filter), args["limit"].(*int), args["offset"].(*int)), true
 	case "Query.related":
 		if e.ComplexityRoot.Query.Related == nil {
 			break
@@ -8283,8 +8283,9 @@ extend type Gallery {
 # log (see the event data shapes on recordEvent); lookups from plugins.
 
 extend type Query {
-  # Ranked recommendations of videos and galleries, each with its reasons.
-  recommendations(limit: Int, offset: Int): [Match!]!
+  # Ranked recommendations of videos and galleries, each with its reasons;
+  # only those filter matches, when given.
+  recommendations(filter: FilterInput, limit: Int, offset: Int): [Match!]!
   # Records related to one: the linked gallery or video, the same
   # performers, studio, rare tags, similar frames.
   related(subject: RecordRefInput!, limit: Int): [Match!]!
@@ -15096,22 +15097,30 @@ func (ec *executionContext) field_Query_recentSearches_args(ctx context.Context,
 func (ec *executionContext) field_Query_recommendations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter",
+		func(ctx context.Context, v any) (*schema.Filter, error) {
+			return ec.unmarshalOFilterInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
 		func(ctx context.Context, v any) (*int, error) {
 			return ec.unmarshalOInt2ᚖint(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+	args["limit"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
 		func(ctx context.Context, v any) (*int, error) {
 			return ec.unmarshalOInt2ᚖint(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["offset"] = arg1
+	args["offset"] = arg2
 	return args, nil
 }
 
@@ -32456,7 +32465,7 @@ func (ec *executionContext) _Query_recommendations(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+			return ec.Resolvers.Query().Recommendations(ctx, fc.Args["filter"].(*schema.Filter), fc.Args["limit"].(*int), fc.Args["offset"].(*int))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Match) graphql.Marshaler {

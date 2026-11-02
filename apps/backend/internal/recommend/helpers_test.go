@@ -145,7 +145,7 @@ func (f *fixture) state(kind schema.RecordKind, id string, fields db.Vars) {
 // recommendations reads the first page of recommendations.
 func (f *fixture) recommendations(limit int) []schema.Match {
 	f.t.Helper()
-	matches, err := f.engine.Recommendations(f.ctx, limit, 0)
+	matches, err := f.engine.Recommendations(f.ctx, schema.Filter{}, limit, 0)
 	if err != nil {
 		f.t.Fatal(err)
 	}

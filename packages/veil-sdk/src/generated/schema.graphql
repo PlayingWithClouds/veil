@@ -26,7 +26,7 @@ type Query {
   builtInCollection(kind: CollectionKind!): Collection!
   collectionsWith(subject: RecordRefInput!): [Collection!]!
   fieldDefs(kind: RecordKind): [FieldDef!]!
-  recommendations(limit: Int, offset: Int): [Match!]!
+  recommendations(filter: FilterInput, limit: Int, offset: Int): [Match!]!
   related(subject: RecordRefInput!, limit: Int): [Match!]!
   shorts(filter: FilterInput, limit: Int): [Short!]!
   taste: Taste!

@@ -1,56 +1,38 @@
 <!--
-	Home. Without a search or filter: the focus video and rows (HomeRows) above
-	the latest videos in the library, sites taking turns. The chip row and the
-	Filters panel narrow the grid through the URL (libraryFilter: ?tag=, ?not=,
-	?performer=, ?studio=, ?site=, ?len=, ?res=, ?rating=, ?unwatched, ?fav,
-	?sort=), which then shows just the grid; ?saved= plays a saved filter. A
-	search (?q=, from the top bar) asks every site and shows what they returned.
-	"Browse a site" stores a page of one site's catalog.
+	Home. Without a search: the featured video and rows (HomeRows) above the
+	library's videos, sites taking turns. The filter under the search box
+	(HeaderFilters; on phones above the rows) narrows recommendations and grid
+	through the URL (libraryFilter: ?tag=, ?not=, ?performer=, ?studio=,
+	?site=, ?len=, ?res=, ?rating=, ?unwatched, ?fav, ?sort=). ?saved= plays a
+	saved filter in the grid alone. A search (?q=, from the top bar) asks every
+	site and shows what they returned. "Browse a site" stores a page of one
+	site's catalog.
 -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import HomeRows from '$lib/components/HomeRows.svelte';
+	import HeaderFilters from '$lib/components/HeaderFilters.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
-	import FilterChips from '$lib/components/FilterChips.svelte';
-	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { fetchVideosMatching, search, browse, type VideoCardRow } from '$lib/library';
-	import {
-		fetchPinnedFilters,
-		fetchSavedFilter,
-		type SavedFilterChip,
-		type SavedFilterDetail
-	} from '$lib/home';
-	import {
-		filterFromParams,
-		isFiltered,
-		fetchTagCounts,
-		fetchFilterNames,
-		fetchRecentSearches,
-		type TagCountRow
-	} from '$lib/libraryFilter';
+	import { fetchSavedFilter, type SavedFilterDetail } from '$lib/home';
+	import { filterFromParams, isFiltered } from '$lib/libraryFilter';
 	import { logEvent, resetShown } from '$lib/events';
 	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
+	import { isCompact } from '$lib/stores/viewport';
 	import { videoUrl } from '$lib/routes';
 	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 
 	const PAGE_SIZE = 40;
-	// Panel settings counted on the Filters button.
-	const PANEL_PARAMS = ['len', 'res', 'rating', 'unwatched', 'fav', 'site', 'sort'];
 
 	let videos = $state<VideoCardRow[]>([]);
 	let loading = $state(false);
 	let exhausted = $state(false);
 	let error = $state<string | null>(null);
 	let savedFilter = $state<SavedFilterDetail | null>(null);
-	let pinnedFilters = $state<SavedFilterChip[]>([]);
-	let recentSearches = $state<string[]>([]);
-	let tagCounts = $state<TagCountRow[]>([]);
-	let filterNames = $state(new Map<string, string>());
-	let panelOpen = $state(false);
 	let browsing = $state(false);
 	let browsePlugin = $state('');
 
@@ -58,44 +40,24 @@
 	let savedId = $derived(page.url.searchParams.get('saved') ?? '');
 	// Serialised so the grid reloads only when the filter itself changes.
 	let filterKey = $derived(JSON.stringify(filterFromParams(page.url.searchParams)));
+	let filterInput = $derived<FilterInput>(JSON.parse(filterKey));
 	let filtered = $derived(isFiltered(page.url.searchParams) || Boolean(savedId));
-	let showRows = $derived(!query && !filtered);
+	let showRows = $derived(!query && !savedId);
 	let gridSurface = $derived(query ? 'search' : 'library');
 	let videoSites = $derived(listers($sites, 'VIDEO'));
-	let panelCount = $derived(PANEL_PARAMS.filter((name) => page.url.searchParams.has(name)).length);
 	let title = $derived.by(() => {
 		if (query) return `Results for “${query}”`;
 		if (savedFilter) return savedFilter.name;
 		return 'Videos';
 	});
+	let gridTitle = $derived.by(() => {
+		if (filtered) return 'All matching videos';
+		return 'Latest videos';
+	});
 
 	// A new search or filter starts the grid over.
 	$effect(() => {
 		void loadFirst(query, JSON.parse(filterKey), savedId);
-	});
-
-	$effect(() => {
-		if (query) return;
-		const filter: FilterInput = JSON.parse(filterKey);
-		fetchTagCounts(filter)
-			.then((found) => (tagCounts = found))
-			.catch(() => (tagCounts = []));
-	});
-
-	$effect(() => {
-		void filterKey;
-		fetchFilterNames(page.url.searchParams)
-			.then((found) => (filterNames = found))
-			.catch(() => (filterNames = new Map()));
-	});
-
-	$effect(() => {
-		fetchPinnedFilters()
-			.then((found) => (pinnedFilters = found))
-			.catch(() => (pinnedFilters = []));
-		fetchRecentSearches()
-			.then((found) => (recentSearches = found))
-			.catch(() => (recentSearches = []));
 	});
 
 	/** Fetches a page of the grid: the saved filter's videos, else the URL filter's. */
@@ -199,29 +161,15 @@
 		</PageHeader>
 	{/if}
 
-	{#if showRows}
-		<HomeRows />
-		<div class="flex items-center justify-between gap-3">
-			<h2 class="text-lg font-semibold">Latest videos</h2>
-			{@render browsePicker()}
-		</div>
+	{#if !query && $isCompact}
+		<HeaderFilters />
 	{/if}
 
-	{#if !query}
-		<div class="-mt-4 flex flex-col gap-4">
-			<FilterChips
-				url={page.url}
-				names={filterNames}
-				{tagCounts}
-				{pinnedFilters}
-				{recentSearches}
-				{panelCount}
-				{panelOpen}
-				ontogglepanel={() => (panelOpen = !panelOpen)}
-			/>
-			{#if panelOpen}
-				<FilterPanel url={page.url} sites={videoSites} {tagCounts} />
-			{/if}
+	{#if showRows}
+		<HomeRows filter={filterInput} {filtered} />
+		<div class="flex items-center justify-between gap-3">
+			<h2 class="text-lg font-semibold">{gridTitle}</h2>
+			{@render browsePicker()}
 		</div>
 	{/if}
 

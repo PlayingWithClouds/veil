@@ -57,8 +57,9 @@ func New(database *db.DB) *Engine {
 // firstPageTTL (a reload shows the same feed); later pages read the same
 // ranking while it is younger than rankingTTL, so pages neither overlap nor
 // skip as impressions shift the scores. Items blocked or trashed since the
-// ranking was built are left out.
-func (e *Engine) Recommendations(ctx context.Context, limit, offset int) ([]schema.Match, error) {
+// ranking was built are left out, and so are those filter doesn't match;
+// pages count over what the filter leaves.
+func (e *Engine) Recommendations(ctx context.Context, filter schema.Filter, limit, offset int) ([]schema.Match, error) {
 	maxAge := rankingTTL
 	if offset == 0 {
 		maxAge = firstPageTTL
@@ -67,7 +68,7 @@ func (e *Engine) Recommendations(ctx context.Context, limit, offset int) ([]sche
 	if err != nil {
 		return nil, err
 	}
-	eligible, err := e.stillEligible(ctx, current.items)
+	eligible, err := e.stillEligible(ctx, current.items, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -141,13 +142,13 @@ func (e *Engine) nameReasons(ctx context.Context, items []scoredItem) error {
 }
 
 // stillEligible drops the items trashed or blocked since the ranking was
-// built, keeping the order.
-func (e *Engine) stillEligible(ctx context.Context, items []scoredItem) ([]scoredItem, error) {
+// built, and those filter leaves out, keeping the order.
+func (e *Engine) stillEligible(ctx context.Context, items []scoredItem, filter schema.Filter) ([]scoredItem, error) {
 	refs := make([]schema.RecordRef, 0, len(items))
 	for _, item := range items {
 		refs = append(refs, item.item)
 	}
-	eligible, err := e.eligibleRefs(ctx, refs)
+	eligible, err := e.eligibleRefs(ctx, refs, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +162,9 @@ func (e *Engine) stillEligible(ctx context.Context, items []scoredItem) ([]score
 }
 
 // eligibleRefs reports which of the referenced videos and galleries may be
-// shown: not trashed, not blocked, crediting nothing blocked.
-func (e *Engine) eligibleRefs(ctx context.Context, refs []schema.RecordRef) (map[schema.RecordRef]bool, error) {
+// shown: not trashed, not blocked, crediting nothing blocked, and matching
+// filter.
+func (e *Engine) eligibleRefs(ctx context.Context, refs []schema.RecordRef, filter schema.Filter) (map[schema.RecordRef]bool, error) {
 	idsByKind := map[schema.RecordKind][]string{}
 	for _, ref := range refs {
 		idsByKind[ref.Kind] = append(idsByKind[ref.Kind], ref.Id)
@@ -172,7 +174,7 @@ func (e *Engine) eligibleRefs(ctx context.Context, refs []schema.RecordRef) (map
 		if !isMediaKind(kind) {
 			continue
 		}
-		conditions, vars := library.FilterConditions(kind, schema.Filter{})
+		conditions, vars := library.FilterConditions(kind, filter)
 		vars["ids"] = ids
 		found, err := e.database.Strings(ctx,
 			`SELECT "media"."id"`+library.MediaFrom(kind)+` WHERE `+strings.Join(conditions, " AND ")+

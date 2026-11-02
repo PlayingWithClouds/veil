@@ -1,148 +1,118 @@
 <!--
-	Home without a search: one video in focus (the one to resume, else the top
-	recommendation) with "Up next" beside it, then a row per thing to watch,
-	personal first, live next, then every kind of media. Each row loads on its
-	own and stays hidden while empty.
+	Home without a search: the top recommendation featured, then Continue
+	watching, Live now, For you (three rows of six), the user's performers and
+	the sites. Recommendations follow the library filter; while one is set,
+	only the featured video and For you show. Videos being watched are never
+	recommended here: they have their own row. Each row loads on its own and
+	stays hidden while empty.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 	import Shelf from '$lib/components/Shelf.svelte';
-	import HomeFocus, { type FocusItem } from '$lib/components/HomeFocus.svelte';
+	import FeaturedVideo from '$lib/components/FeaturedVideo.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
-	import GalleryCard from '$lib/components/GalleryCard.svelte';
-	import AudioCard from '$lib/components/AudioCard.svelte';
-	import StoryCard from '$lib/components/StoryCard.svelte';
-	import PostCard from '$lib/components/PostCard.svelte';
-	import GroupCard from '$lib/components/GroupCard.svelte';
-	import CategoryCard from '$lib/components/CategoryCard.svelte';
-	import CollectionCard from '$lib/components/CollectionCard.svelte';
 	import CamCard from '$lib/components/CamCard.svelte';
 	import RecordingCard from '$lib/components/RecordingCard.svelte';
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
-	import { fetchGalleries, type VideoCardRow, type GalleryCardRow, type MemberRow } from '$lib/library';
+	import SiteIcon from '$lib/components/scene/SiteIcon.svelte';
+	import {
+		openVideo,
+		fetchPerformers,
+		type VideoCardRow,
+		type VideoDetail,
+		type MemberRow
+	} from '$lib/library';
 	import {
 		fetchContinueWatching,
-		fetchWatchAgain,
 		fetchRecommendedVideos,
-		fetchFollowedVideos,
 		fetchFavoritePerformers,
 		type RecommendedVideo
 	} from '$lib/home';
 	import {
-		fetchAudios,
-		fetchStories,
-		fetchPosts,
-		fetchGroups,
-		type AudioCardRow,
-		type StoryCardRow,
-		type PostCardRow,
-		type GroupCardRow
-	} from '$lib/media';
-	import {
-		fetchCategories,
-		fetchCollections,
-		fetchWatchlist,
-		type CategoryCardRow,
-		type CollectionCardRow
-	} from '$lib/curation';
-	import {
 		fetchLiveCams,
 		fetchActiveRecordings,
-		fetchRecordedVideos,
 		type CamRow,
 		type ActiveRecordingRow
 	} from '$lib/cams';
-	import {
-		videoUrl,
-		galleryUrl,
-		audioUrl,
-		storyUrl,
-		postUrl,
-		groupUrl,
-		categoryUrl,
-		collectionUrl,
-		camUrl
-	} from '$lib/routes';
+	import { listers } from '$lib/plugins';
+	import { sites } from '$lib/stores/sites';
+	import { videoUrl, camUrl } from '$lib/routes';
+
+	interface Props {
+		// The library filter from the URL; recommendations follow it.
+		filter: FilterInput;
+		// Whether filter narrows anything: then only the recommendations show.
+		filtered: boolean;
+	}
+
+	let { filter, filtered }: Props = $props();
 
 	// Card widths per row, in px.
 	const VIDEO_WIDTH = 280;
 	const LIVE_WIDTH = 220;
 	const PERFORMER_WIDTH = 140;
-	const WIDE_TILE_WIDTH = 280;
-	const COLLECTION_WIDTH = 240;
-	const POSTER_WIDTH = 160;
-	const GALLERY_WIDTH = 180;
-	const SQUARE_WIDTH = 200;
-	const UP_NEXT_COUNT = 4;
+	const SITE_WIDTH = 150;
+	// For you fills three rows of six under the featured video.
+	const FOR_YOU_COUNT = 18;
+	// Asked for beyond what's shown, to make up for videos being watched.
+	const RECOMMENDATION_SLACK = 20;
 
 	/** One card of the Live row: a recording running now, or a live room. */
-	type LiveItem = { recording: ActiveRecordingRow; cam?: never } | { cam: CamRow; recording?: never };
+	type LiveItem =
+		{ recording: ActiveRecordingRow; cam?: never } | { cam: CamRow; recording?: never };
 
 	let continueWatching = $state<VideoCardRow[]>([]);
-	let watchlist = $state<VideoCardRow[]>([]);
-	let watchAgain = $state<VideoCardRow[]>([]);
 	let recommended = $state<RecommendedVideo[]>([]);
-	let followed = $state<VideoCardRow[]>([]);
+	let featuredDetail = $state<VideoDetail | null>(null);
 	let liveCams = $state<CamRow[]>([]);
 	let recordings = $state<ActiveRecordingRow[]>([]);
-	let recordedVideos = $state<VideoCardRow[]>([]);
 	let performers = $state<MemberRow[]>([]);
-	let categories = $state<CategoryCardRow[]>([]);
-	let collections = $state<CollectionCardRow[]>([]);
-	let groups = $state<GroupCardRow[]>([]);
-	let galleries = $state<GalleryCardRow[]>([]);
-	let audios = $state<AudioCardRow[]>([]);
-	let stories = $state<StoryCardRow[]>([]);
-	let posts = $state<PostCardRow[]>([]);
 
-	// Resume when something is unfinished, else the top recommendation.
-	let focus = $derived.by<FocusItem | null>(() => {
-		if (continueWatching.length > 0) return { video: continueWatching[0], label: 'Continue' };
-		if (recommended.length > 0) return { video: recommended[0].video, label: 'For you' };
-		return null;
+	// Serialised so recommendations reload only when the filter itself changes.
+	let filterKey = $derived(JSON.stringify(filter));
+	let freshPicks = $derived.by(() => {
+		const watching = new Set(continueWatching.map((video) => video.id));
+		return recommended.filter((item) => !watching.has(item.video.id));
 	});
-	let focusReason = $derived.by(() => {
-		if (!focus || focus.label !== 'For you') return null;
-		return recommended[0]?.reason ?? null;
-	});
-	let upNext = $derived.by(() => {
-		const candidates: FocusItem[] = [
-			...continueWatching.map((video) => ({ video, label: 'Continue' })),
-			...watchlist.map((video) => ({ video, label: 'Watchlist' })),
-			...recommended.map((item) => ({ video: item.video, label: 'For you' }))
-		];
-		const seen = new Set([focus?.video.id]);
-		return candidates
-			.filter((item) => {
-				if (seen.has(item.video.id)) return false;
-				seen.add(item.video.id);
-				return true;
-			})
-			.slice(0, UP_NEXT_COUNT);
-	});
+	let featured = $derived(freshPicks[0] ?? null);
+	let forYou = $derived(freshPicks.slice(1, FOR_YOU_COUNT + 1));
 	let live = $derived<LiveItem[]>([
 		...recordings.map((recording) => ({ recording })),
 		...liveCams.map((cam) => ({ cam }))
 	]);
+	let siteTiles = $derived(listers($sites, 'VIDEO'));
 
 	$effect(() => {
 		load(fetchContinueWatching(), (found) => (continueWatching = found));
-		load(fetchWatchlist(), (found) => (watchlist = found));
-		load(fetchWatchAgain(), (found) => (watchAgain = found));
-		load(fetchRecommendedVideos(), (found) => (recommended = found));
-		load(fetchFollowedVideos(), (found) => (followed = found));
 		load(fetchLiveCams(), (found) => (liveCams = found));
 		load(fetchActiveRecordings(), (found) => (recordings = found));
-		load(fetchRecordedVideos(), (found) => (recordedVideos = found));
-		load(fetchFavoritePerformers(), (found) => (performers = found));
-		load(fetchCategories(), (found) => (categories = found));
-		load(fetchCollections(), (found) => (collections = found));
-		load(fetchGroups(), (found) => (groups = found));
-		load(fetchGalleries({}, 20), (found) => (galleries = found));
-		load(fetchAudios(), (found) => (audios = found));
-		load(fetchStories(), (found) => (stories = found));
-		load(fetchPosts(), (found) => (posts = found));
+		load(loadPerformers(), (found) => (performers = found));
 	});
+
+	$effect(() => {
+		const current: FilterInput = JSON.parse(filterKey);
+		load(fetchRecommendedVideos(FOR_YOU_COUNT + 1 + RECOMMENDATION_SLACK, current), (found) => {
+			recommended = found;
+		});
+	});
+
+	// Reads the featured video's page up front, so its credits, tags and description show.
+	$effect(() => {
+		const id = featured?.video.id;
+		featuredDetail = null;
+		if (!id) return;
+		load(openVideo(id), (found) => {
+			if (found?.id === id) featuredDetail = found;
+		});
+	});
+
+	/** The user's favourite performers, else the library's first ones. */
+	async function loadPerformers(): Promise<MemberRow[]> {
+		const favorites = await fetchFavoritePerformers();
+		if (favorites.length > 0) return favorites;
+		return fetchPerformers('', 20);
+	}
 
 	/** Fills a row when its data arrives; a row that fails stays hidden and says why in the console. */
 	function load<T>(request: Promise<T>, fill: (found: T) => void) {
@@ -150,7 +120,7 @@
 	}
 
 	/** Opens a video's page. */
-	function openVideo(video: VideoCardRow) {
+	function openPage(video: VideoCardRow) {
 		goto(videoUrl(video.id));
 	}
 
@@ -162,143 +132,94 @@
 
 	/** The key of a Live row card. */
 	function liveKey(item: LiveItem): string {
-		if (item.recording) return `recording:${item.recording.camModel?.id ?? item.recording.startedAt}`;
+		if (item.recording)
+			return `recording:${item.recording.camModel?.id ?? item.recording.startedAt}`;
 		return `cam:${item.cam.id}`;
 	}
 </script>
 
 <div class="flex flex-col gap-10">
-	{#if focus}
-		<HomeFocus {focus} reason={focusReason} {upNext} onopen={openVideo} />
+	{#if featured}
+		<FeaturedVideo
+			video={featured.video}
+			detail={featuredDetail}
+			reason={featured.reason}
+			shown={{ surface: 'home', position: 0 }}
+			onopen={() => openPage(featured.video)}
+		/>
 	{/if}
 
-	<Shelf
-		title="Continue watching"
-		items={continueWatching}
-		key={(video) => video.id}
-		itemWidth={VIDEO_WIDTH}
-	>
-		{#snippet card(video, position)}
-			<SceneCard {video} shown={{ surface: 'continue', position }} onclick={() => openVideo(video)} />
-		{/snippet}
-	</Shelf>
+	{#if !filtered}
+		<Shelf
+			title="Continue watching"
+			items={continueWatching}
+			key={(video) => video.id}
+			itemWidth={VIDEO_WIDTH}
+		>
+			{#snippet card(video, position)}
+				<SceneCard
+					{video}
+					shown={{ surface: 'continue', position }}
+					onclick={() => openPage(video)}
+				/>
+			{/snippet}
+		</Shelf>
 
-	<Shelf title="Watchlist" items={watchlist} key={(video) => video.id} itemWidth={VIDEO_WIDTH}>
-		{#snippet card(video, position)}
-			<SceneCard {video} shown={{ surface: 'watchlist', position }} onclick={() => openVideo(video)} />
-		{/snippet}
-	</Shelf>
+		<Shelf title="Live now" items={live} key={liveKey} itemWidth={LIVE_WIDTH}>
+			{#snippet card(item)}
+				{#if item.recording}
+					<RecordingCard recording={item.recording} onclick={() => openRecording(item.recording)} />
+				{:else}
+					<CamCard cam={item.cam} onclick={() => goto(camUrl(item.cam.id))} />
+				{/if}
+			{/snippet}
+		</Shelf>
+	{/if}
 
-	<!-- The engine's own pick, so its surface is "home": the one it learns from. -->
-	<Shelf title="For you" items={recommended} key={(item) => item.video.id} itemWidth={VIDEO_WIDTH}>
-		{#snippet card(item, position)}
-			<SceneCard
-				video={item.video}
-				shown={{ surface: 'home', position }}
-				onclick={() => openVideo(item.video)}
-			/>
-		{/snippet}
-	</Shelf>
+	{#if forYou.length > 0}
+		<section class="flex flex-col gap-4">
+			<h2 class="text-lg font-semibold">For you</h2>
+			<!-- The engine's own picks, so their surface is "home": the one it learns from.
+			     Positions continue after the featured video's 0. -->
+			<div
+				class="grid grid-cols-6 gap-x-4 gap-y-8 max-xl:grid-cols-4 max-lg:grid-cols-3 max-md:grid-cols-1"
+			>
+				{#each forYou as item, index (item.video.id)}
+					<SceneCard
+						video={item.video}
+						shown={{ surface: 'home', position: index + 1 }}
+						onclick={() => openPage(item.video)}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
-	<Shelf title="Watch again" items={watchAgain} key={(video) => video.id} itemWidth={VIDEO_WIDTH}>
-		{#snippet card(video, position)}
-			<SceneCard {video} shown={{ surface: 'again', position }} onclick={() => openVideo(video)} />
-		{/snippet}
-	</Shelf>
+	{#if !filtered}
+		<Shelf
+			title="Your performers"
+			items={performers}
+			key={(performer) => performer.id}
+			itemWidth={PERFORMER_WIDTH}
+			href="/performers"
+		>
+			{#snippet card(performer)}
+				<MemberCard kind="performer" member={performer} />
+			{/snippet}
+		</Shelf>
 
-	<Shelf title="New from follows" items={followed} key={(video) => video.id} itemWidth={VIDEO_WIDTH}>
-		{#snippet card(video, position)}
-			<SceneCard {video} shown={{ surface: 'follows', position }} onclick={() => openVideo(video)} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Live now" items={live} key={liveKey} itemWidth={LIVE_WIDTH}>
-		{#snippet card(item)}
-			{#if item.recording}
-				<RecordingCard recording={item.recording} onclick={() => openRecording(item.recording)} />
-			{:else}
-				<CamCard cam={item.cam} onclick={() => goto(camUrl(item.cam.id))} />
-			{/if}
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Recordings" items={recordedVideos} key={(video) => video.id} itemWidth={VIDEO_WIDTH}>
-		{#snippet card(video)}
-			<SceneCard {video} onclick={() => openVideo(video)} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf
-		title="Your performers"
-		items={performers}
-		key={(performer) => performer.id}
-		itemWidth={PERFORMER_WIDTH}
-		href="/performers"
-	>
-		{#snippet card(performer)}
-			<MemberCard kind="performer" member={performer} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf
-		title="Categories"
-		items={categories}
-		key={(category) => category.id}
-		itemWidth={WIDE_TILE_WIDTH}
-	>
-		{#snippet card(category)}
-			<CategoryCard {category} onclick={() => goto(categoryUrl(category.id))} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf
-		title="Collections"
-		items={collections}
-		key={(collection) => collection.id}
-		itemWidth={COLLECTION_WIDTH}
-	>
-		{#snippet card(collection)}
-			<CollectionCard {collection} onclick={() => goto(collectionUrl(collection.id))} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Movies & series" items={groups} key={(group) => group.id} itemWidth={POSTER_WIDTH}>
-		{#snippet card(group)}
-			<GroupCard {group} onclick={() => goto(groupUrl(group.id))} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf
-		title="Galleries"
-		items={galleries}
-		key={(gallery) => gallery.id}
-		itemWidth={GALLERY_WIDTH}
-		href="/galleries"
-	>
-		{#snippet card(gallery, position)}
-			<GalleryCard
-				{gallery}
-				shown={{ surface: 'galleries', position }}
-				onclick={() => goto(galleryUrl(gallery.id))}
-			/>
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Audio" items={audios} key={(audio) => audio.id} itemWidth={SQUARE_WIDTH}>
-		{#snippet card(audio)}
-			<AudioCard {audio} onclick={() => goto(audioUrl(audio.id))} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Stories" items={stories} key={(story) => story.id} itemWidth={POSTER_WIDTH}>
-		{#snippet card(story)}
-			<StoryCard {story} onclick={() => goto(storyUrl(story.id))} />
-		{/snippet}
-	</Shelf>
-
-	<Shelf title="Creator posts" items={posts} key={(post) => post.id} itemWidth={SQUARE_WIDTH}>
-		{#snippet card(post)}
-			<PostCard {post} onclick={() => goto(postUrl(post.id))} />
-		{/snippet}
-	</Shelf>
+		<Shelf title="Sites" items={siteTiles} key={(site) => site.name} itemWidth={SITE_WIDTH}>
+			{#snippet card(site)}
+				<a
+					href="/?{new URLSearchParams({ site: site.name })}"
+					class="bg-base-200 hover:bg-base-300 flex flex-col items-center gap-3 rounded-xl px-3 py-5 transition-colors"
+				>
+					<SiteIcon iconUrl={site.iconUrl} class="h-12 w-12 rounded-lg" />
+					<span class="w-full truncate text-center text-sm font-medium">
+						{site.displayName ?? site.name}
+					</span>
+				</a>
+			{/snippet}
+		</Shelf>
+	{/if}
 </div>

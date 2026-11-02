@@ -135,7 +135,7 @@ func TestPagesDoNotOverlap(t *testing.T) {
 		f.video(mediaRow{title: "Video " + string(rune('a'+index%26)) + string(rune('a'+index/26))})
 	}
 	first := f.recommendations(10)
-	second, err := f.engine.Recommendations(f.ctx, 10, 10)
+	second, err := f.engine.Recommendations(f.ctx, schema.Filter{}, 10, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,5 +290,22 @@ func TestOutcomesCreditServedSource(t *testing.T) {
 	counts := outcomes[sourceNewest]
 	if counts.shows <= 0 || counts.reward <= 0 {
 		t.Errorf("outcomes = %+v", outcomes)
+	}
+}
+
+// TestRecommendationsFollowFilter keeps only the recommended videos a filter
+// matches, here the long ones.
+func TestRecommendationsFollowFilter(t *testing.T) {
+	f := newFixture(t)
+	long := f.video(mediaRow{title: "Long one", duration: 3000})
+	f.video(mediaRow{title: "Short one", duration: 300})
+
+	minimum := int32(1800)
+	matches, err := f.engine.Recommendations(f.ctx, schema.Filter{MinDurationSeconds: &minimum}, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 1 || matches[0].Item.Id != long {
+		t.Errorf("matches = %+v, want only %s", matches, long)
 	}
 }

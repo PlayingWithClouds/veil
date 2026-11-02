@@ -1277,7 +1277,7 @@ export interface QueryGenqlSelection{
     builtInCollection?: (CollectionGenqlSelection & { __args: {kind: CollectionKind} })
     collectionsWith?: (CollectionGenqlSelection & { __args: {subject: RecordRefInput} })
     fieldDefs?: (FieldDefGenqlSelection & { __args?: {kind?: (RecordKind | null)} })
-    recommendations?: (MatchGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    recommendations?: (MatchGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     related?: (MatchGenqlSelection & { __args: {subject: RecordRefInput, limit?: (Scalars['Int'] | null)} })
     shorts?: (ShortGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null)} })
     taste?: TasteGenqlSelection

@@ -249,6 +249,9 @@ export default {
             "recommendations": [
                 48,
                 {
+                    "filter": [
+                        148
+                    ],
                     "limit": [
                         3
                     ],

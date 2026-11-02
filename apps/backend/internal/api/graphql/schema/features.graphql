@@ -3,8 +3,9 @@
 # log (see the event data shapes on recordEvent); lookups from plugins.
 
 extend type Query {
-  # Ranked recommendations of videos and galleries, each with its reasons.
-  recommendations(limit: Int, offset: Int): [Match!]!
+  # Ranked recommendations of videos and galleries, each with its reasons;
+  # only those filter matches, when given.
+  recommendations(filter: FilterInput, limit: Int, offset: Int): [Match!]!
   # Records related to one: the linked gallery or video, the same
   # performers, studio, rare tags, similar frames.
   related(subject: RecordRefInput!, limit: Int): [Match!]!
