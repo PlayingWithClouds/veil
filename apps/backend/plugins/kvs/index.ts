@@ -1,6 +1,7 @@
 import { runPlugin } from "@playingwithclouds/veil-sdk";
 import packageJson from "./package.json" with { type: "json" };
-import { scrape } from "./src/scrape.ts";
+import { find } from "./src/find.ts";
+import { identifyPerformer } from "./src/identify.ts";
 import { sceneList } from "./src/scenes.ts";
 import { performerList, tagList } from "./src/catalog.ts";
 import { resolve } from "./src/resolve.ts";
@@ -15,6 +16,8 @@ runPlugin({
     version: packageJson.version,
     capabilities: [
       "scene:find",
+      "performer:find",
+      "performer:identify",
       "scene:list",
       "scene:list:page",
       "performer:list",
@@ -34,7 +37,8 @@ runPlugin({
       },
     ],
   },
-  find: (url) => scrape(url),
+  find,
+  identifyPerformer,
   sceneList,
   performerList,
   tagList,

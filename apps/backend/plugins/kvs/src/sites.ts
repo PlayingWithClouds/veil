@@ -243,6 +243,7 @@ export const SITES: SiteConfig[] = [
     latestPath: "/new/",
     // The video's tags sit in the title's meta line, not the sidebar menu.
     infoSelector: ".meta-data",
+    modelIndexPath: "/pornstars/",
   }),
   kvsSite({
     ...STOCK_THEME,
