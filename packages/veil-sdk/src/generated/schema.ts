@@ -997,6 +997,8 @@ export interface StoryChapter {
     text: Scalars['String']
     wordCount: Scalars['Int']
     url: (Scalars['String'] | null)
+    parent: (Scalars['ID'] | null)
+    choice: (Scalars['String'] | null)
     __typename: 'StoryChapter'
 }
 
@@ -2445,6 +2447,8 @@ export interface StoryChapterGenqlSelection{
     text?: boolean | number
     wordCount?: boolean | number
     url?: boolean | number
+    parent?: boolean | number
+    choice?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

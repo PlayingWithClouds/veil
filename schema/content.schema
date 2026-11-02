@@ -128,7 +128,9 @@ model Audio extends Media {
   30 durationSeconds: f64?
 }
 
-/// Erotic fiction, read chapter by chapter.
+/// Erotic fiction, read chapter by chapter. A linear story reads by
+/// position; a branching one (choose your own adventure) links each
+/// chapter to the chapter whose choice leads to it.
 model Story extends Media {
   30 chapterCount: i32
   31 wordCount: i32?
@@ -146,6 +148,13 @@ model StoryChapter extends Entity {
   13 text: string
   14 wordCount: i32
   15 url: string?
+
+  /// In a branching story, the chapter whose choice leads here; null for
+  /// the first chapter and in a linear story. Position is then only the
+  /// order chapters were found in.
+  16 parent: ref<StoryChapter>?
+  /// The choice in parent that leads here, e.g. "Follow her inside".
+  17 choice: string?
 }
 
 /// A post on a creator platform. It wraps ordinary media; the creator is a

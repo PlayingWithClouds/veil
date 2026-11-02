@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/playingwithclouds/veil/internal/db"
@@ -59,7 +60,8 @@ func (l *Library) storyFields(ctx context.Context, plugin string, story *plugins
 }
 
 // replaceChapters swaps a story's chapters for the ones its page lists,
-// keeping the text already read for a chapter whose URL is unchanged.
+// keeping the text already read for a chapter whose URL is unchanged, and
+// links a branching story's chapters to their parents.
 func (l *Library) replaceChapters(ctx context.Context, storyID string, chapters []plugins.StoryChapter) error {
 	known, err := l.chapterTexts(ctx, storyID)
 	if err != nil {
@@ -69,13 +71,43 @@ func (l *Library) replaceChapters(ctx context.Context, storyID string, chapters 
 		if _, err := tx.Exec(ctx, `DELETE FROM "StoryChapter" WHERE "story" = $story`, db.Vars{"story": storyID}); err != nil {
 			return err
 		}
-		for position, chapter := range chapters {
-			if _, err := tx.Insert(ctx, "StoryChapter", chapterRow(storyID, position, chapter, known)); err != nil {
-				return err
-			}
+		ids, err := insertChapters(ctx, tx, storyID, chapters, known)
+		if err != nil {
+			return err
 		}
-		return nil
+		return linkParents(ctx, tx, chapters, ids)
 	})
+}
+
+// insertChapters stores chapters in their order and maps each one's URL to
+// its id.
+func insertChapters(ctx context.Context, tx *db.DB, storyID string, chapters []plugins.StoryChapter, known map[string]string) (map[string]string, error) {
+	ids := map[string]string{}
+	for position, chapter := range chapters {
+		id, err := tx.Insert(ctx, "StoryChapter", chapterRow(storyID, position, chapter, known))
+		if err != nil {
+			return nil, err
+		}
+		if chapter.URL != "" {
+			ids[chapter.URL] = id
+		}
+	}
+	return ids, nil
+}
+
+// linkParents points every chapter that names a parent at it; a parent the
+// page didn't list leaves the chapter unlinked.
+func linkParents(ctx context.Context, tx *db.DB, chapters []plugins.StoryChapter, ids map[string]string) error {
+	for _, chapter := range chapters {
+		parentID, listed := ids[chapter.ParentURL]
+		if chapter.ParentURL == "" || chapter.URL == "" || !listed {
+			continue
+		}
+		if err := tx.Update(ctx, "StoryChapter", ids[chapter.URL], db.Vars{"parent": parentID}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // chapterTexts maps the URL of each chapter already read to its text.
@@ -106,6 +138,7 @@ func chapterRow(storyID string, position int, chapter plugins.StoryChapter, know
 		Text:      text,
 		WordCount: int32(wordCountOf(text, chapter.WordCount)),
 		Url:       optional(chapter.URL),
+		Choice:    optional(strings.TrimSpace(chapter.Choice)),
 	}
 }
 
@@ -142,11 +175,61 @@ func (l *Library) Chapter(ctx context.Context, storyID string, position int) (*s
 		db.Vars{"story": storyID, "position": position})
 }
 
-// SetChapterText stores a chapter's text once it was read from its URL.
+// SetChapterText stores a chapter's text once it was read from its URL,
+// and the chapters its choices lead to.
 func (l *Library) SetChapterText(ctx context.Context, chapterID string, chapter plugins.StoryChapter) error {
 	fields := db.Vars{"text": chapter.Text, "wordCount": wordCountOf(chapter.Text, chapter.WordCount)}
 	if strings.TrimSpace(chapter.Title) != "" {
 		fields["title"] = strings.TrimSpace(chapter.Title)
 	}
-	return l.database.Update(ctx, "StoryChapter", chapterID, fields)
+	if err := l.database.Update(ctx, "StoryChapter", chapterID, fields); err != nil {
+		return err
+	}
+	return l.addChoices(ctx, chapterID, chapter.Choices)
+}
+
+// addChoices stores the chapters a chapter's choices lead to, found while
+// reading it, as its children.
+func (l *Library) addChoices(ctx context.Context, chapterID string, choices []plugins.StoryChapter) error {
+	if len(choices) == 0 {
+		return nil
+	}
+	parent, err := db.Get[schema.StoryChapter](ctx, l.database, "StoryChapter", chapterID)
+	if err != nil || parent == nil {
+		return err
+	}
+	return l.database.Tx(ctx, func(tx *db.DB) error {
+		for _, choice := range choices {
+			if err := addChoice(ctx, tx, parent, choice); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// addChoice links the chapter one choice leads to. A chapter the story has
+// already (same URL) keeps the parent it was first found under, so the
+// story stays a tree; a new one goes at the end.
+func addChoice(ctx context.Context, tx *db.DB, parent *schema.StoryChapter, choice plugins.StoryChapter) error {
+	if choice.URL == "" {
+		return nil
+	}
+	vars := db.Vars{"story": parent.Story, "url": choice.URL}
+	known, err := tx.Strings(ctx, `SELECT "id" FROM "StoryChapter" WHERE "story" = $story AND "url" = $url AND "deletedAt" IS NULL`, vars)
+	if err != nil || len(known) > 0 {
+		return err
+	}
+	positions, err := tx.Strings(ctx, `SELECT CAST(COALESCE(MAX("position"), -1) + 1 AS TEXT) FROM "StoryChapter" WHERE "story" = $story`, vars)
+	if err != nil {
+		return err
+	}
+	position, err := strconv.Atoi(positions[0])
+	if err != nil {
+		return err
+	}
+	row := chapterRow(parent.Story, position, choice, nil)
+	row.Parent = &parent.Id
+	_, err = tx.Insert(ctx, "StoryChapter", row)
+	return err
 }

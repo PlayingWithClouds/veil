@@ -319,12 +319,22 @@ export interface Story {
   comments?: SceneComment[];
 }
 
-/** One chapter of a story. */
+/**
+ * One chapter of a story. In a branching story `parent_url` names the
+ * chapter whose `choice` leads here (unset for the first), and story:chapter
+ * may return the `choices` this chapter offers, so the story fills in as
+ * it's read.
+ */
 export interface StoryChapter {
   title?: string;
   url?: string;
   text?: string;
   word_count?: number;
+  parent_url?: string;
+  /** the option in the parent chapter that leads here */
+  choice?: string;
+  /** chapters this one's options lead to (story:chapter results) */
+  choices?: StoryChapter[];
 }
 
 /** A post on a creator platform: ordinary media credited to its creator. */

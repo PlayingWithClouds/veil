@@ -102,6 +102,12 @@ type StoryChapter {
   text: String!
   wordCount: Int!
   url: String
+  # In a branching story, the id of the chapter whose choice leads here;
+  # null for the first chapter and in a linear story. A chapter's choices
+  # are the chapters naming it as parent; reading one may find more.
+  parent: ID
+  # The choice in parent that leads here.
+  choice: String
 }
 
 # A post on a creator platform: ordinary media credited to its creator.

@@ -673,7 +673,9 @@ type Audio struct {
 	DurationSeconds *float64 `json:"durationSeconds,omitempty"`
 }
 
-// Erotic fiction, read chapter by chapter.
+// Erotic fiction, read chapter by chapter. A linear story reads by
+// position; a branching one (choose your own adventure) links each
+// chapter to the chapter whose choice leads to it.
 type Story struct {
 	Media
 	ChapterCount int32  `json:"chapterCount"`
@@ -691,6 +693,12 @@ type StoryChapter struct {
 	Text      string  `json:"text"`
 	WordCount int32   `json:"wordCount"`
 	Url       *string `json:"url,omitempty"`
+	// In a branching story, the chapter whose choice leads here; null for
+	// the first chapter and in a linear story. Position is then only the
+	// order chapters were found in.
+	Parent *string `json:"parent,omitempty"`
+	// The choice in parent that leads here, e.g. "Follow her inside".
+	Choice *string `json:"choice,omitempty"`
 }
 
 // A post on a creator platform. It wraps ordinary media; the creator is a

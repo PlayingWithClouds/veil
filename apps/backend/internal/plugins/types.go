@@ -475,12 +475,18 @@ type Story struct {
 	Comments []SceneComment `json:"comments,omitempty"`
 }
 
-// StoryChapter is one chapter of a story, in reading order.
+// StoryChapter is one chapter of a story, in reading order. In a branching
+// story ParentURL names the chapter whose Choice leads here (empty for the
+// first), and story:chapter may return the Choices this chapter offers, so
+// the story fills in as it's read.
 type StoryChapter struct {
-	Title     string `json:"title,omitempty"`
-	URL       string `json:"url,omitempty"`
-	Text      string `json:"text,omitempty"`
-	WordCount int    `json:"word_count,omitempty"`
+	Title     string         `json:"title,omitempty"`
+	URL       string         `json:"url,omitempty"`
+	Text      string         `json:"text,omitempty"`
+	WordCount int            `json:"word_count,omitempty"`
+	ParentURL string         `json:"parent_url,omitempty"`
+	Choice    string         `json:"choice,omitempty"`
+	Choices   []StoryChapter `json:"choices,omitempty"`
 }
 
 // ChapterArgs is passed to story:chapter.

@@ -493,6 +493,8 @@ export interface StoryChapter extends Entity {
   text: string;
   wordCount: number;
   url?: string;
+  parent?: string;
+  choice?: string;
 }
 
 export interface Post extends Media {

@@ -1111,7 +1111,9 @@ type ComplexityRoot struct {
 	}
 
 	StoryChapter struct {
+		Choice    func(childComplexity int) int
 		Id        func(childComplexity int) int
+		Parent    func(childComplexity int) int
 		Position  func(childComplexity int) int
 		Text      func(childComplexity int) int
 		Title     func(childComplexity int) int
@@ -7519,12 +7521,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Story.WordCount(childComplexity), true
 
+	case "StoryChapter.choice":
+		if e.ComplexityRoot.StoryChapter.Choice == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StoryChapter.Choice(childComplexity), true
 	case "StoryChapter.id":
 		if e.ComplexityRoot.StoryChapter.Id == nil {
 			break
 		}
 
 		return e.ComplexityRoot.StoryChapter.Id(childComplexity), true
+	case "StoryChapter.parent":
+		if e.ComplexityRoot.StoryChapter.Parent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StoryChapter.Parent(childComplexity), true
 	case "StoryChapter.position":
 		if e.ComplexityRoot.StoryChapter.Position == nil {
 			break
@@ -9895,6 +9909,12 @@ type StoryChapter {
   text: String!
   wordCount: Int!
   url: String
+  # In a branching story, the id of the chapter whose choice leads here;
+  # null for the first chapter and in a linear story. A chapter's choices
+  # are the chapters naming it as parent; reading one may find more.
+  parent: ID
+  # The choice in parent that leads here.
+  choice: String
 }
 
 # A post on a creator platform: ordinary media credited to its creator.
@@ -12331,6 +12351,10 @@ func (ec *executionContext) childFields_StoryChapter(ctx context.Context, field 
 		return ec.fieldContext_StoryChapter_wordCount(ctx, field)
 	case "url":
 		return ec.fieldContext_StoryChapter_url(ctx, field)
+	case "parent":
+		return ec.fieldContext_StoryChapter_parent(ctx, field)
+	case "choice":
+		return ec.fieldContext_StoryChapter_choice(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type StoryChapter", field.Name)
 }
@@ -40827,6 +40851,52 @@ func (ec *executionContext) fieldContext_StoryChapter_url(_ context.Context, fie
 	return graphql.NewScalarFieldContext("StoryChapter", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _StoryChapter_parent(ctx context.Context, field graphql.CollectedField, obj *schema.StoryChapter) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StoryChapter_parent(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Parent, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StoryChapter_parent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StoryChapter", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _StoryChapter_choice(ctx context.Context, field graphql.CollectedField, obj *schema.StoryChapter) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StoryChapter_choice(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Choice, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StoryChapter_choice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StoryChapter", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Stream_id(ctx context.Context, field graphql.CollectedField, obj *schema.Stream) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -58360,6 +58430,10 @@ func (ec *executionContext) _StoryChapter(ctx context.Context, sel ast.Selection
 			}
 		case "url":
 			out.Values[i] = ec._StoryChapter_url(ctx, field, obj)
+		case "parent":
+			out.Values[i] = ec._StoryChapter_parent(ctx, field, obj)
+		case "choice":
+			out.Values[i] = ec._StoryChapter_choice(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
