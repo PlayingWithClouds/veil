@@ -24,6 +24,7 @@
 	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import { formatClock } from '$lib/time';
 	import {
+		createStudio,
 		fetchRelatedVideos,
 		fetchStudios,
 		openVideo,
@@ -166,6 +167,13 @@
 		const saved = await setVideoStudio(video.id, studioId);
 		if (saved) video = saved;
 	}
+
+	/** Creates a studio by name and sets it as the video's. */
+	async function createAndPickStudio(name: string) {
+		changingStudio = false;
+		const studio = await createStudio(name);
+		await pickStudio(studio.id);
+	}
 </script>
 
 <svelte:head><title>{video?.title ?? 'Video'} · Veil</title></svelte:head>
@@ -234,7 +242,11 @@
 								class="text-base-content flex items-center gap-2 font-semibold hover:underline"
 							>
 								{#if video.studio.image}
-									<img src={cacheUrl(video.studio.image.uri)} alt="" class="h-6 w-6 rounded-full object-cover" />
+									<img
+										src={cacheUrl(video.studio.image.uri)}
+										alt=""
+										class="h-6 w-6 rounded-full object-cover"
+									/>
 								{/if}
 								{video.studio.name}
 							</a>
@@ -257,6 +269,7 @@
 								clearLabel={video.studio ? 'Remove the studio' : undefined}
 								onclear={() => void pickStudio(null)}
 								onpick={(studio) => void pickStudio(studio.id)}
+								oncreate={(name) => void createAndPickStudio(name)}
 								onclose={() => (changingStudio = false)}
 							/>
 						{/if}
@@ -278,7 +291,11 @@
 							{video.details}
 						</p>
 						{#if video.details.length > 300}
-							<button type="button" class="text-primary text-sm" onclick={() => (fullDetails = !fullDetails)}>
+							<button
+								type="button"
+								class="text-primary text-sm"
+								onclick={() => (fullDetails = !fullDetails)}
+							>
 								{fullDetails ? 'Show less' : 'Show more'}
 							</button>
 						{/if}
@@ -288,7 +305,11 @@
 				<div class="flex flex-wrap items-center gap-2">
 					<TagChips tags={shownTags} />
 					{#if video.tags.length > MAIN_TAGS}
-						<button type="button" class="text-base-content/60 hover:text-base-content text-xs" onclick={() => (allTags = !allTags)}>
+						<button
+							type="button"
+							class="text-base-content/60 hover:text-base-content text-xs"
+							onclick={() => (allTags = !allTags)}
+						>
 							{allTags ? 'Fewer tags' : `+${video.tags.length - MAIN_TAGS} more`}
 						</button>
 					{/if}
@@ -313,14 +334,18 @@
 			</div>
 		{:else if !loading && !error}
 			<p class="text-base-content/50 text-sm">This video isn't in the library.</p>
-			<button type="button" class="text-primary text-sm" onclick={() => goto('/')}>Back to videos</button>
+			<button type="button" class="text-primary text-sm" onclick={() => goto('/')}
+				>Back to videos</button
+			>
 		{/if}
 	</div>
 
 	{#if related.length > 0}
 		<aside class="flex flex-col gap-4">
 			<h2 class="text-lg font-semibold">Up next</h2>
-			<div class="grid grid-cols-1 gap-x-4 gap-y-6 max-xl:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+			<div
+				class="grid grid-cols-1 gap-x-4 gap-y-6 max-xl:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+			>
 				{#each related as relatedVideo, position (relatedVideo.id)}
 					<SceneCard
 						video={relatedVideo}

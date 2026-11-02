@@ -162,6 +162,8 @@ type Mutation {
   fetchGallery(id: ID!): Gallery
   fetchPerformer(id: ID!, refresh: Boolean): Performer
   unassignPerformer(videoId: ID!, performerId: ID!): Performer
+  createPerformer(name: String!): Performer!
+  createStudio(name: String!): Studio!
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   search(kind: ListKind!, query: String!, limit: Int): Listed!
   editVideo(id: ID!, edit: MediaEdit!): Video

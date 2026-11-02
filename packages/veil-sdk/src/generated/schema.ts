@@ -177,6 +177,8 @@ export interface Mutation {
     fetchGallery: (Gallery | null)
     fetchPerformer: (Performer | null)
     unassignPerformer: (Performer | null)
+    createPerformer: Performer
+    createStudio: Studio
     browse: Listed
     search: Listed
     editVideo: (Video | null)
@@ -1537,6 +1539,8 @@ export interface MutationGenqlSelection{
     fetchGallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
     fetchPerformer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID'], refresh?: (Scalars['Boolean'] | null)} })
     unassignPerformer?: (PerformerGenqlSelection & { __args: {videoId: Scalars['ID'], performerId: Scalars['ID']} })
+    createPerformer?: (PerformerGenqlSelection & { __args: {name: Scalars['String']} })
+    createStudio?: (StudioGenqlSelection & { __args: {name: Scalars['String']} })
     browse?: (ListedGenqlSelection & { __args: {plugin: Scalars['String'], kind: ListKind, query?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     search?: (ListedGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     editVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID'], edit: MediaEdit} })

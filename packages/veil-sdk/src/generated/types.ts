@@ -1702,6 +1702,24 @@ export default {
                     ]
                 }
             ],
+            "createPerformer": [
+                94,
+                {
+                    "name": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
+            "createStudio": [
+                99,
+                {
+                    "name": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
             "browse": [
                 89,
                 {

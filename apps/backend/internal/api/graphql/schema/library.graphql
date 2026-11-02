@@ -46,6 +46,11 @@ extend type Mutation {
   # returned, with the videos only it credited, and what it filled in is
   # read again from their other profiles. Null when no profile moved.
   unassignPerformer(videoId: ID!, performerId: ID!): Performer
+  # The user adding a performer or studio by name, its name locked. A live
+  # one whose name folds to the same is returned instead; a trashed one stays
+  # trashed. Nothing is read from the sites (fetchPerformer does).
+  createPerformer(name: String!): Performer!
+  createStudio(name: String!): Studio!
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results, sites

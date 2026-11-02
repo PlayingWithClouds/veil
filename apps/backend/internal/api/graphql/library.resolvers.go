@@ -126,6 +126,24 @@ func (r *mutationResolver) UnassignPerformer(ctx context.Context, videoID string
 	return r.library.Performer(ctx, otherID)
 }
 
+// CreatePerformer is the resolver for the createPerformer field.
+func (r *mutationResolver) CreatePerformer(ctx context.Context, name string) (*schema.Performer, error) {
+	id, err := r.library.CreateNamed(ctx, schema.RecordKindPerformer, name)
+	if err != nil {
+		return nil, err
+	}
+	return r.library.Performer(ctx, id)
+}
+
+// CreateStudio is the resolver for the createStudio field.
+func (r *mutationResolver) CreateStudio(ctx context.Context, name string) (*schema.Studio, error) {
+	id, err := r.library.CreateNamed(ctx, schema.RecordKindStudio, name)
+	if err != nil {
+		return nil, err
+	}
+	return r.library.Studio(ctx, id)
+}
+
 // Browse is the resolver for the browse field.
 func (r *mutationResolver) Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error) {
 	refs, err := r.pipeline.List(ctx, plugin, listEntity(kind), text(query), number(limit), number(offset))

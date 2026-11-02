@@ -586,6 +586,8 @@ type ComplexityRoot struct {
 		CreateFollow              func(childComplexity int, input model.FollowInput) int
 		CreateLimit               func(childComplexity int, kind schema.LimitKind, window schema.LimitWindow, amount int, action schema.LimitAction, enabled *bool) int
 		CreateNotificationChannel func(childComplexity int, kind schema.ChannelKind, name string, config interface{}, enabled *bool) int
+		CreatePerformer           func(childComplexity int, name string) int
+		CreateStudio              func(childComplexity int, name string) int
 		DeleteAutomation          func(childComplexity int, id string) int
 		DeleteDownload            func(childComplexity int, jobID string) int
 		DeleteFieldDef            func(childComplexity int, id string) int
@@ -1465,6 +1467,8 @@ type MutationResolver interface {
 	FetchGallery(ctx context.Context, id string) (*schema.Gallery, error)
 	FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error)
 	UnassignPerformer(ctx context.Context, videoID string, performerID string) (*schema.Performer, error)
+	CreatePerformer(ctx context.Context, name string) (*schema.Performer, error)
+	CreateStudio(ctx context.Context, name string) (*schema.Studio, error)
 	Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error)
 	Search(ctx context.Context, kind model.ListKind, query string, limit *int) (*model.Listed, error)
 	EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error)
@@ -4109,6 +4113,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateNotificationChannel(childComplexity, args["kind"].(schema.ChannelKind), args["name"].(string), args["config"].(interface{}), args["enabled"].(*bool)), true
+	case "Mutation.createPerformer":
+		if e.ComplexityRoot.Mutation.CreatePerformer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createPerformer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreatePerformer(childComplexity, args["name"].(string)), true
+	case "Mutation.createStudio":
+		if e.ComplexityRoot.Mutation.CreateStudio == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createStudio_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateStudio(childComplexity, args["name"].(string)), true
 	case "Mutation.deleteAutomation":
 		if e.ComplexityRoot.Mutation.DeleteAutomation == nil {
 			break
@@ -9347,6 +9373,11 @@ extend type Mutation {
   # returned, with the videos only it credited, and what it filled in is
   # read again from their other profiles. Null when no profile moved.
   unassignPerformer(videoId: ID!, performerId: ID!): Performer
+  # The user adding a performer or studio by name, its name locked. A live
+  # one whose name folds to the same is returned instead; a trashed one stays
+  # trashed. Nothing is read from the sites (fetchPerformer does).
+  createPerformer(name: String!): Performer!
+  createStudio(name: String!): Studio!
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results, sites
@@ -13371,6 +13402,34 @@ func (ec *executionContext) field_Mutation_createNotificationChannel_args(ctx co
 		return nil, err
 	}
 	args["enabled"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createPerformer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createStudio_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
 	return args, nil
 }
 
@@ -28304,6 +28363,94 @@ func (ec *executionContext) fieldContext_Mutation_unassignPerformer(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_unassignPerformer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createPerformer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createPerformer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreatePerformer(ctx, fc.Args["name"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createPerformer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createPerformer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createStudio(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createStudio(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateStudio(ctx, fc.Args["name"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Studio) graphql.Marshaler {
+			return ec.marshalNStudio2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐStudio(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createStudio(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Studio(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createStudio_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -52426,6 +52573,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unassignPerformer(ctx, field)
 			})
+		case "createPerformer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createPerformer(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createStudio":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createStudio(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "browse":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_browse(ctx, field)
@@ -62420,6 +62581,10 @@ func (ec *executionContext) marshalNNotificationChannel2ᚖgithubᚗcomᚋplayin
 	return ec._NotificationChannel(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPerformer2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx context.Context, sel ast.SelectionSet, v schema.Performer) graphql.Marshaler {
+	return ec._Performer(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformerᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.Performer) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -63451,6 +63616,10 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNStudio2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐStudio(ctx context.Context, sel ast.SelectionSet, v schema.Studio) graphql.Marshaler {
+	return ec._Studio(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNStudio2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐStudioᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.Studio) graphql.Marshaler {

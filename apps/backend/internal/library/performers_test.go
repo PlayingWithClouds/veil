@@ -187,3 +187,34 @@ func TestPerformerAttributeValues(t *testing.T) {
 		t.Error("a number attribute was listed")
 	}
 }
+
+// TestCreateNamed returns a live performer of the same folded name, makes a
+// new one beside a trashed one, and locks the name the user typed.
+func TestCreateNamed(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	ada, err := library.CreateNamed(ctx, schema.RecordKindPerformer, " Ada Lane ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, _ := library.CreateNamed(ctx, schema.RecordKindPerformer, "ada lane")
+	if again != ada {
+		t.Errorf("same name made a second performer: %s, %s", ada, again)
+	}
+	owners, _ := library.Recorder().FieldSources(ctx, schema.RecordKindPerformer, ada)
+	if !hasLockedField(owners, schema.FieldOrdinals["Performer"]["name"]) {
+		t.Errorf("name isn't locked: %+v", owners)
+	}
+
+	if err := library.Trash(ctx, schema.RecordKindPerformer, ada); err != nil {
+		t.Fatal(err)
+	}
+	fresh, _ := library.CreateNamed(ctx, schema.RecordKindPerformer, "Ada Lane")
+	if fresh == "" || fresh == ada {
+		t.Errorf("created %q next to the trashed %s, want a new performer", fresh, ada)
+	}
+
+	if _, err := library.CreateNamed(ctx, schema.RecordKindStudio, "  "); err == nil {
+		t.Error("a blank studio was created")
+	}
+}

@@ -220,6 +220,18 @@ export async function fetchStudios(text = '', limit = 60, offset = 0): Promise<M
 	return data.studios;
 }
 
+/** Adds a performer by name, or returns the one already called that. */
+export async function createPerformer(name: string): Promise<MemberRow> {
+	const data = await gqlClient.mutation({ createPerformer: { __args: { name }, ...MEMBER } });
+	return data.createPerformer;
+}
+
+/** Adds a studio by name, or returns the one already called that. */
+export async function createStudio(name: string): Promise<MemberRow> {
+	const data = await gqlClient.mutation({ createStudio: { __args: { name }, ...MEMBER } });
+	return data.createStudio;
+}
+
 /**
  * Opens a video: reads the pages behind its sources that haven't been read
  * yet (credits, description, streams) and returns it.
@@ -239,7 +251,10 @@ export async function fetchVideoDetail(id: string): Promise<VideoDetail | null> 
  * Sets who's in a video, as the user: the credits are locked, so the sites
  * leave them as set.
  */
-export async function setVideoPerformers(id: string, performerIds: string[]): Promise<VideoDetail | null> {
+export async function setVideoPerformers(
+	id: string,
+	performerIds: string[]
+): Promise<VideoDetail | null> {
 	const data = await gqlClient.mutation({
 		editVideo: { __args: { id, edit: { performerIds } }, ...VIDEO_DETAIL }
 	});
@@ -247,7 +262,10 @@ export async function setVideoPerformers(id: string, performerIds: string[]): Pr
 }
 
 /** Sets a video's studio as the user; null clears it. */
-export async function setVideoStudio(id: string, studioId: string | null): Promise<VideoDetail | null> {
+export async function setVideoStudio(
+	id: string,
+	studioId: string | null
+): Promise<VideoDetail | null> {
 	const data = await gqlClient.mutation({
 		editVideo: { __args: { id, edit: { studioId: studioId ?? '' } }, ...VIDEO_DETAIL }
 	});

@@ -2,7 +2,7 @@
 	Who's in a video, as large cards: the credited performers (✕ takes one
 	off, as "Not her": when a site profile of theirs credited them, that
 	profile moves away), the suggested ones (named in the title, …) to add
-	with a click, and a card to add anyone else. Changes are the user's: the
+	with a click, and a card to add anyone else, or someone new by name. Changes are the user's: the
 	sites leave the credits as set.
 -->
 <script lang="ts">
@@ -11,13 +11,14 @@
 	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import {
+		createPerformer,
 		fetchPerformers,
 		fetchVideoDetail,
 		setVideoPerformers,
 		type MemberRow,
 		type VideoDetail
 	} from '$lib/library';
-	import { unassignPerformer } from '$lib/performers';
+	import { readPerformer, unassignPerformer } from '$lib/performers';
 	import { showUndo } from '$lib/stores/undoToast';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
@@ -95,6 +96,22 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	/**
+	 * Creates a performer by name and credits them, then has the sites look
+	 * for their profile in the background; the video shows what they found.
+	 */
+	async function create(name: string) {
+		adding = false;
+		const videoId = video.id;
+		const performer = await createPerformer(name);
+		await add(performer);
+		await readPerformer(performer.id);
+		// The page may show another video by now.
+		if (video.id !== videoId) return;
+		const saved = await fetchVideoDetail(videoId);
+		if (saved) onchange(saved);
 	}
 
 	/** Takes a performer off the video; a profile that credited them moves away. */
@@ -205,6 +222,7 @@
 			}))}
 			taken={video.performers.map((performer) => performer.id)}
 			onpick={add}
+			oncreate={(name) => void create(name)}
 			onclose={() => (adding = false)}
 		/>
 	{/if}

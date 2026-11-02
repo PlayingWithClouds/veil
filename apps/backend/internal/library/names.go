@@ -2,11 +2,13 @@ package library
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/names"
 	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -59,6 +61,32 @@ func (l *Library) TagIDs(ctx context.Context, tagNames []string) ([]string, erro
 // a blank name.
 func (l *Library) StudioID(ctx context.Context, name string) (string, error) {
 	return l.findOrCreateNamed(ctx, tableStudio, name)
+}
+
+// CreateNamed is the user adding a performer or studio by name: it returns
+// the live one with that folded name, else a new one with the name locked.
+// A trashed one of the same name stays in the trash, unlike credits by name.
+func (l *Library) CreateNamed(ctx context.Context, kind schema.RecordKind, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	key := names.Key(name)
+	if key == "" {
+		return "", fmt.Errorf("a %s needs a name", kind)
+	}
+	table := tableFor(kind)
+	existing, err := l.database.Strings(ctx,
+		`SELECT "id" FROM `+db.Quote(table)+` WHERE "nameKey" = $key AND "deletedAt" IS NULL ORDER BY "createdAt" LIMIT 1`,
+		db.Vars{"key": key})
+	if err != nil {
+		return "", err
+	}
+	if len(existing) > 0 {
+		return existing[0], nil
+	}
+	id, err := l.database.Insert(ctx, table, newNamedRecord(table, name, key))
+	if err != nil {
+		return "", err
+	}
+	return id, l.recorder.Claim(ctx, kind, id, []string{"name"}, provenance.User())
 }
 
 // findOrCreateNamed returns the id of the performer, studio or tag whose
