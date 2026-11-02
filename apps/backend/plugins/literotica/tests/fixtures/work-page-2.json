@@ -1,0 +1,439 @@
+{
+ "meta": {
+  "pages_count": 4
+ },
+ "submission": {
+  "allow_vote": 1,
+  "allow_download": 0,
+  "author": {
+   "userid": 7497363,
+   "username": "2charlie"
+  },
+  "authorname": "2charlie",
+  "category_info": {
+   "type": "story",
+   "pageUrl": "science-fiction-fantasy"
+  },
+  "category": 38,
+  "comment_count": 1,
+  "contest_winner": 0,
+  "date_approve": "11/02/2026",
+  "description": "Dutch turns to the i'Shan'tal Library for answers.",
+  "enable_comments": 1,
+  "favorite_count": 9,
+  "id": 4583191,
+  "is_hot": true,
+  "is_new": true,
+  "language": 1,
+  "newlanguage": 1,
+  "rank": null,
+  "rate_all": 4.72,
+  "rate_count": 96,
+  "reading_lists_count": 16,
+  "tags": [
+   {
+    "id": 917463,
+    "tag": "stonerager",
+    "is_banned": 0
+   },
+   {
+    "id": 1957,
+    "tag": "harem",
+    "is_banned": 0
+   },
+   {
+    "id": 8635,
+    "tag": "sci fi",
+    "is_banned": 0
+   },
+   {
+    "id": 1646,
+    "tag": "odyssey",
+    "is_banned": 0
+   }
+  ],
+  "title": "Stonerager Chronicles Bk. 2 Ch. 12",
+  "type": "story",
+  "url": "stonerager-chronicles-bk-2-ch-12",
+  "view_count": 1689,
+  "writers_pick": false,
+  "status": "v",
+  "series": {
+   "meta": {
+    "id": 494107485,
+    "title": "Stonerager Chronicles",
+    "url": "stonerager-chronicles",
+    "created_at": "10/26/2024",
+    "updated_at": "11/02/2026",
+    "order": [
+     3759636,
+     3775437,
+     3788724,
+     3811899,
+     3823434,
+     3843180,
+     3859485,
+     3881145,
+     3901071,
+     3918006,
+     3932802,
+     3950946,
+     3993300,
+     4025973,
+     4046871,
+     4076442,
+     4092831,
+     4141881,
+     4174824,
+     4210464,
+     4242798,
+     4278465,
+     4315737,
+     4350096,
+     4381950,
+     4442908,
+     4493197,
+     4547359,
+     4583191
+    ]
+   },
+   "items": [
+    {
+     "id": 3759636,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 01",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-01"
+    },
+    {
+     "id": 3775437,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 02",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-02"
+    },
+    {
+     "id": 3788724,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 03",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-03"
+    },
+    {
+     "id": 3811899,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 04",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-04"
+    },
+    {
+     "id": 3823434,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 05",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-05"
+    },
+    {
+     "id": 3843180,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 06",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-06"
+    },
+    {
+     "id": 3859485,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 07",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-07"
+    },
+    {
+     "id": 3881145,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 08",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-08"
+    },
+    {
+     "id": 3901071,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 09",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-09"
+    },
+    {
+     "id": 3918006,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 10",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-10"
+    },
+    {
+     "id": 3932802,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 11",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-11"
+    },
+    {
+     "id": 3950946,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 12",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-12"
+    },
+    {
+     "id": 3993300,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 13",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-13"
+    },
+    {
+     "id": 4025973,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 14",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-14"
+    },
+    {
+     "id": 4046871,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 15",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-15"
+    },
+    {
+     "id": 4076442,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 16",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-16"
+    },
+    {
+     "id": 4092831,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles - Ch. 17",
+     "type": "story",
+     "url": "stonerager-chronicles-ch-17"
+    },
+    {
+     "id": 4141881,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 01",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-01"
+    },
+    {
+     "id": 4174824,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 02",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-02"
+    },
+    {
+     "id": 4210464,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 03",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-03"
+    },
+    {
+     "id": 4242798,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 04",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-04"
+    },
+    {
+     "id": 4278465,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 05",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-05"
+    },
+    {
+     "id": 4315737,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 06",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-06"
+    },
+    {
+     "id": 4350096,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 07",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-07"
+    },
+    {
+     "id": 4381950,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 08",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-08-1"
+    },
+    {
+     "id": 4442908,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 09",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-09"
+    },
+    {
+     "id": 4493197,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 02 Ch. 10",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-02-ch-10"
+    },
+    {
+     "id": 4547359,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 2 Ch. 11",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-2-ch-11"
+    },
+    {
+     "id": 4583191,
+     "category_info": {
+      "type": "story",
+      "pageUrl": "science-fiction-fantasy"
+     },
+     "category": 38,
+     "title": "Stonerager Chronicles Bk. 2 Ch. 12",
+     "type": "story",
+     "url": "stonerager-chronicles-bk-2-ch-12"
+    }
+   ]
+  },
+  "words_count": 9946,
+  "followedAuthors": [
+   3669699,
+   1733562,
+   3706711,
+   3875896,
+   3694134,
+   4930320,
+   5440967,
+   5619173,
+   4963734,
+   5397996
+  ],
+  "reading_time": 49,
+  "contests": []
+ },
+ "pageText": "Pheebs stopped him cold with a hard stare. \"Bram Stoenager,\" she began in an icy tone of voice, \"it is not your responsibility to take this risk, while depriving your wives of sharing it with you.\"\r\n\r\n\"I disagree,\" he stated firmly, meeting her stare. \"Your protection, and by extension, that of my offspring, is of paramount importance to me. Everything else is secondary.\"\r\n\r\nPheebs scowled at him for a long moment before her expression changed, looking more accusatory now. Turning to regard her digital doppelganger, she jabbed a finger at the hologram. \"And what are you doing to protect yourself, hmmm?\" She moved close enough that her finger was jabbing into the holographic image of herself. \"What measures have you found to prevent your neural pathways from being corrupted, like with your counterpart on the <em>Zephyr</em>?\"\r\n\r\nPrime's holoimage looked like she'd been caught out. Glancing toward Dutch, she returned her gaze to her human self. \"I - \"\r\n\r\n\"That's what I thought,\" Pheebs growled, waving her hand dismissively through the image, turning to stab her finger at Dutch. \"We need to rethink this, dear.\" She shook her head, lowering her hand to absent-mindedly rub her lower abd"
+}

@@ -1,0 +1,122 @@
+[
+ {
+  "allow_vote": 1,
+  "allow_download": 0,
+  "author": {
+   "userid": 7497363,
+   "username": "2charlie"
+  },
+  "authorname": "2charlie",
+  "category_info": {
+   "type": "story",
+   "pageUrl": "science-fiction-fantasy"
+  },
+  "category": 38,
+  "comment_count": 37,
+  "contest_winner": 0,
+  "date_approve": "10/26/2024",
+  "description": "Astronaut deals with being flung into the far future.",
+  "enable_comments": 1,
+  "favorite_count": 109,
+  "id": 3759636,
+  "is_hot": true,
+  "is_new": false,
+  "language": 1,
+  "newlanguage": 1,
+  "rank": null,
+  "rate_all": 4.76,
+  "rate_count": 1500,
+  "reading_lists_count": 170,
+  "tags": [
+   {
+    "id": 1212,
+    "tag": "science fiction",
+    "is_banned": 0
+   }
+  ],
+  "title": "Stonerager Chronicles - Ch. 01",
+  "type": "story",
+  "url": "stonerager-chronicles-ch-01",
+  "view_count": 36324,
+  "writers_pick": false,
+  "status": "v",
+  "series": [],
+  "words_count": 12606
+ },
+ {
+  "allow_vote": 1,
+  "allow_download": 0,
+  "author": {
+   "userid": 7497363,
+   "username": "2charlie"
+  },
+  "authorname": "2charlie",
+  "category_info": {
+   "type": "story",
+   "pageUrl": "science-fiction-fantasy"
+  },
+  "category": 38,
+  "comment_count": 16,
+  "contest_winner": 0,
+  "date_approve": "11/11/2024",
+  "description": "Dutch and Pheebs learn what happened to Earth.",
+  "enable_comments": 1,
+  "favorite_count": 40,
+  "id": 3775437,
+  "is_hot": true,
+  "is_new": false,
+  "language": 1,
+  "newlanguage": 1,
+  "rank": null,
+  "rate_all": 4.76,
+  "rate_count": 1255,
+  "reading_lists_count": 23,
+  "tags": [],
+  "title": "Stonerager Chronicles - Ch. 02",
+  "type": "story",
+  "url": "stonerager-chronicles-ch-02",
+  "view_count": 15771,
+  "writers_pick": false,
+  "status": "v",
+  "series": [],
+  "words_count": 13760
+ },
+ {
+  "allow_vote": 1,
+  "allow_download": 0,
+  "author": {
+   "userid": 7497363,
+   "username": "2charlie"
+  },
+  "authorname": "2charlie",
+  "category_info": {
+   "type": "story",
+   "pageUrl": "science-fiction-fantasy"
+  },
+  "category": 38,
+  "comment_count": 10,
+  "contest_winner": 0,
+  "date_approve": "11/24/2024",
+  "description": "Dutch has to decide what to do with his prisoners.",
+  "enable_comments": 1,
+  "favorite_count": 42,
+  "id": 3788724,
+  "is_hot": true,
+  "is_new": false,
+  "language": 1,
+  "newlanguage": 1,
+  "rank": null,
+  "rate_all": 4.74,
+  "rate_count": 1223,
+  "reading_lists_count": 27,
+  "tags": [],
+  "title": "Stonerager Chronicles - Ch. 03",
+  "type": "story",
+  "url": "stonerager-chronicles-ch-03",
+  "view_count": 14476,
+  "writers_pick": false,
+  "status": "v",
+  "series": [],
+  "words_count": 12056
+ }
+]

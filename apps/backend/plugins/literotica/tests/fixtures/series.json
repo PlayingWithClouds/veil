@@ -1,0 +1,23 @@
+{
+ "success": true,
+ "data": {
+  "id": 494107485,
+  "user_id": 7497363,
+  "url": "stonerager-chronicles",
+  "created_at": "2024-10-27T03:23:24Z",
+  "modified_at": "2026-11-02T06:00:00Z",
+  "title": "Stonerager Chronicles",
+  "language": 1,
+  "state": "in_progress",
+  "description": "22nd Century Astronaut finds himself nearly 1100 years in the future.",
+  "view_count": 130420,
+  "comments_count": 161,
+  "favorites_count": 569,
+  "lists_count": 367,
+  "user": {
+   "username": "2charlie"
+  },
+  "work_count": 29,
+  "introduction": "Dutch Stoenager is an astronaut and test pilot who finds himself in a far future with no home, and in the middle of a war with an implacable enemy. Forced to wage "
+ }
+}
