@@ -8,6 +8,7 @@ import type {
   Download,
   Image,
   DiscoveredItem,
+  SceneMarkerInput,
   ScenePerformer,
   StudioRef,
 } from "@playingwithclouds/veil-sdk";
@@ -43,6 +44,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   };
   const studio = extractStudio(root);
   if (studio) scene.studio = studio;
+  const markers = extractMarkers(root);
+  if (markers.length > 0) scene.markers = markers;
 
   return [{ type: "scene", scene }];
 }
@@ -166,4 +169,25 @@ function pushName(raw: string, names: string[], seen: Set<string>): void {
   if (!name || seen.has(name.toLowerCase())) return;
   seen.add(name.toLowerCase());
   names.push(name);
+}
+
+/**
+ * The "Skip to:" buttons under the player: the positions the site marked
+ * (cowgirl, blowjob, …) with their start second. Point markers, since the site
+ * gives no end. Names are shown title-cased there, so they are here.
+ */
+export function extractMarkers(root: HTMLElement): SceneMarkerInput[] {
+  const markers: SceneMarkerInput[] = [];
+  for (const button of root.querySelectorAll(".js-scene-position")) {
+    const seconds = Number(button.getAttribute("data-timestamp"));
+    const tag = titleCase(decodeEntities(button.text).trim());
+    if (tag === "" || !Number.isFinite(seconds) || seconds < 0) continue;
+    markers.push({ tag, seconds });
+  }
+  return markers;
+}
+
+/** Capitalises each word ("reverse cowgirl" → "Reverse Cowgirl"). */
+function titleCase(text: string): string {
+  return text.replace(/(^|\s)(\S)/g, (_match, space: string, letter: string) => space + letter.toUpperCase());
 }

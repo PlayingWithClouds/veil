@@ -10,6 +10,7 @@ import {
   extractStudio,
   extractDetails,
   extractDate,
+  extractMarkers,
 } from "./initials.ts";
 import type {
   ScrapeResult,
@@ -51,6 +52,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
 
   const comments = extractComments(initials);
   if (comments.length > 0) scene.comments = comments;
+  const markers = extractMarkers(initials);
+  if (markers.length > 0) scene.markers = markers;
 
   return [{ type: "scene", scene }];
 }

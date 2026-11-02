@@ -3,6 +3,7 @@ import type { DiscoveredItem, Download, ScenePerformer, Scene, ScrapeResult } fr
 import { fetchText, parseIsoDuration, performerFromLink, studioFromLink } from "./http.ts";
 import { extractComments } from "./comments.ts";
 import { parseCards } from "./listing.ts";
+import { actionTagMarkers } from "./markers.ts";
 import { extractFlashvars, extractVideoObject } from "./page.ts";
 import { requireSite, sceneExternalId, type Site } from "./sites.ts";
 
@@ -45,6 +46,10 @@ export function buildScene(site: Site, id: string, html: string): Scene {
   scene.downloads = pageDownloads(site, scene.source_url);
   const comments = extractComments(doc);
   if (comments.length > 0) scene.comments = comments;
+  if (flashvars) {
+    const markers = actionTagMarkers(flashvars.actionTags);
+    if (markers.length > 0) scene.markers = markers;
+  }
   return scene;
 }
 

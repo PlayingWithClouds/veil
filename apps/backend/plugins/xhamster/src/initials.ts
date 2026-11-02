@@ -1,4 +1,4 @@
-import type { ScenePerformer, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { SceneMarkerInput, ScenePerformer, StudioRef } from "@playingwithclouds/veil-sdk";
 
 const INITIALS_MARKER = "window.initials=";
 
@@ -32,6 +32,13 @@ export interface VideoInitials {
   commentsComponent?: { commentsList?: { items?: RawComment[] } };
   videoTagsComponent?: { tags?: VideoTag[] };
   videoModel?: { description?: string; created?: number };
+  xplayerPluginSettings?: { actionsData?: { actions?: RawAction[] } };
+}
+
+/** One timed act in the player's action bar: its name and start second. */
+export interface RawAction {
+  label?: string;
+  time?: number;
 }
 
 /**
@@ -98,6 +105,23 @@ export function extractStudio(initials: VideoInitials | undefined): StudioRef | 
 /** A StudioRef named after the chip, with its page URL as source_url. */
 function studioFromTag(tag: VideoTag): StudioRef {
   return { name: tag.name, source_url: tag.url };
+}
+
+/**
+ * The acts the uploader marked on the timeline (the player's action bar), as
+ * point markers: the page gives start seconds only.
+ */
+export function extractMarkers(initials: VideoInitials | undefined): SceneMarkerInput[] {
+  if (!initials || !initials.xplayerPluginSettings || !initials.xplayerPluginSettings.actionsData) return [];
+  const actions = initials.xplayerPluginSettings.actionsData.actions;
+  if (!Array.isArray(actions)) return [];
+  const markers: SceneMarkerInput[] = [];
+  for (const action of actions) {
+    const tag = (action.label || "").trim();
+    if (tag === "" || typeof action.time !== "number" || action.time < 0) continue;
+    markers.push({ tag, seconds: action.time });
+  }
+  return markers;
 }
 
 /** The uploader's free-text description, if non-empty. */

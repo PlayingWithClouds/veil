@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-spankbang",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Veil plugin for spankbang.com (needs FlareSolverr)",
   "private": true,
   "type": "module",
