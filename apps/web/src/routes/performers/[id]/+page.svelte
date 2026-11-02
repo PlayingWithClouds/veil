@@ -38,7 +38,13 @@
 	import RecordMedia from '$lib/components/RecordMedia.svelte';
 	import PerformerEditor from '$lib/components/PerformerEditor.svelte';
 	import PerformerMerge from '$lib/components/PerformerMerge.svelte';
-	import type { MemberRow, VideoCardRow } from '$lib/library';
+	import SceneCard from '$lib/components/SceneCard.svelte';
+	import {
+		fetchVideoDetail,
+		setVideoPerformers,
+		type MemberRow,
+		type VideoCardRow
+	} from '$lib/library';
 	import {
 		fetchPerformer,
 		unassignPerformer,
@@ -59,8 +65,14 @@
 	import { capitalize } from '$lib/performerPresets';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
-	import { performerUrl } from '$lib/routes';
-	import { trackPerformer } from '$lib/faces';
+	import { performerUrl, videoUrl } from '$lib/routes';
+	import {
+		FACE_MODEL,
+		fetchFaceMatches,
+		learnFaces,
+		trackPerformer,
+		type FaceMatchRow
+	} from '$lib/faces';
 
 	// Labels for the facts a performer page shows, in this order.
 	const ATTRIBUTE_LABELS: [keyof PerformerAttributes, string][] = [
@@ -103,6 +115,9 @@
 	let menuAnchor = $state<HTMLElement | null>(null);
 	let choosingPicture = $state(false);
 	let fetching = $state<PerformerFetching | null>(null);
+	// Uncredited videos their face was found in, minus the ones waved away here.
+	let faceMatches = $state<FaceMatchRow[]>([]);
+	let dismissedMatches = $state<string[]>([]);
 	// Bumped to reload the videos as more come in.
 	let mediaKey = $state(0);
 	// Counts watches started, so a watch for an earlier page or favourite stops.
@@ -110,10 +125,15 @@
 
 	// Width of a card in the "Could be the same person" row (px).
 	const DUPLICATE_WIDTH = 140;
+	// Width of a card in the "Probably also in" row (px).
+	const FACE_MATCH_WIDTH = 260;
 	// How often the page asks what's being fetched while something is.
 	const WATCH_INTERVAL_MS = 3000;
 
 	let id = $derived(page.params.id ?? '');
+	let shownFaceMatches = $derived(
+		faceMatches.filter((match) => !dismissedMatches.includes(match.video.id))
+	);
 	let facts = $derived(
 		ATTRIBUTE_LABELS.flatMap(([key, label]) => {
 			const value = performer?.attributes[key];
@@ -135,6 +155,8 @@
 		performer = null;
 		duplicates = [];
 		merges = [];
+		faceMatches = [];
+		dismissedMatches = [];
 		try {
 			performer = await fetchPerformer(performerId);
 		} finally {
@@ -143,9 +165,41 @@
 		if (!performer) return;
 		void loadDuplicates(performerId);
 		void loadMerges(performerId);
-		// Learns their face from their pictures, for the face matches on videos.
-		void trackPerformer(performerId);
+		void loadFaceMatches(performerId);
+		void learnFromPictures(performerId);
 		await read(performerId, false);
+	}
+
+	/**
+	 * Learns their face from their unscanned pictures, for the face matches
+	 * on videos, and lists the videos it's then found in.
+	 */
+	async function learnFromPictures(performerId: string) {
+		const outcome = await trackPerformer(performerId);
+		if (outcome === 'scanned') await loadFaceMatches(performerId);
+	}
+
+	/** Loads the uncredited videos their face was probably found in. */
+	async function loadFaceMatches(performerId: string) {
+		const found = await fetchFaceMatches(performerId);
+		if (performerId === id) faceMatches = found;
+	}
+
+	/**
+	 * Credits them on a video their face was found in, then learns their
+	 * face from it, which can find them in more videos.
+	 */
+	async function creditFaceMatch(match: FaceMatchRow) {
+		if (!performer) return;
+		const performerId = performer.id;
+		dismissedMatches = [...dismissedMatches, match.video.id];
+		const shown = await fetchVideoDetail(match.video.id);
+		if (!shown) return;
+		const ids = [...shown.performers.map((credited) => credited.id), performerId];
+		await setVideoPerformers(shown.id, ids);
+		mediaKey++;
+		const learned = await learnFaces(shown.id, FACE_MODEL);
+		if (learned > 0) await loadFaceMatches(performerId);
 	}
 
 	/** Reads the performer's site pages (all of them with refresh) and shows the result. */
@@ -227,7 +281,9 @@
 	function videoActions(video: VideoCardRow, remove: () => void): SheetAction[] {
 		if (!performer) return [];
 		const name = performer.name;
-		return [{ label: `Not ${name}`, icon: UserMinusIcon, run: () => void notInVideo(video, remove) }];
+		return [
+			{ label: `Not ${name}`, icon: UserMinusIcon, run: () => void notInVideo(video, remove) }
+		];
 	}
 
 	/**
@@ -445,8 +501,11 @@
 				{#if performer.userState.blocked}
 					<div class="bg-base-200 flex items-center gap-3 rounded-lg px-3 py-2 text-sm">
 						<ProhibitIcon size={16} class="text-error" />
-						<span class="flex-1">Blocked: {performer.name} and their videos are hidden everywhere.</span>
-						<button type="button" class="btn btn-xs" onclick={() => setBlock(false)}>Unblock</button>
+						<span class="flex-1"
+							>Blocked: {performer.name} and their videos are hidden everywhere.</span
+						>
+						<button type="button" class="btn btn-xs" onclick={() => setBlock(false)}>Unblock</button
+						>
 					</div>
 				{/if}
 
@@ -554,7 +613,11 @@
 					<div class="flex flex-col gap-2">
 						<MemberCard kind="performer" member={duplicate} />
 						<span class="flex gap-1">
-							<button type="button" class="btn btn-sm flex-1" onclick={() => void mergeNow(duplicate)}>
+							<button
+								type="button"
+								class="btn btn-sm flex-1"
+								onclick={() => void mergeNow(duplicate)}
+							>
 								<UsersThreeIcon size={16} /> Merge
 							</button>
 							<button
@@ -580,6 +643,44 @@
 				{/if}
 			{/snippet}
 		</Shelf>
+
+		<!-- The face matches: suggestions only, nothing is credited without a click. -->
+		<div id="face-matches">
+			<Shelf
+				title="Probably also in"
+				items={shownFaceMatches}
+				key={(match) => match.video.id}
+				itemWidth={FACE_MATCH_WIDTH}
+			>
+				{#snippet card(match)}
+					<div class="flex flex-col gap-2">
+						<SceneCard
+							video={match.video}
+							note={`Face match ${Math.round(match.similarity * 100)}%`}
+							onclick={() => goto(videoUrl(match.video.id))}
+						/>
+						<span class="flex gap-1">
+							<button
+								type="button"
+								class="btn btn-sm flex-1"
+								onclick={() => void creditFaceMatch(match)}
+							>
+								Add {performer?.name}
+							</button>
+							<button
+								type="button"
+								class="btn btn-ghost btn-sm btn-square"
+								aria-label="Not {performer?.name}"
+								title="Not {performer?.name}"
+								onclick={() => (dismissedMatches = [...dismissedMatches, match.video.id])}
+							>
+								<XIcon size={16} />
+							</button>
+						</span>
+					</div>
+				{/snippet}
+			</Shelf>
+		</div>
 
 		{#key mediaKey}
 			<RecordMedia

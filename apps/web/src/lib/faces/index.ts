@@ -10,5 +10,11 @@ export {
 	type FaceTracking,
 	type TrackOutcome
 } from './track';
-export { fetchVideoFaces, type VideoFaceGuesses } from './api';
+export {
+	fetchVideoFaces,
+	fetchFaceMatches,
+	learnFaces,
+	type VideoFaceGuesses,
+	type FaceMatchRow
+} from './api';
 export { FACE_MODEL } from './engine';

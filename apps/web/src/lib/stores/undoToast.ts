@@ -8,6 +8,8 @@ const TOAST_MS = 6000;
 export interface UndoToast {
 	message: string;
 	undo?: () => void;
+	// A page to go on to, e.g. where the suggestions it mentions are.
+	link?: { label: string; href: string };
 	// Runs when the toast goes away without Undo, e.g. to send what was held back.
 	settle?: () => void;
 }

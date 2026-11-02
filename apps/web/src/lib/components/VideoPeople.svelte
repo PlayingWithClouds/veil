@@ -22,7 +22,14 @@
 	import { showUndo } from '$lib/stores/undoToast';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
-	import { faceTracking, type FaceTracking, type VideoFaceGuesses } from '$lib/faces';
+	import {
+		FACE_MODEL,
+		faceTracking,
+		fetchFaceMatches,
+		learnFaces,
+		type FaceTracking,
+		type VideoFaceGuesses
+	} from '$lib/faces';
 
 	/** A performer as a suggestion shows them. */
 	interface SuggestedPerformer {
@@ -84,18 +91,37 @@
 		);
 	}
 
-	/** Credits a performer on the video. */
-	async function add(performer: { id: string }) {
+	/** Credits a performer on the video, then learns their face from it. */
+	async function add(performer: { id: string; name: string }) {
 		adding = false;
 		if (video.performers.some((credited) => credited.id === performer.id)) return;
 		busy = true;
 		try {
 			const ids = [...video.performers.map((credited) => credited.id), performer.id];
 			const saved = await setVideoPerformers(video.id, ids);
-			if (saved) onchange(saved);
+			if (!saved) return;
+			onchange(saved);
+			void suggestElsewhere(saved.id, performer);
 		} finally {
 			busy = false;
 		}
+	}
+
+	/**
+	 * Learns the video's credited faces again and, when that taught the app
+	 * a face, says how many other videos probably show the performer.
+	 */
+	async function suggestElsewhere(videoId: string, performer: { id: string; name: string }) {
+		const learned = await learnFaces(videoId, FACE_MODEL);
+		if (learned === 0) return;
+		const matches = await fetchFaceMatches(performer.id);
+		if (matches.length === 0) return;
+		let count = `${matches.length} other videos`;
+		if (matches.length === 1) count = 'one other video';
+		showUndo({
+			message: `${performer.name} is probably also in ${count}`,
+			link: { label: 'Show', href: `${performerUrl(performer.id)}#face-matches` }
+		});
 	}
 
 	/**

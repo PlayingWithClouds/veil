@@ -3,8 +3,9 @@
  * or performer, recording scans, fingerprints and trickplay, and reading the
  * guesses of who is in a video.
  */
-import type { FieldsSelection, VideoFaces } from '@playingwithclouds/veil-sdk/generated';
+import type { FaceMatch, FieldsSelection, VideoFaces } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
+import { VIDEO_CARD } from '$lib/library';
 import type { ScannedFace } from './plan';
 
 /**
@@ -143,6 +144,19 @@ export async function setTrickplay(videoId: string, sheet: TrickplaySheet): Prom
 	await gqlClient.mutation({
 		setTrickplay: { __args: { videoId, trickplay: { sheetUris: [uri], ...grid } }, id: true }
 	});
+}
+
+const FACE_MATCH = { video: VIDEO_CARD, similarity: true } as const;
+
+/** A scanned video that probably shows a performer it doesn't credit. */
+export type FaceMatchRow = FieldsSelection<FaceMatch, typeof FACE_MATCH>;
+
+/** The scanned videos not crediting the performer that probably show them, best first. */
+export async function fetchFaceMatches(performerId: string, limit = 40): Promise<FaceMatchRow[]> {
+	const data = await gqlClient.query({
+		performerFaceMatches: { __args: { performerId, limit }, ...FACE_MATCH }
+	});
+	return data.performerFaceMatches;
 }
 
 /**
