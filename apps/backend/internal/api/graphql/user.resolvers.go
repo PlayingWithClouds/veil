@@ -119,6 +119,12 @@ func (r *queryResolver) RecentSearches(ctx context.Context, limit *int) ([]strin
 	return r.user.RecentSearches(ctx, size)
 }
 
+// SitePreferences is the resolver for the sitePreferences field.
+func (r *queryResolver) SitePreferences(ctx context.Context) ([]*user.SitePreference, error) {
+	preferences, err := r.user.SitePreferences(ctx)
+	return pointers(preferences), err
+}
+
 // SavedFilters is the resolver for the savedFilters field.
 func (r *queryResolver) SavedFilters(ctx context.Context) ([]*schema.SavedFilter, error) {
 	filters, err := r.user.SavedFilters(ctx)

@@ -16,7 +16,7 @@
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import { fetchPerformers, fetchVideosMatching, type MemberRow, type VideoCardRow } from '$lib/library';
 	import { fetchRecommendedVideos } from '$lib/home';
-	import { searchPage, type SearchBatchRow, type SearchPage } from '$lib/search';
+	import { searchPage, sitePreferences, type SearchBatchRow, type SearchPage } from '$lib/search';
 	import { SearchLayout, TOP_PLACES } from '$lib/searchLayout';
 	import { logEvent, resetShown } from '$lib/events';
 	import { videoUrl } from '$lib/routes';
@@ -133,7 +133,10 @@
 		generation++;
 		resetShown('search');
 		logEvent({ kind: 'search', data: { text: searchText } });
-		layout = new SearchLayout<VideoCardRow>();
+		const started = generation;
+		const preference = await sitePreferences();
+		if (started !== generation) return;
+		layout = new SearchLayout<VideoCardRow>(preference);
 		section = sectionSize();
 		videos = [];
 		rows = [];

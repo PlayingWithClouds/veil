@@ -89,6 +89,7 @@ type Query {
   events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
   eventCount(filter: EventFilter): Int!
   recentSearches(limit: Int): [String!]!
+  sitePreferences: [SitePreference!]!
   savedFilters: [SavedFilter!]!
   savedFilter(id: ID!): SavedFilter
 }
@@ -1479,6 +1480,13 @@ enum EventKind {
   heatSpan
   skip
   like
+}
+
+type SitePreference {
+  plugin: String!
+  shown: Int!
+  chosen: Int!
+  score: Float!
 }
 
 type Event {

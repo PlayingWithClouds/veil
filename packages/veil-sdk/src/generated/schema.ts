@@ -103,6 +103,7 @@ export interface Query {
     events: Event[]
     eventCount: Scalars['Int']
     recentSearches: Scalars['String'][]
+    sitePreferences: SitePreference[]
     savedFilters: SavedFilter[]
     savedFilter: (SavedFilter | null)
     __typename: 'Query'
@@ -1227,6 +1228,14 @@ export interface UserState {
 
 export type EventKind = 'view' | 'progress' | 'finish' | 'o' | 'search' | 'impression' | 'choice' | 'heatSpan' | 'skip' | 'like'
 
+export interface SitePreference {
+    plugin: Scalars['String']
+    shown: Scalars['Int']
+    chosen: Scalars['Int']
+    score: Scalars['Float']
+    __typename: 'SitePreference'
+}
+
 export interface Event {
     id: Scalars['ID']
     at: Scalars['String']
@@ -1380,6 +1389,7 @@ export interface QueryGenqlSelection{
     events?: (EventGenqlSelection & { __args?: {filter?: (EventFilter | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     eventCount?: { __args: {filter?: (EventFilter | null)} } | boolean | number
     recentSearches?: { __args: {limit?: (Scalars['Int'] | null)} } | boolean | number
+    sitePreferences?: SitePreferenceGenqlSelection
     savedFilters?: SavedFilterGenqlSelection
     savedFilter?: (SavedFilterGenqlSelection & { __args: {id: Scalars['ID']} })
     __typename?: boolean | number
@@ -2604,6 +2614,15 @@ export interface UserStateGenqlSelection{
 
 export interface UserStateFilter {kind?: (RecordKind | null),favorite?: (Scalars['Boolean'] | null),blocked?: (Scalars['Boolean'] | null),rated?: (Scalars['Boolean'] | null),viewed?: (Scalars['Boolean'] | null)}
 
+export interface SitePreferenceGenqlSelection{
+    plugin?: boolean | number
+    shown?: boolean | number
+    chosen?: boolean | number
+    score?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface EventGenqlSelection{
     id?: boolean | number
     at?: boolean | number
@@ -3372,6 +3391,14 @@ export interface SavedFilterGenqlSelection{
     export const isUserState = (obj?: { __typename?: any } | null): obj is UserState => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isUserState"')
       return UserState_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SitePreference_possibleTypes: string[] = ['SitePreference']
+    export const isSitePreference = (obj?: { __typename?: any } | null): obj is SitePreference => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSitePreference"')
+      return SitePreference_possibleTypes.includes(obj.__typename)
     }
     
 

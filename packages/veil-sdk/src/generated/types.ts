@@ -32,7 +32,7 @@ export default {
         136,
         137,
         143,
-        147
+        148
     ],
     "types": {
         "Query": {
@@ -250,7 +250,7 @@ export default {
                 48,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -276,7 +276,7 @@ export default {
                 50,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -391,7 +391,7 @@ export default {
                 38,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -405,7 +405,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -413,7 +413,7 @@ export default {
                 78,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -433,7 +433,7 @@ export default {
                 47,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -447,7 +447,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -557,7 +557,7 @@ export default {
                 140,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -571,7 +571,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -579,7 +579,7 @@ export default {
                 66,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -593,7 +593,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -610,7 +610,7 @@ export default {
                 95,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -624,7 +624,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -641,7 +641,7 @@ export default {
                 97,
                 {
                     "filter": [
-                        153
+                        154
                     ],
                     "limit": [
                         3
@@ -655,7 +655,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -856,10 +856,10 @@ export default {
                 }
             ],
             "events": [
-                144,
+                145,
                 {
                     "filter": [
-                        146
+                        147
                     ],
                     "limit": [
                         3
@@ -873,7 +873,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        146
+                        147
                     ]
                 }
             ],
@@ -885,11 +885,14 @@ export default {
                     ]
                 }
             ],
+            "sitePreferences": [
+                144
+            ],
             "savedFilters": [
-                154
+                155
             ],
             "savedFilter": [
-                154,
+                155,
                 {
                     "id": [
                         2,
@@ -2229,10 +2232,10 @@ export default {
                 }
             ],
             "recordEvent": [
-                144,
+                145,
                 {
                     "event": [
-                        145,
+                        146,
                         "EventInput!"
                     ]
                 }
@@ -2241,7 +2244,7 @@ export default {
                 3,
                 {
                     "events": [
-                        145,
+                        146,
                         "[EventInput!]!"
                     ]
                 }
@@ -2256,7 +2259,7 @@ export default {
                 }
             ],
             "saveFilter": [
-                154,
+                155,
                 {
                     "id": [
                         2
@@ -2266,7 +2269,7 @@ export default {
                         "String!"
                     ],
                     "filter": [
-                        153,
+                        154,
                         "FilterInput!"
                     ],
                     "pinned": [
@@ -2338,7 +2341,7 @@ export default {
                         "[String!]"
                     ],
                     "filter": [
-                        153
+                        154
                     ]
                 }
             ],
@@ -2354,7 +2357,7 @@ export default {
                 1
             ],
             "filter": [
-                152
+                153
             ],
             "targetKind": [
                 135
@@ -2392,7 +2395,7 @@ export default {
                 1
             ],
             "filter": [
-                153
+                154
             ],
             "intervalHours": [
                 3
@@ -2409,7 +2412,7 @@ export default {
                 1
             ],
             "filter": [
-                153
+                154
             ],
             "intervalHours": [
                 3
@@ -2546,7 +2549,7 @@ export default {
                 1
             ],
             "filter": [
-                152
+                153
             ],
             "pluginTrigger": [
                 1
@@ -2566,7 +2569,7 @@ export default {
                 1
             ],
             "filter": [
-                153
+                154
             ],
             "pluginTrigger": [
                 1
@@ -2583,7 +2586,7 @@ export default {
                 134
             ],
             "condition": [
-                152
+                153
             ],
             "continueOnError": [
                 4
@@ -2600,7 +2603,7 @@ export default {
                 134
             ],
             "condition": [
-                153
+                154
             ],
             "continueOnError": [
                 4
@@ -5216,6 +5219,23 @@ export default {
             ]
         },
         "EventKind": {},
+        "SitePreference": {
+            "plugin": [
+                1
+            ],
+            "shown": [
+                3
+            ],
+            "chosen": [
+                3
+            ],
+            "score": [
+                5
+            ],
+            "__typename": [
+                1
+            ]
+        },
         "Event": {
             "id": [
                 2
@@ -5282,7 +5302,7 @@ export default {
         "SortField": {},
         "Sort": {
             "field": [
-                147
+                148
             ],
             "descending": [
                 4
@@ -5293,7 +5313,7 @@ export default {
         },
         "SortInput": {
             "field": [
-                147
+                148
             ],
             "descending": [
                 4
@@ -5389,10 +5409,10 @@ export default {
                 3
             ],
             "fields": [
-                150
+                151
             ],
             "sort": [
-                148
+                149
             ],
             "__typename": [
                 1
@@ -5457,10 +5477,10 @@ export default {
                 3
             ],
             "fields": [
-                151
+                152
             ],
             "sort": [
-                149
+                150
             ],
             "__typename": [
                 1
@@ -5474,7 +5494,7 @@ export default {
                 1
             ],
             "filter": [
-                152
+                153
             ],
             "pinned": [
                 4

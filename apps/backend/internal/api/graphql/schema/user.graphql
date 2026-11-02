@@ -11,6 +11,10 @@ extend type Query {
   eventCount(filter: EventFilter): Int!
   # The latest search texts, newest first, without repeats.
   recentSearches(limit: Int): [String!]!
+  # How likely the user picks each site's videos when shown them (last 90
+  # days), most preferred first. Search gives preferred sites more of the
+  # top places.
+  sitePreferences: [SitePreference!]!
   # Saved filters, pinned first. Each plays as a smart playlist through
   # videos(filter: savedFilter.filter).
   savedFilters: [SavedFilter!]!
@@ -128,6 +132,15 @@ enum EventKind {
   heatSpan
   skip
   like
+}
+
+# A site's pick rate: shown and chosen videos it carries. Score is the
+# smoothed rate relative to the overall one (above 1: picked more often).
+type SitePreference {
+  plugin: String!
+  shown: Int!
+  chosen: Int!
+  score: Float!
 }
 
 type Event {

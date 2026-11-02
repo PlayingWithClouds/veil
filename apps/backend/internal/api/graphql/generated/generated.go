@@ -20,6 +20,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/limits"
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/schema"
+	"github.com/playingwithclouds/veil/internal/user"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -885,6 +886,7 @@ type ComplexityRoot struct {
 		Settings                 func(childComplexity int) int
 		Shorts                   func(childComplexity int, filter *schema.Filter, limit *int) int
 		Similar                  func(childComplexity int, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) int
+		SitePreferences          func(childComplexity int) int
 		StorageLocations         func(childComplexity int, deviceID *string) int
 		Stories                  func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 		Story                    func(childComplexity int, id string) int
@@ -970,6 +972,13 @@ type ComplexityRoot struct {
 		Match        func(childComplexity int) int
 		StartSeconds func(childComplexity int) int
 		Video        func(childComplexity int) int
+	}
+
+	SitePreference struct {
+		Chosen func(childComplexity int) int
+		Plugin func(childComplexity int) int
+		Score  func(childComplexity int) int
+		Shown  func(childComplexity int) int
 	}
 
 	Sort struct {
@@ -1568,6 +1577,7 @@ type QueryResolver interface {
 	Events(ctx context.Context, filter *model.EventFilter, limit *int, offset *int) ([]*schema.Event, error)
 	EventCount(ctx context.Context, filter *model.EventFilter) (int, error)
 	RecentSearches(ctx context.Context, limit *int) ([]string, error)
+	SitePreferences(ctx context.Context) ([]*user.SitePreference, error)
 	SavedFilters(ctx context.Context) ([]*schema.SavedFilter, error)
 	SavedFilter(ctx context.Context, id string) (*schema.SavedFilter, error)
 }
@@ -6354,6 +6364,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Similar(childComplexity, args["subject"].(schema.RecordRef), args["kind"].(schema.EmbeddingKind), args["model"].(string), args["limit"].(*int)), true
+	case "Query.sitePreferences":
+		if e.ComplexityRoot.Query.SitePreferences == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.SitePreferences(childComplexity), true
 	case "Query.storageLocations":
 		if e.ComplexityRoot.Query.StorageLocations == nil {
 			break
@@ -6803,6 +6819,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Short.Video(childComplexity), true
+
+	case "SitePreference.chosen":
+		if e.ComplexityRoot.SitePreference.Chosen == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SitePreference.Chosen(childComplexity), true
+	case "SitePreference.plugin":
+		if e.ComplexityRoot.SitePreference.Plugin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SitePreference.Plugin(childComplexity), true
+	case "SitePreference.score":
+		if e.ComplexityRoot.SitePreference.Score == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SitePreference.Score(childComplexity), true
+	case "SitePreference.shown":
+		if e.ComplexityRoot.SitePreference.Shown == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SitePreference.Shown(childComplexity), true
 
 	case "Sort.descending":
 		if e.ComplexityRoot.Sort.Descending == nil {
@@ -9836,6 +9877,10 @@ extend type Query {
   eventCount(filter: EventFilter): Int!
   # The latest search texts, newest first, without repeats.
   recentSearches(limit: Int): [String!]!
+  # How likely the user picks each site's videos when shown them (last 90
+  # days), most preferred first. Search gives preferred sites more of the
+  # top places.
+  sitePreferences: [SitePreference!]!
   # Saved filters, pinned first. Each plays as a smart playlist through
   # videos(filter: savedFilter.filter).
   savedFilters: [SavedFilter!]!
@@ -9953,6 +9998,15 @@ enum EventKind {
   heatSpan
   skip
   like
+}
+
+# A site's pick rate: shown and chosen videos it carries. Score is the
+# smoothed rate relative to the overall one (above 1: picked more often).
+type SitePreference {
+  plugin: String!
+  shown: Int!
+  chosen: Int!
+  score: Float!
 }
 
 type Event {
@@ -11448,6 +11502,20 @@ func (ec *executionContext) childFields_Short(ctx context.Context, field graphql
 		return ec.fieldContext_Short_endSeconds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Short", field.Name)
+}
+
+func (ec *executionContext) childFields_SitePreference(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "plugin":
+		return ec.fieldContext_SitePreference_plugin(ctx, field)
+	case "shown":
+		return ec.fieldContext_SitePreference_shown(ctx, field)
+	case "chosen":
+		return ec.fieldContext_SitePreference_chosen(ctx, field)
+	case "score":
+		return ec.fieldContext_SitePreference_score(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SitePreference", field.Name)
 }
 
 func (ec *executionContext) childFields_Sort(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -36000,6 +36068,38 @@ func (ec *executionContext) fieldContext_Query_recentSearches(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sitePreferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_sitePreferences(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().SitePreferences(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*user.SitePreference) graphql.Marshaler {
+			return ec.marshalNSitePreference2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋuserᚐSitePreferenceᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_sitePreferences(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SitePreference(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_savedFilters(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37225,6 +37325,98 @@ func (ec *executionContext) _Short_endSeconds(ctx context.Context, field graphql
 }
 func (ec *executionContext) fieldContext_Short_endSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Short", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _SitePreference_plugin(ctx context.Context, field graphql.CollectedField, obj *user.SitePreference) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SitePreference_plugin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Plugin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SitePreference_plugin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SitePreference", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SitePreference_shown(ctx context.Context, field graphql.CollectedField, obj *user.SitePreference) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SitePreference_shown(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Shown, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SitePreference_shown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SitePreference", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _SitePreference_chosen(ctx context.Context, field graphql.CollectedField, obj *user.SitePreference) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SitePreference_chosen(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Chosen, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SitePreference_chosen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SitePreference", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _SitePreference_score(ctx context.Context, field graphql.CollectedField, obj *user.SitePreference) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SitePreference_score(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Score, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SitePreference_score(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SitePreference", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
 func (ec *executionContext) _Sort_field(ctx context.Context, field graphql.CollectedField, obj *schema.Sort) (ret graphql.Marshaler) {
@@ -53862,6 +54054,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sitePreferences":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sitePreferences(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "savedFilters":
 			field := field
 
@@ -54497,6 +54711,60 @@ func (ec *executionContext) _Short(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Short_startSeconds(ctx, field, obj)
 		case "endSeconds":
 			out.Values[i] = ec._Short_endSeconds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sitePreferenceImplementors = []string{"SitePreference"}
+
+func (ec *executionContext) _SitePreference(ctx context.Context, sel ast.SelectionSet, obj *user.SitePreference) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sitePreferenceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SitePreference")
+		case "plugin":
+			out.Values[i] = ec._SitePreference_plugin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "shown":
+			out.Values[i] = ec._SitePreference_shown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "chosen":
+			out.Values[i] = ec._SitePreference_chosen(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "score":
+			out.Values[i] = ec._SitePreference_score(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -60145,6 +60413,32 @@ func (ec *executionContext) marshalNShort2ᚖgithubᚗcomᚋplayingwithcloudsᚋ
 		return graphql.Null
 	}
 	return ec._Short(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSitePreference2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋuserᚐSitePreferenceᚄ(ctx context.Context, sel ast.SelectionSet, v []*user.SitePreference) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSitePreference2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋuserᚐSitePreference(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSitePreference2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋuserᚐSitePreference(ctx context.Context, sel ast.SelectionSet, v *user.SitePreference) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SitePreference(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSortField2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSortField(ctx context.Context, v any) (schema.SortField, error) {

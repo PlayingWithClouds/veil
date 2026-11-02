@@ -19,6 +19,8 @@ resolver:
 # internal/schema). Fields that hold a reference id there resolve to the
 # record here.
 models:
+  SitePreference:
+    model: github.com/playingwithclouds/veil/internal/user.SitePreference
   Video:
     model: github.com/playingwithclouds/veil/internal/schema.Video
     fields:

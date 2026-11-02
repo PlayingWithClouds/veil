@@ -7,8 +7,28 @@ import {
 	type ListKind,
 	type SearchBatch
 } from '@playingwithclouds/veil-sdk/generated';
-import { getWsClient } from '$lib/veil';
+import { getWsClient, gqlClient } from '$lib/veil';
 import { VIDEO_CARD } from '$lib/library';
+
+// How long the sites' preference scores are reused before they're asked again.
+const PREFERENCE_TTL_MS = 10 * 60 * 1000;
+
+let preferenceCache: { at: number; scores: Promise<Map<string, number>> } | null = null;
+
+/**
+ * Each site's preference score (its pick rate over the overall one), by
+ * plugin. Empty when the backend can't say; the search then treats every
+ * site alike.
+ */
+export function sitePreferences(): Promise<Map<string, number>> {
+	if (preferenceCache && Date.now() - preferenceCache.at < PREFERENCE_TTL_MS) return preferenceCache.scores;
+	const scores = gqlClient
+		.query({ sitePreferences: { plugin: true, score: true } })
+		.then((result) => new Map(result.sitePreferences.map((site) => [site.plugin, site.score])))
+		.catch(() => new Map<string, number>());
+	preferenceCache = { at: Date.now(), scores };
+	return scores;
+}
 
 /** What the search page reads of one batch. */
 const SEARCH_BATCH = {

@@ -28,6 +28,18 @@ describe('SearchLayout', () => {
 		expect(layout.add('b', [{ id: 'y' }])).toEqual([]);
 	});
 
+	test('gives preferred sites more top places and the first turn', () => {
+		const layout = new SearchLayout(
+			new Map([
+				['liked', 2],
+				['ignored', 0.3]
+			])
+		);
+		expect(layout.add('ignored', results('ignored', 8))).toHaveLength(2);
+		expect(layout.add('liked', results('liked', 8))).toHaveLength(6);
+		expect(layout.release()[0].id).toBe('liked6');
+	});
+
 	test('after release, results wait for the next release', () => {
 		const layout = new SearchLayout();
 		layout.release();
