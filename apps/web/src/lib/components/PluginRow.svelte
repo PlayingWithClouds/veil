@@ -1,12 +1,13 @@
 <!--
 	One installed plugin: name, version, what it does, an on/off switch, its
-	settings form, and buttons to store a page of its catalog.
+	settings form, its site login, and buttons to store a page of its catalog.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import SiteIcon from '$lib/components/scene/SiteIcon.svelte';
+	import PluginAccount from '$lib/components/PluginAccount.svelte';
 	import {
 		setPluginEnabled,
 		savePluginSettings,
@@ -29,6 +30,8 @@
 
 	let canBrowseVideos = $derived(plugin.capabilities.includes('scene:list'));
 	let canBrowseGalleries = $derived(plugin.capabilities.includes('gallery:list'));
+	// The site has a login, and this device has none that works.
+	let needsLogin = $derived(plugin.login !== null && plugin.account?.status !== 'ok');
 
 	$effect(() => {
 		values = Object.fromEntries(plugin.settingValues.map((entry) => [entry.key, entry.value]));
@@ -98,6 +101,9 @@
 				{#if !plugin.available}
 					Needs FlareSolverr, which isn't set up here ·
 				{/if}
+				{#if needsLogin}
+					Needs a login ·
+				{/if}
 				{plugin.description ?? plugin.capabilities.join(', ')}
 			</span>
 		</button>
@@ -159,6 +165,14 @@
 						>Save</button
 					>
 				</form>
+			{/if}
+			{#if plugin.login}
+				<PluginAccount
+					plugin={plugin.name}
+					login={plugin.login}
+					account={plugin.account}
+					{onchanged}
+				/>
 			{/if}
 			{#if message}<p class="text-base-content/60 text-xs">{message}</p>{/if}
 		</div>

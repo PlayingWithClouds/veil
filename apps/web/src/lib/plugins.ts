@@ -23,6 +23,26 @@ export interface InstalledPlugin extends SitePlugin {
 	requiresSolver: boolean;
 	settings: PluginSettingField[];
 	settingValues: { key: string; value: string }[];
+	// How the site is logged into; null for sites without accounts.
+	login: PluginLogin | null;
+	// This device's login on the site, if any.
+	account: PluginAccount | null;
+}
+
+/** A site's login: a form, imported browser cookies, or both. */
+export interface PluginLogin {
+	fields: PluginSettingField[];
+	cookies: boolean;
+}
+
+/** A login on a plugin's site, kept on this device. */
+export interface PluginAccount {
+	id: string;
+	label: string;
+	status: 'ok' | 'expired' | 'needsLogin' | 'failed';
+	lastCheckedAt: string | null;
+	// Logs in again by itself when the site ends the session.
+	storesLogin: boolean;
 }
 
 /** One setting a plugin asks for. */
@@ -46,7 +66,26 @@ export interface PluginPackage {
 /** What a plugin can list into the library. */
 export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG';
 
-/** Every installed plugin with its settings. */
+/** A setting or login field as the plugins page shows it. */
+const SETTING_FIELD = {
+	key: true,
+	label: true,
+	description: true,
+	type: true,
+	required: true,
+	default: true
+} as const;
+
+/** An account as the plugins page shows it. */
+const ACCOUNT = {
+	id: true,
+	label: true,
+	status: true,
+	lastCheckedAt: true,
+	storesLogin: true
+} as const;
+
+/** Every installed plugin with its settings and login. */
 export async function fetchPlugins(): Promise<InstalledPlugin[]> {
 	const data = await gqlClient.query({
 		plugins: {
@@ -63,21 +102,54 @@ export async function fetchPlugins(): Promise<InstalledPlugin[]> {
 			version: true,
 			content: true,
 			requiresSolver: true,
-			settings: {
-				key: true,
-				label: true,
-				description: true,
-				type: true,
-				required: true,
-				default: true
-			},
-			settingValues: { key: true, value: true }
+			settings: SETTING_FIELD,
+			settingValues: { key: true, value: true },
+			login: { fields: SETTING_FIELD, cookies: true },
+			account: ACCOUNT
 		}
 	});
 	return data.plugins.map((plugin) => ({
 		...plugin,
-		iconUrl: pluginIconUrl(plugin.iconUrl ?? null)
+		iconUrl: pluginIconUrl(plugin.iconUrl ?? null),
+		login: plugin.login ?? null,
+		account: plugin.account ?? null
 	}));
+}
+
+/**
+ * Logs into a plugin's site with its form's values. The backend keeps them
+ * encrypted to log in again when the site ends the session.
+ */
+export async function loginAccount(
+	plugin: string,
+	values: Record<string, string>
+): Promise<PluginAccount> {
+	const data = await gqlClient.mutation({
+		loginAccount: { __args: { plugin, values }, ...ACCOUNT }
+	});
+	return data.loginAccount;
+}
+
+/** Keeps cookies exported from a browser as a plugin's login; only its own site's are kept. */
+export async function importAccountCookies(
+	plugin: string,
+	cookies: string
+): Promise<PluginAccount> {
+	const data = await gqlClient.mutation({
+		importAccountCookies: { __args: { plugin, cookies }, ...ACCOUNT }
+	});
+	return data.importAccountCookies;
+}
+
+/** Asks the site whether a login still works. */
+export async function checkAccount(id: string): Promise<PluginAccount> {
+	const data = await gqlClient.mutation({ checkAccount: { __args: { id }, ...ACCOUNT } });
+	return data.checkAccount;
+}
+
+/** Forgets a login, with its session and stored values. */
+export async function logoutAccount(id: string): Promise<void> {
+	await gqlClient.mutation({ logoutAccount: { __args: { id } } });
 }
 
 /** The plugins that can list this kind, enabled and available here. */
