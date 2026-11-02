@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "process-compose up -U",
     "down": "process-compose down -U",
-    "schema": "openschema schema/veil.schema -t go -o apps/backend/internal/schema && gofmt -w apps/backend/internal/schema && openschema schema/veil.schema -t ts -o packages/veil-sdk/src/schema"
+    "schema": "openschema schema/veil.schema -t go -o apps/backend/internal/schema && bun scripts/schema-ordinals.ts && gofmt -w apps/backend/internal/schema && openschema schema/veil.schema -t ts -o packages/veil-sdk/src/schema"
   },
   "devDependencies": {
     "@types/bun": "latest"
