@@ -20,6 +20,15 @@ type MediaEdit struct {
 	StudioID     *string
 	PerformerIDs *[]string
 	TagIDs       *[]string
+	// Status marks media as wanted (known, not found yet) or available.
+	Status *schema.MediaStatus
+	// Videos only: VR packing (ClearVR removes it) and frame size.
+	VR      *schema.VrFormat
+	ClearVR bool
+	Width   *int
+	Height  *int
+	// Videos and audio only.
+	DurationSeconds *float64
 }
 
 // NamedEdit is the user's change to a performer, studio or tag. Fields the
@@ -55,8 +64,42 @@ func (l *Library) EditMedia(ctx context.Context, kind schema.RecordKind, id stri
 	if edit.TagIDs != nil {
 		fields["tags"] = *edit.TagIDs
 	}
+	if edit.Status != nil {
+		fields["status"] = *edit.Status
+	}
+	if err := setPlaybackFields(fields, kind, edit); err != nil {
+		return err
+	}
 	_, err := l.recorder.Update(ctx, kind, id, fields, provenance.User())
 	return err
+}
+
+// setPlaybackFields sets the edit's VR, size and duration, refusing them on
+// kinds that don't have them.
+func setPlaybackFields(fields db.Vars, kind schema.RecordKind, edit MediaEdit) error {
+	videoOnly := edit.VR != nil || edit.ClearVR || edit.Width != nil || edit.Height != nil
+	if videoOnly && kind != schema.RecordKindVideo {
+		return fmt.Errorf("only videos have VR and a frame size")
+	}
+	if edit.DurationSeconds != nil && !hasDuration(kind) {
+		return fmt.Errorf("a %s has no duration", kind)
+	}
+	if edit.VR != nil {
+		fields["vr"] = *edit.VR
+	}
+	if edit.ClearVR {
+		fields["vr"] = nil
+	}
+	if edit.Width != nil {
+		fields["width"] = *edit.Width
+	}
+	if edit.Height != nil {
+		fields["height"] = *edit.Height
+	}
+	if edit.DurationSeconds != nil {
+		fields["durationSeconds"] = *edit.DurationSeconds
+	}
+	return nil
 }
 
 // EditNamed applies the user's change to a performer, studio or tag. A new

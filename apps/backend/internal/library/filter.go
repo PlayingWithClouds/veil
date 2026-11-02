@@ -24,8 +24,9 @@ func mediaSelect(kind schema.RecordKind) string {
 }
 
 // filterConditions turns a filter into WHERE conditions on "media" and
-// "state". Lists of performers, studios, categories and sites match any of
-// them; included tags must all be there, excluded tags none. Blocked media,
+// "state". Lists of performers, studios, categories (with their
+// subcategories) and sites match any of them; included tags must all be
+// there, excluded tags none. Blocked media,
 // and media crediting a blocked performer, studio or tag, never match.
 // Fields a kind doesn't have (duration outside videos and audio, VR outside
 // videos) don't filter.
@@ -92,8 +93,13 @@ func addCredits(builder *conditionBuilder, filter schema.Filter) {
 		builder.bind(`NOT EXISTS (SELECT 1 FROM json_each("media"."tags") WHERE value IN (SELECT value FROM json_each($excludeTagIds)))`, "excludeTagIds", filter.ExcludeTagIds)
 	}
 	if len(filter.CategoryIds) > 0 {
-		builder.bind(`EXISTS (SELECT 1 FROM "Category" AS "category", json_each("category"."matchTags") AS "match"
-			WHERE "category"."id" IN (SELECT value FROM json_each($categoryIds)) AND "category"."deletedAt" IS NULL
+		builder.bind(`EXISTS (
+			WITH RECURSIVE "tree"("id") AS (
+				SELECT value FROM json_each($categoryIds)
+				UNION SELECT "child"."id" FROM "Category" AS "child" JOIN "tree" ON "child"."parent" = "tree"."id"
+			)
+			SELECT 1 FROM "Category" AS "category", json_each("category"."matchTags") AS "match"
+			WHERE "category"."id" IN (SELECT "id" FROM "tree") AND "category"."deletedAt" IS NULL
 				AND "match".value IN (SELECT value FROM json_each("media"."tags")))`, "categoryIds", filter.CategoryIds)
 	}
 	if len(filter.Sources) > 0 {
