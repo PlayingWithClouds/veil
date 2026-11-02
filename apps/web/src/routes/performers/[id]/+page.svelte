@@ -17,6 +17,14 @@
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
 	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
+	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
+	import EyeSlashIcon from 'phosphor-svelte/lib/EyeSlashIcon';
+	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
+	import CardMenu from '$lib/components/CardMenu.svelte';
+	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
+	import { setBlocked, setFavorite, logNotInterested } from '$lib/userState';
+	import { showUndo } from '$lib/stores/undoToast';
 	import TagChips from '$lib/components/TagChips.svelte';
 	import RecordMedia from '$lib/components/RecordMedia.svelte';
 	import PerformerEditor from '$lib/components/PerformerEditor.svelte';
@@ -73,6 +81,7 @@
 	let editing = $state(false);
 	let merging = $state(false);
 	let mergeWith = $state<MemberRow | null>(null);
+	let menuAnchor = $state<HTMLElement | null>(null);
 
 	let id = $derived(page.params.id ?? '');
 	let facts = $derived(
@@ -132,6 +141,57 @@
 		await read(performer.id, true);
 	}
 
+	/** Marks the performer a favourite (their sites then list all their videos), or not. */
+	// Optimistic: the button flips at once, the backend follows.
+	async function toggleFavorite() {
+		if (!performer) return;
+		const favorite = !performer.userState.favorite;
+		performer.userState.favorite = favorite;
+		await setFavorite('performer', performer.id, favorite);
+	}
+
+	/** The ⋮ menu: not interested, block. */
+	function menuActions(): SheetAction[] {
+		return [
+			{ label: 'Not interested', icon: EyeSlashIcon, run: notInterested },
+			{
+				label: `Block ${performer?.name ?? ''}`,
+				icon: ProhibitIcon,
+				run: () => void setBlock(true),
+				destructive: true
+			}
+		];
+	}
+
+	/**
+	 * Tells the recommendations to leave the performer out; sent once Undo
+	 * has passed, since the log can't take it back.
+	 */
+	function notInterested() {
+		if (!performer) return;
+		const performerId = performer.id;
+		showUndo({
+			message: `You won’t be recommended ${performer.name} again.`,
+			settle: () => logNotInterested('performer', performerId)
+		});
+	}
+
+	/** Blocks the performer (hiding them and their videos everywhere) or unblocks them, with Undo. */
+	async function setBlock(blocked: boolean) {
+		if (!performer) return;
+		const target = performer;
+		target.userState.blocked = blocked;
+		await setBlocked('performer', target.id, blocked);
+		if (!blocked) return;
+		showUndo({
+			message: `Blocked ${target.name}`,
+			undo: () => {
+				target.userState.blocked = false;
+				void setBlocked('performer', target.id, false);
+			}
+		});
+	}
+
 	/** Opens the merge dialog, optionally starting from a suggested duplicate. */
 	function startMerge(other: MemberRow | null) {
 		mergeWith = other;
@@ -182,6 +242,28 @@
 						{/if}
 					</div>
 					<div class="flex gap-2">
+						<button
+							type="button"
+							class="btn btn-sm"
+							aria-pressed={performer.userState.favorite}
+							title="Favourites get every video from their sites"
+							onclick={toggleFavorite}
+						>
+							<HeartIcon
+								size={16}
+								weight={performer.userState.favorite ? 'fill' : 'regular'}
+								class={performer.userState.favorite ? 'text-error' : ''}
+							/>
+							{performer.userState.favorite ? 'Favourite' : 'Add to favourites'}
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm btn-square"
+							aria-label="More"
+							onclick={(event) => (menuAnchor = event.currentTarget)}
+						>
+							<DotsThreeVerticalIcon size={18} weight="bold" />
+						</button>
 						<button type="button" class="btn btn-sm" onclick={() => (editing = true)}>
 							<PencilSimpleIcon size={16} /> Edit
 						</button>
@@ -199,6 +281,14 @@
 						</button>
 					</div>
 				</div>
+
+				{#if performer.userState.blocked}
+					<div class="bg-base-200 flex items-center gap-3 rounded-lg px-3 py-2 text-sm">
+						<ProhibitIcon size={16} class="text-error" />
+						<span class="flex-1">Blocked: {performer.name} and their videos are hidden everywhere.</span>
+						<button type="button" class="btn btn-xs" onclick={() => setBlock(false)}>Unblock</button>
+					</div>
+				{/if}
 
 				{#if lockedFields.length > 0}
 					<div class="flex flex-wrap items-center gap-1.5 text-xs">
@@ -311,6 +401,15 @@
 				{performer}
 				onsaved={(saved) => (performer = saved)}
 				onclose={() => (editing = false)}
+			/>
+		{/if}
+		{#if menuAnchor}
+			<CardMenu
+				anchor={menuAnchor}
+				title={performer.name}
+				imageUrl={cacheUrl(performer.image?.uri)}
+				actions={menuActions()}
+				onclose={() => (menuAnchor = null)}
 			/>
 		{/if}
 		{#if merging}

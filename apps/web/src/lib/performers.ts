@@ -40,7 +40,8 @@ const PERFORMER_DETAIL = {
 	attributes: ATTRIBUTES,
 	tags: { id: true, name: true },
 	sources: SOURCE,
-	fieldSources: { field: true, locked: true }
+	fieldSources: { field: true, locked: true },
+	userState: { favorite: true, blocked: true }
 } as const;
 
 export type PerformerAttributes = FieldsSelection<PerformerAttributesResult, typeof ATTRIBUTES>;
