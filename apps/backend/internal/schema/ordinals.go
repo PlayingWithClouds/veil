@@ -183,6 +183,7 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"vector":      14,
 		"atSeconds":   15,
 		"region":      16,
+		"scan":        17,
 	},
 	"Event": {
 		"id":          1,
@@ -196,6 +197,18 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"data":        14,
 		"device":      15,
 		"sessionId":   16,
+	},
+	"FaceScan": {
+		"id":          1,
+		"createdAt":   2,
+		"updatedAt":   3,
+		"deletedAt":   4,
+		"subjectKind": 10,
+		"subjectId":   11,
+		"model":       12,
+		"picture":     13,
+		"frames":      14,
+		"faces":       15,
 	},
 	"FieldDef": {
 		"id":        1,

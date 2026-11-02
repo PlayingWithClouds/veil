@@ -771,6 +771,16 @@ export interface Embedding extends Entity {
   vector: Uint8Array;
   atSeconds?: number;
   region?: unknown;
+  scan?: string;
+}
+
+export interface FaceScan extends Entity {
+  subjectKind: RecordKind;
+  subjectId: string;
+  model: string;
+  picture?: string;
+  frames: number;
+  faces: number;
 }
 
 export interface Alike extends Entity {

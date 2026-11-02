@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-02T18:30:09.179Z",
+  "updatedAt": "2026-11-02T20:48:50.230Z",
   "baseline": false,
-  "digest": "sha256-6c2ca6b0981c182569586a02c73564a471b4674065c0ce4eca5e0e6e0beef893",
+  "digest": "sha256-04b2d0a6ef895882b5b8350ca2606e78e4d62c9cc7d480e43f34b2b88d053f8b",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -1899,6 +1899,13 @@
           "type": "json?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "17": {
+          "state": "active",
+          "name": "scan",
+          "type": "uuid?",
+          "encoding": "singular:len",
+          "since": "2026-11-02T20:48:50.230Z"
         }
       }
     },
@@ -2026,6 +2033,53 @@
           "type": "string?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.FaceScan": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "subjectKind",
+          "type": "RecordKind",
+          "encoding": "singular:varint",
+          "since": "2026-11-02T20:48:50.230Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "subjectId",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-02T20:48:50.230Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "model",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-02T20:48:50.230Z"
+        },
+        "13": {
+          "state": "active",
+          "name": "picture",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-02T20:48:50.230Z"
+        },
+        "14": {
+          "state": "active",
+          "name": "frames",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-02T20:48:50.230Z"
+        },
+        "15": {
+          "state": "active",
+          "name": "faces",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-02T20:48:50.230Z"
         }
       }
     },

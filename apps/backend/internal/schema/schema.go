@@ -1069,6 +1069,23 @@ type Embedding struct {
 	// Where in the media: a frame time and, for faces, the box.
 	AtSeconds *float64 `json:"atSeconds,omitempty"`
 	Region    any      `json:"region,omitempty"`
+	// The face scan it came from. A performer's vector learned from a
+	// credited video points at that video's scan.
+	Scan *string `json:"scan,omitempty"`
+}
+
+// A client looked for faces with one face model: in a video's sampled
+// frames, or in one picture of a performer. Marks the work done even when
+// no face was found; the face vectors it produced point back at it.
+type FaceScan struct {
+	Entity
+	SubjectKind RecordKind `json:"subjectKind"`
+	SubjectId   string     `json:"subjectId"`
+	Model       string     `json:"model"`
+	// The picture's URI for a performer's picture; null for a video.
+	Picture *string `json:"picture,omitempty"`
+	Frames  int32   `json:"frames"`
+	Faces   int32   `json:"faces"`
 }
 
 // Two records that are probably the same. Hidden from lists, never merged.
