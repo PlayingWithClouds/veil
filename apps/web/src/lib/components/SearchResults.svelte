@@ -2,8 +2,8 @@
 	A search across the sites, shown as it comes in and never reshuffled:
 	each site's best four take the top twenty places in the order the sites
 	answer, the rest follows sites taking turns (SearchLayout). Scrolling on
-	asks the sites for their next page until none has more. Every thirty
-	results a row breaks the grid up: performers by that name, picks for you,
+	asks the sites for their next page until none has more. Every six grid
+	rows a row breaks the grid up: performers by that name, picks for you,
 	your favourites. A site that answered the same search within six hours
 	isn't asked again; the backend sends its answer from then.
 -->
@@ -21,14 +21,19 @@
 	import { logEvent, resetShown } from '$lib/events';
 	import { videoUrl } from '$lib/routes';
 
-	// Results between two breaking rows, after the top places.
-	const SECTION = 30;
+	// Grid rows between two breaking rows, after the top places.
+	const SECTION_ROWS = 6;
+	// The grid's card width and gap (px), to count its columns.
+	const CARD_MIN_WIDTH = 260;
+	const GRID_GAP = 16;
 	// Videos in a breaking row.
 	const ROW_VIDEOS = 8;
 	const VIDEO_WIDTH = 260;
 	const PERFORMER_WIDTH = 140;
 	// How long results wait below the fold for slower sites before they're let in.
 	const RELEASE_DELAY_MS = 1500;
+	// How long results wait for a breaking row still loading before it's skipped.
+	const ROW_WAIT_MS = 1500;
 
 	/** A row between two sections of results. */
 	interface BreakRow {
@@ -48,6 +53,9 @@
 	let searching = $state(false);
 	let finished = $state(false);
 	let error = $state<string | null>(null);
+	let container = $state<HTMLElement>();
+	// Results between two breaking rows: whole grid rows, counted when the search starts.
+	let section = $state(SECTION_ROWS * 4);
 
 	let layout = new SearchLayout<VideoCardRow>();
 	let current: SearchPage | null = null;
@@ -58,6 +66,11 @@
 	let exhausted = new Set<string>();
 	let newThisPage = new Map<string, number>();
 	let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+	// Results waiting to be appended, and whether they're being appended now.
+	let queued: VideoCardRow[] = [];
+	let draining = false;
+	// Each breaking row's load, by the section it follows.
+	let rowLoads = new Map<number, Promise<void>>();
 	let recommendedPool: Promise<VideoCardRow[]> | null = null;
 	let favoritePool: Promise<VideoCardRow[]> | null = null;
 
@@ -69,11 +82,11 @@
 		return stop;
 	});
 
-	/** The results cut into the top places and sections of SECTION. */
+	/** The results cut into the top places and sections. */
 	function splitSections(all: VideoCardRow[]): VideoCardRow[][] {
 		const result = [all.slice(0, TOP_PLACES)];
-		for (let start = TOP_PLACES; start < all.length; start += SECTION) {
-			result.push(all.slice(start, start + SECTION));
+		for (let start = TOP_PLACES; start < all.length; start += section) {
+			result.push(all.slice(start, start + section));
 		}
 		return result;
 	}
@@ -81,7 +94,14 @@
 	/** Where section index starts in the results. */
 	function sectionStart(index: number): number {
 		if (index === 0) return 0;
-		return TOP_PLACES + (index - 1) * SECTION;
+		return TOP_PLACES + (index - 1) * section;
+	}
+
+	/** SECTION_ROWS full rows of the grid at its current width. */
+	function sectionSize(): number {
+		const width = container?.clientWidth ?? 0;
+		const columns = Math.max(1, Math.floor((width + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP)));
+		return columns * SECTION_ROWS;
 	}
 
 	/** Stops listening to the running page and the release timer. */
@@ -99,9 +119,13 @@
 		resetShown('search');
 		logEvent({ kind: 'search', data: { text: searchText } });
 		layout = new SearchLayout<VideoCardRow>();
+		section = sectionSize();
 		videos = [];
 		rows = [];
 		rowShown = [];
+		rowLoads = new Map();
+		queued = [];
+		draining = false;
 		pageNumber = 0;
 		sites = new Set();
 		exhausted = new Set();
@@ -110,6 +134,7 @@
 		finished = false;
 		error = null;
 		prepareRow(0);
+		prepareRow(1);
 		await runPage(searchText, null);
 	}
 
@@ -156,40 +181,72 @@
 		}, RELEASE_DELAY_MS);
 	}
 
-	/** Appends results, settling each breaking row as the section after it starts. */
+	/** Queues results to append, in order. */
 	function show(items: VideoCardRow[]) {
-		for (const item of items) {
+		queued.push(...items);
+		void drain();
+	}
+
+	/**
+	 * Appends queued results, settling each breaking row as the section after
+	 * it starts. A row still loading holds the results back a moment, so it
+	 * isn't skipped just because a stored answer came in faster.
+	 */
+	async function drain() {
+		if (draining) return;
+		draining = true;
+		const startedFor = generation;
+		while (queued.length > 0) {
 			const index = sectionIndexStartingAt(videos.length);
-			if (index > 0) settleRow(index - 1);
-			videos.push(item);
+			if (index > 0 && rowShown[index - 1] === undefined) {
+				await Promise.race([rowLoads.get(index - 1), wait(ROW_WAIT_MS)]);
+				if (startedFor !== generation) return;
+				settleRow(index - 1);
+			}
+			const next = queued.shift();
+			if (next) videos.push(next);
 		}
+		draining = false;
+	}
+
+	/** Resolves after ms. */
+	function wait(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/** The section starting at position, or -1 when none does. */
 	function sectionIndexStartingAt(position: number): number {
 		if (position < TOP_PLACES) return position === 0 ? 0 : -1;
-		if ((position - TOP_PLACES) % SECTION !== 0) return -1;
-		return (position - TOP_PLACES) / SECTION + 1;
+		if ((position - TOP_PLACES) % section !== 0) return -1;
+		return (position - TOP_PLACES) / section + 1;
 	}
 
-	/** Decides whether row index shows (only when ready in time) and prepares the next. */
+	/** Decides whether row index shows (only when ready by now) and prepares those after. */
 	function settleRow(index: number) {
 		const row = rows[index];
 		rowShown[index] = Boolean(row && (row.videos.length > 0 || row.performers.length > 0));
 		prepareRow(index + 1);
+		prepareRow(index + 2);
 	}
 
-	/** Loads the row after section index, ahead of it being needed. */
-	async function prepareRow(index: number) {
-		if (rows[index] !== undefined) return;
+	/** Starts loading the row after section index, ahead of it being needed. */
+	function prepareRow(index: number) {
+		if (rowLoads.has(index)) return;
 		rows[index] = null;
 		const startedFor = generation;
-		const row = await loadRow(index);
-		// A row loaded for an earlier search stays out of this one.
-		if (startedFor === generation) rows[index] = row;
+		rowLoads.set(
+			index,
+			loadRow(index).then((row) => {
+				// A row loaded for an earlier search stays out of this one.
+				if (startedFor === generation) rows[index] = row;
+			})
+		);
 	}
 
-	/** The row after section index: performers first, then picks and favourites. */
+	/**
+	 * The row after section index: performers first, then picks and every
+	 * third your favourites; with no favourites left, picks again.
+	 */
 	async function loadRow(index: number): Promise<BreakRow> {
 		if (index === 0) {
 			const performers = await fetchPerformers(query, 12);
@@ -197,12 +254,23 @@
 		}
 		if (index % 3 === 2) {
 			favoritePool ??= fetchVideosMatching({ text: query, favorite: true }, 60, 0);
-			return { title: 'Your favourites', videos: takeUnseen(await favoritePool), performers: [] };
+			const favorites = takeUnseen(await favoritePool);
+			if (favorites.length > 0) return { title: 'Your favourites', videos: favorites, performers: [] };
 		}
-		recommendedPool ??= fetchRecommendedVideos(60, { text: query }).then((picks) =>
-			picks.map((pick) => pick.video)
-		);
+		recommendedPool ??= fetchPicks();
 		return { title: 'Picked for you', videos: takeUnseen(await recommendedPool), performers: [] };
+	}
+
+	/**
+	 * Picks for the rows: those matching the search first, then picks of any
+	 * kind, since the matching ones soon all are results themselves.
+	 */
+	async function fetchPicks(): Promise<VideoCardRow[]> {
+		const [matching, general] = await Promise.all([
+			fetchRecommendedVideos(60, { text: query }),
+			fetchRecommendedVideos(120)
+		]);
+		return [...matching, ...general].map((pick) => pick.video);
 	}
 
 	/** The next few videos of a pool that aren't on the page yet, now counted as shown. */
@@ -230,7 +298,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-8">
+<div class="flex flex-col gap-8" bind:this={container}>
 	{#if searching && pageNumber === 0 && sitesAsked > 0}
 		<p class="text-base-content/50 -mt-4 text-sm">
 			{sitesAnswered} of {sitesAsked} sites answered
