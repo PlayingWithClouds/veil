@@ -11,6 +11,20 @@ import (
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
+type EventFilter struct {
+	Kinds   []schema.EventKind `json:"kinds,omitempty"`
+	Subject *schema.RecordRef  `json:"subject,omitempty"`
+	Since   *string            `json:"since,omitempty"`
+	Until   *string            `json:"until,omitempty"`
+}
+
+type EventInput struct {
+	Kind      schema.EventKind  `json:"kind"`
+	Subject   *schema.RecordRef `json:"subject,omitempty"`
+	Data      any               `json:"data,omitempty"`
+	SessionID *string           `json:"sessionId,omitempty"`
+}
+
 type Listed struct {
 	Videos     []*schema.Video     `json:"videos"`
 	Galleries  []*schema.Gallery   `json:"galleries"`
@@ -19,14 +33,23 @@ type Listed struct {
 	Tags       []*schema.Tag       `json:"tags"`
 }
 
-type MediaFilter struct {
-	Text        *string `json:"text,omitempty"`
-	PerformerID *string `json:"performerId,omitempty"`
-	StudioID    *string `json:"studioId,omitempty"`
-	TagID       *string `json:"tagId,omitempty"`
+type MediaEdit struct {
+	Title        *string  `json:"title,omitempty"`
+	Details      *string  `json:"details,omitempty"`
+	Date         *string  `json:"date,omitempty"`
+	StudioID     *string  `json:"studioId,omitempty"`
+	PerformerIds []string `json:"performerIds,omitempty"`
+	TagIds       []string `json:"tagIds,omitempty"`
 }
 
 type Mutation struct {
+}
+
+type PerformerEdit struct {
+	Name    *string  `json:"name,omitempty"`
+	Aliases []string `json:"aliases,omitempty"`
+	Details *string  `json:"details,omitempty"`
+	Links   []string `json:"links,omitempty"`
 }
 
 type Playable struct {
@@ -85,6 +108,34 @@ type Query struct {
 type Scraped struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
+}
+
+type StudioEdit struct {
+	Name     *string  `json:"name,omitempty"`
+	Aliases  []string `json:"aliases,omitempty"`
+	Details  *string  `json:"details,omitempty"`
+	URL      *string  `json:"url,omitempty"`
+	ParentID *string  `json:"parentId,omitempty"`
+}
+
+type TagEdit struct {
+	Name    *string  `json:"name,omitempty"`
+	Aliases []string `json:"aliases,omitempty"`
+}
+
+type TrashedRecord struct {
+	Kind      schema.RecordKind `json:"kind"`
+	ID        string            `json:"id"`
+	Label     string            `json:"label"`
+	DeletedAt string            `json:"deletedAt"`
+}
+
+type UserStateFilter struct {
+	Kind     *schema.RecordKind `json:"kind,omitempty"`
+	Favorite *bool              `json:"favorite,omitempty"`
+	Blocked  *bool              `json:"blocked,omitempty"`
+	Rated    *bool              `json:"rated,omitempty"`
+	Viewed   *bool              `json:"viewed,omitempty"`
 }
 
 type ListKind string

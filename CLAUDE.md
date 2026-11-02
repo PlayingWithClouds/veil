@@ -7,7 +7,7 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 ## Layout
 
 - `schema/`: the data model in OpenSchema (`veil.schema` entry). Long-term scope: GitHub issues labelled `scope`.
-- `apps/backend/`: Go, module `github.com/playingwithclouds/veil`, entry `cmd/server/main.go`. Under `internal/`: `schema/` generated types, `db/` storage and generated `migrations/`, `library/` ingest and reads of the core records, `pipeline/` page visits, browse and search, `api/graphql/` resolvers (SDL in `schema/*.graphql`), `names/` `alike/` matching, `jobs/` `cache/` `settings/`, `plugins/` `pluginstore/` plugin runtime and install, `stream/` `resolve/` `storage/` `blobcache/` streaming and blobs.
+- `apps/backend/`: Go, module `github.com/playingwithclouds/veil`, entry `cmd/server/main.go`. Under `internal/`: `schema/` generated types, `db/` storage and generated `migrations/`, `library/` ingest and reads of the core records, `pipeline/` page visits, browse and search, `provenance/` the record write path (field ownership, revisions), `user/` user state, event log, saved filters, `devices/` devices and storage locations, `api/graphql/` resolvers (SDL in `schema/*.graphql`), `names/` `alike/` matching, `jobs/` queue and runner, `cache/` `settings/`, `plugins/` `pluginstore/` plugin runtime and install, `stream/` `resolve/` `storage/` `blobcache/` streaming and blobs.
 - `apps/backend/plugins/`: scraper plugins, bundled by `scripts/bundle-plugins.ts`.
 - `apps/web/`: SvelteKit 2, Svelte 5 runes, Tailwind v4.
 - `apps/mobile/`: Kotlin + Compose, embeds the Go backend.

@@ -3,9 +3,13 @@
 # generated Go types in internal/schema); references resolve to records.
 
 extend type Query {
-  videos(filter: MediaFilter, limit: Int, offset: Int): [Video!]!
+  # A page of videos matching filter (blocked and trashed ones never match),
+  # in the filter's order; newest added first by default.
+  videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
+  videoCount(filter: FilterInput): Int!
   video(id: ID!): Video
-  galleries(filter: MediaFilter, limit: Int, offset: Int): [Gallery!]!
+  galleries(filter: FilterInput, limit: Int, offset: Int): [Gallery!]!
+  galleryCount(filter: FilterInput): Int!
   gallery(id: ID!): Gallery
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
@@ -25,14 +29,85 @@ extend type Mutation {
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results.
   search(kind: ListKind!, query: String!, limit: Int): Listed!
+
+  # The user's edits. Every field an edit sets is locked: later scrapes
+  # leave it alone (see lockField).
+  editVideo(id: ID!, edit: MediaEdit!): Video
+  editGallery(id: ID!, edit: MediaEdit!): Gallery
+  editPerformer(id: ID!, edit: PerformerEdit!): Performer
+  editStudio(id: ID!, edit: StudioEdit!): Studio
+  editTag(id: ID!, edit: TagEdit!): Tag
+  # Locks a field to its current value, or unlocks it so the next source
+  # that describes it takes it over. field is the field's name ("title").
+  lockField(subject: RecordRefInput!, field: String!, locked: Boolean!): [FieldSource!]!
+  # Puts a field back to its value before the revision, locked.
+  revertRevision(id: ID!): Boolean!
 }
 
-# Narrows a list of videos or galleries. Empty fields don't filter.
-input MediaFilter {
-  text: String
-  performerId: ID
+# A change to a video or gallery. Omitted fields stay; an empty string
+# clears details, date or studio.
+input MediaEdit {
+  title: String
+  details: String
+  # YYYY-MM-DD
+  date: String
   studioId: ID
-  tagId: ID
+  performerIds: [ID!]
+  tagIds: [ID!]
+}
+
+input PerformerEdit {
+  name: String
+  aliases: [String!]
+  details: String
+  links: [String!]
+}
+
+input StudioEdit {
+  name: String
+  aliases: [String!]
+  details: String
+  url: String
+  parentId: ID
+}
+
+input TagEdit {
+  name: String
+  aliases: [String!]
+}
+
+# Which source a field's value comes from.
+type FieldSource {
+  # The field's name, e.g. "title".
+  field: String!
+  writtenBy: Actor!
+  # The source a plugin read it from; null for the user's own values.
+  source: Source
+  # The user set it; scrapes never change it.
+  locked: Boolean!
+  updatedAt: String!
+}
+
+# One change to one field of a record.
+type Revision {
+  id: ID!
+  createdAt: String!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  field: String!
+  before: JSON
+  after: JSON
+  writtenBy: Actor!
+  # The plugin or automation that wrote it.
+  actorName: String
+}
+
+# Who or what wrote a value.
+enum Actor {
+  user
+  plugin
+  automation
+  system
 }
 
 # What a plugin can list.
@@ -85,6 +160,10 @@ type Video {
   sources: [Source!]!
   # Playable streams, fastest measured first.
   streams: [Stream!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type VrFormat {
@@ -118,6 +197,10 @@ type Gallery {
   images: [Image!]!
   video: Video
   sources: [Source!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Image {
@@ -142,6 +225,9 @@ type Performer {
   sources: [Source!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type PerformerAttributes {
@@ -176,6 +262,9 @@ type Studio {
   sources: [Source!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Tag {
@@ -184,6 +273,8 @@ type Tag {
   aliases: [String!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 # A site a record was found on.

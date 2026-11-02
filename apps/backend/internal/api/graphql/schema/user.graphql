@@ -1,0 +1,254 @@
+# What the user does: their state on each record, the event log, the shared
+# filter shape and saved filters. Types mirror schema/user.schema; enum values
+# are the schema's own names.
+
+extend type Query {
+  # The user's states on records: favourites, blocked, rated or viewed ones.
+  userStates(filter: UserStateFilter, limit: Int, offset: Int): [UserState!]!
+  # What was viewed, most recently viewed first.
+  history(kind: RecordKind, limit: Int, offset: Int): [UserState!]!
+  events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
+  eventCount(filter: EventFilter): Int!
+  # The latest search texts, newest first, without repeats.
+  recentSearches(limit: Int): [String!]!
+  # Saved filters, pinned first. Each plays as a smart playlist through
+  # videos(filter: savedFilter.filter).
+  savedFilters: [SavedFilter!]!
+  savedFilter(id: ID!): SavedFilter
+}
+
+extend type Mutation {
+  # Sets a rating from 0 to 10; null clears it.
+  rate(subject: RecordRefInput!, rating: Float): UserState!
+  setFavorite(subject: RecordRefInput!, favorite: Boolean!): UserState!
+  # Hides a record from every list and feed. A blocked performer, studio or
+  # tag also hides the media it's credited on.
+  setBlocked(subject: RecordRefInput!, blocked: Boolean!): UserState!
+  # An empty text clears the notes.
+  setNotes(subject: RecordRefInput!, notes: String!): UserState!
+  # Logs what the user did. A view counts and stamps the last view;
+  # progress (data.position in seconds) moves the resume point; finish
+  # clears it.
+  recordEvent(event: EventInput!): Event!
+  # Forgets every logged event of kinds (all when omitted), e.g. the search
+  # history. View counts and resume points stay.
+  clearEvents(kinds: [EventKind!]): Int!
+  # Saves a new filter, or replaces the one with id.
+  saveFilter(id: ID, name: String!, filter: FilterInput!, pinned: Boolean): SavedFilter!
+  deleteSavedFilter(id: ID!): Boolean!
+}
+
+scalar JSON
+
+# Every kind of stored record.
+enum RecordKind {
+  video
+  gallery
+  image
+  audio
+  story
+  post
+  performer
+  studio
+  camModel
+  group
+  tag
+  category
+  collection
+  segment
+  clip
+}
+
+enum MediaKind {
+  video
+  gallery
+  audio
+  story
+  post
+}
+
+enum MediaStatus {
+  available
+  wanted
+  unavailable
+}
+
+input RecordRefInput {
+  kind: RecordKind!
+  id: ID!
+}
+
+type RecordRef {
+  kind: RecordKind!
+  id: ID!
+}
+
+# A record of any stored kind.
+union Record = Video | Gallery | Performer | Studio | Tag
+
+# The user's state on one record. Records nobody touched yet have the
+# defaults: no rating, not favourite or blocked, never viewed.
+type UserState {
+  subjectKind: RecordKind!
+  subjectId: ID!
+  record: Record
+  rating: Float
+  favorite: Boolean!
+  notes: String
+  blocked: Boolean!
+  # Resume point: seconds into a video, image index in a gallery.
+  progress: Float
+  viewCount: Int!
+  lastViewedAt: String
+  # Custom field values by field definition id.
+  fields: JSON!
+  updatedAt: String
+}
+
+# Narrows a list of user states. Omitted fields don't filter.
+input UserStateFilter {
+  kind: RecordKind
+  favorite: Boolean
+  blocked: Boolean
+  rated: Boolean
+  viewed: Boolean
+}
+
+enum EventKind {
+  view
+  progress
+  finish
+  o
+  search
+  impression
+  choice
+  heatSpan
+  skip
+  like
+}
+
+type Event {
+  id: ID!
+  at: String!
+  kind: EventKind!
+  subjectKind: RecordKind
+  subjectId: ID
+  # Kind-specific detail: the position, watched spans, the search text.
+  data: JSON
+  device: ID
+  sessionId: ID
+}
+
+input EventInput {
+  kind: EventKind!
+  subject: RecordRefInput
+  data: JSON
+  sessionId: ID
+}
+
+# Narrows the event log. since/until are timestamps; omitted fields don't
+# filter.
+input EventFilter {
+  kinds: [EventKind!]
+  subject: RecordRefInput
+  since: String
+  until: String
+}
+
+enum SortField {
+  relevance
+  date
+  addedAt
+  title
+  rating
+  duration
+  viewCount
+  lastViewedAt
+  random
+}
+
+type Sort {
+  field: SortField!
+  descending: Boolean!
+}
+
+input SortInput {
+  field: SortField!
+  descending: Boolean
+}
+
+# A condition on a custom field value.
+type FieldCondition {
+  fieldDefId: ID!
+  # eq, ne, lt, gt, contains, set, unset
+  operator: String!
+  value: JSON
+}
+
+input FieldConditionInput {
+  fieldDefId: ID!
+  operator: String!
+  value: JSON
+}
+
+# One filter shape for every list. Omitted fields don't filter. Performers,
+# studios, categories and sources match any of the given; included tags must
+# all be there, excluded tags none. Duration and VR only narrow videos.
+type Filter {
+  kinds: [MediaKind!]!
+  text: String
+  performerIds: [ID!]
+  studioIds: [ID!]
+  categoryIds: [ID!]
+  includeTagIds: [ID!]
+  excludeTagIds: [ID!]
+  # Plugin names.
+  sources: [String!]
+  # YYYY-MM-DD
+  dateFrom: String
+  dateTo: String
+  minDurationSeconds: Int
+  maxDurationSeconds: Int
+  minRating: Float
+  status: [MediaStatus!]
+  # Only media with a stored file.
+  inLibrary: Boolean
+  favorite: Boolean
+  unwatched: Boolean
+  vr: Boolean
+  fields: [FieldCondition!]
+  sort: Sort
+}
+
+input FilterInput {
+  kinds: [MediaKind!]
+  text: String
+  performerIds: [ID!]
+  studioIds: [ID!]
+  categoryIds: [ID!]
+  includeTagIds: [ID!]
+  excludeTagIds: [ID!]
+  sources: [String!]
+  dateFrom: String
+  dateTo: String
+  minDurationSeconds: Int
+  maxDurationSeconds: Int
+  minRating: Float
+  status: [MediaStatus!]
+  inLibrary: Boolean
+  favorite: Boolean
+  unwatched: Boolean
+  vr: Boolean
+  fields: [FieldConditionInput!]
+  sort: SortInput
+}
+
+type SavedFilter {
+  id: ID!
+  name: String!
+  filter: Filter!
+  # Shown on home as a chip.
+  pinned: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}

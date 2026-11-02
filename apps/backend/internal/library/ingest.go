@@ -45,7 +45,7 @@ func (l *Library) ingestResult(ctx context.Context, plugin string, result *plugi
 		id, err := l.upsertStudio(ctx, plugin, result.Studio)
 		return schema.RecordRef{Kind: schema.RecordKindStudio, Id: id}, err
 	case result.Tag != nil:
-		id, err := l.upsertTag(ctx, result.Tag)
+		id, err := l.upsertTag(ctx, plugin, result.Tag)
 		return schema.RecordRef{Kind: schema.RecordKindTag, Id: id}, err
 	}
 	// Standalone images and site collections come back with their models.
@@ -70,7 +70,7 @@ func (l *Library) IngestListed(ctx context.Context, plugin string, item plugins.
 		id, err := l.upsertStudio(ctx, plugin, &plugins.Studio{ExternalID: item.ExternalID, SourceURL: item.SourceURL, Name: item.Title, ImagePath: item.PosterPath})
 		return schema.RecordRef{Kind: schema.RecordKindStudio, Id: id}, err
 	case plugins.MediaTypeTag:
-		id, err := l.upsertTag(ctx, &plugins.Tag{Name: item.Title})
+		id, err := l.upsertTag(ctx, plugin, &plugins.Tag{Name: item.Title})
 		return schema.RecordRef{Kind: schema.RecordKindTag, Id: id}, err
 	}
 	return schema.RecordRef{}, fmt.Errorf("can't store a listed %q", item.MediaType)

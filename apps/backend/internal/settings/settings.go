@@ -51,6 +51,9 @@ type Settings struct {
 	// VPN
 	RequireVpn bool `json:"requireVpn"` // block job execution when no VPN interface is up
 
+	// TrashRetentionDays is how long trashed records stay restorable.
+	TrashRetentionDays int `json:"trashRetentionDays"`
+
 	// Plugins
 	DisabledPlugins []string `json:"disabledPlugins"`
 
@@ -79,6 +82,7 @@ var defaultValues = map[string]any{
 	"camRecordingMaxMinutes":       240,
 	"autoEnrichAfterScrape":        false,
 	"requireVpn":                   false,
+	"trashRetentionDays":           30,
 	"disabledPlugins":              []string{},
 	"kindLimits":                   defaultKindLimits,
 }

@@ -10,8 +10,20 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
+	"github.com/playingwithclouds/veil/internal/library"
+	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
+
+// Field is the resolver for the field field.
+func (r *fieldSourceResolver) Field(ctx context.Context, obj *schema.FieldSource) (string, error) {
+	return provenance.Column(obj.SubjectKind, obj.FieldOrdinal), nil
+}
+
+// Source is the resolver for the source field.
+func (r *fieldSourceResolver) Source(ctx context.Context, obj *schema.FieldSource) (*schema.Source, error) {
+	return loadOptional(ctx, r.library.Source, obj.Source)
+}
 
 // Status is the resolver for the status field.
 func (r *galleryResolver) Status(ctx context.Context, obj *schema.Gallery) (string, error) {
@@ -52,6 +64,26 @@ func (r *galleryResolver) Sources(ctx context.Context, obj *schema.Gallery) ([]*
 	return pointers(sources), err
 }
 
+// UserState is the resolver for the userState field.
+func (r *galleryResolver) UserState(ctx context.Context, obj *schema.Gallery) (*schema.UserState, error) {
+	return r.userStateOf(ctx, schema.RecordKindGallery, obj.Id)
+}
+
+// OCount is the resolver for the oCount field.
+func (r *galleryResolver) OCount(ctx context.Context, obj *schema.Gallery) (int, error) {
+	return r.oCount(ctx, schema.RecordKindGallery, obj.Id)
+}
+
+// FieldSources is the resolver for the fieldSources field.
+func (r *galleryResolver) FieldSources(ctx context.Context, obj *schema.Gallery) ([]*schema.FieldSource, error) {
+	return r.fieldSourcesOf(ctx, schema.RecordKindGallery, obj.Id)
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *galleryResolver) Revisions(ctx context.Context, obj *schema.Gallery, limit *int, offset *int) ([]*schema.Revision, error) {
+	return r.revisionsOf(ctx, schema.RecordKindGallery, obj.Id, limit, offset)
+}
+
 // FetchVideo is the resolver for the fetchVideo field.
 func (r *mutationResolver) FetchVideo(ctx context.Context, id string) (*schema.Video, error) {
 	if err := r.pipeline.Visit(ctx, schema.RecordKindVideo, id); err != nil {
@@ -82,6 +114,65 @@ func (r *mutationResolver) Search(ctx context.Context, kind model.ListKind, quer
 	return r.listed(ctx, r.pipeline.Search(ctx, listEntity(kind), query, number(limit)))
 }
 
+// EditVideo is the resolver for the editVideo field.
+func (r *mutationResolver) EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error) {
+	if err := r.library.EditMedia(ctx, schema.RecordKindVideo, id, mediaEdit(edit)); err != nil {
+		return nil, err
+	}
+	return r.library.Video(ctx, id)
+}
+
+// EditGallery is the resolver for the editGallery field.
+func (r *mutationResolver) EditGallery(ctx context.Context, id string, edit model.MediaEdit) (*schema.Gallery, error) {
+	if err := r.library.EditMedia(ctx, schema.RecordKindGallery, id, mediaEdit(edit)); err != nil {
+		return nil, err
+	}
+	return r.library.Gallery(ctx, id)
+}
+
+// EditPerformer is the resolver for the editPerformer field.
+func (r *mutationResolver) EditPerformer(ctx context.Context, id string, edit model.PerformerEdit) (*schema.Performer, error) {
+	named := library.NamedEdit{Name: edit.Name, Aliases: optionalList(edit.Aliases), Details: edit.Details, Links: optionalList(edit.Links)}
+	if err := r.library.EditNamed(ctx, schema.RecordKindPerformer, id, named); err != nil {
+		return nil, err
+	}
+	return r.library.Performer(ctx, id)
+}
+
+// EditStudio is the resolver for the editStudio field.
+func (r *mutationResolver) EditStudio(ctx context.Context, id string, edit model.StudioEdit) (*schema.Studio, error) {
+	named := library.NamedEdit{Name: edit.Name, Aliases: optionalList(edit.Aliases), Details: edit.Details, URL: edit.URL, ParentID: edit.ParentID}
+	if err := r.library.EditNamed(ctx, schema.RecordKindStudio, id, named); err != nil {
+		return nil, err
+	}
+	return r.library.Studio(ctx, id)
+}
+
+// EditTag is the resolver for the editTag field.
+func (r *mutationResolver) EditTag(ctx context.Context, id string, edit model.TagEdit) (*schema.Tag, error) {
+	named := library.NamedEdit{Name: edit.Name, Aliases: optionalList(edit.Aliases)}
+	if err := r.library.EditNamed(ctx, schema.RecordKindTag, id, named); err != nil {
+		return nil, err
+	}
+	return r.library.Tag(ctx, id)
+}
+
+// LockField is the resolver for the lockField field.
+func (r *mutationResolver) LockField(ctx context.Context, subject schema.RecordRef, field string, locked bool) ([]*schema.FieldSource, error) {
+	if err := r.library.Recorder().SetLocked(ctx, subject.Kind, subject.Id, field, locked); err != nil {
+		return nil, err
+	}
+	return r.fieldSourcesOf(ctx, subject.Kind, subject.Id)
+}
+
+// RevertRevision is the resolver for the revertRevision field.
+func (r *mutationResolver) RevertRevision(ctx context.Context, id string) (bool, error) {
+	if err := r.library.Recorder().Revert(ctx, id); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Tags is the resolver for the tags field.
 func (r *performerResolver) Tags(ctx context.Context, obj *schema.Performer) ([]*schema.Tag, error) {
 	tags, err := r.library.TagsByID(ctx, obj.Tags)
@@ -96,18 +187,38 @@ func (r *performerResolver) Sources(ctx context.Context, obj *schema.Performer) 
 
 // VideoCount is the resolver for the videoCount field.
 func (r *performerResolver) VideoCount(ctx context.Context, obj *schema.Performer) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindVideo, "performers", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindVideo, schema.Filter{PerformerIds: []string{obj.Id}})
 }
 
 // GalleryCount is the resolver for the galleryCount field.
 func (r *performerResolver) GalleryCount(ctx context.Context, obj *schema.Performer) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindGallery, "performers", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindGallery, schema.Filter{PerformerIds: []string{obj.Id}})
+}
+
+// UserState is the resolver for the userState field.
+func (r *performerResolver) UserState(ctx context.Context, obj *schema.Performer) (*schema.UserState, error) {
+	return r.userStateOf(ctx, schema.RecordKindPerformer, obj.Id)
+}
+
+// FieldSources is the resolver for the fieldSources field.
+func (r *performerResolver) FieldSources(ctx context.Context, obj *schema.Performer) ([]*schema.FieldSource, error) {
+	return r.fieldSourcesOf(ctx, schema.RecordKindPerformer, obj.Id)
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *performerResolver) Revisions(ctx context.Context, obj *schema.Performer, limit *int, offset *int) ([]*schema.Revision, error) {
+	return r.revisionsOf(ctx, schema.RecordKindPerformer, obj.Id, limit, offset)
 }
 
 // Videos is the resolver for the videos field.
-func (r *queryResolver) Videos(ctx context.Context, filter *model.MediaFilter, limit *int, offset *int) ([]*schema.Video, error) {
-	videos, err := r.library.Videos(ctx, mediaFilter(filter, limit, offset))
+func (r *queryResolver) Videos(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Video, error) {
+	videos, err := r.library.Videos(ctx, mediaQuery(filter, limit, offset))
 	return pointers(videos), err
+}
+
+// VideoCount is the resolver for the videoCount field.
+func (r *queryResolver) VideoCount(ctx context.Context, filter *schema.Filter) (int, error) {
+	return r.library.CountMedia(ctx, schema.RecordKindVideo, filterOrEmpty(filter))
 }
 
 // Video is the resolver for the video field.
@@ -116,9 +227,14 @@ func (r *queryResolver) Video(ctx context.Context, id string) (*schema.Video, er
 }
 
 // Galleries is the resolver for the galleries field.
-func (r *queryResolver) Galleries(ctx context.Context, filter *model.MediaFilter, limit *int, offset *int) ([]*schema.Gallery, error) {
-	galleries, err := r.library.Galleries(ctx, mediaFilter(filter, limit, offset))
+func (r *queryResolver) Galleries(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Gallery, error) {
+	galleries, err := r.library.Galleries(ctx, mediaQuery(filter, limit, offset))
 	return pointers(galleries), err
+}
+
+// GalleryCount is the resolver for the galleryCount field.
+func (r *queryResolver) GalleryCount(ctx context.Context, filter *schema.Filter) (int, error) {
+	return r.library.CountMedia(ctx, schema.RecordKindGallery, filterOrEmpty(filter))
 }
 
 // Gallery is the resolver for the gallery field.
@@ -159,6 +275,11 @@ func (r *queryResolver) Tag(ctx context.Context, id string) (*schema.Tag, error)
 	return r.library.Tag(ctx, id)
 }
 
+// Field is the resolver for the field field.
+func (r *revisionResolver) Field(ctx context.Context, obj *schema.Revision) (string, error) {
+	return provenance.Column(obj.SubjectKind, obj.FieldOrdinal), nil
+}
+
 // Source is the resolver for the source field.
 func (r *streamResolver) Source(ctx context.Context, obj *schema.Stream) (*schema.Source, error) {
 	return r.library.Source(ctx, obj.Source)
@@ -183,27 +304,47 @@ func (r *studioResolver) Sources(ctx context.Context, obj *schema.Studio) ([]*sc
 
 // VideoCount is the resolver for the videoCount field.
 func (r *studioResolver) VideoCount(ctx context.Context, obj *schema.Studio) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindVideo, "studio", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindVideo, schema.Filter{StudioIds: []string{obj.Id}})
 }
 
 // GalleryCount is the resolver for the galleryCount field.
 func (r *studioResolver) GalleryCount(ctx context.Context, obj *schema.Studio) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindGallery, "studio", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindGallery, schema.Filter{StudioIds: []string{obj.Id}})
+}
+
+// UserState is the resolver for the userState field.
+func (r *studioResolver) UserState(ctx context.Context, obj *schema.Studio) (*schema.UserState, error) {
+	return r.userStateOf(ctx, schema.RecordKindStudio, obj.Id)
+}
+
+// FieldSources is the resolver for the fieldSources field.
+func (r *studioResolver) FieldSources(ctx context.Context, obj *schema.Studio) ([]*schema.FieldSource, error) {
+	return r.fieldSourcesOf(ctx, schema.RecordKindStudio, obj.Id)
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *studioResolver) Revisions(ctx context.Context, obj *schema.Studio, limit *int, offset *int) ([]*schema.Revision, error) {
+	return r.revisionsOf(ctx, schema.RecordKindStudio, obj.Id, limit, offset)
 }
 
 // VideoCount is the resolver for the videoCount field.
 func (r *tagResolver) VideoCount(ctx context.Context, obj *schema.Tag) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindVideo, "tags", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindVideo, schema.Filter{IncludeTagIds: []string{obj.Id}})
 }
 
 // GalleryCount is the resolver for the galleryCount field.
 func (r *tagResolver) GalleryCount(ctx context.Context, obj *schema.Tag) (int, error) {
-	return r.library.CountMedia(ctx, schema.RecordKindGallery, "tags", obj.Id)
+	return r.library.CountMedia(ctx, schema.RecordKindGallery, schema.Filter{IncludeTagIds: []string{obj.Id}})
 }
 
-// IntervalSeconds is the resolver for the intervalSeconds field.
-func (r *trickplayResolver) IntervalSeconds(ctx context.Context, obj *schema.Trickplay) (float64, error) {
-	return float64(obj.IntervalSeconds), nil
+// UserState is the resolver for the userState field.
+func (r *tagResolver) UserState(ctx context.Context, obj *schema.Tag) (*schema.UserState, error) {
+	return r.userStateOf(ctx, schema.RecordKindTag, obj.Id)
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *tagResolver) Revisions(ctx context.Context, obj *schema.Tag, limit *int, offset *int) ([]*schema.Revision, error) {
+	return r.revisionsOf(ctx, schema.RecordKindTag, obj.Id, limit, offset)
 }
 
 // Status is the resolver for the status field.
@@ -245,6 +386,26 @@ func (r *videoResolver) Streams(ctx context.Context, obj *schema.Video) ([]*sche
 	return pointers(streams), err
 }
 
+// UserState is the resolver for the userState field.
+func (r *videoResolver) UserState(ctx context.Context, obj *schema.Video) (*schema.UserState, error) {
+	return r.userStateOf(ctx, schema.RecordKindVideo, obj.Id)
+}
+
+// OCount is the resolver for the oCount field.
+func (r *videoResolver) OCount(ctx context.Context, obj *schema.Video) (int, error) {
+	return r.oCount(ctx, schema.RecordKindVideo, obj.Id)
+}
+
+// FieldSources is the resolver for the fieldSources field.
+func (r *videoResolver) FieldSources(ctx context.Context, obj *schema.Video) ([]*schema.FieldSource, error) {
+	return r.fieldSourcesOf(ctx, schema.RecordKindVideo, obj.Id)
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *videoResolver) Revisions(ctx context.Context, obj *schema.Video, limit *int, offset *int) ([]*schema.Revision, error) {
+	return r.revisionsOf(ctx, schema.RecordKindVideo, obj.Id, limit, offset)
+}
+
 // Projection is the resolver for the projection field.
 func (r *vrFormatResolver) Projection(ctx context.Context, obj *schema.VrFormat) (string, error) {
 	return string(obj.Projection), nil
@@ -255,11 +416,17 @@ func (r *vrFormatResolver) Stereo(ctx context.Context, obj *schema.VrFormat) (st
 	return string(obj.Stereo), nil
 }
 
+// FieldSource returns generated.FieldSourceResolver implementation.
+func (r *Resolver) FieldSource() generated.FieldSourceResolver { return &fieldSourceResolver{r} }
+
 // Gallery returns generated.GalleryResolver implementation.
 func (r *Resolver) Gallery() generated.GalleryResolver { return &galleryResolver{r} }
 
 // Performer returns generated.PerformerResolver implementation.
 func (r *Resolver) Performer() generated.PerformerResolver { return &performerResolver{r} }
+
+// Revision returns generated.RevisionResolver implementation.
+func (r *Resolver) Revision() generated.RevisionResolver { return &revisionResolver{r} }
 
 // Stream returns generated.StreamResolver implementation.
 func (r *Resolver) Stream() generated.StreamResolver { return &streamResolver{r} }
@@ -270,20 +437,18 @@ func (r *Resolver) Studio() generated.StudioResolver { return &studioResolver{r}
 // Tag returns generated.TagResolver implementation.
 func (r *Resolver) Tag() generated.TagResolver { return &tagResolver{r} }
 
-// Trickplay returns generated.TrickplayResolver implementation.
-func (r *Resolver) Trickplay() generated.TrickplayResolver { return &trickplayResolver{r} }
-
 // Video returns generated.VideoResolver implementation.
 func (r *Resolver) Video() generated.VideoResolver { return &videoResolver{r} }
 
 // VrFormat returns generated.VrFormatResolver implementation.
 func (r *Resolver) VrFormat() generated.VrFormatResolver { return &vrFormatResolver{r} }
 
+type fieldSourceResolver struct{ *Resolver }
 type galleryResolver struct{ *Resolver }
 type performerResolver struct{ *Resolver }
+type revisionResolver struct{ *Resolver }
 type streamResolver struct{ *Resolver }
 type studioResolver struct{ *Resolver }
 type tagResolver struct{ *Resolver }
-type trickplayResolver struct{ *Resolver }
 type videoResolver struct{ *Resolver }
 type vrFormatResolver struct{ *Resolver }

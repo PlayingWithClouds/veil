@@ -6,6 +6,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -29,7 +30,7 @@ func (l *Library) upsertGallery(ctx context.Context, plugin string, gallery *plu
 		id, sourceID, err = l.createGallery(ctx, site, fields, gallery)
 	} else {
 		id, sourceID = source.SubjectId, source.Id
-		err = l.database.Update(ctx, tableGallery, id, fields)
+		_, err = l.recorder.Update(ctx, schema.RecordKindGallery, id, fields, provenance.Plugin(plugin, sourceID))
 	}
 	if err != nil {
 		return "", err
@@ -37,8 +38,10 @@ func (l *Library) upsertGallery(ctx context.Context, plugin string, gallery *plu
 	return id, l.afterGalleryWrite(ctx, id, sourceID, gallery, fetched)
 }
 
-// createGallery inserts a new gallery and its first source.
+// createGallery inserts a new gallery and its first source, which owns the
+// fields it filled.
 func (l *Library) createGallery(ctx context.Context, site siteIdentity, fields db.Vars, gallery *plugins.Gallery) (string, string, error) {
+	filled := columnsOf(fields)
 	fields["status"] = string(schema.MediaStatusAvailable)
 	fillListDefaults(fields, "performers", "tags")
 	if _, hasTitle := fields["title"]; !hasTitle {
@@ -52,7 +55,10 @@ func (l *Library) createGallery(ctx context.Context, site siteIdentity, fields d
 		return "", "", err
 	}
 	sourceID, err := l.addSource(ctx, schema.RecordKindGallery, id, site, gallery.Title, assetOf(gallery.CoverPath))
-	return id, sourceID, err
+	if err != nil {
+		return "", "", err
+	}
+	return id, sourceID, l.recorder.Claim(ctx, schema.RecordKindGallery, id, filled, provenance.Plugin(site.Plugin, sourceID))
 }
 
 // afterGalleryWrite marks the source fetched and replaces the images.

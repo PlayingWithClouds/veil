@@ -20,6 +20,13 @@ type Queue struct {
 	database   *db.DB
 	notify     chan struct{}
 	maxRetries int
+	// deviceID is stamped on jobs enqueued without a device.
+	deviceID string
+}
+
+// SetDevice makes this install's Device row the device of new jobs.
+func (q *Queue) SetDevice(deviceID string) {
+	q.deviceID = deviceID
 }
 
 // NewQueue returns a queue over database; a job fails for good after
@@ -48,6 +55,9 @@ func (q *Queue) Enqueue(ctx context.Context, j Job) (string, error) {
 		if err != nil || existingID != "" {
 			jobID = existingID
 			return err
+		}
+		if j.Device == "" {
+			j.Device = q.deviceID
 		}
 		created, err := tx.Insert(ctx, jobTable, newJobFields(j))
 		if err != nil {
@@ -107,6 +117,12 @@ func newJobFields(j Job) db.Vars {
 	}
 	if j.PluginName != "" {
 		fields["plugin"] = j.PluginName
+	}
+	if j.Subject != nil {
+		fields["subject"] = j.Subject
+	}
+	if j.Device != "" {
+		fields["device"] = j.Device
 	}
 	if j.DedupeKey != "" {
 		fields["dedupeKey"] = j.DedupeKey

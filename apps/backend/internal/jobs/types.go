@@ -30,9 +30,13 @@ const (
 // Job is a row of the "Job" table, so work survives crashes. It mirrors
 // schema.Job with a decoded payload and parsed times.
 type Job struct {
-	ID         string         `json:"id,omitempty"`
-	Kind       Kind           `json:"kind"`
-	Status     Status         `json:"status"`
+	ID     string `json:"id,omitempty"`
+	Kind   Kind   `json:"kind"`
+	Status Status `json:"status"`
+	// Subject is the record the job works on, when it works on one.
+	Subject *schema.RecordRef `json:"subject,omitempty"`
+	// Device is the install that runs the job; Enqueue stamps the queue's.
+	Device     string         `json:"device,omitempty"`
 	PluginName string         `json:"plugin,omitempty"`
 	Payload    map[string]any `json:"payload,omitempty"`
 	Error      string         `json:"error,omitempty"`

@@ -74,7 +74,12 @@ func (d *DB) Close() error {
 }
 
 // Tx runs fn inside a write transaction, committing when fn returns nil.
+// Called on a transaction, fn joins it: SQLite has one writer, so a second
+// transaction would wait on the first forever.
 func (d *DB) Tx(ctx context.Context, fn func(tx *DB) error) error {
+	if _, inTransaction := d.executor.(*sql.Tx); inTransaction {
+		return fn(d)
+	}
 	transaction, err := d.pool.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)

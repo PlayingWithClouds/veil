@@ -1,3 +1,4 @@
+import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { cacheUrl } from '$lib/img';
 import { backendUrl } from '$lib/server';
@@ -149,6 +150,24 @@ const LISTED = {
 	studios: MEMBER
 } as const;
 
+/** Maps a page's filter onto the API's FilterInput. */
+function filterInput(filter: MediaFilter): FilterInput {
+	const input: FilterInput = {};
+	if (filter.text) {
+		input.text = filter.text;
+	}
+	if (filter.performerId) {
+		input.performerIds = [filter.performerId];
+	}
+	if (filter.studioId) {
+		input.studioIds = [filter.studioId];
+	}
+	if (filter.tagId) {
+		input.includeTagIds = [filter.tagId];
+	}
+	return input;
+}
+
 /** Newest videos matching filter. */
 export async function fetchVideos(
 	filter: MediaFilter = {},
@@ -156,7 +175,7 @@ export async function fetchVideos(
 	offset = 0
 ): Promise<VideoCardRow[]> {
 	const data = await gqlClient.query({
-		videos: { __args: { filter, limit, offset }, ...VIDEO_CARD }
+		videos: { __args: { filter: filterInput(filter), limit, offset }, ...VIDEO_CARD }
 	});
 	return data.videos;
 }
@@ -168,7 +187,7 @@ export async function fetchGalleries(
 	offset = 0
 ): Promise<GalleryCardRow[]> {
 	const data = await gqlClient.query({
-		galleries: { __args: { filter, limit, offset }, ...GALLERY_CARD }
+		galleries: { __args: { filter: filterInput(filter), limit, offset }, ...GALLERY_CARD }
 	});
 	return data.galleries;
 }

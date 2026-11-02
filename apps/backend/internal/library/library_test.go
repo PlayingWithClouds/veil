@@ -87,7 +87,7 @@ func TestIngestTwiceUpdatesTheSameVideo(t *testing.T) {
 	if first.Id != second.Id {
 		t.Fatalf("second ingest made a new video: %s vs %s", first.Id, second.Id)
 	}
-	videos, _ := library.Videos(ctx, MediaFilter{})
+	videos, _ := library.Videos(ctx, MediaQuery{})
 	streams, _ := library.Streams(ctx, schema.RecordKindVideo, first.Id)
 	if len(videos) != 1 || videos[0].Title != "Pool day (remastered)" || len(streams) != 1 {
 		t.Errorf("videos %d (%q), streams %d", len(videos), videos[0].Title, len(streams))
@@ -122,14 +122,30 @@ func TestFilters(t *testing.T) {
 		t.Fatal(err)
 	}
 	video, _ := library.Video(ctx, ref.Id)
-	for name, filter := range map[string]MediaFilter{
-		"performer": {PerformerID: video.Performers[0]},
-		"tag":       {TagID: video.Tags[0]},
-		"studio":    {StudioID: *video.Studio},
-		"text":      {Text: "pool"},
+	text := "pool"
+	minimum := int32(300)
+	for name, filter := range map[string]schema.Filter{
+		"performer": {PerformerIds: video.Performers[:1]},
+		"tags":      {IncludeTagIds: video.Tags},
+		"studio":    {StudioIds: []string{*video.Studio}},
+		"text":      {Text: &text},
+		"duration":  {MinDurationSeconds: &minimum},
+		"site":      {Sources: []string{"site"}},
 	} {
-		videos, err := library.Videos(ctx, filter)
+		videos, err := library.Videos(ctx, MediaQuery{Filter: filter})
 		if err != nil || len(videos) != 1 {
+			t.Errorf("%s filter: %d videos, err %v", name, len(videos), err)
+		}
+	}
+	maximum := int32(300)
+	for name, filter := range map[string]schema.Filter{
+		"excluded tag": {ExcludeTagIds: video.Tags[:1]},
+		"missing tag":  {IncludeTagIds: []string{video.Tags[0], "other"}},
+		"duration":     {MaxDurationSeconds: &maximum},
+		"other site":   {Sources: []string{"elsewhere"}},
+	} {
+		videos, err := library.Videos(ctx, MediaQuery{Filter: filter})
+		if err != nil || len(videos) != 0 {
 			t.Errorf("%s filter: %d videos, err %v", name, len(videos), err)
 		}
 	}
@@ -137,7 +153,7 @@ func TestFilters(t *testing.T) {
 	if err != nil || len(performers) != 1 || performers[0].Name != "Ada Lane" {
 		t.Errorf("performers = %+v, err %v", performers, err)
 	}
-	count, err := library.CountMedia(ctx, schema.RecordKindVideo, "performers", video.Performers[0])
+	count, err := library.CountMedia(ctx, schema.RecordKindVideo, schema.Filter{PerformerIds: video.Performers[:1]})
 	if err != nil || count != 1 {
 		t.Errorf("count = %d, err %v", count, err)
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -30,7 +31,7 @@ func (l *Library) upsertVideo(ctx context.Context, plugin string, scene *plugins
 		id, sourceID, err = l.createVideo(ctx, site, fields, scene)
 	} else {
 		id, sourceID = source.SubjectId, source.Id
-		err = l.database.Update(ctx, tableVideo, id, fields)
+		_, err = l.recorder.Update(ctx, schema.RecordKindVideo, id, fields, provenance.Plugin(plugin, sourceID))
 	}
 	if err != nil {
 		return "", err
@@ -38,8 +39,10 @@ func (l *Library) upsertVideo(ctx context.Context, plugin string, scene *plugins
 	return id, l.afterVideoWrite(ctx, id, sourceID, scene, fetched)
 }
 
-// createVideo inserts a new video and its first source.
+// createVideo inserts a new video and its first source, which owns the
+// fields it filled.
 func (l *Library) createVideo(ctx context.Context, site siteIdentity, fields db.Vars, scene *plugins.Scene) (string, string, error) {
+	filled := columnsOf(fields)
 	fields["status"] = string(schema.MediaStatusAvailable)
 	fillListDefaults(fields, "performers", "tags")
 	if _, hasTitle := fields["title"]; !hasTitle {
@@ -50,7 +53,10 @@ func (l *Library) createVideo(ctx context.Context, site siteIdentity, fields db.
 		return "", "", err
 	}
 	sourceID, err := l.addSource(ctx, schema.RecordKindVideo, id, site, scene.Title, assetOf(scene.PosterPath))
-	return id, sourceID, err
+	if err != nil {
+		return "", "", err
+	}
+	return id, sourceID, l.recorder.Claim(ctx, schema.RecordKindVideo, id, filled, provenance.Plugin(site.Plugin, sourceID))
 }
 
 // afterVideoWrite marks the source fetched and replaces its streams.

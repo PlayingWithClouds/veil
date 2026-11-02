@@ -5,22 +5,24 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
 // upsertPerformer stores a performer a plugin described: matched by its site
 // identity, else by name, else created. Returns "" for a nameless one.
 func (l *Library) upsertPerformer(ctx context.Context, plugin string, performer *plugins.Performer) (string, error) {
-	id, err := l.namedRecordID(ctx, schema.RecordKindPerformer, tablePerformer, plugin, performer.Name, performer.ExternalID, performer.SourceURL, performer.ImagePath)
+	id, sourceID, err := l.namedRecordID(ctx, schema.RecordKindPerformer, tablePerformer, plugin, performer.Name, performer.ExternalID, performer.SourceURL, performer.ImagePath)
 	if err != nil || id == "" {
 		return id, err
 	}
-	return id, l.database.Update(ctx, tablePerformer, id, performerFields(performer))
+	_, err = l.recorder.Update(ctx, schema.RecordKindPerformer, id, performerFields(performer), provenance.Plugin(plugin, sourceID))
+	return id, err
 }
 
 // upsertStudio stores a studio a plugin described, like upsertPerformer.
 func (l *Library) upsertStudio(ctx context.Context, plugin string, studio *plugins.Studio) (string, error) {
-	id, err := l.namedRecordID(ctx, schema.RecordKindStudio, tableStudio, plugin, studio.Name, studio.ExternalID, studio.SourceURL, studio.ImagePath)
+	id, sourceID, err := l.namedRecordID(ctx, schema.RecordKindStudio, tableStudio, plugin, studio.Name, studio.ExternalID, studio.SourceURL, studio.ImagePath)
 	if err != nil || id == "" {
 		return id, err
 	}
@@ -31,43 +33,41 @@ func (l *Library) upsertStudio(ctx context.Context, plugin string, studio *plugi
 	if len(studio.Aliases) > 0 {
 		fields["aliases"] = studio.Aliases
 	}
-	return id, l.database.Update(ctx, tableStudio, id, fields)
+	_, err = l.recorder.Update(ctx, schema.RecordKindStudio, id, fields, provenance.Plugin(plugin, sourceID))
+	return id, err
 }
 
 // upsertTag stores a tag by name and keeps the aliases a plugin gives.
-func (l *Library) upsertTag(ctx context.Context, tag *plugins.Tag) (string, error) {
+func (l *Library) upsertTag(ctx context.Context, plugin string, tag *plugins.Tag) (string, error) {
 	id, err := l.findOrCreateNamed(ctx, tableTag, tag.Name)
 	if err != nil || id == "" || len(tag.Aliases) == 0 {
 		return id, err
 	}
-	return id, l.database.Update(ctx, tableTag, id, db.Vars{"aliases": tag.Aliases})
+	_, err = l.recorder.Update(ctx, schema.RecordKindTag, id, db.Vars{"aliases": tag.Aliases}, provenance.Plugin(plugin, ""))
+	return id, err
 }
 
-// namedRecordID returns the performer or studio a plugin record means: the
-// one its site identity already points at, else the one with its name
-// (which then gains the source), else a new one.
-func (l *Library) namedRecordID(ctx context.Context, kind schema.RecordKind, table, plugin, name, externalID, url, image string) (string, error) {
+// namedRecordID returns the performer or studio a plugin record means, and
+// the source the plugin knows it by ("" without a site identity): the one
+// its site identity already points at, else the one with its name (which
+// then gains the source), else a new one.
+func (l *Library) namedRecordID(ctx context.Context, kind schema.RecordKind, table, plugin, name, externalID, url, image string) (string, string, error) {
 	site, hasSite := identity(plugin, externalID, url)
 	if hasSite {
 		source, err := l.findSource(ctx, site)
-		if err != nil || source != nil {
-			return sourceSubject(source), err
+		if err != nil {
+			return "", "", err
+		}
+		if source != nil {
+			return source.SubjectId, source.Id, nil
 		}
 	}
 	id, err := l.findOrCreateNamed(ctx, table, name)
 	if err != nil || id == "" || !hasSite {
-		return id, err
+		return id, "", err
 	}
-	_, err = l.addSource(ctx, kind, id, site, name, assetOf(image))
-	return id, err
-}
-
-// sourceSubject is the id a source points at; "" for none.
-func sourceSubject(source *schema.Source) string {
-	if source == nil {
-		return ""
-	}
-	return source.SubjectId
+	sourceID, err := l.addSource(ctx, kind, id, site, name, assetOf(image))
+	return id, sourceID, err
 }
 
 // performerFields are the columns a performer page fills. The name stays as

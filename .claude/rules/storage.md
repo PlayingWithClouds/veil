@@ -27,7 +27,7 @@ Env: `DNS_SERVERS` (comma-separated) or `DNS_SERVERS_FILE` (re-read per lookup) 
 
 ## Cache eviction (`internal/blobcache`)
 
-`stream-cache/` + `img-cache/` capped at `CACHE_MAX_BYTES` (default 300 MB, `blobcache.DefaultMaxBytes`). Over cap: LRU evicted to 90%, checked at start, every 15 min, shortly after writes. Last use = mtime, bumped when served. An HLS stream (manifests + segments) evicts as one, with its kv entries.
+`stream-cache/` + `img-cache/` capped at this device's `cache` storage location quota (created as 300 MB, `blobcache.DefaultMaxBytes`; `CACHE_MAX_BYTES` overrides it at start; `setStorageQuota` applies at once via `Evictor.SetMaxBytes`). Each pass writes the cache size to the location's `usedBytes`. Over cap: LRU evicted to 90%, checked at start, every 15 min, shortly after writes. Last use = mtime, bumped when served. An HLS stream (manifests + segments) evicts as one, with its kv entries.
 
 - Kept, not counted: downloads (blob URLs in download jobs); streams in playback or being cached (any file used in the last 5 min, or during a cache operation) until idle.
 - Kept, counted: other blobs used in the last 5 min.

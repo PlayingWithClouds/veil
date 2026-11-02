@@ -164,6 +164,33 @@ func fieldKinds(structType reflect.Type) map[string]reflect.Kind {
 	return kinds
 }
 
+// ColumnKinds maps each column of a model struct (a value or pointer of the
+// generated schema type) to the kind of Go value it decodes into: slices,
+// maps, structs and interfaces are JSON columns, bools are 0/1.
+func ColumnKinds(model any) map[string]reflect.Kind {
+	modelType := reflect.TypeOf(model)
+	for modelType.Kind() == reflect.Pointer {
+		modelType = modelType.Elem()
+	}
+	return fieldKinds(modelType)
+}
+
+// IsJSONKind reports whether a column of this kind (see ColumnKinds) holds
+// JSON text.
+func IsJSONKind(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Slice, reflect.Map, reflect.Struct, reflect.Interface:
+		return true
+	}
+	return false
+}
+
+// StoredValue is value in the form a write binds it: JSON text for
+// collections and structs, text for times, plain scalars otherwise.
+func StoredValue(value any) any {
+	return bindValue(value)
+}
+
 // valueKind is the kind of t with pointers removed; time.Time is a string.
 func valueKind(t reflect.Type) reflect.Kind {
 	for t.Kind() == reflect.Pointer {

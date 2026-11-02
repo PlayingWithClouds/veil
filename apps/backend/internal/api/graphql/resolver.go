@@ -3,6 +3,9 @@
 package graphql
 
 import (
+	"github.com/playingwithclouds/veil/internal/blobcache"
+	"github.com/playingwithclouds/veil/internal/devices"
+	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -10,6 +13,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/resolve"
 	"github.com/playingwithclouds/veil/internal/settings"
 	"github.com/playingwithclouds/veil/internal/stream"
+	"github.com/playingwithclouds/veil/internal/user"
 )
 
 // Resolver is the root gqlgen resolver; it holds every service the API uses.
@@ -22,6 +26,11 @@ type Resolver struct {
 	settings    *settings.Service
 	resolver    *resolve.Service
 	proxy       *stream.Proxy
+	user        *user.Service
+	devices     *devices.Service
+	queue       *jobs.Queue
+	jobRunner   *jobs.Runner
+	evictor     *blobcache.Evictor
 }
 
 // Services are the dependencies of the API.
@@ -34,6 +43,12 @@ type Services struct {
 	Settings    *settings.Service
 	Resolver    *resolve.Service
 	Proxy       *stream.Proxy
+	User        *user.Service
+	Devices     *devices.Service
+	Queue       *jobs.Queue
+	JobRunner   *jobs.Runner
+	// Evictor enforces the cache location's quota.
+	Evictor *blobcache.Evictor
 }
 
 // NewResolver returns the root resolver over services.
@@ -47,5 +62,10 @@ func NewResolver(services Services) *Resolver {
 		settings:    services.Settings,
 		resolver:    services.Resolver,
 		proxy:       services.Proxy,
+		user:        services.User,
+		devices:     services.Devices,
+		queue:       services.Queue,
+		jobRunner:   services.JobRunner,
+		evictor:     services.Evictor,
 	}
 }

@@ -4,13 +4,24 @@ export default {
         2,
         3,
         5,
-        9,
-        13
+        6,
+        15,
+        16,
+        36,
+        37,
+        39,
+        41,
+        43,
+        44,
+        45,
+        46,
+        52,
+        56
     ],
     "types": {
         "Query": {
             "play": [
-                6,
+                7,
                 {
                     "url": [
                         1,
@@ -19,10 +30,10 @@ export default {
                 }
             ],
             "videos": [
-                12,
+                19,
                 {
                     "filter": [
-                        8
+                        62
                     ],
                     "limit": [
                         2
@@ -32,8 +43,16 @@ export default {
                     ]
                 }
             ],
+            "videoCount": [
+                2,
+                {
+                    "filter": [
+                        62
+                    ]
+                }
+            ],
             "video": [
-                12,
+                19,
                 {
                     "id": [
                         3,
@@ -42,10 +61,10 @@ export default {
                 }
             ],
             "galleries": [
-                16,
+                22,
                 {
                     "filter": [
-                        8
+                        62
                     ],
                     "limit": [
                         2
@@ -55,8 +74,16 @@ export default {
                     ]
                 }
             ],
+            "galleryCount": [
+                2,
+                {
+                    "filter": [
+                        62
+                    ]
+                }
+            ],
             "gallery": [
-                16,
+                22,
                 {
                     "id": [
                         3,
@@ -65,7 +92,7 @@ export default {
                 }
             ],
             "performers": [
-                18,
+                24,
                 {
                     "text": [
                         1
@@ -79,7 +106,7 @@ export default {
                 }
             ],
             "performer": [
-                18,
+                24,
                 {
                     "id": [
                         3,
@@ -88,7 +115,7 @@ export default {
                 }
             ],
             "studios": [
-                20,
+                26,
                 {
                     "text": [
                         1
@@ -102,7 +129,7 @@ export default {
                 }
             ],
             "studio": [
-                20,
+                26,
                 {
                     "id": [
                         3,
@@ -111,7 +138,7 @@ export default {
                 }
             ],
             "tags": [
-                21,
+                27,
                 {
                     "text": [
                         1
@@ -125,7 +152,7 @@ export default {
                 }
             ],
             "tag": [
-                21,
+                27,
                 {
                     "id": [
                         3,
@@ -134,10 +161,10 @@ export default {
                 }
             ],
             "plugins": [
-                25
+                31
             ],
             "plugin": [
-                25,
+                31,
                 {
                     "name": [
                         1,
@@ -146,10 +173,137 @@ export default {
                 }
             ],
             "pluginPackages": [
-                24,
+                30,
                 {
                     "query": [
                         1
+                    ]
+                }
+            ],
+            "trash": [
+                35,
+                {
+                    "kind": [
+                        44,
+                        "RecordKind!"
+                    ],
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "jobs": [
+                38,
+                {
+                    "statuses": [
+                        37,
+                        "[JobStatus!]"
+                    ],
+                    "kinds": [
+                        36,
+                        "[JobKind!]"
+                    ],
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "job": [
+                38,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ]
+                }
+            ],
+            "devices": [
+                40
+            ],
+            "currentDevice": [
+                40
+            ],
+            "storageLocations": [
+                42,
+                {
+                    "deviceId": [
+                        3
+                    ]
+                }
+            ],
+            "userStates": [
+                50,
+                {
+                    "filter": [
+                        51
+                    ],
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "history": [
+                50,
+                {
+                    "kind": [
+                        44
+                    ],
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "events": [
+                53,
+                {
+                    "filter": [
+                        55
+                    ],
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
+            ],
+            "eventCount": [
+                2,
+                {
+                    "filter": [
+                        55
+                    ]
+                }
+            ],
+            "recentSearches": [
+                1,
+                {
+                    "limit": [
+                        2
+                    ]
+                }
+            ],
+            "savedFilters": [
+                63
+            ],
+            "savedFilter": [
+                63,
+                {
+                    "id": [
+                        3,
+                        "ID!"
                     ]
                 }
             ],
@@ -162,7 +316,7 @@ export default {
         "ID": {},
         "Mutation": {
             "scrape": [
-                7,
+                8,
                 {
                     "plugin": [
                         1,
@@ -175,7 +329,7 @@ export default {
                 }
             ],
             "fetchVideo": [
-                12,
+                19,
                 {
                     "id": [
                         3,
@@ -184,7 +338,7 @@ export default {
                 }
             ],
             "fetchGallery": [
-                16,
+                22,
                 {
                     "id": [
                         3,
@@ -193,14 +347,14 @@ export default {
                 }
             ],
             "browse": [
-                10,
+                17,
                 {
                     "plugin": [
                         1,
                         "String!"
                     ],
                     "kind": [
-                        9,
+                        16,
                         "ListKind!"
                     ],
                     "query": [
@@ -215,10 +369,10 @@ export default {
                 }
             ],
             "search": [
-                10,
+                17,
                 {
                     "kind": [
-                        9,
+                        16,
                         "ListKind!"
                     ],
                     "query": [
@@ -227,6 +381,97 @@ export default {
                     ],
                     "limit": [
                         2
+                    ]
+                }
+            ],
+            "editVideo": [
+                19,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "edit": [
+                        9,
+                        "MediaEdit!"
+                    ]
+                }
+            ],
+            "editGallery": [
+                22,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "edit": [
+                        9,
+                        "MediaEdit!"
+                    ]
+                }
+            ],
+            "editPerformer": [
+                24,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "edit": [
+                        10,
+                        "PerformerEdit!"
+                    ]
+                }
+            ],
+            "editStudio": [
+                26,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "edit": [
+                        11,
+                        "StudioEdit!"
+                    ]
+                }
+            ],
+            "editTag": [
+                27,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "edit": [
+                        12,
+                        "TagEdit!"
+                    ]
+                }
+            ],
+            "lockField": [
+                13,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ],
+                    "field": [
+                        1,
+                        "String!"
+                    ],
+                    "locked": [
+                        5,
+                        "Boolean!"
+                    ]
+                }
+            ],
+            "revertRevision": [
+                5,
+                {
+                    "id": [
+                        3,
+                        "ID!"
                     ]
                 }
             ],
@@ -251,7 +496,7 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        28,
+                        34,
                         "[PluginSettingValueInput!]!"
                     ]
                 }
@@ -277,11 +522,219 @@ export default {
             "updatePlugins": [
                 1
             ],
+            "trashRecord": [
+                5,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ]
+                }
+            ],
+            "restoreRecord": [
+                5,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ]
+                }
+            ],
+            "purgeRecord": [
+                5,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ]
+                }
+            ],
+            "emptyTrash": [
+                2
+            ],
+            "queueFetch": [
+                38,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ]
+                }
+            ],
+            "cancelJob": [
+                38,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ]
+                }
+            ],
+            "retryJob": [
+                38,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ]
+                }
+            ],
+            "clearFinishedJobs": [
+                2
+            ],
+            "renameDevice": [
+                40,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "name": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
+            "addStorageLocation": [
+                42,
+                {
+                    "kind": [
+                        41,
+                        "StorageKind!"
+                    ],
+                    "uri": [
+                        1,
+                        "String!"
+                    ],
+                    "quotaBytes": [
+                        2
+                    ]
+                }
+            ],
+            "setStorageQuota": [
+                42,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ],
+                    "quotaBytes": [
+                        2
+                    ]
+                }
+            ],
+            "removeStorageLocation": [
+                5,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ]
+                }
+            ],
+            "rate": [
+                50,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ],
+                    "rating": [
+                        6
+                    ]
+                }
+            ],
+            "setFavorite": [
+                50,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ],
+                    "favorite": [
+                        5,
+                        "Boolean!"
+                    ]
+                }
+            ],
+            "setBlocked": [
+                50,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ],
+                    "blocked": [
+                        5,
+                        "Boolean!"
+                    ]
+                }
+            ],
+            "setNotes": [
+                50,
+                {
+                    "subject": [
+                        47,
+                        "RecordRefInput!"
+                    ],
+                    "notes": [
+                        1,
+                        "String!"
+                    ]
+                }
+            ],
+            "recordEvent": [
+                53,
+                {
+                    "event": [
+                        54,
+                        "EventInput!"
+                    ]
+                }
+            ],
+            "clearEvents": [
+                2,
+                {
+                    "kinds": [
+                        52,
+                        "[EventKind!]"
+                    ]
+                }
+            ],
+            "saveFilter": [
+                63,
+                {
+                    "id": [
+                        3
+                    ],
+                    "name": [
+                        1,
+                        "String!"
+                    ],
+                    "filter": [
+                        62,
+                        "FilterInput!"
+                    ],
+                    "pinned": [
+                        5
+                    ]
+                }
+            ],
+            "deleteSavedFilter": [
+                5,
+                {
+                    "id": [
+                        3,
+                        "ID!"
+                    ]
+                }
+            ],
             "__typename": [
                 1
             ]
         },
         "Boolean": {},
+        "Float": {},
         "Playable": {
             "url": [
                 1
@@ -307,39 +760,146 @@ export default {
                 1
             ]
         },
-        "MediaFilter": {
-            "text": [
+        "MediaEdit": {
+            "title": [
                 1
             ],
-            "performerId": [
-                3
+            "details": [
+                1
+            ],
+            "date": [
+                1
             ],
             "studioId": [
                 3
             ],
-            "tagId": [
+            "performerIds": [
+                3
+            ],
+            "tagIds": [
                 3
             ],
             "__typename": [
                 1
             ]
         },
+        "PerformerEdit": {
+            "name": [
+                1
+            ],
+            "aliases": [
+                1
+            ],
+            "details": [
+                1
+            ],
+            "links": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "StudioEdit": {
+            "name": [
+                1
+            ],
+            "aliases": [
+                1
+            ],
+            "details": [
+                1
+            ],
+            "url": [
+                1
+            ],
+            "parentId": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "TagEdit": {
+            "name": [
+                1
+            ],
+            "aliases": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "FieldSource": {
+            "field": [
+                1
+            ],
+            "writtenBy": [
+                15
+            ],
+            "source": [
+                28
+            ],
+            "locked": [
+                5
+            ],
+            "updatedAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Revision": {
+            "id": [
+                3
+            ],
+            "createdAt": [
+                1
+            ],
+            "subjectKind": [
+                44
+            ],
+            "subjectId": [
+                3
+            ],
+            "field": [
+                1
+            ],
+            "before": [
+                43
+            ],
+            "after": [
+                43
+            ],
+            "writtenBy": [
+                15
+            ],
+            "actorName": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Actor": {},
         "ListKind": {},
         "Listed": {
             "videos": [
-                12
+                19
             ],
             "galleries": [
-                16
+                22
             ],
             "performers": [
-                18
+                24
             ],
             "studios": [
-                20
+                26
             ],
             "tags": [
-                21
+                27
             ],
             "__typename": [
                 1
@@ -385,22 +945,22 @@ export default {
                 1
             ],
             "cover": [
-                11
+                18
             ],
             "status": [
                 1
             ],
             "studio": [
-                20
+                26
             ],
             "performers": [
-                18
+                24
             ],
             "tags": [
-                21
+                27
             ],
             "durationSeconds": [
-                13
+                6
             ],
             "width": [
                 2
@@ -409,28 +969,47 @@ export default {
                 2
             ],
             "vr": [
-                14
+                20
             ],
             "preview": [
-                11
+                18
             ],
             "trickplay": [
-                15
+                21
             ],
             "gallery": [
-                16
-            ],
-            "sources": [
                 22
             ],
+            "sources": [
+                28
+            ],
             "streams": [
-                23
+                29
+            ],
+            "userState": [
+                50
+            ],
+            "oCount": [
+                2
+            ],
+            "fieldSources": [
+                13
+            ],
+            "revisions": [
+                14,
+                {
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
             ],
             "__typename": [
                 1
             ]
         },
-        "Float": {},
         "VrFormat": {
             "projection": [
                 1
@@ -447,7 +1026,7 @@ export default {
         },
         "Trickplay": {
             "sheets": [
-                11
+                18
             ],
             "columns": [
                 2
@@ -462,7 +1041,7 @@ export default {
                 2
             ],
             "intervalSeconds": [
-                13
+                6
             ],
             "__typename": [
                 1
@@ -488,31 +1067,51 @@ export default {
                 1
             ],
             "cover": [
-                11
+                18
             ],
             "status": [
                 1
             ],
             "studio": [
-                20
+                26
             ],
             "performers": [
-                18
+                24
             ],
             "tags": [
-                21
+                27
             ],
             "imageCount": [
                 2
             ],
             "images": [
-                17
+                23
             ],
             "video": [
-                12
+                19
             ],
             "sources": [
-                22
+                28
+            ],
+            "userState": [
+                50
+            ],
+            "oCount": [
+                2
+            ],
+            "fieldSources": [
+                13
+            ],
+            "revisions": [
+                14,
+                {
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
             ],
             "__typename": [
                 1
@@ -526,7 +1125,7 @@ export default {
                 2
             ],
             "asset": [
-                11
+                18
             ],
             "width": [
                 2
@@ -555,28 +1154,45 @@ export default {
                 1
             ],
             "image": [
-                11
+                18
             ],
             "details": [
                 1
             ],
             "attributes": [
-                19
+                25
             ],
             "links": [
                 1
             ],
             "tags": [
-                21
+                27
             ],
             "sources": [
-                22
+                28
             ],
             "videoCount": [
                 2
             ],
             "galleryCount": [
                 2
+            ],
+            "userState": [
+                50
+            ],
+            "fieldSources": [
+                13
+            ],
+            "revisions": [
+                14,
+                {
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
             ],
             "__typename": [
                 1
@@ -649,7 +1265,7 @@ export default {
                 1
             ],
             "image": [
-                11
+                18
             ],
             "details": [
                 1
@@ -658,19 +1274,36 @@ export default {
                 1
             ],
             "parent": [
-                20
+                26
             ],
             "tags": [
-                21
+                27
             ],
             "sources": [
-                22
+                28
             ],
             "videoCount": [
                 2
             ],
             "galleryCount": [
                 2
+            ],
+            "userState": [
+                50
+            ],
+            "fieldSources": [
+                13
+            ],
+            "revisions": [
+                14,
+                {
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
             ],
             "__typename": [
                 1
@@ -691,6 +1324,20 @@ export default {
             ],
             "galleryCount": [
                 2
+            ],
+            "userState": [
+                50
+            ],
+            "revisions": [
+                14,
+                {
+                    "limit": [
+                        2
+                    ],
+                    "offset": [
+                        2
+                    ]
+                }
             ],
             "__typename": [
                 1
@@ -713,7 +1360,7 @@ export default {
                 1
             ],
             "image": [
-                11
+                18
             ],
             "fetchedAt": [
                 1
@@ -742,7 +1389,7 @@ export default {
                 2
             ],
             "source": [
-                22
+                28
             ],
             "__typename": [
                 1
@@ -806,10 +1453,10 @@ export default {
                 5
             ],
             "settings": [
-                26
+                32
             ],
             "settingValues": [
-                27
+                33
             ],
             "__typename": [
                 1
@@ -854,6 +1501,501 @@ export default {
                 1
             ],
             "value": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "TrashedRecord": {
+            "kind": [
+                44
+            ],
+            "id": [
+                3
+            ],
+            "label": [
+                1
+            ],
+            "deletedAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "JobKind": {},
+        "JobStatus": {},
+        "Job": {
+            "id": [
+                3
+            ],
+            "kind": [
+                36
+            ],
+            "status": [
+                37
+            ],
+            "subject": [
+                48
+            ],
+            "plugin": [
+                1
+            ],
+            "payload": [
+                43
+            ],
+            "progress": [
+                6
+            ],
+            "error": [
+                1
+            ],
+            "attempts": [
+                2
+            ],
+            "priority": [
+                2
+            ],
+            "device": [
+                3
+            ],
+            "createdAt": [
+                1
+            ],
+            "runAt": [
+                1
+            ],
+            "startedAt": [
+                1
+            ],
+            "finishedAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Platform": {},
+        "Device": {
+            "id": [
+                3
+            ],
+            "name": [
+                1
+            ],
+            "platform": [
+                39
+            ],
+            "lastSeenAt": [
+                1
+            ],
+            "lastSyncAt": [
+                1
+            ],
+            "current": [
+                5
+            ],
+            "createdAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "StorageKind": {},
+        "StorageLocation": {
+            "id": [
+                3
+            ],
+            "device": [
+                40
+            ],
+            "kind": [
+                41
+            ],
+            "uri": [
+                1
+            ],
+            "quotaBytes": [
+                2
+            ],
+            "usedBytes": [
+                2
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "JSON": {},
+        "RecordKind": {},
+        "MediaKind": {},
+        "MediaStatus": {},
+        "RecordRefInput": {
+            "kind": [
+                44
+            ],
+            "id": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "RecordRef": {
+            "kind": [
+                44
+            ],
+            "id": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Record": {
+            "on_Video": [
+                19
+            ],
+            "on_Gallery": [
+                22
+            ],
+            "on_Performer": [
+                24
+            ],
+            "on_Studio": [
+                26
+            ],
+            "on_Tag": [
+                27
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "UserState": {
+            "subjectKind": [
+                44
+            ],
+            "subjectId": [
+                3
+            ],
+            "record": [
+                49
+            ],
+            "rating": [
+                6
+            ],
+            "favorite": [
+                5
+            ],
+            "notes": [
+                1
+            ],
+            "blocked": [
+                5
+            ],
+            "progress": [
+                6
+            ],
+            "viewCount": [
+                2
+            ],
+            "lastViewedAt": [
+                1
+            ],
+            "fields": [
+                43
+            ],
+            "updatedAt": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "UserStateFilter": {
+            "kind": [
+                44
+            ],
+            "favorite": [
+                5
+            ],
+            "blocked": [
+                5
+            ],
+            "rated": [
+                5
+            ],
+            "viewed": [
+                5
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "EventKind": {},
+        "Event": {
+            "id": [
+                3
+            ],
+            "at": [
+                1
+            ],
+            "kind": [
+                52
+            ],
+            "subjectKind": [
+                44
+            ],
+            "subjectId": [
+                3
+            ],
+            "data": [
+                43
+            ],
+            "device": [
+                3
+            ],
+            "sessionId": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "EventInput": {
+            "kind": [
+                52
+            ],
+            "subject": [
+                47
+            ],
+            "data": [
+                43
+            ],
+            "sessionId": [
+                3
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "EventFilter": {
+            "kinds": [
+                52
+            ],
+            "subject": [
+                47
+            ],
+            "since": [
+                1
+            ],
+            "until": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "SortField": {},
+        "Sort": {
+            "field": [
+                56
+            ],
+            "descending": [
+                5
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "SortInput": {
+            "field": [
+                56
+            ],
+            "descending": [
+                5
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "FieldCondition": {
+            "fieldDefId": [
+                3
+            ],
+            "operator": [
+                1
+            ],
+            "value": [
+                43
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "FieldConditionInput": {
+            "fieldDefId": [
+                3
+            ],
+            "operator": [
+                1
+            ],
+            "value": [
+                43
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "Filter": {
+            "kinds": [
+                45
+            ],
+            "text": [
+                1
+            ],
+            "performerIds": [
+                3
+            ],
+            "studioIds": [
+                3
+            ],
+            "categoryIds": [
+                3
+            ],
+            "includeTagIds": [
+                3
+            ],
+            "excludeTagIds": [
+                3
+            ],
+            "sources": [
+                1
+            ],
+            "dateFrom": [
+                1
+            ],
+            "dateTo": [
+                1
+            ],
+            "minDurationSeconds": [
+                2
+            ],
+            "maxDurationSeconds": [
+                2
+            ],
+            "minRating": [
+                6
+            ],
+            "status": [
+                46
+            ],
+            "inLibrary": [
+                5
+            ],
+            "favorite": [
+                5
+            ],
+            "unwatched": [
+                5
+            ],
+            "vr": [
+                5
+            ],
+            "fields": [
+                59
+            ],
+            "sort": [
+                57
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "FilterInput": {
+            "kinds": [
+                45
+            ],
+            "text": [
+                1
+            ],
+            "performerIds": [
+                3
+            ],
+            "studioIds": [
+                3
+            ],
+            "categoryIds": [
+                3
+            ],
+            "includeTagIds": [
+                3
+            ],
+            "excludeTagIds": [
+                3
+            ],
+            "sources": [
+                1
+            ],
+            "dateFrom": [
+                1
+            ],
+            "dateTo": [
+                1
+            ],
+            "minDurationSeconds": [
+                2
+            ],
+            "maxDurationSeconds": [
+                2
+            ],
+            "minRating": [
+                6
+            ],
+            "status": [
+                46
+            ],
+            "inLibrary": [
+                5
+            ],
+            "favorite": [
+                5
+            ],
+            "unwatched": [
+                5
+            ],
+            "vr": [
+                5
+            ],
+            "fields": [
+                60
+            ],
+            "sort": [
+                58
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "SavedFilter": {
+            "id": [
+                3
+            ],
+            "name": [
+                1
+            ],
+            "filter": [
+                61
+            ],
+            "pinned": [
+                5
+            ],
+            "createdAt": [
+                1
+            ],
+            "updatedAt": [
                 1
             ],
             "__typename": [

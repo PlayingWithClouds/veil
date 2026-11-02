@@ -1,8 +1,10 @@
 type Query {
   play(url: String!): Playable
-  videos(filter: MediaFilter, limit: Int, offset: Int): [Video!]!
+  videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
+  videoCount(filter: FilterInput): Int!
   video(id: ID!): Video
-  galleries(filter: MediaFilter, limit: Int, offset: Int): [Gallery!]!
+  galleries(filter: FilterInput, limit: Int, offset: Int): [Gallery!]!
+  galleryCount(filter: FilterInput): Int!
   gallery(id: ID!): Gallery
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
@@ -13,6 +15,19 @@ type Query {
   plugins: [Plugin!]!
   plugin(name: String!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
+  trash(kind: RecordKind!, limit: Int, offset: Int): [TrashedRecord!]!
+  jobs(statuses: [JobStatus!], kinds: [JobKind!], limit: Int, offset: Int): [Job!]!
+  job(id: ID!): Job
+  devices: [Device!]!
+  currentDevice: Device!
+  storageLocations(deviceId: ID): [StorageLocation!]!
+  userStates(filter: UserStateFilter, limit: Int, offset: Int): [UserState!]!
+  history(kind: RecordKind, limit: Int, offset: Int): [UserState!]!
+  events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
+  eventCount(filter: EventFilter): Int!
+  recentSearches(limit: Int): [String!]!
+  savedFilters: [SavedFilter!]!
+  savedFilter(id: ID!): SavedFilter
 }
 
 type Mutation {
@@ -21,11 +36,38 @@ type Mutation {
   fetchGallery(id: ID!): Gallery
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   search(kind: ListKind!, query: String!, limit: Int): Listed!
+  editVideo(id: ID!, edit: MediaEdit!): Video
+  editGallery(id: ID!, edit: MediaEdit!): Gallery
+  editPerformer(id: ID!, edit: PerformerEdit!): Performer
+  editStudio(id: ID!, edit: StudioEdit!): Studio
+  editTag(id: ID!, edit: TagEdit!): Tag
+  lockField(subject: RecordRefInput!, field: String!, locked: Boolean!): [FieldSource!]!
+  revertRevision(id: ID!): Boolean!
   setPluginEnabled(name: String!, enabled: Boolean!): Boolean!
   updatePluginSettings(plugin: String!, values: [PluginSettingValueInput!]!): Boolean!
   installPlugin(packageName: String!): Boolean!
   uninstallPlugin(name: String!): Boolean!
   updatePlugins: [String!]!
+  trashRecord(subject: RecordRefInput!): Boolean!
+  restoreRecord(subject: RecordRefInput!): Boolean!
+  purgeRecord(subject: RecordRefInput!): Boolean!
+  emptyTrash: Int!
+  queueFetch(subject: RecordRefInput!): Job!
+  cancelJob(id: ID!): Job
+  retryJob(id: ID!): Job
+  clearFinishedJobs: Int!
+  renameDevice(id: ID!, name: String!): Device!
+  addStorageLocation(kind: StorageKind!, uri: String!, quotaBytes: Int): StorageLocation!
+  setStorageQuota(id: ID!, quotaBytes: Int): StorageLocation!
+  removeStorageLocation(id: ID!): Boolean!
+  rate(subject: RecordRefInput!, rating: Float): UserState!
+  setFavorite(subject: RecordRefInput!, favorite: Boolean!): UserState!
+  setBlocked(subject: RecordRefInput!, blocked: Boolean!): UserState!
+  setNotes(subject: RecordRefInput!, notes: String!): UserState!
+  recordEvent(event: EventInput!): Event!
+  clearEvents(kinds: [EventKind!]): Int!
+  saveFilter(id: ID, name: String!, filter: FilterInput!, pinned: Boolean): SavedFilter!
+  deleteSavedFilter(id: ID!): Boolean!
 }
 
 type Playable {
@@ -39,11 +81,60 @@ type Scraped {
   id: ID!
 }
 
-input MediaFilter {
-  text: String
-  performerId: ID
+input MediaEdit {
+  title: String
+  details: String
+  date: String
   studioId: ID
-  tagId: ID
+  performerIds: [ID!]
+  tagIds: [ID!]
+}
+
+input PerformerEdit {
+  name: String
+  aliases: [String!]
+  details: String
+  links: [String!]
+}
+
+input StudioEdit {
+  name: String
+  aliases: [String!]
+  details: String
+  url: String
+  parentId: ID
+}
+
+input TagEdit {
+  name: String
+  aliases: [String!]
+}
+
+type FieldSource {
+  field: String!
+  writtenBy: Actor!
+  source: Source
+  locked: Boolean!
+  updatedAt: String!
+}
+
+type Revision {
+  id: ID!
+  createdAt: String!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  field: String!
+  before: JSON
+  after: JSON
+  writtenBy: Actor!
+  actorName: String
+}
+
+enum Actor {
+  user
+  plugin
+  automation
+  system
 }
 
 enum ListKind {
@@ -91,6 +182,10 @@ type Video {
   gallery: Gallery
   sources: [Source!]!
   streams: [Stream!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type VrFormat {
@@ -124,6 +219,10 @@ type Gallery {
   images: [Image!]!
   video: Video
   sources: [Source!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Image {
@@ -148,6 +247,9 @@ type Performer {
   sources: [Source!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type PerformerAttributes {
@@ -182,6 +284,9 @@ type Studio {
   sources: [Source!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Tag {
@@ -190,6 +295,8 @@ type Tag {
   aliases: [String!]!
   videoCount: Int!
   galleryCount: Int!
+  userState: UserState!
+  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Source {
@@ -254,4 +361,282 @@ type PluginSettingValue {
 input PluginSettingValueInput {
   key: String!
   value: String!
+}
+
+type TrashedRecord {
+  kind: RecordKind!
+  id: ID!
+  label: String!
+  deletedAt: String!
+}
+
+enum JobKind {
+  download
+  record
+  scrape
+  followRun
+  fingerprint
+  embed
+  trickplay
+  transcode
+  libraryScan
+  automationRun
+  snapshot
+  enrich
+  speedCheck
+}
+
+enum JobStatus {
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+type Job {
+  id: ID!
+  kind: JobKind!
+  status: JobStatus!
+  subject: RecordRef
+  plugin: String
+  payload: JSON
+  progress: Float!
+  error: String
+  attempts: Int!
+  priority: Int!
+  device: ID
+  createdAt: String!
+  runAt: String
+  startedAt: String
+  finishedAt: String
+}
+
+enum Platform {
+  server
+  desktop
+  android
+  tv
+  vr
+}
+
+type Device {
+  id: ID!
+  name: String!
+  platform: Platform!
+  lastSeenAt: String
+  lastSyncAt: String
+  current: Boolean!
+  createdAt: String!
+}
+
+enum StorageKind {
+  library
+  cache
+  archive
+}
+
+type StorageLocation {
+  id: ID!
+  device: Device
+  kind: StorageKind!
+  uri: String!
+  quotaBytes: Int
+  usedBytes: Int!
+}
+
+scalar JSON
+
+enum RecordKind {
+  video
+  gallery
+  image
+  audio
+  story
+  post
+  performer
+  studio
+  camModel
+  group
+  tag
+  category
+  collection
+  segment
+  clip
+}
+
+enum MediaKind {
+  video
+  gallery
+  audio
+  story
+  post
+}
+
+enum MediaStatus {
+  available
+  wanted
+  unavailable
+}
+
+input RecordRefInput {
+  kind: RecordKind!
+  id: ID!
+}
+
+type RecordRef {
+  kind: RecordKind!
+  id: ID!
+}
+
+union Record = Video | Gallery | Performer | Studio | Tag
+
+type UserState {
+  subjectKind: RecordKind!
+  subjectId: ID!
+  record: Record
+  rating: Float
+  favorite: Boolean!
+  notes: String
+  blocked: Boolean!
+  progress: Float
+  viewCount: Int!
+  lastViewedAt: String
+  fields: JSON!
+  updatedAt: String
+}
+
+input UserStateFilter {
+  kind: RecordKind
+  favorite: Boolean
+  blocked: Boolean
+  rated: Boolean
+  viewed: Boolean
+}
+
+enum EventKind {
+  view
+  progress
+  finish
+  o
+  search
+  impression
+  choice
+  heatSpan
+  skip
+  like
+}
+
+type Event {
+  id: ID!
+  at: String!
+  kind: EventKind!
+  subjectKind: RecordKind
+  subjectId: ID
+  data: JSON
+  device: ID
+  sessionId: ID
+}
+
+input EventInput {
+  kind: EventKind!
+  subject: RecordRefInput
+  data: JSON
+  sessionId: ID
+}
+
+input EventFilter {
+  kinds: [EventKind!]
+  subject: RecordRefInput
+  since: String
+  until: String
+}
+
+enum SortField {
+  relevance
+  date
+  addedAt
+  title
+  rating
+  duration
+  viewCount
+  lastViewedAt
+  random
+}
+
+type Sort {
+  field: SortField!
+  descending: Boolean!
+}
+
+input SortInput {
+  field: SortField!
+  descending: Boolean
+}
+
+type FieldCondition {
+  fieldDefId: ID!
+  operator: String!
+  value: JSON
+}
+
+input FieldConditionInput {
+  fieldDefId: ID!
+  operator: String!
+  value: JSON
+}
+
+type Filter {
+  kinds: [MediaKind!]!
+  text: String
+  performerIds: [ID!]
+  studioIds: [ID!]
+  categoryIds: [ID!]
+  includeTagIds: [ID!]
+  excludeTagIds: [ID!]
+  sources: [String!]
+  dateFrom: String
+  dateTo: String
+  minDurationSeconds: Int
+  maxDurationSeconds: Int
+  minRating: Float
+  status: [MediaStatus!]
+  inLibrary: Boolean
+  favorite: Boolean
+  unwatched: Boolean
+  vr: Boolean
+  fields: [FieldCondition!]
+  sort: Sort
+}
+
+input FilterInput {
+  kinds: [MediaKind!]
+  text: String
+  performerIds: [ID!]
+  studioIds: [ID!]
+  categoryIds: [ID!]
+  includeTagIds: [ID!]
+  excludeTagIds: [ID!]
+  sources: [String!]
+  dateFrom: String
+  dateTo: String
+  minDurationSeconds: Int
+  maxDurationSeconds: Int
+  minRating: Float
+  status: [MediaStatus!]
+  inLibrary: Boolean
+  favorite: Boolean
+  unwatched: Boolean
+  vr: Boolean
+  fields: [FieldConditionInput!]
+  sort: SortInput
+}
+
+type SavedFilter {
+  id: ID!
+  name: String!
+  filter: Filter!
+  pinned: Boolean!
+  createdAt: String!
+  updatedAt: String!
 }

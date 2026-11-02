@@ -81,3 +81,92 @@ models:
         resolver: true
   Trickplay:
     model: github.com/playingwithclouds/veil/internal/schema.Trickplay
+  # Float also carries the schema's f32 fields (ratings).
+  Float:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float
+      - github.com/playingwithclouds/veil/internal/api/graphql/scalars.Float32
+  JSON:
+    model: github.com/99designs/gqlgen/graphql.Any
+  # Enums are the schema's own, values spelled as there.
+  RecordKind:
+    model: github.com/playingwithclouds/veil/internal/schema.RecordKind
+  MediaKind:
+    model: github.com/playingwithclouds/veil/internal/schema.MediaKind
+  MediaStatus:
+    model: github.com/playingwithclouds/veil/internal/schema.MediaStatus
+  Actor:
+    model: github.com/playingwithclouds/veil/internal/schema.Actor
+  EventKind:
+    model: github.com/playingwithclouds/veil/internal/schema.EventKind
+  SortField:
+    model: github.com/playingwithclouds/veil/internal/schema.SortField
+  JobKind:
+    model: github.com/playingwithclouds/veil/internal/schema.JobKind
+  JobStatus:
+    model: github.com/playingwithclouds/veil/internal/schema.JobStatus
+  Platform:
+    model: github.com/playingwithclouds/veil/internal/schema.Platform
+  StorageKind:
+    model: github.com/playingwithclouds/veil/internal/schema.StorageKind
+  RecordRef:
+    model: github.com/playingwithclouds/veil/internal/schema.RecordRef
+  RecordRefInput:
+    model: github.com/playingwithclouds/veil/internal/schema.RecordRef
+  Record:
+    model: github.com/playingwithclouds/veil/internal/api/graphql/model.Record
+  UserState:
+    model: github.com/playingwithclouds/veil/internal/schema.UserState
+    fields:
+      record:
+        resolver: true
+  Event:
+    model: github.com/playingwithclouds/veil/internal/schema.Event
+  Filter:
+    model: github.com/playingwithclouds/veil/internal/schema.Filter
+  FilterInput:
+    model: github.com/playingwithclouds/veil/internal/schema.Filter
+  Sort:
+    model: github.com/playingwithclouds/veil/internal/schema.Sort
+  SortInput:
+    model: github.com/playingwithclouds/veil/internal/schema.Sort
+  FieldCondition:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldCondition
+  FieldConditionInput:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldCondition
+  SavedFilter:
+    model: github.com/playingwithclouds/veil/internal/schema.SavedFilter
+  FieldSource:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldSource
+    fields:
+      field:
+        resolver: true
+      source:
+        resolver: true
+  Revision:
+    model: github.com/playingwithclouds/veil/internal/schema.Revision
+    fields:
+      field:
+        resolver: true
+  Job:
+    model: github.com/playingwithclouds/veil/internal/jobs.Job
+    fields:
+      createdAt:
+        resolver: true
+      runAt:
+        resolver: true
+      startedAt:
+        resolver: true
+      finishedAt:
+        resolver: true
+      device:
+        resolver: true
+      error:
+        resolver: true
+  Device:
+    model: github.com/playingwithclouds/veil/internal/schema.Device
+  StorageLocation:
+    model: github.com/playingwithclouds/veil/internal/schema.StorageLocation
+    fields:
+      device:
+        resolver: true

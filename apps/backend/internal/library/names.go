@@ -75,10 +75,12 @@ func newNamedRecord(table, name, key string) db.Vars {
 	return record
 }
 
-// findByNameKey returns the id of the first live row of table with key, or "".
+// findByNameKey returns the id of the first row of table with key, or "".
+// Live rows come first; a trashed one still matches, so a credit of a
+// trashed performer or tag stays on it (hidden) instead of recreating it.
 func (l *Library) findByNameKey(ctx context.Context, table, key string) (string, error) {
 	ids, err := l.database.Strings(ctx,
-		`SELECT "id" FROM `+db.Quote(table)+` WHERE "nameKey" = $key AND "deletedAt" IS NULL ORDER BY "createdAt" LIMIT 1`,
+		`SELECT "id" FROM `+db.Quote(table)+` WHERE "nameKey" = $key ORDER BY "deletedAt" IS NOT NULL, "createdAt" LIMIT 1`,
 		db.Vars{"key": key})
 	if err != nil || len(ids) == 0 {
 		return "", err

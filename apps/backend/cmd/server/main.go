@@ -20,6 +20,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/blobcache"
 	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/db"
+	"github.com/playingwithclouds/veil/internal/devices"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/netdns"
@@ -28,9 +29,11 @@ import (
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/pluginstore"
 	"github.com/playingwithclouds/veil/internal/resolve"
+	"github.com/playingwithclouds/veil/internal/schema"
 	"github.com/playingwithclouds/veil/internal/settings"
 	"github.com/playingwithclouds/veil/internal/storage"
 	"github.com/playingwithclouds/veil/internal/stream"
+	"github.com/playingwithclouds/veil/internal/user"
 )
 
 // pluginUpdateInterval is how often installed plugins are checked for newer
@@ -108,19 +111,121 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 	return store.WithEncryption(key, "stream-cache/")
 }
 
-// cacheMaxBytes returns the cache size limit: CACHE_MAX_BYTES when it is a
-// positive number of bytes, else blobcache.DefaultMaxBytes.
-func cacheMaxBytes() int64 {
+// configuredCacheBytes returns CACHE_MAX_BYTES when it is a positive number
+// of bytes, else nil (the cache location's stored quota applies).
+func configuredCacheBytes() *int64 {
 	configured := os.Getenv("CACHE_MAX_BYTES")
 	if configured == "" {
-		return blobcache.DefaultMaxBytes
+		return nil
 	}
 	maxBytes, err := strconv.ParseInt(configured, 10, 64)
 	if err != nil || maxBytes <= 0 {
-		log.Printf("CACHE_MAX_BYTES %q is not a positive byte count, using %d", configured, blobcache.DefaultMaxBytes)
-		return blobcache.DefaultMaxBytes
+		log.Printf("CACHE_MAX_BYTES %q is not a positive byte count, ignoring it", configured)
+		return nil
 	}
-	return maxBytes
+	return &maxBytes
+}
+
+// openDevice returns this install's device row: named DEVICE_NAME (else the
+// host name) on first start, platform DEVICE_PLATFORM (default server).
+func openDevice(ctx context.Context, database *db.DB) *devices.Service {
+	platform, err := devices.ParsePlatform(os.Getenv("DEVICE_PLATFORM"))
+	if err != nil {
+		log.Fatalf("device: %v", err)
+	}
+	hostName, _ := os.Hostname()
+	service, err := devices.Open(ctx, database, envOr("DEVICE_NAME", hostName), platform)
+	if err != nil {
+		log.Fatalf("device: %v", err)
+	}
+	return service
+}
+
+// openStorageLocations makes sure this device has its library and cache
+// locations in the blob store, and returns the cache's quota and the
+// location. CACHE_MAX_BYTES, when set, overrides the stored quota.
+func openStorageLocations(ctx context.Context, deviceService *devices.Service, blobDir string) (*schema.StorageLocation, int64) {
+	absolute, err := filepath.Abs(blobDir)
+	if err != nil {
+		absolute = blobDir
+	}
+	if _, err := deviceService.EnsureLocation(ctx, schema.StorageKindLibrary, absolute, nil, nil); err != nil {
+		log.Fatalf("storage locations: %v", err)
+	}
+	defaultQuota := int64(blobcache.DefaultMaxBytes)
+	cacheLocation, err := deviceService.EnsureLocation(ctx, schema.StorageKindCache, absolute, configuredCacheBytes(), &defaultQuota)
+	if err != nil {
+		log.Fatalf("storage locations: %v", err)
+	}
+	if cacheLocation.QuotaBytes == nil {
+		return cacheLocation, defaultQuota
+	}
+	return cacheLocation, *cacheLocation.QuotaBytes
+}
+
+// registerJobs gives the job runner its tasks, with the per-kind limits from
+// settings.
+func registerJobs(runner *jobs.Runner, flow *pipeline.Pipeline, configured settings.Settings) {
+	runner.Register(jobs.KindScrape, jobLimits(configured, jobs.KindScrape), func(ctx context.Context, job *jobs.Job, progress func(float64)) error {
+		if job.Subject == nil {
+			return fmt.Errorf("a fetch job needs a subject")
+		}
+		return flow.Visit(ctx, job.Subject.Kind, job.Subject.Id)
+	})
+}
+
+// jobLimits reads a kind's concurrency and retry backoff from settings.
+func jobLimits(configured settings.Settings, kind jobs.Kind) jobs.Limits {
+	limit := configured.KindLimits[string(kind)]
+	concurrency := limit.MaxConcurrent
+	if concurrency <= 0 {
+		concurrency = configured.MaxConcurrentJobs
+	}
+	return jobs.Limits{
+		Concurrency:     concurrency,
+		RetryInitial:    time.Duration(limit.RetryInitialMs) * time.Millisecond,
+		RetryMultiplier: limit.RetryMultiplier,
+		RetryMax:        time.Duration(limit.RetryMaxMs) * time.Millisecond,
+	}
+}
+
+// maintenanceInterval is how often trash and finished jobs are purged.
+const maintenanceInterval = 6 * time.Hour
+
+// finishedJobRetention is how long finished jobs stay listed.
+const finishedJobRetention = 7 * 24 * time.Hour
+
+// runMaintenance purges what outlived its retention, at start and then every
+// maintenanceInterval, until ctx ends.
+func runMaintenance(ctx context.Context, lib *library.Library, userService *user.Service, queue *jobs.Queue, settingsService *settings.Service) {
+	for {
+		purgeExpired(ctx, lib, userService, queue, settingsService.Cached().TrashRetentionDays)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(maintenanceInterval):
+		}
+	}
+}
+
+// purgeExpired removes trash older than retentionDays and finished jobs
+// older than finishedJobRetention.
+func purgeExpired(ctx context.Context, lib *library.Library, userService *user.Service, queue *jobs.Queue, retentionDays int) {
+	if retentionDays <= 0 {
+		retentionDays = 30
+	}
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	if purged, err := lib.PurgeTrash(ctx, cutoff); err != nil {
+		log.Printf("maintenance: purge trash: %v", err)
+	} else if purged > 0 {
+		log.Printf("maintenance: purged %d trashed records", purged)
+	}
+	if _, err := userService.PurgeTrash(ctx, cutoff); err != nil {
+		log.Printf("maintenance: purge saved filters: %v", err)
+	}
+	if _, err := queue.PurgeFinished(ctx, time.Now().Add(-finishedJobRetention)); err != nil {
+		log.Printf("maintenance: purge jobs: %v", err)
+	}
 }
 
 // corsMiddleware lets the web app on another port call the API.
@@ -205,7 +310,11 @@ func main() {
 		log.Fatalf("settings init: %v", err)
 	}
 
+	deviceService := openDevice(ctx, database)
+	userService := user.New(database, deviceService.Current().Id)
+
 	queue := jobs.NewQueue(database, settingsService.Cached().MaxJobRetries)
+	queue.SetDevice(deviceService.Current().Id)
 	// Crash recovery: jobs left running go back to the queue.
 	if err := queue.ResetStuck(ctx); err != nil {
 		log.Fatalf("reset stuck jobs: %v", err)
@@ -219,6 +328,11 @@ func main() {
 	lib := library.New(database)
 	flow := pipeline.New(lib, registry, runner)
 
+	jobRunner := jobs.NewRunner(queue)
+	registerJobs(jobRunner, flow, settingsService.Cached())
+	jobRunner.Start(ctx)
+	go runMaintenance(ctx, lib, userService, queue, settingsService)
+
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.
 	streamCache := stream.NewCacheService(cacheClient, storeClient)
 	// Stream resolver (cache → domain plugin → wildcard plugin → direct).
@@ -230,7 +344,13 @@ func main() {
 	// Cache size limit: stream and image cache blobs beyond it are evicted,
 	// least recently used first. Downloads are pinned and don't count.
 	streamCache.SetPinnedURLs(queue.DownloadURLs)
-	cacheEvictor := blobcache.New(storeClient, cacheMaxBytes(), streamCache.EvictionSource(), imgapi.EvictionSource())
+	cacheLocation, cacheQuota := openStorageLocations(ctx, deviceService, filepath.Join(dataDir, "blobs"))
+	cacheEvictor := blobcache.New(storeClient, cacheQuota, streamCache.EvictionSource(), imgapi.EvictionSource())
+	cacheEvictor.OnPass(func(report blobcache.Report) {
+		if err := deviceService.SetUsedBytes(ctx, cacheLocation.Id, report.TotalBytes); err != nil {
+			log.Printf("cache location: %v", err)
+		}
+	})
 	storeClient.OnPut(cacheEvictor.NoteWrite)
 	go func() {
 		reconcileBlobs(ctx, streamCache, queue)
@@ -246,6 +366,11 @@ func main() {
 		Settings:    settingsService,
 		Resolver:    streamResolver,
 		Proxy:       streamProxy,
+		User:        userService,
+		Devices:     deviceService,
+		Queue:       queue,
+		JobRunner:   jobRunner,
+		Evictor:     cacheEvictor,
 	})
 
 	mux := http.NewServeMux()

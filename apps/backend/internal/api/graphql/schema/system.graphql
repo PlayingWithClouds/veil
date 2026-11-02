@@ -1,0 +1,132 @@
+# The trash, background jobs, devices and their storage locations. Types
+# mirror schema/system.schema and schema/playback.schema.
+
+extend type Query {
+  # Trashed records of kind, most recently trashed first.
+  trash(kind: RecordKind!, limit: Int, offset: Int): [TrashedRecord!]!
+  # Jobs, newest first.
+  jobs(statuses: [JobStatus!], kinds: [JobKind!], limit: Int, offset: Int): [Job!]!
+  job(id: ID!): Job
+  # Every known install, this one first.
+  devices: [Device!]!
+  currentDevice: Device!
+  # A device's storage locations; this device's when deviceId is omitted.
+  storageLocations(deviceId: ID): [StorageLocation!]!
+}
+
+extend type Mutation {
+  # Moves a video, gallery, performer, studio or tag to the trash. It's
+  # purged after the retention (setting trashRetentionDays, default 30).
+  trashRecord(subject: RecordRefInput!): Boolean!
+  restoreRecord(subject: RecordRefInput!): Boolean!
+  # Removes a trashed record for good, now.
+  purgeRecord(subject: RecordRefInput!): Boolean!
+  # Removes everything trashed for good, now; returns how many.
+  emptyTrash: Int!
+  # Queues reading the pages behind a record's unread sources in the
+  # background; the same record isn't queued twice.
+  queueFetch(subject: RecordRefInput!): Job!
+  cancelJob(id: ID!): Job
+  # Queues a failed or cancelled job again.
+  retryJob(id: ID!): Job
+  # Deletes finished jobs (downloads stay); returns how many.
+  clearFinishedJobs: Int!
+  renameDevice(id: ID!, name: String!): Device!
+  addStorageLocation(kind: StorageKind!, uri: String!, quotaBytes: Int): StorageLocation!
+  # Sets a location's quota in bytes; null removes it. The cache's quota
+  # applies at once.
+  setStorageQuota(id: ID!, quotaBytes: Int): StorageLocation!
+  # Forgets a location; its files stay where they are.
+  removeStorageLocation(id: ID!): Boolean!
+}
+
+type TrashedRecord {
+  kind: RecordKind!
+  id: ID!
+  # Title or name.
+  label: String!
+  deletedAt: String!
+}
+
+enum JobKind {
+  download
+  record
+  scrape
+  followRun
+  fingerprint
+  embed
+  trickplay
+  transcode
+  libraryScan
+  automationRun
+  snapshot
+  enrich
+  speedCheck
+}
+
+enum JobStatus {
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+type Job {
+  id: ID!
+  kind: JobKind!
+  status: JobStatus!
+  subject: RecordRef
+  plugin: String
+  payload: JSON
+  # 0..1
+  progress: Float!
+  error: String
+  attempts: Int!
+  priority: Int!
+  device: ID
+  createdAt: String!
+  runAt: String
+  startedAt: String
+  finishedAt: String
+}
+
+enum Platform {
+  server
+  desktop
+  android
+  tv
+  vr
+}
+
+# An install of Veil.
+type Device {
+  id: ID!
+  name: String!
+  platform: Platform!
+  lastSeenAt: String
+  lastSyncAt: String
+  # This install.
+  current: Boolean!
+  createdAt: String!
+}
+
+enum StorageKind {
+  # Kept: the user's library.
+  library
+  # Evicted when over quota.
+  cache
+  # Source snapshots.
+  archive
+}
+
+# A place on one device where Veil keeps files.
+type StorageLocation {
+  id: ID!
+  device: Device
+  kind: StorageKind!
+  # A local path or a remote URI.
+  uri: String!
+  quotaBytes: Int
+  usedBytes: Int!
+}

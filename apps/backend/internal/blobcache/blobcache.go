@@ -116,8 +116,11 @@ func (s fileSource) Invalidate(ctx context.Context, unit Unit) error {
 
 // Evictor keeps the cache sources' total size under a limit.
 type Evictor struct {
-	store    *storage.Client
-	maxBytes int64
+	store *storage.Client
+	// maxBytes changes at runtime when the user sets the cache quota.
+	maxBytes atomic.Int64
+	// onPass, when set, receives every pass's report (the cache size).
+	onPass   func(Report)
 	sources  []Source
 	now      func() time.Time
 	debounce time.Duration
@@ -140,14 +143,31 @@ type Report struct {
 
 // New returns an evictor holding the sources' blobs in store to maxBytes.
 func New(store *storage.Client, maxBytes int64, sources ...Source) *Evictor {
-	return &Evictor{
+	evictor := &Evictor{
 		store:    store,
-		maxBytes: maxBytes,
 		sources:  sources,
 		now:      time.Now,
 		debounce: writeDebounce,
 		writes:   make(chan struct{}, 1),
 	}
+	evictor.maxBytes.Store(maxBytes)
+	return evictor
+}
+
+// SetMaxBytes changes the limit; a lower one is enforced on the next pass,
+// which it schedules.
+func (e *Evictor) SetMaxBytes(maxBytes int64) {
+	e.maxBytes.Store(maxBytes)
+	select {
+	case e.writes <- struct{}{}:
+	default:
+	}
+}
+
+// OnPass sets a function that receives the report of every logged pass
+// (the periodic ones Run makes). Set it before Run.
+func (e *Evictor) OnPass(report func(Report)) {
+	e.onPass = report
 }
 
 // NoteWrite accounts for a blob written to the store (wire it to
@@ -156,7 +176,7 @@ func (e *Evictor) NoteWrite(key string, size int64) {
 	if e.sourceFor(key) == nil {
 		return
 	}
-	if e.estimate.Add(size) <= e.maxBytes {
+	if e.estimate.Add(size) <= e.maxBytes.Load() {
 		return
 	}
 	select {
@@ -199,8 +219,9 @@ func (e *Evictor) Evict(ctx context.Context) (Report, error) {
 		return Report{}, err
 	}
 	report := Report{}
-	lowWater := e.maxBytes * lowWaterPercent / 100
-	overLimit := total > e.maxBytes
+	maxBytes := e.maxBytes.Load()
+	lowWater := maxBytes * lowWaterPercent / 100
+	overLimit := total > maxBytes
 	for _, candidate := range e.evictable(candidates) {
 		if !candidate.unit.Stale && (!overLimit || total <= lowWater) {
 			continue
@@ -291,6 +312,9 @@ func (e *Evictor) evictLogged(ctx context.Context) {
 	if err != nil {
 		log.Printf("blob cache: eviction: %v", err)
 		return
+	}
+	if e.onPass != nil {
+		e.onPass(report)
 	}
 	if report.EvictedUnits > 0 {
 		log.Printf("blob cache: evicted %d entries (%d MB), %d MB left",

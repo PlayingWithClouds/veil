@@ -2,11 +2,15 @@ package graphql
 
 import (
 	"context"
+	"time"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
+	"github.com/playingwithclouds/veil/internal/blobcache"
+	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
+	"github.com/playingwithclouds/veil/internal/user"
 )
 
 // pointers turns a slice of values into the slice of pointers gqlgen wants.
@@ -42,17 +46,166 @@ func optionalText(value string) *string {
 	return &value
 }
 
-// mediaFilter maps the API filter and page to the library's.
-func mediaFilter(filter *model.MediaFilter, limit, offset *int) library.MediaFilter {
-	result := library.MediaFilter{Limit: number(limit), Offset: number(offset)}
-	if filter == nil {
-		return result
+// defaultPage and maxPage bound a page of results the API returns.
+const (
+	defaultPage = 40
+	maxPage     = 200
+)
+
+// page clamps a requested page to the allowed size.
+func page(limit, offset *int) (int, int) {
+	size := number(limit)
+	if size <= 0 {
+		size = defaultPage
 	}
-	result.Text = text(filter.Text)
-	result.PerformerID = text(filter.PerformerID)
-	result.StudioID = text(filter.StudioID)
-	result.TagID = text(filter.TagID)
-	return result
+	if size > maxPage {
+		size = maxPage
+	}
+	start := number(offset)
+	if start < 0 {
+		start = 0
+	}
+	return size, start
+}
+
+// mediaQuery maps the API filter and page to the library's.
+func mediaQuery(filter *schema.Filter, limit, offset *int) library.MediaQuery {
+	query := library.MediaQuery{Limit: number(limit), Offset: number(offset)}
+	if filter != nil {
+		query.Filter = *filter
+	}
+	return query
+}
+
+// filterOrEmpty returns the filter, or one that matches everything.
+func filterOrEmpty(filter *schema.Filter) schema.Filter {
+	if filter == nil {
+		return schema.Filter{}
+	}
+	return *filter
+}
+
+// mediaEdit maps the API's media edit to the library's.
+func mediaEdit(edit model.MediaEdit) library.MediaEdit {
+	return library.MediaEdit{
+		Title:        edit.Title,
+		Details:      edit.Details,
+		Date:         edit.Date,
+		StudioID:     edit.StudioID,
+		PerformerIDs: optionalList(edit.PerformerIds),
+		TagIDs:       optionalList(edit.TagIds),
+	}
+}
+
+// optionalList returns nil for an omitted list, else a pointer to it.
+func optionalList(values []string) *[]string {
+	if values == nil {
+		return nil
+	}
+	return &values
+}
+
+// userStateOf loads the user's state on a record, or the defaults when the
+// user never touched it.
+func (r *Resolver) userStateOf(ctx context.Context, kind schema.RecordKind, id string) (*schema.UserState, error) {
+	state, err := r.user.State(ctx, kind, id)
+	if err != nil || state != nil {
+		return state, err
+	}
+	return &schema.UserState{SubjectKind: kind, SubjectId: id, Fields: map[string]any{}}, nil
+}
+
+// oCount counts the o-events logged on a record.
+func (r *Resolver) oCount(ctx context.Context, kind schema.RecordKind, id string) (int, error) {
+	return r.user.CountEvents(ctx, user.EventQuery{Kinds: []schema.EventKind{schema.EventKindO}, SubjectKind: &kind, SubjectID: &id})
+}
+
+// fieldSourcesOf lists who owns each field of a record.
+func (r *Resolver) fieldSourcesOf(ctx context.Context, kind schema.RecordKind, id string) ([]*schema.FieldSource, error) {
+	owners, err := r.library.Recorder().FieldSources(ctx, kind, id)
+	return pointers(owners), err
+}
+
+// revisionsOf lists a page of a record's revisions, newest first.
+func (r *Resolver) revisionsOf(ctx context.Context, kind schema.RecordKind, id string, limit, offset *int) ([]*schema.Revision, error) {
+	size, start := page(limit, offset)
+	revisions, err := r.library.Recorder().Revisions(ctx, kind, id, size, start)
+	return pointers(revisions), err
+}
+
+// loadRecord loads the record a reference names; nil when it's gone or of
+// a kind the API doesn't serve yet.
+func (r *Resolver) loadRecord(ctx context.Context, kind schema.RecordKind, id string) (model.Record, error) {
+	switch kind {
+	case schema.RecordKindVideo:
+		return nilIfMissing(r.library.Video(ctx, id))
+	case schema.RecordKindGallery:
+		return nilIfMissing(r.library.Gallery(ctx, id))
+	case schema.RecordKindPerformer:
+		return nilIfMissing(r.library.Performer(ctx, id))
+	case schema.RecordKindStudio:
+		return nilIfMissing(r.library.Studio(ctx, id))
+	case schema.RecordKindTag:
+		return nilIfMissing(r.library.Tag(ctx, id))
+	}
+	return nil, nil
+}
+
+// nilIfMissing turns a typed nil record into an untyped nil, so a missing
+// record resolves to null rather than an empty member of the union.
+func nilIfMissing[T any](record *T, err error) (model.Record, error) {
+	if err != nil || record == nil {
+		return nil, err
+	}
+	return record, nil
+}
+
+// eventQuery maps the API's event filter and page to the user service's.
+func eventQuery(filter *model.EventFilter, limit, offset *int) user.EventQuery {
+	query := user.EventQuery{}
+	query.Limit, query.Offset = page(limit, offset)
+	if filter == nil {
+		return query
+	}
+	query.Kinds = filter.Kinds
+	query.Since = text(filter.Since)
+	query.Until = text(filter.Until)
+	if filter.Subject != nil {
+		query.SubjectKind = &filter.Subject.Kind
+		query.SubjectID = &filter.Subject.Id
+	}
+	return query
+}
+
+// timeText renders an optional time in the stored timestamp format.
+func timeText(value *time.Time) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := db.FormatTime(*value)
+	return &formatted
+}
+
+// applyCacheQuota hands a changed quota of this device's cache location to
+// the evictor, so it applies without a restart. No quota means the default.
+func (r *Resolver) applyCacheQuota(location *schema.StorageLocation) {
+	if r.evictor == nil || location.Kind != schema.StorageKindCache || location.Device != r.devices.Current().Id {
+		return
+	}
+	if location.QuotaBytes == nil {
+		r.evictor.SetMaxBytes(blobcache.DefaultMaxBytes)
+		return
+	}
+	r.evictor.SetMaxBytes(*location.QuotaBytes)
+}
+
+// quota converts an API byte count to the storage service's.
+func quota(bytes *int) *int64 {
+	if bytes == nil {
+		return nil
+	}
+	converted := int64(*bytes)
+	return &converted
 }
 
 // nameFilter maps a name search and page to the library's.

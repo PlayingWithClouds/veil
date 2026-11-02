@@ -45,6 +45,15 @@ func fillListDefaults(fields db.Vars, columns ...string) {
 	}
 }
 
+// columnsOf lists the columns fields sets.
+func columnsOf(fields db.Vars) []string {
+	columns := make([]string, 0, len(fields))
+	for column := range fields {
+		columns = append(columns, column)
+	}
+	return columns
+}
+
 // isoDatePattern is the date part of an ISO 8601 date or timestamp.
 var isoDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`)
 
