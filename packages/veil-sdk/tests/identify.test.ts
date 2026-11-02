@@ -5,6 +5,12 @@ describe("isSamePerformer", () => {
   test("matches a name across case, accents and punctuation", () => {
     expect(foldName("Mía  Malkova!")).toBe("mia malkova");
     expect(isSamePerformer({ name: "MIA MALKOVA" }, { name: "Mía Malkova" })).toBe(true);
+    expect(foldName("Ma’Lynn – O’Neil")).toBe("ma lynn o neil");
+  });
+
+  test("keeps names in other scripts", () => {
+    expect(foldName("三上 悠亜・")).toBe("三上 悠亜");
+    expect(isSamePerformer({ name: "三上悠亜" }, { name: "三上 悠亜" })).toBe(false);
   });
 
   test("matches through an alias on either side", () => {

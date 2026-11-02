@@ -7,13 +7,19 @@ import type { Performer, PerformerIdentifyArgs } from "./types.ts";
 /** What of a site profile the rule reads. */
 type ProfileNames = Pick<Performer, "name" | "aliases" | "birthdate">;
 
+// Anything that isn't part of a name: punctuation and symbols, including the
+// general and CJK punctuation blocks and the katakana middle dot. Spelled as
+// ranges because goja ignores \p{…} classes without an error, which would
+// fold every name to "".
+const NOT_NAME = /[^a-z0-9À-῿぀-ヺー-﻿]+/g;
+
 /** A name folded for comparison: lower case, accents and punctuation dropped, spaces collapsed. */
 export function foldName(name: string): string {
   return name
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(NOT_NAME, " ")
     .trim();
 }
 
