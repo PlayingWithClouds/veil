@@ -147,3 +147,22 @@ func TestCreditPerformerFromTheirList(t *testing.T) {
 		t.Error("favourite not read after marking")
 	}
 }
+
+// TestPerformerAttributeValues lists a text attribute's values, most common
+// first, and refuses an attribute that isn't text.
+func TestPerformerAttributeValues(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Ada", ExternalID: "a", HairColor: "Red"})
+	library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Bea", ExternalID: "b", HairColor: "Blonde"})
+	library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Cleo", ExternalID: "c", HairColor: "Blonde"})
+	library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Dee", ExternalID: "d"})
+
+	values, err := library.PerformerAttributeValues(ctx, "hairColor", 10)
+	if err != nil || len(values) != 2 || values[0] != "Blonde" || values[1] != "Red" {
+		t.Errorf("values = %v, %v", values, err)
+	}
+	if _, err := library.PerformerAttributeValues(ctx, "heightCm", 10); err == nil {
+		t.Error("a number attribute was listed")
+	}
+}

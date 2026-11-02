@@ -18,6 +18,9 @@ extend type Query {
   performer(id: ID!): Performer
   # Performers that are probably the same person: a name or alias in common.
   performerDuplicates(id: ID!): [Performer!]!
+  # The values a text attribute of PerformerAttributes ("hairColor") has
+  # across the library's performers, most common first (default 50).
+  performerAttributeValues(attribute: String!, limit: Int): [String!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!

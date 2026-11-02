@@ -31,6 +31,7 @@
 		type PerformerDetail
 	} from '$lib/performers';
 	import { siteDisplayName } from '$lib/plugins';
+	import { capitalize } from '$lib/performerPresets';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
@@ -78,7 +79,7 @@
 		ATTRIBUTE_LABELS.flatMap(([key, label]) => {
 			const value = performer?.attributes[key];
 			if (value === null || value === undefined || value === '') return [];
-			return [{ label, value: String(value) }];
+			return [{ label, value: capitalize(String(value)) }];
 		})
 	);
 	let lockedFields = $derived(

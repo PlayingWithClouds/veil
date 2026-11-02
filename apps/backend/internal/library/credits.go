@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/playingwithclouds/veil/internal/db"
@@ -24,6 +25,25 @@ func (l *Library) CreditPerformer(ctx context.Context, videoID, performerID, plu
 	performers := append(slices.Clone(video.Performers), performerID)
 	_, err = l.recorder.Update(ctx, schema.RecordKindVideo, videoID, db.Vars{"performers": performers}, provenance.Plugin(plugin, sourceID))
 	return err
+}
+
+// textAttributes are the performer attributes held as text, the ones
+// PerformerAttributeValues lists.
+var textAttributes = []string{
+	"gender", "country", "ethnicity", "eyeColor", "hairColor", "fakeTits", "tattoos", "piercings",
+}
+
+// PerformerAttributeValues lists the values one text attribute ("hairColor")
+// has across the library's performers, most common first.
+func (l *Library) PerformerAttributeValues(ctx context.Context, attribute string, limit int) ([]string, error) {
+	if !slices.Contains(textAttributes, attribute) {
+		return nil, fmt.Errorf("%q isn't a text attribute", attribute)
+	}
+	return l.database.Strings(ctx,
+		`SELECT json_extract("attributes", $path) AS "value" FROM "Performer"
+		WHERE "deletedAt" IS NULL AND "value" IS NOT NULL AND trim("value") != ''
+		GROUP BY "value" ORDER BY count(*) DESC, "value" LIMIT $limit`,
+		db.Vars{"path": "$." + attribute, "limit": limit})
 }
 
 // IsFavorite reports whether the user marked a record a favourite.

@@ -288,6 +288,15 @@ func (r *queryResolver) PerformerDuplicates(ctx context.Context, id string) ([]*
 	return pointers(duplicates), err
 }
 
+// PerformerAttributeValues is the resolver for the performerAttributeValues field.
+func (r *queryResolver) PerformerAttributeValues(ctx context.Context, attribute string, limit *int) ([]string, error) {
+	count := number(limit)
+	if count <= 0 {
+		count = 50
+	}
+	return r.library.PerformerAttributeValues(ctx, attribute, count)
+}
+
 // Studios is the resolver for the studios field.
 func (r *queryResolver) Studios(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Studio, error) {
 	studios, err := r.library.Studios(ctx, nameFilter(text, limit, offset))

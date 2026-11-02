@@ -492,6 +492,18 @@ export default {
                     ]
                 }
             ],
+            "performerAttributeValues": [
+                1,
+                {
+                    "attribute": [
+                        1,
+                        "String!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "studios": [
                 86,
                 {

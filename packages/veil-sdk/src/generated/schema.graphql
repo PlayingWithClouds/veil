@@ -49,6 +49,7 @@ type Query {
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
   performerDuplicates(id: ID!): [Performer!]!
+  performerAttributeValues(attribute: String!, limit: Int): [String!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!

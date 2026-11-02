@@ -790,96 +790,97 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		APITokens               func(childComplexity int) int
-		Accounts                func(childComplexity int) int
-		ActiveRecordings        func(childComplexity int) int
-		Alikes                  func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
-		Audio                   func(childComplexity int, id string) int
-		AudioCount              func(childComplexity int, filter *schema.Filter) int
-		Audios                  func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		Automation              func(childComplexity int, id string) int
-		AutomationActions       func(childComplexity int) int
-		AutomationRun           func(childComplexity int, id string) int
-		AutomationRuns          func(childComplexity int, automationID *string, limit *int, offset *int) int
-		Automations             func(childComplexity int) int
-		BestMoment              func(childComplexity int, videoID string) int
-		BuiltInCollection       func(childComplexity int, kind schema.CollectionKind) int
-		CamModel                func(childComplexity int, id string) int
-		CamModels               func(childComplexity int, live *bool, autoRecord *bool, performerID *string, limit *int, offset *int) int
-		CamRooms                func(childComplexity int, query *model.CamQuery) int
-		Categories              func(childComplexity int) int
-		Category                func(childComplexity int, id *string, slug *string) int
-		Clip                    func(childComplexity int, id string) int
-		Clips                   func(childComplexity int, videoID *string, limit *int, offset *int) int
-		Collection              func(childComplexity int, id string) int
-		Collections             func(childComplexity int) int
-		CollectionsWith         func(childComplexity int, subject schema.RecordRef) int
-		Contributions           func(childComplexity int, kind *string) int
-		CurrentDevice           func(childComplexity int) int
-		Devices                 func(childComplexity int) int
-		Downloads               func(childComplexity int) int
-		EventCount              func(childComplexity int, filter *model.EventFilter) int
-		Events                  func(childComplexity int, filter *model.EventFilter, limit *int, offset *int) int
-		FieldDefs               func(childComplexity int, kind *schema.RecordKind) int
-		Follow                  func(childComplexity int, id string) int
-		FollowOf                func(childComplexity int, subject schema.RecordRef) int
-		Follows                 func(childComplexity int) int
-		Galleries               func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		Gallery                 func(childComplexity int, id string) int
-		GalleryCount            func(childComplexity int, filter *schema.Filter) int
-		Group                   func(childComplexity int, id string) int
-		Groups                  func(childComplexity int, text *string, videoID *string, limit *int, offset *int) int
-		History                 func(childComplexity int, kind *schema.RecordKind, limit *int, offset *int) int
-		Job                     func(childComplexity int, id string) int
-		Jobs                    func(childComplexity int, statuses []schema.JobStatus, kinds []schema.JobKind, limit *int, offset *int) int
-		LibraryRoot             func(childComplexity int, id string) int
-		LibraryRoots            func(childComplexity int) int
-		LimitStatus             func(childComplexity int) int
-		Limits                  func(childComplexity int) int
-		Media                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		MediaCount              func(childComplexity int, filter *schema.Filter) int
-		Nearest                 func(childComplexity int, kind schema.EmbeddingKind, model string, vector []float64, kinds []schema.RecordKind, limit *int) int
-		NewSince                func(childComplexity int, followID string, since *string, limit *int) int
-		NotificationChannels    func(childComplexity int) int
-		Notifications           func(childComplexity int, unreadOnly *bool, limit *int, offset *int) int
-		Performer               func(childComplexity int, id string) int
-		PerformerDuplicates     func(childComplexity int, id string) int
-		Performers              func(childComplexity int, text *string, limit *int, offset *int) int
-		PlanOrganize            func(childComplexity int, rootID string) int
-		Play                    func(childComplexity int, url string) int
-		Plugin                  func(childComplexity int, name string) int
-		PluginPackages          func(childComplexity int, query *string) int
-		PluginView              func(childComplexity int, plugin string, view string, input interface{}) int
-		Plugins                 func(childComplexity int) int
-		Post                    func(childComplexity int, id string) int
-		PostCount               func(childComplexity int, filter *schema.Filter) int
-		Posts                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		RecentSearches          func(childComplexity int, limit *int) int
-		Recommendations         func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		Related                 func(childComplexity int, subject schema.RecordRef, limit *int) int
-		SameMedia               func(childComplexity int, subject schema.RecordRef) int
-		SavedFilter             func(childComplexity int, id string) int
-		SavedFilters            func(childComplexity int) int
-		Settings                func(childComplexity int) int
-		Shorts                  func(childComplexity int, filter *schema.Filter, limit *int) int
-		Similar                 func(childComplexity int, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) int
-		StorageLocations        func(childComplexity int, deviceID *string) int
-		Stories                 func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
-		Story                   func(childComplexity int, id string) int
-		StoryCount              func(childComplexity int, filter *schema.Filter) int
-		Studio                  func(childComplexity int, id string) int
-		Studios                 func(childComplexity int, text *string, limit *int, offset *int) int
-		Tag                     func(childComplexity int, id string) int
-		Tags                    func(childComplexity int, text *string, limit *int, offset *int) int
-		Taste                   func(childComplexity int) int
-		Trash                   func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
-		UnreadNotificationCount func(childComplexity int) int
-		Usage                   func(childComplexity int, window schema.LimitWindow) int
-		UserStates              func(childComplexity int, filter *model.UserStateFilter, limit *int, offset *int) int
-		Video                   func(childComplexity int, id string) int
-		VideoCount              func(childComplexity int, filter *schema.Filter) int
-		VideoTagCounts          func(childComplexity int, filter *schema.Filter, limit *int) int
-		Videos                  func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		APITokens                func(childComplexity int) int
+		Accounts                 func(childComplexity int) int
+		ActiveRecordings         func(childComplexity int) int
+		Alikes                   func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
+		Audio                    func(childComplexity int, id string) int
+		AudioCount               func(childComplexity int, filter *schema.Filter) int
+		Audios                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		Automation               func(childComplexity int, id string) int
+		AutomationActions        func(childComplexity int) int
+		AutomationRun            func(childComplexity int, id string) int
+		AutomationRuns           func(childComplexity int, automationID *string, limit *int, offset *int) int
+		Automations              func(childComplexity int) int
+		BestMoment               func(childComplexity int, videoID string) int
+		BuiltInCollection        func(childComplexity int, kind schema.CollectionKind) int
+		CamModel                 func(childComplexity int, id string) int
+		CamModels                func(childComplexity int, live *bool, autoRecord *bool, performerID *string, limit *int, offset *int) int
+		CamRooms                 func(childComplexity int, query *model.CamQuery) int
+		Categories               func(childComplexity int) int
+		Category                 func(childComplexity int, id *string, slug *string) int
+		Clip                     func(childComplexity int, id string) int
+		Clips                    func(childComplexity int, videoID *string, limit *int, offset *int) int
+		Collection               func(childComplexity int, id string) int
+		Collections              func(childComplexity int) int
+		CollectionsWith          func(childComplexity int, subject schema.RecordRef) int
+		Contributions            func(childComplexity int, kind *string) int
+		CurrentDevice            func(childComplexity int) int
+		Devices                  func(childComplexity int) int
+		Downloads                func(childComplexity int) int
+		EventCount               func(childComplexity int, filter *model.EventFilter) int
+		Events                   func(childComplexity int, filter *model.EventFilter, limit *int, offset *int) int
+		FieldDefs                func(childComplexity int, kind *schema.RecordKind) int
+		Follow                   func(childComplexity int, id string) int
+		FollowOf                 func(childComplexity int, subject schema.RecordRef) int
+		Follows                  func(childComplexity int) int
+		Galleries                func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		Gallery                  func(childComplexity int, id string) int
+		GalleryCount             func(childComplexity int, filter *schema.Filter) int
+		Group                    func(childComplexity int, id string) int
+		Groups                   func(childComplexity int, text *string, videoID *string, limit *int, offset *int) int
+		History                  func(childComplexity int, kind *schema.RecordKind, limit *int, offset *int) int
+		Job                      func(childComplexity int, id string) int
+		Jobs                     func(childComplexity int, statuses []schema.JobStatus, kinds []schema.JobKind, limit *int, offset *int) int
+		LibraryRoot              func(childComplexity int, id string) int
+		LibraryRoots             func(childComplexity int) int
+		LimitStatus              func(childComplexity int) int
+		Limits                   func(childComplexity int) int
+		Media                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		MediaCount               func(childComplexity int, filter *schema.Filter) int
+		Nearest                  func(childComplexity int, kind schema.EmbeddingKind, model string, vector []float64, kinds []schema.RecordKind, limit *int) int
+		NewSince                 func(childComplexity int, followID string, since *string, limit *int) int
+		NotificationChannels     func(childComplexity int) int
+		Notifications            func(childComplexity int, unreadOnly *bool, limit *int, offset *int) int
+		Performer                func(childComplexity int, id string) int
+		PerformerAttributeValues func(childComplexity int, attribute string, limit *int) int
+		PerformerDuplicates      func(childComplexity int, id string) int
+		Performers               func(childComplexity int, text *string, limit *int, offset *int) int
+		PlanOrganize             func(childComplexity int, rootID string) int
+		Play                     func(childComplexity int, url string) int
+		Plugin                   func(childComplexity int, name string) int
+		PluginPackages           func(childComplexity int, query *string) int
+		PluginView               func(childComplexity int, plugin string, view string, input interface{}) int
+		Plugins                  func(childComplexity int) int
+		Post                     func(childComplexity int, id string) int
+		PostCount                func(childComplexity int, filter *schema.Filter) int
+		Posts                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		RecentSearches           func(childComplexity int, limit *int) int
+		Recommendations          func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		Related                  func(childComplexity int, subject schema.RecordRef, limit *int) int
+		SameMedia                func(childComplexity int, subject schema.RecordRef) int
+		SavedFilter              func(childComplexity int, id string) int
+		SavedFilters             func(childComplexity int) int
+		Settings                 func(childComplexity int) int
+		Shorts                   func(childComplexity int, filter *schema.Filter, limit *int) int
+		Similar                  func(childComplexity int, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) int
+		StorageLocations         func(childComplexity int, deviceID *string) int
+		Stories                  func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
+		Story                    func(childComplexity int, id string) int
+		StoryCount               func(childComplexity int, filter *schema.Filter) int
+		Studio                   func(childComplexity int, id string) int
+		Studios                  func(childComplexity int, text *string, limit *int, offset *int) int
+		Tag                      func(childComplexity int, id string) int
+		Tags                     func(childComplexity int, text *string, limit *int, offset *int) int
+		Taste                    func(childComplexity int) int
+		Trash                    func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
+		UnreadNotificationCount  func(childComplexity int) int
+		Usage                    func(childComplexity int, window schema.LimitWindow) int
+		UserStates               func(childComplexity int, filter *model.UserStateFilter, limit *int, offset *int) int
+		Video                    func(childComplexity int, id string) int
+		VideoCount               func(childComplexity int, filter *schema.Filter) int
+		VideoTagCounts           func(childComplexity int, filter *schema.Filter, limit *int) int
+		Videos                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 	}
 
 	RecordRef struct {
@@ -1500,6 +1501,7 @@ type QueryResolver interface {
 	Performers(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Performer, error)
 	Performer(ctx context.Context, id string) (*schema.Performer, error)
 	PerformerDuplicates(ctx context.Context, id string) ([]*schema.Performer, error)
+	PerformerAttributeValues(ctx context.Context, attribute string, limit *int) ([]string, error)
 	Studios(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Studio, error)
 	Studio(ctx context.Context, id string) (*schema.Studio, error)
 	Tags(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Tag, error)
@@ -6022,6 +6024,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Performer(childComplexity, args["id"].(string)), true
+	case "Query.performerAttributeValues":
+		if e.ComplexityRoot.Query.PerformerAttributeValues == nil {
+			break
+		}
+
+		args, err := ec.field_Query_performerAttributeValues_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PerformerAttributeValues(childComplexity, args["attribute"].(string), args["limit"].(*int)), true
 	case "Query.performerDuplicates":
 		if e.ComplexityRoot.Query.PerformerDuplicates == nil {
 			break
@@ -8646,6 +8659,9 @@ extend type Query {
   performer(id: ID!): Performer
   # Performers that are probably the same person: a name or alias in common.
   performerDuplicates(id: ID!): [Performer!]!
+  # The values a text attribute of PerformerAttributes ("hairColor") has
+  # across the library's performers, most common first (default 50).
+  performerAttributeValues(attribute: String!, limit: Int): [String!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!
@@ -15069,6 +15085,28 @@ func (ec *executionContext) field_Query_notifications_args(ctx context.Context, 
 		return nil, err
 	}
 	args["offset"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_performerAttributeValues_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "attribute",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["attribute"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -33715,6 +33753,50 @@ func (ec *executionContext) fieldContext_Query_performerDuplicates(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_performerAttributeValues(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_performerAttributeValues(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PerformerAttributeValues(ctx, fc.Args["attribute"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_performerAttributeValues(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_performerAttributeValues_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_studios(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52063,6 +52145,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_performerDuplicates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "performerAttributeValues":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_performerAttributeValues(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

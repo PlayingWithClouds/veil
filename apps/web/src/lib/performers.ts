@@ -7,6 +7,7 @@ import type {
 	PerformerEdit
 } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
+import { apiBase } from '$lib/server';
 import { MEMBER, SOURCE, type MemberRow } from '$lib/library';
 
 export type { PerformerEdit };
@@ -71,6 +72,24 @@ export async function editPerformer(
 		editPerformer: { __args: { id, edit }, ...PERFORMER_DETAIL }
 	});
 	return data.editPerformer ?? null;
+}
+
+/** The values a text attribute has across the library's performers, most common first. */
+export async function fetchAttributeValues(attribute: keyof PerformerAttributes): Promise<string[]> {
+	const data = await gqlClient.query({ performerAttributeValues: { __args: { attribute } } });
+	return data.performerAttributeValues;
+}
+
+/** Uploads a picture to the backend and returns the asset URI to save as one. */
+export async function uploadPicture(file: File): Promise<string> {
+	const response = await fetch(`${apiBase()}/api/upload?${new URLSearchParams({ name: file.name })}`, {
+		method: 'POST',
+		headers: { 'Content-Type': file.type },
+		body: file
+	});
+	if (!response.ok) throw new Error(`Upload failed: ${await response.text()}`);
+	const uploaded: { uri: string } = await response.json();
+	return uploaded.uri;
 }
 
 /** Releases a field the user set, so the next site that describes it takes it over. */

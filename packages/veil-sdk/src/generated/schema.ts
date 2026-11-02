@@ -63,6 +63,7 @@ export interface Query {
     performers: Performer[]
     performer: (Performer | null)
     performerDuplicates: Performer[]
+    performerAttributeValues: Scalars['String'][]
     studios: Studio[]
     studio: (Studio | null)
     tags: Tag[]
@@ -1313,6 +1314,7 @@ export interface QueryGenqlSelection{
     performers?: (PerformerGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     performer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
     performerDuplicates?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
+    performerAttributeValues?: { __args: {attribute: Scalars['String'], limit?: (Scalars['Int'] | null)} }
     studios?: (StudioGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     studio?: (StudioGenqlSelection & { __args: {id: Scalars['ID']} })
     tags?: (TagGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
