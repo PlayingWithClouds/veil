@@ -5,6 +5,7 @@
 	off it, which can drop the video from the list.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import GalleryCard from '$lib/components/GalleryCard.svelte';
@@ -39,14 +40,21 @@
 	let exhausted = $state(false);
 	let loaded = $state(false);
 
+	// Only the filter restarts the list: the load reads the list's own state,
+	// which would otherwise restart it every time a page arrives.
 	$effect(() => {
 		const current = filter;
+		untrack(() => restart(current));
+	});
+
+	/** Empties the list and loads the filter's first page and galleries. */
+	function restart(current: MediaFilter) {
 		videos = [];
 		exhausted = false;
 		loaded = false;
 		void loadMore(current);
 		fetchGalleries(current, 60).then((found) => (galleries = found));
-	});
+	}
 
 	/** Appends the next page of videos. */
 	async function loadMore(current: MediaFilter = filter) {
@@ -68,12 +76,7 @@
 	}
 </script>
 
-<Shelf
-	title="Galleries"
-	items={galleries}
-	key={(gallery) => gallery.id}
-	itemWidth={GALLERY_WIDTH}
->
+<Shelf title="Galleries" items={galleries} key={(gallery) => gallery.id} itemWidth={GALLERY_WIDTH}>
 	{#snippet card(gallery)}
 		<GalleryCard {gallery} onclick={() => goto(galleryUrl(gallery.id))} />
 	{/snippet}
