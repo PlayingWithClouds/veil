@@ -21,13 +21,29 @@
 	import { showUndo } from '$lib/stores/undoToast';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
+	import { faceTracking, type VideoFaceGuesses } from '$lib/faces';
+
+	/** A performer as a suggestion shows them. */
+	interface SuggestedPerformer {
+		id: string;
+		name: string;
+		image: { uri: string } | null;
+	}
+
+	/** Someone probably in the video, and why. */
+	interface Suggestion {
+		performer: SuggestedPerformer;
+		reason: string;
+	}
 
 	interface Props {
 		video: VideoDetail;
+		// Who the face scan recognised; null before a scan.
+		faces?: VideoFaceGuesses | null;
 		onchange: (video: VideoDetail) => void;
 	}
 
-	let { video, onchange }: Props = $props();
+	let { video, faces = null, onchange }: Props = $props();
 
 	let adding = $state(false);
 	let busy = $state(false);
@@ -35,11 +51,30 @@
 	let dismissed = $state<string[]>([]);
 
 	let suggestions = $derived(
-		video.suggestedPerformers.filter((suggestion) => !dismissed.includes(suggestion.performer.id))
+		suggestionsOf(video, faces).filter((suggestion) => !dismissed.includes(suggestion.performer.id))
 	);
 
+	/**
+	 * The title's suggestions, then the faces recognised but not credited,
+	 * each performer once.
+	 */
+	function suggestionsOf(shown: VideoDetail, found: VideoFaceGuesses | null): Suggestion[] {
+		const credited = new Set(shown.performers.map((performer) => performer.id));
+		const all: Suggestion[] = [...shown.suggestedPerformers];
+		for (const guess of found?.guesses ?? []) {
+			if (guess.credited || credited.has(guess.performer.id)) continue;
+			all.push({ performer: guess.performer, reason: `Face match ${Math.round(guess.similarity * 100)}%` });
+		}
+		const seen = new Set<string>();
+		return all.filter((suggestion) => {
+			if (seen.has(suggestion.performer.id)) return false;
+			seen.add(suggestion.performer.id);
+			return true;
+		});
+	}
+
 	/** Credits a performer on the video. */
-	async function add(performer: MemberRow) {
+	async function add(performer: { id: string }) {
 		adding = false;
 		if (video.performers.some((credited) => credited.id === performer.id)) return;
 		busy = true;
@@ -70,7 +105,7 @@
 	}
 </script>
 
-{#snippet portrait(member: MemberRow)}
+{#snippet portrait(member: SuggestedPerformer)}
 	<span class="bg-base-200 flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-xl">
 		{#if member.image}
 			<img src={cacheUrl(member.image.uri)} alt="" loading="lazy" class="h-full w-full object-cover" />
@@ -145,4 +180,10 @@
 			</button>
 		{/if}
 	</div>
+	{#if $faceTracking && $faceTracking.subject.kind === 'video' && $faceTracking.subject.id === video.id}
+		<span class="text-base-content/50 flex items-center gap-2 text-xs">
+			<span class="loading loading-spinner loading-xs"></span>
+			Looking for faces… {Math.round($faceTracking.progress * 100)}%
+		</span>
+	{/if}
 </section>

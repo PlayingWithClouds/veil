@@ -60,6 +60,7 @@
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
+	import { trackPerformer } from '$lib/faces';
 
 	// Labels for the facts a performer page shows, in this order.
 	const ATTRIBUTE_LABELS: [keyof PerformerAttributes, string][] = [
@@ -142,6 +143,8 @@
 		if (!performer) return;
 		void loadDuplicates(performerId);
 		void loadMerges(performerId);
+		// Learns their face from their pictures, for the face matches on videos.
+		void trackPerformer(performerId);
 		await read(performerId, false);
 	}
 

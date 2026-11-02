@@ -4,7 +4,8 @@
 	plays. The player's quality menu switches between every source's streams.
 	Under the player: the acts bar (segments: what happens when), the title,
 	studio (changeable), the performers as large cards with suggestions and
-	adding (VideoPeople), the description, the main tags, sources and the
+	adding (VideoPeople; a background face scan adds face matches), the
+	description, the main tags, sources and the
 	sites' comments. Videos like it run alongside on wide screens, below on
 	narrow ones.
 -->
@@ -41,6 +42,7 @@
 	import { logEvent } from '$lib/events';
 	import { trackWatch } from '$lib/watchLog';
 	import { qualityLabel } from '$lib/videoCard';
+	import { fetchVideoFaces, trackVideo, type VideoFaceGuesses } from '$lib/faces';
 
 	/** What the player is loading. */
 	interface ActiveStream {
@@ -62,6 +64,7 @@
 	let allTags = $state(false);
 	let fullDetails = $state(false);
 	let changingStudio = $state(false);
+	let faces = $state<VideoFaceGuesses | null>(null);
 
 	let id = $derived(page.params.id ?? '');
 	let playerSources = $derived<PlayerSource[]>(
@@ -89,9 +92,11 @@
 		loading = true;
 		allTags = false;
 		fullDetails = false;
+		faces = null;
 		void fetchRelatedVideos(videoId).then((found) => {
 			if (videoId === id) related = found;
 		});
+		void watchFaces(videoId);
 		try {
 			video = await openVideo(videoId);
 			if (video) logEvent({ kind: 'view', subject: { kind: 'video', id: video.id } });
@@ -101,6 +106,22 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	/**
+	 * Shows who earlier scans recognised, scans the video for faces in the
+	 * background, and shows the new guesses once that's done.
+	 */
+	async function watchFaces(videoId: string) {
+		void loadFaces(videoId);
+		const outcome = await trackVideo(videoId);
+		if (outcome === 'scanned' || outcome === 'skipped') void loadFaces(videoId);
+	}
+
+	/** Loads the face guesses for the video, unless the page moved on. */
+	async function loadFaces(videoId: string) {
+		const found = await fetchVideoFaces(videoId);
+		if (videoId === id) faces = found;
 	}
 
 	/** Resolves a stream to a playable URL and hands it to the player. */
@@ -243,7 +264,7 @@
 					</div>
 				</div>
 
-				<VideoPeople {video} onchange={(saved) => (video = saved)} />
+				<VideoPeople {video} {faces} onchange={(saved) => (video = saved)} />
 
 				{#if video.details}
 					<div class="flex flex-col items-start gap-1">
