@@ -3,35 +3,29 @@
 package graphql
 
 import (
+	"github.com/playingwithclouds/veil/internal/accounts"
+	"github.com/playingwithclouds/veil/internal/automations"
 	"github.com/playingwithclouds/veil/internal/blobcache"
+	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/devices"
+	"github.com/playingwithclouds/veil/internal/embeddings"
+	"github.com/playingwithclouds/veil/internal/files"
+	"github.com/playingwithclouds/veil/internal/follows"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/library"
+	"github.com/playingwithclouds/veil/internal/limits"
+	"github.com/playingwithclouds/veil/internal/lookup"
+	"github.com/playingwithclouds/veil/internal/notify"
 	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/pluginstore"
+	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/resolve"
 	"github.com/playingwithclouds/veil/internal/settings"
 	"github.com/playingwithclouds/veil/internal/stream"
+	"github.com/playingwithclouds/veil/internal/tokens"
 	"github.com/playingwithclouds/veil/internal/user"
 )
-
-// Resolver is the root gqlgen resolver; it holds every service the API uses.
-type Resolver struct {
-	library     *library.Library
-	pipeline    *pipeline.Pipeline
-	registry    *plugins.Registry
-	runner      *plugins.Runner
-	pluginStore *pluginstore.Store
-	settings    *settings.Service
-	resolver    *resolve.Service
-	proxy       *stream.Proxy
-	user        *user.Service
-	devices     *devices.Service
-	queue       *jobs.Queue
-	jobRunner   *jobs.Runner
-	evictor     *blobcache.Evictor
-}
 
 // Services are the dependencies of the API.
 type Services struct {
@@ -48,7 +42,46 @@ type Services struct {
 	Queue       *jobs.Queue
 	JobRunner   *jobs.Runner
 	// Evictor enforces the cache location's quota.
-	Evictor *blobcache.Evictor
+	Evictor     *blobcache.Evictor
+	Notify      *notify.Service
+	Follows     *follows.Service
+	Limits      *limits.Service
+	Automations *automations.Service
+	Cams        *cams.Service
+	Files       *files.Service
+	Recommend   *recommend.Engine
+	Embeddings  *embeddings.Service
+	Lookup      *lookup.Service
+	Tokens      *tokens.Service
+	Accounts    *accounts.Service
+}
+
+// Resolver is the root gqlgen resolver; it holds every service the API uses.
+type Resolver struct {
+	library     *library.Library
+	pipeline    *pipeline.Pipeline
+	registry    *plugins.Registry
+	runner      *plugins.Runner
+	pluginStore *pluginstore.Store
+	settings    *settings.Service
+	resolver    *resolve.Service
+	proxy       *stream.Proxy
+	user        *user.Service
+	devices     *devices.Service
+	queue       *jobs.Queue
+	jobRunner   *jobs.Runner
+	evictor     *blobcache.Evictor
+	notify      *notify.Service
+	follows     *follows.Service
+	limits      *limits.Service
+	automations *automations.Service
+	cams        *cams.Service
+	files       *files.Service
+	recommend   *recommend.Engine
+	embeddings  *embeddings.Service
+	lookup      *lookup.Service
+	tokens      *tokens.Service
+	accounts    *accounts.Service
 }
 
 // NewResolver returns the root resolver over services.
@@ -67,5 +100,16 @@ func NewResolver(services Services) *Resolver {
 		queue:       services.Queue,
 		jobRunner:   services.JobRunner,
 		evictor:     services.Evictor,
+		notify:      services.Notify,
+		follows:     services.Follows,
+		limits:      services.Limits,
+		automations: services.Automations,
+		cams:        services.Cams,
+		files:       services.Files,
+		recommend:   services.Recommend,
+		embeddings:  services.Embeddings,
+		lookup:      services.Lookup,
+		tokens:      services.Tokens,
+		accounts:    services.Accounts,
 	}
 }

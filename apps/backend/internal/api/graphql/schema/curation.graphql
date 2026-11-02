@@ -1,0 +1,125 @@
+# What the user curates: categories (our taxonomy over site tags),
+# collections (with the built-in watchlist and play queue) and custom fields.
+
+extend type Query {
+  # Every category, by position; build the tree from parent.
+  categories: [Category!]!
+  category(id: ID, slug: String): Category
+  # The collections, watchlist and queue first.
+  collections: [Collection!]!
+  collection(id: ID!): Collection
+  # The watchlist or the queue.
+  builtInCollection(kind: CollectionKind!): Collection!
+  # The collections a record is in.
+  collectionsWith(subject: RecordRefInput!): [Collection!]!
+  # Custom fields, all or those for one kind of record.
+  fieldDefs(kind: RecordKind): [FieldDef!]!
+}
+
+extend type Mutation {
+  createCategory(input: CategoryInput!): Category!
+  editCategory(id: ID!, input: CategoryInput!): Category!
+  # Puts categories in this order.
+  reorderCategories(ids: [ID!]!): [Category!]!
+  createCollection(name: String!, details: String): Collection!
+  # Omitted fields stay; empty details or cover clear them.
+  editCollection(id: ID!, name: String, details: String, coverUri: String): Collection!
+  # Adds records at position (the end when omitted, 0 = first, as "play
+  # next" in the queue). A record already in it moves there.
+  addToCollection(collectionId: ID!, subjects: [RecordRefInput!]!, position: Int): Collection!
+  removeFromCollection(collectionId: ID!, subjects: [RecordRefInput!]!): Collection!
+  moveInCollection(collectionId: ID!, subject: RecordRefInput!, position: Int!): Collection!
+  clearCollection(collectionId: ID!): Collection!
+  # Creates a field (no id) or changes one.
+  saveFieldDef(id: ID, input: FieldDefInput!): FieldDef!
+  deleteFieldDef(id: ID!): Boolean!
+  # Sets a custom field's value on a record, checked against its type; null
+  # clears it.
+  setFieldValue(subject: RecordRefInput!, fieldDefId: ID!, value: JSON): UserState!
+}
+
+# Our own taxonomy. Media is in a category when it has any of its match
+# tags, or is in one of its subcategories.
+type Category {
+  id: ID!
+  name: String!
+  slug: String!
+  parent: Category
+  children: [Category!]!
+  matchTags: [Tag!]!
+  cover: Asset
+  position: Int!
+  videoCount: Int!
+  galleryCount: Int!
+}
+
+# Omitted fields stay (or take their default on create); an empty parentId
+# or coverUri clears it.
+input CategoryInput {
+  name: String
+  slug: String
+  parentId: ID
+  matchTagIds: [ID!]
+  coverUri: String
+  position: Int
+}
+
+enum CollectionKind {
+  user
+  watchlist
+  queue
+}
+
+type Collection {
+  id: ID!
+  name: String!
+  kind: CollectionKind!
+  details: String
+  cover: Asset
+  itemCount: Int!
+  items(limit: Int, offset: Int): [CollectionItem!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type CollectionItem {
+  subjectKind: RecordKind!
+  subjectId: ID!
+  record: Record
+  position: Int!
+  addedAt: String!
+}
+
+enum FieldType {
+  text
+  number
+  boolean
+  date
+  choice
+  choices
+  url
+}
+
+type FieldDef {
+  id: ID!
+  name: String!
+  kinds: [RecordKind!]!
+  fieldType: FieldType!
+  # Allowed values of choice fields.
+  options: [String!]
+}
+
+input FieldDefInput {
+  name: String!
+  kinds: [RecordKind!]!
+  fieldType: FieldType!
+  options: [String!]
+}
+
+extend type Video {
+  categories: [Category!]!
+}
+
+extend type Gallery {
+  categories: [Category!]!
+}

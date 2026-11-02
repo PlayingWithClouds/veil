@@ -1,0 +1,261 @@
+# Following, notifications, usage limits and automations.
+
+extend type Query {
+  follows: [Follow!]!
+  follow(id: ID!): Follow
+  # The follow of a record, when there is one.
+  followOf(subject: RecordRefInput!): Follow
+  # Media matching a follow added since a time (since the follow began when
+  # omitted), newest first.
+  newSince(followId: ID!, since: String, limit: Int): [Record!]!
+  notifications(unreadOnly: Boolean, limit: Int, offset: Int): [Notification!]!
+  unreadNotificationCount: Int!
+  notificationChannels: [NotificationChannel!]!
+  limits: [Limit!]!
+  # Each enabled limit with how much of it is used and whether it's reached.
+  limitStatus: [LimitStatus!]!
+  # Watch time and sessions of the current day or week.
+  usage(window: LimitWindow!): Usage!
+  automations: [Automation!]!
+  automation(id: ID!): Automation
+  # Runs, newest first, of one automation or all.
+  automationRuns(automationId: ID, limit: Int, offset: Int): [AutomationRun!]!
+  automationRun(id: ID!): AutomationRun
+  # The actions steps can use: built-ins and "<plugin>:<action>".
+  automationActions: [String!]!
+}
+
+extend type Mutation {
+  # Follows a performer, studio, tag, category or cam model (existing
+  # follow returned as it is).
+  followRecord(subject: RecordRefInput!, intervalHours: Int, notify: Boolean): Follow!
+  # Follows a search on every site.
+  followSearch(text: String!, intervalHours: Int, notify: Boolean): Follow!
+  # Follows any filter.
+  createFollow(input: FollowInput!): Follow!
+  updateFollow(id: ID!, input: FollowEditInput!): Follow!
+  unfollow(id: ID!): Boolean!
+  # Runs a follow now.
+  runFollow(id: ID!): Job!
+  markNotificationsRead(ids: [ID!]!): Boolean!
+  markAllNotificationsRead: Boolean!
+  # config: ntfy {server?, topic, token?, detail?}, webhook {url, headers?,
+  # detail?}. Without detail: true, outside channels get neutral wording.
+  createNotificationChannel(kind: ChannelKind!, name: String!, config: JSON, enabled: Boolean): NotificationChannel!
+  updateNotificationChannel(id: ID!, name: String, config: JSON, enabled: Boolean): NotificationChannel!
+  deleteNotificationChannel(id: ID!): Boolean!
+  createLimit(kind: LimitKind!, window: LimitWindow!, amount: Int!, action: LimitAction!, enabled: Boolean): Limit!
+  updateLimit(id: ID!, amount: Int, action: LimitAction, enabled: Boolean): Limit!
+  deleteLimit(id: ID!): Boolean!
+  createAutomation(input: AutomationInput!): Automation!
+  updateAutomation(id: ID!, input: AutomationEditInput!): Automation!
+  # Built-in automations can only be disabled.
+  deleteAutomation(id: ID!): Boolean!
+  # Runs an automation now on subjects; a dry run only reports what each
+  # step would do.
+  runAutomation(id: ID!, subjects: [RecordRefInput!], dryRun: Boolean): AutomationRun!
+  # Reverts what a run changed (its revisions), newest first.
+  undoAutomationRun(id: ID!): AutomationRun!
+}
+
+type Subscription {
+  # Each new notification as it's created.
+  notificationAdded: Notification!
+}
+
+# Following anything: a filter that runs on the sites on an interval.
+type Follow {
+  id: ID!
+  name: String!
+  filter: Filter!
+  targetKind: RecordKind
+  targetId: ID
+  target: Record
+  intervalHours: Int!
+  enabled: Boolean!
+  notify: Boolean!
+  lastRunAt: String
+  nextRunAt: String
+  lastError: String
+}
+
+input FollowInput {
+  name: String!
+  filter: FilterInput!
+  intervalHours: Int
+  notify: Boolean
+}
+
+input FollowEditInput {
+  name: String
+  filter: FilterInput
+  intervalHours: Int
+  enabled: Boolean
+  notify: Boolean
+}
+
+type Notification {
+  id: ID!
+  at: String!
+  # newMedia, camLive, downloadDone, automationFailed, …
+  kind: String!
+  title: String!
+  body: String
+  subject: RecordRef
+  record: Record
+  read: Boolean!
+}
+
+enum ChannelKind {
+  inApp
+  push
+  ntfy
+  webhook
+}
+
+type NotificationChannel {
+  id: ID!
+  kind: ChannelKind!
+  name: String!
+  config: JSON
+  enabled: Boolean!
+  # False for push, which the server can't deliver (clients do).
+  delivers: Boolean!
+}
+
+enum LimitKind {
+  watchTime
+  sessions
+}
+
+enum LimitWindow {
+  day
+  week
+}
+
+enum LimitAction {
+  remind
+  lock
+}
+
+type Limit {
+  id: ID!
+  kind: LimitKind!
+  window: LimitWindow!
+  # Minutes of watch time, or a count of sessions.
+  amount: Int!
+  action: LimitAction!
+  enabled: Boolean!
+}
+
+type LimitStatus {
+  limit: Limit!
+  used: Float!
+  reached: Boolean!
+}
+
+type Usage {
+  since: String!
+  until: String!
+  watchMinutes: Float!
+  sessions: Int!
+}
+
+enum TriggerKind {
+  event
+  schedule
+  newMedia
+  camLive
+  fileAdded
+  wantedFound
+  plugin
+}
+
+type Trigger {
+  kind: TriggerKind!
+  # Cron expression of schedule triggers.
+  cron: String
+  eventKinds: [String!]
+  # Only fire for records matching this filter.
+  filter: Filter
+  # "<plugin>:<trigger>"
+  pluginTrigger: String
+}
+
+input TriggerInput {
+  kind: TriggerKind!
+  cron: String
+  eventKinds: [String!]
+  filter: FilterInput
+  pluginTrigger: String
+}
+
+# One step. Built-in actions: tag {add, remove}, delete, notify {title,
+# body, kind}, addToCollection {collectionId}, download, record, archive,
+# lookup, hunt; plugins add "<plugin>:<action>".
+type Step {
+  action: String!
+  args: JSON
+  # Skip the step unless its input matches.
+  condition: Filter
+  continueOnError: Boolean!
+}
+
+input StepInput {
+  action: String!
+  args: JSON
+  condition: FilterInput
+  continueOnError: Boolean
+}
+
+type Automation {
+  id: ID!
+  name: String!
+  enabled: Boolean!
+  trigger: Trigger!
+  steps: [Step!]!
+  # Built-in (the wanted hunt): tuned, never deleted.
+  builtIn: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input AutomationInput {
+  name: String!
+  enabled: Boolean
+  trigger: TriggerInput!
+  steps: [StepInput!]!
+}
+
+input AutomationEditInput {
+  name: String
+  enabled: Boolean
+  trigger: TriggerInput
+  steps: [StepInput!]
+}
+
+enum RunStatus {
+  running
+  succeeded
+  failed
+  undone
+}
+
+type AutomationRun {
+  id: ID!
+  automation: Automation
+  startedAt: String!
+  finishedAt: String
+  status: RunStatus!
+  dryRun: Boolean!
+  triggerData: JSON
+  steps: [StepResult!]!
+}
+
+type StepResult {
+  action: String!
+  ok: Boolean!
+  output: JSON
+  error: String
+  touched: [RecordRef!]!
+}

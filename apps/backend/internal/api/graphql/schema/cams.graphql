@@ -1,0 +1,81 @@
+# Live cam rooms, linked to performers, and their recordings (which become
+# ordinary videos with recordedFrom set).
+
+extend type Query {
+  # Rooms online now on every cam site (or some), most viewers first.
+  camRooms(query: CamQuery): CamRoomPage!
+  # Stored rooms, live first.
+  camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
+  camModel(id: ID!): CamModel
+  # Recordings running now.
+  activeRecordings: [ActiveRecording!]!
+}
+
+extend type Mutation {
+  # A playable live URL for a room (with rewind through the live buffer).
+  watchCam(id: ID!): Playable!
+  # quality: "best", "720p", …
+  setCamAutoRecord(id: ID!, on: Boolean!, quality: String): CamModel!
+  # Links the room to a library performer; null unlinks.
+  linkCamPerformer(id: ID!, performerId: ID): CamModel!
+  # Records a room, optionally starting fromSecondsAgo in the live buffer.
+  startRecording(id: ID!, quality: String, fromSecondsAgo: Int): Job!
+  # Stops and files the recording as a video.
+  stopRecording(id: ID!): Boolean!
+}
+
+input CamQuery {
+  plugins: [String!]
+  text: String
+  tag: String
+  # female, male, couple, trans
+  gender: String
+  limit: Int
+  offset: Int
+}
+
+type CamRoomPage {
+  rooms: [CamModel!]!
+  total: Int!
+}
+
+# A room on one cam site.
+type CamModel {
+  id: ID!
+  plugin: String!
+  username: String!
+  displayName: String!
+  performer: Performer
+  thumbnail: Asset
+  tags: [String!]!
+  gender: String
+  # Null when offline.
+  live: CamLive
+  lastSeenOnlineAt: String
+  autoRecord: Boolean!
+  recordQuality: String
+  # Its recordings, newest first.
+  recordings: [Video!]!
+  userState: UserState!
+}
+
+type CamLive {
+  viewers: Int!
+  subject: String
+  startedAt: String
+  thumbnail: Asset
+}
+
+type ActiveRecording {
+  job: Job
+  camModel: CamModel
+  startedAt: String!
+  durationSeconds: Float!
+  sizeBytes: Int!
+  quality: String
+}
+
+extend type Video {
+  # The cam room it was recorded from.
+  recordedFrom: CamModel
+}

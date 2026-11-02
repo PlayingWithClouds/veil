@@ -4,6 +4,8 @@ import type {
   Query,
   MutationGenqlSelection,
   Mutation,
+  SubscriptionGenqlSelection,
+  Subscription,
 } from './schema'
 import {
   linkTypeMap,
@@ -62,4 +64,16 @@ export const generateMutationOp: (
   fields: MutationGenqlSelection & { __name?: string },
 ) => GraphqlOperation = function (fields) {
   return generateGraphqlOperation('mutation', typeMap.Mutation!, fields as any)
+}
+
+export type SubscriptionResult<fields extends SubscriptionGenqlSelection> =
+  FieldsSelection<Subscription, fields>
+export const generateSubscriptionOp: (
+  fields: SubscriptionGenqlSelection & { __name?: string },
+) => GraphqlOperation = function (fields) {
+  return generateGraphqlOperation(
+    'subscription',
+    typeMap.Subscription!,
+    fields as any,
+  )
 }

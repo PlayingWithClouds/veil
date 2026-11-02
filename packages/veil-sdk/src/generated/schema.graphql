@@ -1,5 +1,44 @@
 type Query {
   play(url: String!): Playable
+  follows: [Follow!]!
+  follow(id: ID!): Follow
+  followOf(subject: RecordRefInput!): Follow
+  newSince(followId: ID!, since: String, limit: Int): [Record!]!
+  notifications(unreadOnly: Boolean, limit: Int, offset: Int): [Notification!]!
+  unreadNotificationCount: Int!
+  notificationChannels: [NotificationChannel!]!
+  limits: [Limit!]!
+  limitStatus: [LimitStatus!]!
+  usage(window: LimitWindow!): Usage!
+  automations: [Automation!]!
+  automation(id: ID!): Automation
+  automationRuns(automationId: ID, limit: Int, offset: Int): [AutomationRun!]!
+  automationRun(id: ID!): AutomationRun
+  automationActions: [String!]!
+  camRooms(query: CamQuery): CamRoomPage!
+  camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
+  camModel(id: ID!): CamModel
+  activeRecordings: [ActiveRecording!]!
+  categories: [Category!]!
+  category(id: ID, slug: String): Category
+  collections: [Collection!]!
+  collection(id: ID!): Collection
+  builtInCollection(kind: CollectionKind!): Collection!
+  collectionsWith(subject: RecordRefInput!): [Collection!]!
+  fieldDefs(kind: RecordKind): [FieldDef!]!
+  recommendations(limit: Int, offset: Int): [Match!]!
+  related(subject: RecordRefInput!, limit: Int): [Match!]!
+  shorts(filter: FilterInput, limit: Int): [Short!]!
+  taste: Taste!
+  bestMoment(videoId: ID!): Float
+  alikes(kind: RecordKind!, limit: Int, offset: Int): [AlikePair!]!
+  libraryRoots: [LibraryRoot!]!
+  libraryRoot(id: ID!): LibraryRoot
+  planOrganize(rootId: ID!): [FileMove!]!
+  downloads: [Download!]!
+  sameMedia(subject: RecordRefInput!): [Record!]!
+  nearest(kind: EmbeddingKind!, model: String!, vector: [Float!]!, kinds: [RecordKind!], limit: Int): [Match!]!
+  similar(subject: RecordRefInput!, kind: EmbeddingKind!, model: String!, limit: Int): [Match!]!
   videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
   videoCount(filter: FilterInput): Int!
   video(id: ID!): Video
@@ -12,6 +51,26 @@ type Query {
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!
   tag(id: ID!): Tag
+  media(filter: FilterInput, limit: Int, offset: Int): [Record!]!
+  mediaCount(filter: FilterInput): Int!
+  audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
+  audioCount(filter: FilterInput): Int!
+  audio(id: ID!): Audio
+  stories(filter: FilterInput, limit: Int, offset: Int): [Story!]!
+  storyCount(filter: FilterInput): Int!
+  story(id: ID!): Story
+  posts(filter: FilterInput, limit: Int, offset: Int): [Post!]!
+  postCount(filter: FilterInput): Int!
+  post(id: ID!): Post
+  groups(text: String, videoId: ID, limit: Int, offset: Int): [Group!]!
+  group(id: ID!): Group
+  settings: JSON!
+  apiTokens: [ApiToken!]!
+  accounts: [Account!]!
+  contributions(kind: String): [PluginContribution!]!
+  pluginView(plugin: String!, view: String!, input: JSON): PluginView!
+  clips(videoId: ID, limit: Int, offset: Int): [Clip!]!
+  clip(id: ID!): Clip
   plugins: [Plugin!]!
   plugin(name: String!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
@@ -32,6 +91,59 @@ type Query {
 
 type Mutation {
   scrape(plugin: String!, url: String!): Scraped!
+  followRecord(subject: RecordRefInput!, intervalHours: Int, notify: Boolean): Follow!
+  followSearch(text: String!, intervalHours: Int, notify: Boolean): Follow!
+  createFollow(input: FollowInput!): Follow!
+  updateFollow(id: ID!, input: FollowEditInput!): Follow!
+  unfollow(id: ID!): Boolean!
+  runFollow(id: ID!): Job!
+  markNotificationsRead(ids: [ID!]!): Boolean!
+  markAllNotificationsRead: Boolean!
+  createNotificationChannel(kind: ChannelKind!, name: String!, config: JSON, enabled: Boolean): NotificationChannel!
+  updateNotificationChannel(id: ID!, name: String, config: JSON, enabled: Boolean): NotificationChannel!
+  deleteNotificationChannel(id: ID!): Boolean!
+  createLimit(kind: LimitKind!, window: LimitWindow!, amount: Int!, action: LimitAction!, enabled: Boolean): Limit!
+  updateLimit(id: ID!, amount: Int, action: LimitAction, enabled: Boolean): Limit!
+  deleteLimit(id: ID!): Boolean!
+  createAutomation(input: AutomationInput!): Automation!
+  updateAutomation(id: ID!, input: AutomationEditInput!): Automation!
+  deleteAutomation(id: ID!): Boolean!
+  runAutomation(id: ID!, subjects: [RecordRefInput!], dryRun: Boolean): AutomationRun!
+  undoAutomationRun(id: ID!): AutomationRun!
+  watchCam(id: ID!): Playable!
+  setCamAutoRecord(id: ID!, on: Boolean!, quality: String): CamModel!
+  linkCamPerformer(id: ID!, performerId: ID): CamModel!
+  startRecording(id: ID!, quality: String, fromSecondsAgo: Int): Job!
+  stopRecording(id: ID!): Boolean!
+  createCategory(input: CategoryInput!): Category!
+  editCategory(id: ID!, input: CategoryInput!): Category!
+  reorderCategories(ids: [ID!]!): [Category!]!
+  createCollection(name: String!, details: String): Collection!
+  editCollection(id: ID!, name: String, details: String, coverUri: String): Collection!
+  addToCollection(collectionId: ID!, subjects: [RecordRefInput!]!, position: Int): Collection!
+  removeFromCollection(collectionId: ID!, subjects: [RecordRefInput!]!): Collection!
+  moveInCollection(collectionId: ID!, subject: RecordRefInput!, position: Int!): Collection!
+  clearCollection(collectionId: ID!): Collection!
+  saveFieldDef(id: ID, input: FieldDefInput!): FieldDef!
+  deleteFieldDef(id: ID!): Boolean!
+  setFieldValue(subject: RecordRefInput!, fieldDefId: ID!, value: JSON): UserState!
+  lookup(input: LookupInput!): LookupResult!
+  merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
+  mergeAlike(id: ID!): Record
+  dismissAlike(id: ID!): Boolean!
+  addLibraryRoot(locationId: ID!, path: String!, scanIntervalMinutes: Int, organizeTemplate: String): LibraryRoot!
+  updateLibraryRoot(id: ID!, scanIntervalMinutes: Int, organizeTemplate: String): LibraryRoot!
+  removeLibraryRoot(id: ID!): Boolean!
+  scanLibraryRoot(id: ID!): Job!
+  applyOrganize(rootId: ID!, moves: [FileMoveInput!]!): Int!
+  trashFile(id: ID!): Boolean!
+  download(subject: RecordRefInput!, streamId: ID): Job!
+  deleteDownload(jobId: ID!): Boolean!
+  addFingerprint(subject: RecordRefInput!, fileId: ID, algorithm: FingerprintAlgorithm!, value: String!, durationSeconds: Float): Fingerprint!
+  fingerprintFile(fileId: ID!): Job!
+  snapshotSource(sourceId: ID!): Job!
+  addEmbedding(input: EmbeddingInput!): Embedding!
+  removeEmbedding(id: ID!): Boolean!
   fetchVideo(id: ID!): Video
   fetchGallery(id: ID!): Gallery
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
@@ -43,6 +155,28 @@ type Mutation {
   editTag(id: ID!, edit: TagEdit!): Tag
   lockField(subject: RecordRefInput!, field: String!, locked: Boolean!): [FieldSource!]!
   revertRevision(id: ID!): Boolean!
+  editMedia(subject: RecordRefInput!, edit: MediaEdit!): Record
+  fetchMedia(subject: RecordRefInput!): Record
+  readChapter(storyId: ID!, position: Int!): StoryChapter
+  updateSettings(values: JSON!): JSON!
+  createApiToken(name: String!, scopes: [String!]!, expiresAt: String): CreatedApiToken!
+  revokeApiToken(id: ID!): Boolean!
+  loginAccount(plugin: String!, values: JSON!): Account!
+  checkAccount(id: ID!): Account!
+  logoutAccount(id: ID!): Boolean!
+  submitPluginView(plugin: String!, view: String!, action: String!, values: JSON, input: JSON): PluginViewResult!
+  addSegment(subject: RecordRefInput!, input: SegmentInput!): Segment!
+  editSegment(id: ID!, input: SegmentInput!): Segment!
+  addClip(videoId: ID!, input: ClipInput!): Clip!
+  editClip(id: ID!, input: ClipInput!): Clip!
+  attachClipFile(clipId: ID!, fileId: ID!): Clip!
+  addSubtitle(subject: RecordRefInput!, input: SubtitleInput!): Subtitle!
+  removeSubtitle(id: ID!): Boolean!
+  addScript(subject: RecordRefInput!, uri: String!, axis: String): Script!
+  removeScript(id: ID!): Boolean!
+  setTrickplay(videoId: ID!, trickplay: TrickplayInput): Video
+  reportStreamSpeed(streamId: ID!, kilobitsPerSecond: Int!): Stream
+  refreshSources(subject: RecordRefInput!): Record
   setPluginEnabled(name: String!, enabled: Boolean!): Boolean!
   updatePluginSettings(plugin: String!, values: [PluginSettingValueInput!]!): Boolean!
   installPlugin(packageName: String!): Boolean!
@@ -81,6 +215,553 @@ type Scraped {
   id: ID!
 }
 
+type Subscription {
+  notificationAdded: Notification!
+}
+
+type Follow {
+  id: ID!
+  name: String!
+  filter: Filter!
+  targetKind: RecordKind
+  targetId: ID
+  target: Record
+  intervalHours: Int!
+  enabled: Boolean!
+  notify: Boolean!
+  lastRunAt: String
+  nextRunAt: String
+  lastError: String
+}
+
+input FollowInput {
+  name: String!
+  filter: FilterInput!
+  intervalHours: Int
+  notify: Boolean
+}
+
+input FollowEditInput {
+  name: String
+  filter: FilterInput
+  intervalHours: Int
+  enabled: Boolean
+  notify: Boolean
+}
+
+type Notification {
+  id: ID!
+  at: String!
+  kind: String!
+  title: String!
+  body: String
+  subject: RecordRef
+  record: Record
+  read: Boolean!
+}
+
+enum ChannelKind {
+  inApp
+  push
+  ntfy
+  webhook
+}
+
+type NotificationChannel {
+  id: ID!
+  kind: ChannelKind!
+  name: String!
+  config: JSON
+  enabled: Boolean!
+  delivers: Boolean!
+}
+
+enum LimitKind {
+  watchTime
+  sessions
+}
+
+enum LimitWindow {
+  day
+  week
+}
+
+enum LimitAction {
+  remind
+  lock
+}
+
+type Limit {
+  id: ID!
+  kind: LimitKind!
+  window: LimitWindow!
+  amount: Int!
+  action: LimitAction!
+  enabled: Boolean!
+}
+
+type LimitStatus {
+  limit: Limit!
+  used: Float!
+  reached: Boolean!
+}
+
+type Usage {
+  since: String!
+  until: String!
+  watchMinutes: Float!
+  sessions: Int!
+}
+
+enum TriggerKind {
+  event
+  schedule
+  newMedia
+  camLive
+  fileAdded
+  wantedFound
+  plugin
+}
+
+type Trigger {
+  kind: TriggerKind!
+  cron: String
+  eventKinds: [String!]
+  filter: Filter
+  pluginTrigger: String
+}
+
+input TriggerInput {
+  kind: TriggerKind!
+  cron: String
+  eventKinds: [String!]
+  filter: FilterInput
+  pluginTrigger: String
+}
+
+type Step {
+  action: String!
+  args: JSON
+  condition: Filter
+  continueOnError: Boolean!
+}
+
+input StepInput {
+  action: String!
+  args: JSON
+  condition: FilterInput
+  continueOnError: Boolean
+}
+
+type Automation {
+  id: ID!
+  name: String!
+  enabled: Boolean!
+  trigger: Trigger!
+  steps: [Step!]!
+  builtIn: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input AutomationInput {
+  name: String!
+  enabled: Boolean
+  trigger: TriggerInput!
+  steps: [StepInput!]!
+}
+
+input AutomationEditInput {
+  name: String
+  enabled: Boolean
+  trigger: TriggerInput
+  steps: [StepInput!]
+}
+
+enum RunStatus {
+  running
+  succeeded
+  failed
+  undone
+}
+
+type AutomationRun {
+  id: ID!
+  automation: Automation
+  startedAt: String!
+  finishedAt: String
+  status: RunStatus!
+  dryRun: Boolean!
+  triggerData: JSON
+  steps: [StepResult!]!
+}
+
+type StepResult {
+  action: String!
+  ok: Boolean!
+  output: JSON
+  error: String
+  touched: [RecordRef!]!
+}
+
+input CamQuery {
+  plugins: [String!]
+  text: String
+  tag: String
+  gender: String
+  limit: Int
+  offset: Int
+}
+
+type CamRoomPage {
+  rooms: [CamModel!]!
+  total: Int!
+}
+
+type CamModel {
+  id: ID!
+  plugin: String!
+  username: String!
+  displayName: String!
+  performer: Performer
+  thumbnail: Asset
+  tags: [String!]!
+  gender: String
+  live: CamLive
+  lastSeenOnlineAt: String
+  autoRecord: Boolean!
+  recordQuality: String
+  recordings: [Video!]!
+  userState: UserState!
+}
+
+type CamLive {
+  viewers: Int!
+  subject: String
+  startedAt: String
+  thumbnail: Asset
+}
+
+type ActiveRecording {
+  job: Job
+  camModel: CamModel
+  startedAt: String!
+  durationSeconds: Float!
+  sizeBytes: Int!
+  quality: String
+}
+
+type Video {
+  recordedFrom: CamModel
+  categories: [Category!]!
+  related(limit: Int): [Match!]!
+  files: [MediaFile!]!
+  fingerprints: [Fingerprint!]!
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  durationSeconds: Float
+  width: Int
+  height: Int
+  vr: VrFormat
+  preview: Asset
+  trickplay: Trickplay
+  gallery: Gallery
+  sources: [Source!]!
+  streams: [Stream!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+  groups: [Group!]!
+  segments: [Segment!]!
+  subtitles: [Subtitle!]!
+  scripts: [Script!]!
+  clips: [Clip!]!
+  comments: [Comment!]!
+}
+
+type Category {
+  id: ID!
+  name: String!
+  slug: String!
+  parent: Category
+  children: [Category!]!
+  matchTags: [Tag!]!
+  cover: Asset
+  position: Int!
+  videoCount: Int!
+  galleryCount: Int!
+}
+
+input CategoryInput {
+  name: String
+  slug: String
+  parentId: ID
+  matchTagIds: [ID!]
+  coverUri: String
+  position: Int
+}
+
+enum CollectionKind {
+  user
+  watchlist
+  queue
+}
+
+type Collection {
+  id: ID!
+  name: String!
+  kind: CollectionKind!
+  details: String
+  cover: Asset
+  itemCount: Int!
+  items(limit: Int, offset: Int): [CollectionItem!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type CollectionItem {
+  subjectKind: RecordKind!
+  subjectId: ID!
+  record: Record
+  position: Int!
+  addedAt: String!
+}
+
+enum FieldType {
+  text
+  number
+  boolean
+  date
+  choice
+  choices
+  url
+}
+
+type FieldDef {
+  id: ID!
+  name: String!
+  kinds: [RecordKind!]!
+  fieldType: FieldType!
+  options: [String!]
+}
+
+input FieldDefInput {
+  name: String!
+  kinds: [RecordKind!]!
+  fieldType: FieldType!
+  options: [String!]
+}
+
+type Gallery {
+  categories: [Category!]!
+  related(limit: Int): [Match!]!
+  files: [MediaFile!]!
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  imageCount: Int!
+  images: [Image!]!
+  video: Video
+  sources: [Source!]!
+  userState: UserState!
+  oCount: Int!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type Match {
+  item: RecordRef!
+  record: Record
+  score: Float
+  evidence: [Evidence!]!
+}
+
+type Evidence {
+  plugin: String!
+  url: String
+  title: String
+  image: Asset
+  detail: String
+}
+
+type Short {
+  match: Match!
+  video: Video
+  startSeconds: Float
+  endSeconds: Float
+}
+
+type Taste {
+  signalCount: Int!
+  tags: [TasteEntry!]!
+  performers: [TasteEntry!]!
+  studios: [TasteEntry!]!
+  sites: [TasteEntry!]!
+}
+
+type TasteEntry {
+  id: ID!
+  name: String!
+  image: Asset
+  weight: Float!
+}
+
+input LookupInput {
+  text: String
+  imageBase64: String
+  mimeType: String
+  plugins: [String!]
+}
+
+type LookupResult {
+  matches: [Match!]!
+  failures: [String!]!
+}
+
+type AlikePair {
+  id: ID!
+  subjectKind: RecordKind!
+  first: Record
+  second: Record
+  score: Float!
+  reason: String
+  provablySame: Boolean!
+}
+
+type LibraryRoot {
+  id: ID!
+  location: StorageLocation
+  path: String!
+  scanIntervalMinutes: Int
+  lastScanAt: String
+  organizeTemplate: String
+}
+
+type FileMove {
+  fileId: ID!
+  from: String!
+  to: String!
+}
+
+input FileMoveInput {
+  fileId: ID!
+  from: String!
+  to: String!
+}
+
+type MediaFile {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  url: String!
+  path: String!
+  location: StorageLocation
+  sizeBytes: Int!
+  mimeType: String!
+  quality: String
+  width: Int
+  height: Int
+  durationSeconds: Float
+  missing: Boolean!
+}
+
+type Download {
+  job: Job!
+  file: MediaFile
+}
+
+enum FingerprintAlgorithm {
+  phash
+  oshash
+  md5
+  audio
+}
+
+type Fingerprint {
+  id: ID!
+  algorithm: FingerprintAlgorithm!
+  value: String!
+  fileId: ID
+  durationSeconds: Float
+}
+
+enum EmbeddingKind {
+  face
+  visual
+  text
+}
+
+type Embedding {
+  id: ID!
+  kind: EmbeddingKind!
+  model: String!
+  atSeconds: Float
+  region: JSON
+}
+
+input EmbeddingInput {
+  subject: RecordRefInput!
+  kind: EmbeddingKind!
+  model: String!
+  vector: [Float!]!
+  atSeconds: Float
+  region: JSON
+}
+
+type Audio {
+  files: [MediaFile!]!
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  durationSeconds: Float
+  sources: [Source!]!
+  streams: [Stream!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+  segments: [Segment!]!
+  subtitles: [Subtitle!]!
+  scripts: [Script!]!
+  comments: [Comment!]!
+}
+
+type Source {
+  snapshot: Asset
+  id: ID!
+  plugin: String!
+  externalId: String!
+  url: String!
+  title: String
+  image: Asset
+  fetchedAt: String
+}
+
 input MediaEdit {
   title: String
   details: String
@@ -88,6 +769,12 @@ input MediaEdit {
   studioId: ID
   performerIds: [ID!]
   tagIds: [ID!]
+  status: MediaStatus
+  vr: VrFormatInput
+  clearVr: Boolean
+  width: Int
+  height: Int
+  durationSeconds: Float
 }
 
 input PerformerEdit {
@@ -155,42 +842,16 @@ type Listed {
 
 type Asset {
   uri: String!
+  url: String!
   mimeType: String
   width: Int
   height: Int
   blurhash: String
 }
 
-type Video {
-  id: ID!
-  createdAt: String!
-  updatedAt: String!
-  title: String!
-  details: String
-  date: String
-  cover: Asset
-  status: String!
-  studio: Studio
-  performers: [Performer!]!
-  tags: [Tag!]!
-  durationSeconds: Float
-  width: Int
-  height: Int
-  vr: VrFormat
-  preview: Asset
-  trickplay: Trickplay
-  gallery: Gallery
-  sources: [Source!]!
-  streams: [Stream!]!
-  userState: UserState!
-  oCount: Int!
-  fieldSources: [FieldSource!]!
-  revisions(limit: Int, offset: Int): [Revision!]!
-}
-
 type VrFormat {
-  projection: String!
-  stereo: String!
+  projection: VrProjection!
+  stereo: VrStereo!
   fieldOfView: Int
 }
 
@@ -201,28 +862,6 @@ type Trickplay {
   tileWidth: Int!
   tileHeight: Int!
   intervalSeconds: Float!
-}
-
-type Gallery {
-  id: ID!
-  createdAt: String!
-  updatedAt: String!
-  title: String!
-  details: String
-  date: String
-  cover: Asset
-  status: String!
-  studio: Studio
-  performers: [Performer!]!
-  tags: [Tag!]!
-  imageCount: Int!
-  images: [Image!]!
-  video: Video
-  sources: [Source!]!
-  userState: UserState!
-  oCount: Int!
-  fieldSources: [FieldSource!]!
-  revisions(limit: Int, offset: Int): [Revision!]!
 }
 
 type Image {
@@ -299,16 +938,6 @@ type Tag {
   revisions(limit: Int, offset: Int): [Revision!]!
 }
 
-type Source {
-  id: ID!
-  plugin: String!
-  externalId: String!
-  url: String!
-  title: String
-  image: Asset
-  fetchedAt: String
-}
-
 type Stream {
   id: ID!
   url: String!
@@ -317,16 +946,172 @@ type Stream {
   height: Int
   speedKbps: Int
   source: Source
+  expiresAt: String
 }
 
-type PluginPackage {
+input VrFormatInput {
+  projection: VrProjection!
+  stereo: VrStereo!
+  fieldOfView: Int
+}
+
+enum VrProjection {
+  equirectangular180
+  equirectangular360
+  fisheye
+  cubemap
+}
+
+enum VrStereo {
+  mono
+  sideBySide
+  topBottom
+}
+
+type Story {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  chapterCount: Int!
+  wordCount: Int
+  complete: Boolean!
+  chapters: [StoryChapter!]!
+  sources: [Source!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type StoryChapter {
+  id: ID!
+  position: Int!
+  title: String
+  text: String!
+  wordCount: Int!
+  url: String
+}
+
+type Post {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  creator: Performer
+  text: String
+  tags: [Tag!]!
+  attachments: [Record!]!
+  locked: Boolean!
+  priceCents: Int
+  currency: String
+  sources: [Source!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type Group {
+  id: ID!
+  createdAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  studio: Studio
+  videos: [Video!]!
+  sources: [Source!]!
+}
+
+type ApiToken {
+  id: ID!
   name: String!
-  version: String!
-  description: String
-  installedVersion: String
+  scopes: [String!]!
+  lastUsedAt: String
+  expiresAt: String
+  createdAt: String!
+}
+
+type CreatedApiToken {
+  token: String!
+  apiToken: ApiToken!
+}
+
+enum AccountStatus {
+  ok
+  expired
+  needsLogin
+  failed
+}
+
+type Account {
+  id: ID!
+  plugin: String!
+  label: String!
+  status: AccountStatus!
+  expiresAt: String
+  lastCheckedAt: String
+}
+
+type PluginContribution {
+  plugin: String!
+  kind: String!
+  name: String!
+  title: String
+  mediaKinds: [String!]!
+  domains: [String!]!
+}
+
+type PluginView {
+  kind: String!
+  title: String!
+  body: String
+  fields: [PluginViewField!]!
+  items: [PluginViewItem!]!
+  actions: [PluginViewAction!]!
+}
+
+type PluginViewField {
+  key: String!
+  label: String!
+  type: String!
+  value: String
+  options: [String!]!
+  required: Boolean!
+  hint: String
+}
+
+type PluginViewItem {
+  title: String!
+  subtitle: String
+  imageUrl: String
+  url: String
+  record: Record
+}
+
+type PluginViewAction {
+  name: String!
+  label: String!
+  primary: Boolean!
+}
+
+type PluginViewResult {
+  view: PluginView
+  message: String
 }
 
 type Plugin {
+  contributions: [PluginContribution!]!
+  account: Account
   name: String!
   packageName: String
   localBuild: Boolean!
@@ -342,6 +1127,111 @@ type Plugin {
   available: Boolean!
   settings: [PluginSettingField!]!
   settingValues: [PluginSettingValue!]!
+}
+
+enum SegmentOrigin {
+  user
+  plugin
+  ai
+}
+
+type Segment {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  startSeconds: Float!
+  endSeconds: Float
+  title: String
+  tag: Tag
+  performers: [Performer!]!
+  origin: SegmentOrigin!
+}
+
+input SegmentInput {
+  startSeconds: Float
+  endSeconds: Float
+  clearEnd: Boolean
+  title: String
+  tagId: ID
+  performerIds: [ID!]
+}
+
+type Clip {
+  id: ID!
+  createdAt: String!
+  video: Video
+  startSeconds: Float!
+  endSeconds: Float!
+  title: String
+  cover: Asset
+  file: MediaFile
+}
+
+input ClipInput {
+  startSeconds: Float
+  endSeconds: Float
+  title: String
+  coverUri: String
+}
+
+enum SubtitleOrigin {
+  site
+  generated
+  translated
+}
+
+type Subtitle {
+  id: ID!
+  language: String!
+  format: String!
+  asset: Asset!
+  origin: SubtitleOrigin!
+}
+
+input SubtitleInput {
+  language: String!
+  format: String!
+  uri: String!
+  origin: SubtitleOrigin
+}
+
+enum ScriptKind {
+  funscript
+}
+
+type Script {
+  id: ID!
+  kind: ScriptKind!
+  asset: Asset!
+  axis: String
+  writtenBy: Actor!
+}
+
+input TrickplayInput {
+  sheetUris: [String!]!
+  columns: Int!
+  rows: Int!
+  tileWidth: Int!
+  tileHeight: Int!
+  intervalSeconds: Float!
+}
+
+type Comment {
+  id: ID!
+  source: Source
+  author: String
+  text: String!
+  postedAt: String
+  likes: Int
+  replyTo: ID
+  mentions: [Performer!]!
+}
+
+type PluginPackage {
+  name: String!
+  version: String!
+  description: String
+  installedVersion: String
 }
 
 type PluginSettingField {
@@ -489,7 +1379,7 @@ type RecordRef {
   id: ID!
 }
 
-union Record = Video | Gallery | Performer | Studio | Tag
+union Record = Video | Gallery | Audio | Story | Post | Performer | Studio | Tag | Group | Category | Collection | CamModel | Segment | Clip
 
 type UserState {
   subjectKind: RecordKind!

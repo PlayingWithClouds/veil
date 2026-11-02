@@ -1,0 +1,119 @@
+# Settings, API tokens, plugin accounts, plugin contributions and their
+# declarative views.
+
+extend type Query {
+  # Every global setting by key (see internal/settings).
+  settings: JSON!
+  # Admin only.
+  apiTokens: [ApiToken!]!
+  # This device's plugin logins. Sessions never leave the backend.
+  accounts: [Account!]!
+  # What plugins add, of one kind or all: source, lookup, stream, cams,
+  # login, and declared views, feeds, triggers, actions, fields.
+  contributions(kind: String): [PluginContribution!]!
+  # One of a plugin's declarative views, for the client to render natively.
+  pluginView(plugin: String!, view: String!, input: JSON): PluginView!
+}
+
+extend type Mutation {
+  # Changes global settings by key; returns them all.
+  updateSettings(values: JSON!): JSON!
+  # Admin only. The token is shown this once.
+  createApiToken(name: String!, scopes: [String!]!, expiresAt: String): CreatedApiToken!
+  revokeApiToken(id: ID!): Boolean!
+  # Signs into a plugin's site with the values of its login view.
+  loginAccount(plugin: String!, values: JSON!): Account!
+  # Asks the plugin whether the session still works.
+  checkAccount(id: ID!): Account!
+  logoutAccount(id: ID!): Boolean!
+  # Runs an action of a plugin's view with the values entered.
+  submitPluginView(plugin: String!, view: String!, action: String!, values: JSON, input: JSON): PluginViewResult!
+}
+
+type ApiToken {
+  id: ID!
+  name: String!
+  # read, write, stream, admin
+  scopes: [String!]!
+  lastUsedAt: String
+  expiresAt: String
+  createdAt: String!
+}
+
+type CreatedApiToken {
+  token: String!
+  apiToken: ApiToken!
+}
+
+enum AccountStatus {
+  ok
+  expired
+  needsLogin
+  failed
+}
+
+type Account {
+  id: ID!
+  plugin: String!
+  label: String!
+  status: AccountStatus!
+  expiresAt: String
+  lastCheckedAt: String
+}
+
+type PluginContribution {
+  plugin: String!
+  # source, lookup, stream, cams, trigger, action, feed, field, login, view
+  kind: String!
+  name: String!
+  title: String
+  mediaKinds: [String!]!
+  domains: [String!]!
+}
+
+# A declarative screen: form, list, detail or login.
+type PluginView {
+  kind: String!
+  title: String!
+  body: String
+  fields: [PluginViewField!]!
+  items: [PluginViewItem!]!
+  actions: [PluginViewAction!]!
+}
+
+type PluginViewField {
+  key: String!
+  label: String!
+  # text, password, number, boolean, choice, url
+  type: String!
+  value: String
+  options: [String!]!
+  required: Boolean!
+  hint: String
+}
+
+type PluginViewItem {
+  title: String!
+  subtitle: String
+  imageUrl: String
+  url: String
+  # The record the row stands for, stored as a stub.
+  record: Record
+}
+
+type PluginViewAction {
+  name: String!
+  label: String!
+  primary: Boolean!
+}
+
+type PluginViewResult {
+  view: PluginView
+  message: String
+}
+
+extend type Plugin {
+  contributions: [PluginContribution!]!
+  # Whether this device has a working login for it.
+  account: Account
+}

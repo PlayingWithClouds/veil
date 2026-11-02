@@ -8,8 +8,72 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
+
+type AutomationEditInput struct {
+	Name    *string         `json:"name,omitempty"`
+	Enabled *bool           `json:"enabled,omitempty"`
+	Trigger *schema.Trigger `json:"trigger,omitempty"`
+	Steps   []*schema.Step  `json:"steps,omitempty"`
+}
+
+type AutomationInput struct {
+	Name    string          `json:"name"`
+	Enabled *bool           `json:"enabled,omitempty"`
+	Trigger *schema.Trigger `json:"trigger"`
+	Steps   []*schema.Step  `json:"steps"`
+}
+
+type CamQuery struct {
+	Plugins []string `json:"plugins,omitempty"`
+	Text    *string  `json:"text,omitempty"`
+	Tag     *string  `json:"tag,omitempty"`
+	Gender  *string  `json:"gender,omitempty"`
+	Limit   *int     `json:"limit,omitempty"`
+	Offset  *int     `json:"offset,omitempty"`
+}
+
+type CamRoomPage struct {
+	Rooms []*schema.CamModel `json:"rooms"`
+	Total int                `json:"total"`
+}
+
+type CategoryInput struct {
+	Name        *string  `json:"name,omitempty"`
+	Slug        *string  `json:"slug,omitempty"`
+	ParentID    *string  `json:"parentId,omitempty"`
+	MatchTagIds []string `json:"matchTagIds,omitempty"`
+	CoverURI    *string  `json:"coverUri,omitempty"`
+	Position    *int     `json:"position,omitempty"`
+}
+
+type ClipInput struct {
+	StartSeconds *float64 `json:"startSeconds,omitempty"`
+	EndSeconds   *float64 `json:"endSeconds,omitempty"`
+	Title        *string  `json:"title,omitempty"`
+	CoverURI     *string  `json:"coverUri,omitempty"`
+}
+
+type CreatedAPIToken struct {
+	Token    string           `json:"token"`
+	APIToken *schema.ApiToken `json:"apiToken"`
+}
+
+type Download struct {
+	Job  *jobs.Job         `json:"job"`
+	File *schema.MediaFile `json:"file,omitempty"`
+}
+
+type EmbeddingInput struct {
+	Subject   *schema.RecordRef    `json:"subject"`
+	Kind      schema.EmbeddingKind `json:"kind"`
+	Model     string               `json:"model"`
+	Vector    []float64            `json:"vector"`
+	AtSeconds *float64             `json:"atSeconds,omitempty"`
+	Region    any                  `json:"region,omitempty"`
+}
 
 type EventFilter struct {
 	Kinds   []schema.EventKind `json:"kinds,omitempty"`
@@ -25,6 +89,33 @@ type EventInput struct {
 	SessionID *string           `json:"sessionId,omitempty"`
 }
 
+type FileMove struct {
+	FileID string `json:"fileId"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+}
+
+type FileMoveInput struct {
+	FileID string `json:"fileId"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+}
+
+type FollowEditInput struct {
+	Name          *string        `json:"name,omitempty"`
+	Filter        *schema.Filter `json:"filter,omitempty"`
+	IntervalHours *int           `json:"intervalHours,omitempty"`
+	Enabled       *bool          `json:"enabled,omitempty"`
+	Notify        *bool          `json:"notify,omitempty"`
+}
+
+type FollowInput struct {
+	Name          string         `json:"name"`
+	Filter        *schema.Filter `json:"filter"`
+	IntervalHours *int           `json:"intervalHours,omitempty"`
+	Notify        *bool          `json:"notify,omitempty"`
+}
+
 type Listed struct {
 	Videos     []*schema.Video     `json:"videos"`
 	Galleries  []*schema.Gallery   `json:"galleries"`
@@ -33,13 +124,31 @@ type Listed struct {
 	Tags       []*schema.Tag       `json:"tags"`
 }
 
+type LookupInput struct {
+	Text        *string  `json:"text,omitempty"`
+	ImageBase64 *string  `json:"imageBase64,omitempty"`
+	MimeType    *string  `json:"mimeType,omitempty"`
+	Plugins     []string `json:"plugins,omitempty"`
+}
+
+type LookupResult struct {
+	Matches  []*schema.Match `json:"matches"`
+	Failures []string        `json:"failures"`
+}
+
 type MediaEdit struct {
-	Title        *string  `json:"title,omitempty"`
-	Details      *string  `json:"details,omitempty"`
-	Date         *string  `json:"date,omitempty"`
-	StudioID     *string  `json:"studioId,omitempty"`
-	PerformerIds []string `json:"performerIds,omitempty"`
-	TagIds       []string `json:"tagIds,omitempty"`
+	Title           *string             `json:"title,omitempty"`
+	Details         *string             `json:"details,omitempty"`
+	Date            *string             `json:"date,omitempty"`
+	StudioID        *string             `json:"studioId,omitempty"`
+	PerformerIds    []string            `json:"performerIds,omitempty"`
+	TagIds          []string            `json:"tagIds,omitempty"`
+	Status          *schema.MediaStatus `json:"status,omitempty"`
+	Vr              *schema.VrFormat    `json:"vr,omitempty"`
+	ClearVr         *bool               `json:"clearVr,omitempty"`
+	Width           *int                `json:"width,omitempty"`
+	Height          *int                `json:"height,omitempty"`
+	DurationSeconds *float64            `json:"durationSeconds,omitempty"`
 }
 
 type Mutation struct {
@@ -74,6 +183,17 @@ type Plugin struct {
 	Available      bool                  `json:"available"`
 	Settings       []*PluginSettingField `json:"settings"`
 	SettingValues  []*PluginSettingValue `json:"settingValues"`
+	Contributions  []*PluginContribution `json:"contributions"`
+	Account        *schema.Account       `json:"account,omitempty"`
+}
+
+type PluginContribution struct {
+	Plugin     string   `json:"plugin"`
+	Kind       string   `json:"kind"`
+	Name       string   `json:"name"`
+	Title      *string  `json:"title,omitempty"`
+	MediaKinds []string `json:"mediaKinds"`
+	Domains    []string `json:"domains"`
 }
 
 type PluginPackage struct {
@@ -102,6 +222,44 @@ type PluginSettingValueInput struct {
 	Value string `json:"value"`
 }
 
+type PluginView struct {
+	Kind    string              `json:"kind"`
+	Title   string              `json:"title"`
+	Body    *string             `json:"body,omitempty"`
+	Fields  []*PluginViewField  `json:"fields"`
+	Items   []*PluginViewItem   `json:"items"`
+	Actions []*PluginViewAction `json:"actions"`
+}
+
+type PluginViewAction struct {
+	Name    string `json:"name"`
+	Label   string `json:"label"`
+	Primary bool   `json:"primary"`
+}
+
+type PluginViewField struct {
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	Type     string   `json:"type"`
+	Value    *string  `json:"value,omitempty"`
+	Options  []string `json:"options"`
+	Required bool     `json:"required"`
+	Hint     *string  `json:"hint,omitempty"`
+}
+
+type PluginViewItem struct {
+	Title    string  `json:"title"`
+	Subtitle *string `json:"subtitle,omitempty"`
+	ImageURL *string `json:"imageUrl,omitempty"`
+	URL      *string `json:"url,omitempty"`
+	Record   Record  `json:"record,omitempty"`
+}
+
+type PluginViewResult struct {
+	View    *PluginView `json:"view,omitempty"`
+	Message *string     `json:"message,omitempty"`
+}
+
 type Query struct {
 }
 
@@ -110,12 +268,31 @@ type Scraped struct {
 	ID   string `json:"id"`
 }
 
+type SegmentInput struct {
+	StartSeconds *float64 `json:"startSeconds,omitempty"`
+	EndSeconds   *float64 `json:"endSeconds,omitempty"`
+	ClearEnd     *bool    `json:"clearEnd,omitempty"`
+	Title        *string  `json:"title,omitempty"`
+	TagID        *string  `json:"tagId,omitempty"`
+	PerformerIds []string `json:"performerIds,omitempty"`
+}
+
 type StudioEdit struct {
 	Name     *string  `json:"name,omitempty"`
 	Aliases  []string `json:"aliases,omitempty"`
 	Details  *string  `json:"details,omitempty"`
 	URL      *string  `json:"url,omitempty"`
 	ParentID *string  `json:"parentId,omitempty"`
+}
+
+type Subscription struct {
+}
+
+type SubtitleInput struct {
+	Language string                 `json:"language"`
+	Format   string                 `json:"format"`
+	URI      string                 `json:"uri"`
+	Origin   *schema.SubtitleOrigin `json:"origin,omitempty"`
 }
 
 type TagEdit struct {
@@ -128,6 +305,15 @@ type TrashedRecord struct {
 	ID        string            `json:"id"`
 	Label     string            `json:"label"`
 	DeletedAt string            `json:"deletedAt"`
+}
+
+type TrickplayInput struct {
+	SheetUris       []string `json:"sheetUris"`
+	Columns         int      `json:"columns"`
+	Rows            int      `json:"rows"`
+	TileWidth       int      `json:"tileWidth"`
+	TileHeight      int      `json:"tileHeight"`
+	IntervalSeconds float64  `json:"intervalSeconds"`
 }
 
 type UserStateFilter struct {

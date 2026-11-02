@@ -22,6 +22,13 @@ type Service struct {
 	database *db.DB
 	// deviceID is this install's Device row, stamped on every event.
 	deviceID string
+	// onEvent, when set, gets every recorded event (automation triggers).
+	onEvent func(ctx context.Context, event schema.Event)
+}
+
+// SetOnEvent sets a function that receives every event once it's recorded.
+func (s *Service) SetOnEvent(hook func(ctx context.Context, event schema.Event)) {
+	s.onEvent = hook
 }
 
 // New returns the service; deviceID may be "" when devices aren't set up.

@@ -21,6 +21,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/devices"
+	"github.com/playingwithclouds/veil/internal/files"
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/netdns"
@@ -91,9 +92,13 @@ func reconcileBlobs(ctx context.Context, streamCache *stream.CacheService, queue
 	}
 }
 
-// enableBlobEncryption encrypts stream-cache blobs (streams and downloads) at
-// rest with encodedKey, a base64 AES-256 key the host app provides (the phone
-// app derives it from the Android Keystore). An empty key leaves them plain.
+// encryptedPrefixes are the blobs encrypted at rest: cached streams and
+// downloads, cam recordings and the live buffer, uploads.
+var encryptedPrefixes = []string{"stream-cache/", "recordings/", "live-buffer/", "uploads/"}
+
+// enableBlobEncryption encrypts media blobs (encryptedPrefixes) at rest with
+// encodedKey, a base64 AES-256 key the host app provides (the phone app
+// derives it from the Android Keystore). An empty key leaves them plain.
 // BLOB_ENCRYPTION_WRITES=off stops encrypting new blobs while still reading
 // encrypted ones.
 func enableBlobEncryption(store *storage.Client, encodedKey, writes string) error {
@@ -108,7 +113,7 @@ func enableBlobEncryption(store *storage.Client, encodedKey, writes string) erro
 		// Keep reading blobs encrypted earlier, but write new ones plain.
 		return store.WithEncryption(key)
 	}
-	return store.WithEncryption(key, "stream-cache/")
+	return store.WithEncryption(key, encryptedPrefixes...)
 }
 
 // configuredCacheBytes returns CACHE_MAX_BYTES when it is a positive number
@@ -145,10 +150,7 @@ func openDevice(ctx context.Context, database *db.DB) *devices.Service {
 // locations in the blob store, and returns the cache's quota and the
 // location. CACHE_MAX_BYTES, when set, overrides the stored quota.
 func openStorageLocations(ctx context.Context, deviceService *devices.Service, blobDir string) (*schema.StorageLocation, int64) {
-	absolute, err := filepath.Abs(blobDir)
-	if err != nil {
-		absolute = blobDir
-	}
+	absolute := absolutePath(blobDir)
 	if _, err := deviceService.EnsureLocation(ctx, schema.StorageKindLibrary, absolute, nil, nil); err != nil {
 		log.Fatalf("storage locations: %v", err)
 	}
@@ -195,11 +197,19 @@ const maintenanceInterval = 6 * time.Hour
 // finishedJobRetention is how long finished jobs stay listed.
 const finishedJobRetention = 7 * 24 * time.Hour
 
+// maintained are the services whose trash and finished work is purged.
+type maintained struct {
+	library *library.Library
+	user    *user.Service
+	files   *files.Service
+	queue   *jobs.Queue
+}
+
 // runMaintenance purges what outlived its retention, at start and then every
 // maintenanceInterval, until ctx ends.
-func runMaintenance(ctx context.Context, lib *library.Library, userService *user.Service, queue *jobs.Queue, settingsService *settings.Service) {
+func runMaintenance(ctx context.Context, services maintained, settingsService *settings.Service) {
 	for {
-		purgeExpired(ctx, lib, userService, queue, settingsService.Cached().TrashRetentionDays)
+		purgeExpired(ctx, services, settingsService.Cached().TrashRetentionDays)
 		select {
 		case <-ctx.Done():
 			return
@@ -208,24 +218,36 @@ func runMaintenance(ctx context.Context, lib *library.Library, userService *user
 	}
 }
 
-// purgeExpired removes trash older than retentionDays and finished jobs
-// older than finishedJobRetention.
-func purgeExpired(ctx context.Context, lib *library.Library, userService *user.Service, queue *jobs.Queue, retentionDays int) {
+// purgeExpired removes trash (records, saved filters, files) older than
+// retentionDays and finished jobs older than finishedJobRetention.
+func purgeExpired(ctx context.Context, services maintained, retentionDays int) {
 	if retentionDays <= 0 {
 		retentionDays = 30
 	}
 	cutoff := time.Now().AddDate(0, 0, -retentionDays)
-	if purged, err := lib.PurgeTrash(ctx, cutoff); err != nil {
+	if purged, err := services.library.PurgeTrash(ctx, cutoff); err != nil {
 		log.Printf("maintenance: purge trash: %v", err)
 	} else if purged > 0 {
 		log.Printf("maintenance: purged %d trashed records", purged)
 	}
-	if _, err := userService.PurgeTrash(ctx, cutoff); err != nil {
+	if _, err := services.user.PurgeTrash(ctx, cutoff); err != nil {
 		log.Printf("maintenance: purge saved filters: %v", err)
 	}
-	if _, err := queue.PurgeFinished(ctx, time.Now().Add(-finishedJobRetention)); err != nil {
+	if _, err := services.files.PurgeTrash(ctx, cutoff); err != nil {
+		log.Printf("maintenance: purge files: %v", err)
+	}
+	if _, err := services.queue.PurgeFinished(ctx, time.Now().Add(-finishedJobRetention)); err != nil {
 		log.Printf("maintenance: purge jobs: %v", err)
 	}
+}
+
+// absolutePath makes a path absolute, keeping it as given when that fails.
+func absolutePath(path string) string {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return absolute
 }
 
 // corsMiddleware lets the web app on another port call the API.
@@ -233,7 +255,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -328,11 +350,6 @@ func main() {
 	lib := library.New(database)
 	flow := pipeline.New(lib, registry, runner)
 
-	jobRunner := jobs.NewRunner(queue)
-	registerJobs(jobRunner, flow, settingsService.Cached())
-	jobRunner.Start(ctx)
-	go runMaintenance(ctx, lib, userService, queue, settingsService)
-
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.
 	streamCache := stream.NewCacheService(cacheClient, storeClient)
 	// Stream resolver (cache → domain plugin → wildcard plugin → direct).
@@ -344,7 +361,8 @@ func main() {
 	// Cache size limit: stream and image cache blobs beyond it are evicted,
 	// least recently used first. Downloads are pinned and don't count.
 	streamCache.SetPinnedURLs(queue.DownloadURLs)
-	cacheLocation, cacheQuota := openStorageLocations(ctx, deviceService, filepath.Join(dataDir, "blobs"))
+	blobDir := absolutePath(filepath.Join(dataDir, "blobs"))
+	cacheLocation, cacheQuota := openStorageLocations(ctx, deviceService, blobDir)
 	cacheEvictor := blobcache.New(storeClient, cacheQuota, streamCache.EvictionSource(), imgapi.EvictionSource())
 	cacheEvictor.OnPass(func(report blobcache.Report) {
 		if err := deviceService.SetUsedBytes(ctx, cacheLocation.Id, report.TotalBytes); err != nil {
@@ -356,6 +374,22 @@ func main() {
 		reconcileBlobs(ctx, streamCache, queue)
 		cacheEvictor.Run(ctx)
 	}()
+
+	feature := openFeatures(ctx, core{
+		database: database, library: lib, pipeline: flow, registry: registry, runner: runner, queue: queue,
+		settings: settingsService, devices: deviceService, user: userService, store: storeClient,
+		streamCache: streamCache, streamResolver: streamResolver, streamProxy: streamProxy,
+		dataDir: dataDir, blobDir: blobDir, publicURL: publicURL,
+	})
+	defer feature.notify.Wait()
+
+	// Every task is registered before the runner starts claiming jobs.
+	jobRunner := jobs.NewRunner(queue)
+	registerJobs(jobRunner, flow, settingsService.Cached())
+	feature.registerTasks(jobRunner, settingsService.Cached())
+	jobRunner.Start(ctx)
+	feature.start(ctx)
+	go runMaintenance(ctx, maintained{library: lib, user: userService, files: feature.files, queue: queue}, settingsService)
 
 	resolver := gqlapi.NewResolver(gqlapi.Services{
 		Library:     lib,
@@ -371,6 +405,17 @@ func main() {
 		Queue:       queue,
 		JobRunner:   jobRunner,
 		Evictor:     cacheEvictor,
+		Notify:      feature.notify,
+		Follows:     feature.follows,
+		Limits:      feature.limits,
+		Automations: feature.automations,
+		Cams:        feature.cams,
+		Files:       feature.files,
+		Recommend:   feature.recommend,
+		Embeddings:  feature.embeddings,
+		Lookup:      feature.lookup,
+		Tokens:      feature.tokens,
+		Accounts:    feature.accounts,
 	})
 
 	mux := http.NewServeMux()
@@ -378,14 +423,17 @@ func main() {
 	mux.Handle("/api/img", imgapi.New(storeClient))
 	mux.Handle("/api/stream/", streamProxy)
 	mux.Handle(storage.RoutePrefix, storeClient.Handler())
+	mux.Handle(files.FileRoutePrefix, feature.files.Handler())
+	mux.Handle(files.UploadRoute, feature.files.UploadHandler())
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	requireToken := func() bool { return settingsService.Cached().RequireAPIToken }
 	server := &http.Server{
 		// HOST empty = every interface; the phone app binds to 127.0.0.1.
 		Addr:    net.JoinHostPort(os.Getenv("HOST"), port),
-		Handler: corsMiddleware(mux),
+		Handler: corsMiddleware(feature.tokens.Middleware(requireToken, mux)),
 	}
 	go func() {
 		<-ctx.Done()

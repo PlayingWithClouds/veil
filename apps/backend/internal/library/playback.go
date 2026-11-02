@@ -282,6 +282,16 @@ func (l *Library) Stream(ctx context.Context, id string) (*schema.Stream, error)
 	return db.Get[schema.Stream](ctx, l.database, tableStream, id)
 }
 
+// Comments lists the site comments of every source of a record, by source
+// then in site order.
+func (l *Library) Comments(ctx context.Context, kind schema.RecordKind, id string) ([]schema.Comment, error) {
+	return db.QueryAs[schema.Comment](ctx, l.database,
+		`SELECT "Comment".* FROM "Comment" JOIN "Source" ON "Source"."id" = "Comment"."source"
+		 WHERE "Source"."subjectKind" = $kind AND "Source"."subjectId" = $id AND "Comment"."deletedAt" IS NULL
+		 ORDER BY "Source"."createdAt", "Comment".rowid`,
+		db.Vars{"kind": kind, "id": id})
+}
+
 // MarkUnread marks every source of a record unread, so the next visit reads
 // their pages again (fresh streams, credits and comments).
 func (l *Library) MarkUnread(ctx context.Context, kind schema.RecordKind, id string) error {

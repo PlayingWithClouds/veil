@@ -1,0 +1,161 @@
+# Time-based extras of videos and audio (segments, clips, subtitles, motion
+# scripts, trickplay), site comments, and stream upkeep.
+
+extend type Query {
+  # Saved clips, newest first, of one video or all.
+  clips(videoId: ID, limit: Int, offset: Int): [Clip!]!
+  clip(id: ID!): Clip
+}
+
+extend type Mutation {
+  # The user's own segment of a video or audio (a scene, chapter, or a
+  # marker when it has no end).
+  addSegment(subject: RecordRefInput!, input: SegmentInput!): Segment!
+  # Changing a plugin's segment makes it the user's.
+  editSegment(id: ID!, input: SegmentInput!): Segment!
+  addClip(videoId: ID!, input: ClipInput!): Clip!
+  editClip(id: ID!, input: ClipInput!): Clip!
+  # Records a clip's exported file, made and uploaded by a client (the
+  # backend has no encoder); fileId comes from POST /api/upload.
+  attachClipFile(clipId: ID!, fileId: ID!): Clip!
+  # A subtitle track from an uploaded file or a URL.
+  addSubtitle(subject: RecordRefInput!, input: SubtitleInput!): Subtitle!
+  removeSubtitle(id: ID!): Boolean!
+  addScript(subject: RecordRefInput!, uri: String!, axis: String): Script!
+  removeScript(id: ID!): Boolean!
+  # Scrubbing thumbnails a client made; null removes them.
+  setTrickplay(videoId: ID!, trickplay: TrickplayInput): Video
+  # The throughput a client measured, so streams rank by it.
+  reportStreamSpeed(streamId: ID!, kilobitsPerSecond: Int!): Stream
+  # Reads every source page of a record again: fresh streams (signed URLs
+  # expire), credits and comments.
+  refreshSources(subject: RecordRefInput!): Record
+}
+
+enum SegmentOrigin {
+  user
+  plugin
+  ai
+}
+
+# A time range in a video or audio: a scene, a chapter, or a marker.
+type Segment {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  startSeconds: Float!
+  endSeconds: Float
+  title: String
+  tag: Tag
+  performers: [Performer!]!
+  origin: SegmentOrigin!
+}
+
+# Omitted fields stay; an empty title or tagId clears it, clearEnd makes
+# the segment a marker.
+input SegmentInput {
+  startSeconds: Float
+  endSeconds: Float
+  clearEnd: Boolean
+  title: String
+  tagId: ID
+  performerIds: [ID!]
+}
+
+# A moment the user saved from a video.
+type Clip {
+  id: ID!
+  createdAt: String!
+  video: Video
+  startSeconds: Float!
+  endSeconds: Float!
+  title: String
+  cover: Asset
+  # The exported mp4 or GIF.
+  file: MediaFile
+}
+
+input ClipInput {
+  startSeconds: Float
+  endSeconds: Float
+  title: String
+  coverUri: String
+}
+
+enum SubtitleOrigin {
+  site
+  generated
+  translated
+}
+
+type Subtitle {
+  id: ID!
+  # BCP 47.
+  language: String!
+  # vtt, srt, ass
+  format: String!
+  asset: Asset!
+  origin: SubtitleOrigin!
+}
+
+input SubtitleInput {
+  language: String!
+  format: String!
+  uri: String!
+  origin: SubtitleOrigin
+}
+
+enum ScriptKind {
+  funscript
+}
+
+# A motion script for connected toys, synced to the timeline.
+type Script {
+  id: ID!
+  kind: ScriptKind!
+  asset: Asset!
+  # Axis of a multi-axis set: stroke, twist, …
+  axis: String
+  writtenBy: Actor!
+}
+
+input TrickplayInput {
+  sheetUris: [String!]!
+  columns: Int!
+  rows: Int!
+  tileWidth: Int!
+  tileHeight: Int!
+  intervalSeconds: Float!
+}
+
+# A comment from a site, kept per source.
+type Comment {
+  id: ID!
+  source: Source
+  author: String
+  text: String!
+  postedAt: String
+  likes: Int
+  replyTo: ID
+  # Library performers named in the text.
+  mentions: [Performer!]!
+}
+
+extend type Video {
+  segments: [Segment!]!
+  subtitles: [Subtitle!]!
+  scripts: [Script!]!
+  clips: [Clip!]!
+  comments: [Comment!]!
+}
+
+extend type Audio {
+  segments: [Segment!]!
+  subtitles: [Subtitle!]!
+  scripts: [Script!]!
+  comments: [Comment!]!
+}
+
+extend type Stream {
+  expiresAt: String
+}

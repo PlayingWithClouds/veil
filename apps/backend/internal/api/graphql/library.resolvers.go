@@ -15,6 +15,11 @@ import (
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
+// URL is the resolver for the url field.
+func (r *assetResolver) URL(ctx context.Context, obj *schema.Asset) (string, error) {
+	return r.files.AssetURL(obj.Uri), nil
+}
+
 // Field is the resolver for the field field.
 func (r *fieldSourceResolver) Field(ctx context.Context, obj *schema.FieldSource) (string, error) {
 	return provenance.Column(obj.SubjectKind, obj.FieldOrdinal), nil
@@ -23,11 +28,6 @@ func (r *fieldSourceResolver) Field(ctx context.Context, obj *schema.FieldSource
 // Source is the resolver for the source field.
 func (r *fieldSourceResolver) Source(ctx context.Context, obj *schema.FieldSource) (*schema.Source, error) {
 	return loadOptional(ctx, r.library.Source, obj.Source)
-}
-
-// Status is the resolver for the status field.
-func (r *galleryResolver) Status(ctx context.Context, obj *schema.Gallery) (string, error) {
-	return string(obj.Status), nil
 }
 
 // Studio is the resolver for the studio field.
@@ -116,7 +116,7 @@ func (r *mutationResolver) Search(ctx context.Context, kind model.ListKind, quer
 
 // EditVideo is the resolver for the editVideo field.
 func (r *mutationResolver) EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error) {
-	if err := r.library.EditMedia(ctx, schema.RecordKindVideo, id, mediaEdit(edit)); err != nil {
+	if err := r.library.EditMedia(ctx, schema.RecordKindVideo, id, mediaEditOf(edit)); err != nil {
 		return nil, err
 	}
 	return r.library.Video(ctx, id)
@@ -124,7 +124,7 @@ func (r *mutationResolver) EditVideo(ctx context.Context, id string, edit model.
 
 // EditGallery is the resolver for the editGallery field.
 func (r *mutationResolver) EditGallery(ctx context.Context, id string, edit model.MediaEdit) (*schema.Gallery, error) {
-	if err := r.library.EditMedia(ctx, schema.RecordKindGallery, id, mediaEdit(edit)); err != nil {
+	if err := r.library.EditMedia(ctx, schema.RecordKindGallery, id, mediaEditOf(edit)); err != nil {
 		return nil, err
 	}
 	return r.library.Gallery(ctx, id)
@@ -347,11 +347,6 @@ func (r *tagResolver) Revisions(ctx context.Context, obj *schema.Tag, limit *int
 	return r.revisionsOf(ctx, schema.RecordKindTag, obj.Id, limit, offset)
 }
 
-// Status is the resolver for the status field.
-func (r *videoResolver) Status(ctx context.Context, obj *schema.Video) (string, error) {
-	return string(obj.Status), nil
-}
-
 // Studio is the resolver for the studio field.
 func (r *videoResolver) Studio(ctx context.Context, obj *schema.Video) (*schema.Studio, error) {
 	return loadOptional(ctx, r.library.Studio, obj.Studio)
@@ -406,15 +401,8 @@ func (r *videoResolver) Revisions(ctx context.Context, obj *schema.Video, limit 
 	return r.revisionsOf(ctx, schema.RecordKindVideo, obj.Id, limit, offset)
 }
 
-// Projection is the resolver for the projection field.
-func (r *vrFormatResolver) Projection(ctx context.Context, obj *schema.VrFormat) (string, error) {
-	return string(obj.Projection), nil
-}
-
-// Stereo is the resolver for the stereo field.
-func (r *vrFormatResolver) Stereo(ctx context.Context, obj *schema.VrFormat) (string, error) {
-	return string(obj.Stereo), nil
-}
+// Asset returns generated.AssetResolver implementation.
+func (r *Resolver) Asset() generated.AssetResolver { return &assetResolver{r} }
 
 // FieldSource returns generated.FieldSourceResolver implementation.
 func (r *Resolver) FieldSource() generated.FieldSourceResolver { return &fieldSourceResolver{r} }
@@ -440,9 +428,7 @@ func (r *Resolver) Tag() generated.TagResolver { return &tagResolver{r} }
 // Video returns generated.VideoResolver implementation.
 func (r *Resolver) Video() generated.VideoResolver { return &videoResolver{r} }
 
-// VrFormat returns generated.VrFormatResolver implementation.
-func (r *Resolver) VrFormat() generated.VrFormatResolver { return &vrFormatResolver{r} }
-
+type assetResolver struct{ *Resolver }
 type fieldSourceResolver struct{ *Resolver }
 type galleryResolver struct{ *Resolver }
 type performerResolver struct{ *Resolver }
@@ -451,4 +437,3 @@ type streamResolver struct{ *Resolver }
 type studioResolver struct{ *Resolver }
 type tagResolver struct{ *Resolver }
 type videoResolver struct{ *Resolver }
-type vrFormatResolver struct{ *Resolver }

@@ -54,6 +54,10 @@ type Settings struct {
 	// TrashRetentionDays is how long trashed records stay restorable.
 	TrashRetentionDays int `json:"trashRetentionDays"`
 
+	// RequireAPIToken makes callers from other machines present an API
+	// token; callers on this machine are always let in.
+	RequireAPIToken bool `json:"requireApiToken"`
+
 	// Plugins
 	DisabledPlugins []string `json:"disabledPlugins"`
 
@@ -71,6 +75,13 @@ var defaultKindLimits = map[string]KindRateLimit{
 	"enrich":   {MaxConcurrent: 2, RetryInitialMs: 2000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
 	"refresh":  {MaxConcurrent: 2, RetryInitialMs: 5000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
 	"download": {MaxConcurrent: 2, RetryInitialMs: 3000, RetryMultiplier: 1.5, RetryMaxMs: 60000},
+	// Each recording holds a worker for hours: as many as may run at once.
+	"record":        {MaxConcurrent: 8, RetryInitialMs: 5000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
+	"libraryScan":   {MaxConcurrent: 1, RetryInitialMs: 10000, RetryMultiplier: 2.0, RetryMaxMs: 300000},
+	"fingerprint":   {MaxConcurrent: 1, RetryInitialMs: 5000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
+	"snapshot":      {MaxConcurrent: 2, RetryInitialMs: 5000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
+	"followRun":     {MaxConcurrent: 2, RetryInitialMs: 10000, RetryMultiplier: 2.0, RetryMaxMs: 300000},
+	"automationRun": {MaxConcurrent: 2, RetryInitialMs: 5000, RetryMultiplier: 2.0, RetryMaxMs: 60000},
 }
 
 // defaultValues seeds global setting rows that don't exist yet.
@@ -83,6 +94,7 @@ var defaultValues = map[string]any{
 	"autoEnrichAfterScrape":        false,
 	"requireVpn":                   false,
 	"trashRetentionDays":           30,
+	"requireApiToken":              false,
 	"disabledPlugins":              []string{},
 	"kindLimits":                   defaultKindLimits,
 }

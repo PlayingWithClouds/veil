@@ -44,7 +44,11 @@ func (s *Service) Record(ctx context.Context, event NewEvent) (*schema.Event, er
 	if err != nil {
 		return nil, err
 	}
-	return db.Get[schema.Event](ctx, s.database, eventTable, eventID)
+	recorded, err := db.Get[schema.Event](ctx, s.database, eventTable, eventID)
+	if err == nil && recorded != nil && s.onEvent != nil {
+		s.onEvent(ctx, *recorded)
+	}
+	return recorded, err
 }
 
 // eventRow is the row an event is stored as.

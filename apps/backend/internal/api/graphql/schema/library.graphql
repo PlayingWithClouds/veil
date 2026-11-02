@@ -54,6 +54,15 @@ input MediaEdit {
   studioId: ID
   performerIds: [ID!]
   tagIds: [ID!]
+  # wanted: known, not found yet (the wanted hunt searches for it).
+  status: MediaStatus
+  # Videos only.
+  vr: VrFormatInput
+  clearVr: Boolean
+  width: Int
+  height: Int
+  # Videos and audio only.
+  durationSeconds: Float
 }
 
 input PerformerEdit {
@@ -130,7 +139,10 @@ type Listed {
 
 # A picture or clip: a stored blob or a remote URL.
 type Asset {
+  # blob://<key> for stored blobs, else the remote URL.
   uri: String!
+  # Where to fetch it: the backend's blob URL, or the remote URL.
+  url: String!
   mimeType: String
   width: Int
   height: Int
@@ -145,8 +157,7 @@ type Video {
   details: String
   date: String
   cover: Asset
-  # available | wanted | unavailable
-  status: String!
+  status: MediaStatus!
   studio: Studio
   performers: [Performer!]!
   tags: [Tag!]!
@@ -167,8 +178,8 @@ type Video {
 }
 
 type VrFormat {
-  projection: String!
-  stereo: String!
+  projection: VrProjection!
+  stereo: VrStereo!
   fieldOfView: Int
 }
 
@@ -189,7 +200,7 @@ type Gallery {
   details: String
   date: String
   cover: Asset
-  status: String!
+  status: MediaStatus!
   studio: Studio
   performers: [Performer!]!
   tags: [Tag!]!

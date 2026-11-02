@@ -135,6 +135,13 @@ func (l *Library) Group(ctx context.Context, id string) (*schema.Group, error) {
 	return db.Get[schema.Group](ctx, l.database, tableGroup, id)
 }
 
+// Recordings lists the videos recorded from a cam room, newest first.
+func (l *Library) Recordings(ctx context.Context, camModelID string) ([]schema.Video, error) {
+	return db.QueryAs[schema.Video](ctx, l.database,
+		`SELECT * FROM "Video" WHERE "recordedFrom" = $room AND "deletedAt" IS NULL ORDER BY "createdAt" DESC`,
+		db.Vars{"room": camModelID})
+}
+
 // GroupVideos lists a group's videos in the group's order.
 func (l *Library) GroupVideos(ctx context.Context, groupID string) ([]schema.Video, error) {
 	return db.QueryAs[schema.Video](ctx, l.database,

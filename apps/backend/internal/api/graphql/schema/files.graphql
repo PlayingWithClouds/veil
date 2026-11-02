@@ -1,0 +1,168 @@
+# Stored files and the local library, downloads, fingerprints, source
+# snapshots, embeddings, and finding and merging duplicates.
+
+extend type Query {
+  # Probable duplicates waiting for review, most likely first.
+  alikes(kind: RecordKind!, limit: Int, offset: Int): [AlikePair!]!
+  # Folders of the user's own files, scanned into the library.
+  libraryRoots: [LibraryRoot!]!
+  libraryRoot(id: ID!): LibraryRoot
+  # What organizing a root by its template would move (a dry run).
+  planOrganize(rootId: ID!): [FileMove!]!
+  downloads: [Download!]!
+  # Records that share a fingerprint with this one: the same media.
+  sameMedia(subject: RecordRefInput!): [Record!]!
+  # Records nearest to a vector a client computed (semantic search with an
+  # embedded query, a face, a frame).
+  nearest(kind: EmbeddingKind!, model: String!, vector: [Float!]!, kinds: [RecordKind!], limit: Int): [Match!]!
+  # Records nearest to this one by its stored vectors.
+  similar(subject: RecordRefInput!, kind: EmbeddingKind!, model: String!, limit: Int): [Match!]!
+}
+
+extend type Mutation {
+  # Merges mergeId into keepId for good: performers, studios, tags or
+  # groups the user knows are one. Media merges go through mergeAlike.
+  merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
+  # Merges a pair's second record into its first, only when they're
+  # provably the same (a shared fingerprint or the strict matcher).
+  mergeAlike(id: ID!): Record
+  # The two are different: both show again.
+  dismissAlike(id: ID!): Boolean!
+  addLibraryRoot(locationId: ID!, path: String!, scanIntervalMinutes: Int, organizeTemplate: String): LibraryRoot!
+  # Omitted fields stay; 0 or "" clears them.
+  updateLibraryRoot(id: ID!, scanIntervalMinutes: Int, organizeTemplate: String): LibraryRoot!
+  removeLibraryRoot(id: ID!): Boolean!
+  scanLibraryRoot(id: ID!): Job!
+  # Moves the files as planned; never overwrites, stops on a stale plan.
+  applyOrganize(rootId: ID!, moves: [FileMoveInput!]!): Int!
+  # Moves a file to its root's .veil-trash (purged after the retention).
+  trashFile(id: ID!): Boolean!
+  # Downloads a record's best stream (or the given one) for keeps.
+  download(subject: RecordRefInput!, streamId: ID): Job!
+  deleteDownload(jobId: ID!): Boolean!
+  # A fingerprint a client computed (phash, audio); oshash and md5 of local
+  # files are computed by the backend.
+  addFingerprint(subject: RecordRefInput!, fileId: ID, algorithm: FingerprintAlgorithm!, value: String!, durationSeconds: Float): Fingerprint!
+  fingerprintFile(fileId: ID!): Job!
+  # Archives a source's page and cover, in case the site removes it.
+  snapshotSource(sourceId: ID!): Job!
+  # Stores a vector a client or plugin computed for a record.
+  addEmbedding(input: EmbeddingInput!): Embedding!
+  removeEmbedding(id: ID!): Boolean!
+}
+
+# Two records that are probably the same; the second is hidden until the
+# pair is dismissed or merged.
+type AlikePair {
+  id: ID!
+  subjectKind: RecordKind!
+  first: Record
+  second: Record
+  score: Float!
+  reason: String
+  # Merging needs a fingerprint match unless the strict matcher agrees.
+  provablySame: Boolean!
+}
+
+type LibraryRoot {
+  id: ID!
+  location: StorageLocation
+  path: String!
+  scanIntervalMinutes: Int
+  lastScanAt: String
+  # e.g. "{studio}/{date} {title}.{ext}"; null leaves files where they are.
+  organizeTemplate: String
+}
+
+type FileMove {
+  fileId: ID!
+  from: String!
+  to: String!
+}
+
+input FileMoveInput {
+  fileId: ID!
+  from: String!
+  to: String!
+}
+
+# A stored file of a record.
+type MediaFile {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  # Where to play or fetch it.
+  url: String!
+  path: String!
+  location: StorageLocation
+  sizeBytes: Int!
+  mimeType: String!
+  quality: String
+  width: Int
+  height: Int
+  durationSeconds: Float
+  # Gone from disk since the last scan.
+  missing: Boolean!
+}
+
+type Download {
+  job: Job!
+  file: MediaFile
+}
+
+enum FingerprintAlgorithm {
+  phash
+  oshash
+  md5
+  audio
+}
+
+type Fingerprint {
+  id: ID!
+  algorithm: FingerprintAlgorithm!
+  value: String!
+  fileId: ID
+  durationSeconds: Float
+}
+
+enum EmbeddingKind {
+  face
+  visual
+  text
+}
+
+type Embedding {
+  id: ID!
+  kind: EmbeddingKind!
+  model: String!
+  atSeconds: Float
+  region: JSON
+}
+
+input EmbeddingInput {
+  subject: RecordRefInput!
+  kind: EmbeddingKind!
+  model: String!
+  vector: [Float!]!
+  atSeconds: Float
+  # Face box as shares of the frame: {x, y, width, height}.
+  region: JSON
+}
+
+extend type Video {
+  files: [MediaFile!]!
+  fingerprints: [Fingerprint!]!
+}
+
+extend type Gallery {
+  files: [MediaFile!]!
+}
+
+extend type Audio {
+  files: [MediaFile!]!
+}
+
+extend type Source {
+  # The archived copy of the page.
+  snapshot: Asset
+}

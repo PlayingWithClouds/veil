@@ -16,6 +16,12 @@ var followableTables = map[schema.RecordKind]string{
 	schema.RecordKindStudio:    "Studio",
 	schema.RecordKindTag:       "Tag",
 	schema.RecordKindCategory:  "Category",
+	schema.RecordKindCamModel:  "CamModel",
+}
+
+// nameColumns are the columns that name a followable record.
+var nameColumns = map[schema.RecordKind]string{
+	schema.RecordKindCamModel: "displayName",
 }
 
 // FilterFor is the filter that follows a record: media crediting the
@@ -31,8 +37,16 @@ func FilterFor(ref schema.RecordRef) (schema.Filter, error) {
 		return schema.Filter{IncludeTagIds: ids}, nil
 	case schema.RecordKindCategory:
 		return schema.Filter{CategoryIds: ids}, nil
+	case schema.RecordKindCamModel:
+		// A room is watched for going live, not filtered for media.
+		return schema.Filter{}, nil
 	}
 	return schema.Filter{}, fmt.Errorf("a %s can't be followed", ref.Kind)
+}
+
+// FollowOf returns the follow of a record, nil when it isn't followed.
+func (s *Service) FollowOf(ctx context.Context, ref schema.RecordRef) (*schema.Follow, error) {
+	return s.followOf(ctx, ref)
 }
 
 // withoutTarget drops the target's own condition from a follow's filter.
@@ -88,8 +102,12 @@ func (s *Service) followOf(ctx context.Context, ref schema.RecordRef) (*schema.F
 
 // recordName loads the name of a followable record.
 func (s *Service) recordName(ctx context.Context, ref schema.RecordRef) (string, error) {
+	column, named := nameColumns[ref.Kind]
+	if !named {
+		column = "name"
+	}
 	names, err := s.database.Strings(ctx,
-		`SELECT "name" FROM `+db.Quote(followableTables[ref.Kind])+` WHERE "id" = $id AND "deletedAt" IS NULL`,
+		`SELECT `+db.Quote(column)+` FROM `+db.Quote(followableTables[ref.Kind])+` WHERE "id" = $id AND "deletedAt" IS NULL`,
 		db.Vars{"id": ref.Id})
 	if err != nil {
 		return "", err

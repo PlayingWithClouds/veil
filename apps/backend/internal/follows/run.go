@@ -52,6 +52,11 @@ func (s *Service) RunFollow(ctx context.Context, followID string) ([]schema.Reco
 	if err != nil || follow == nil || !follow.Enabled {
 		return nil, err
 	}
+	if isCamFollow(*follow) {
+		// The cam watcher (internal/cams) checks followed rooms going live;
+		// a room has no media to list.
+		return nil, s.recordRun(ctx, *follow, s.now(), nil)
+	}
 	startedAt := s.now()
 	listed, listErr := s.discover(ctx, *follow)
 	// Runs count [previous finish, this finish): media created in the
@@ -70,6 +75,11 @@ func (s *Service) RunFollow(ctx context.Context, followID string) ([]schema.Reco
 	}
 	s.announce(ctx, *follow, media)
 	return media, nil
+}
+
+// isCamFollow reports whether the follow is of a cam room.
+func isCamFollow(follow schema.Follow) bool {
+	return follow.TargetKind != nil && *follow.TargetKind == schema.RecordKindCamModel
 }
 
 // discover brings the follow's listings into the library: the target's

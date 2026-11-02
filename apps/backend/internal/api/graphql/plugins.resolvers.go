@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 )
 
@@ -118,3 +119,8 @@ func (r *queryResolver) PluginPackages(ctx context.Context, query *string) ([]*m
 	}
 	return result, nil
 }
+
+// Plugin returns generated.PluginResolver implementation.
+func (r *Resolver) Plugin() generated.PluginResolver { return &pluginResolver{r} }
+
+type pluginResolver struct{ *Resolver }

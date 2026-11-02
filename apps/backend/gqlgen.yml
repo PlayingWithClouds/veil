@@ -30,7 +30,7 @@ models:
         resolver: true
       gallery:
         resolver: true
-      status:
+      recordedFrom:
         resolver: true
   Gallery:
     model: github.com/playingwithclouds/veil/internal/schema.Gallery
@@ -42,8 +42,6 @@ models:
       tags:
         resolver: true
       video:
-        resolver: true
-      status:
         resolver: true
   Image:
     model: github.com/playingwithclouds/veil/internal/schema.Image
@@ -72,13 +70,17 @@ models:
         resolver: true
   Asset:
     model: github.com/playingwithclouds/veil/internal/schema.Asset
+    fields:
+      url:
+        resolver: true
   VrFormat:
     model: github.com/playingwithclouds/veil/internal/schema.VrFormat
-    fields:
-      projection:
-        resolver: true
-      stereo:
-        resolver: true
+  VrFormatInput:
+    model: github.com/playingwithclouds/veil/internal/schema.VrFormat
+  VrProjection:
+    model: github.com/playingwithclouds/veil/internal/schema.VrProjection
+  VrStereo:
+    model: github.com/playingwithclouds/veil/internal/schema.VrStereo
   Trickplay:
     model: github.com/playingwithclouds/veil/internal/schema.Trickplay
   # Float also carries the schema's f32 fields (ratings).
@@ -169,4 +171,229 @@ models:
     model: github.com/playingwithclouds/veil/internal/schema.StorageLocation
     fields:
       device:
+        resolver: true
+  # Media beyond videos and galleries, and site groups.
+  Audio:
+    model: github.com/playingwithclouds/veil/internal/schema.Audio
+    fields:
+      studio:
+        resolver: true
+      performers:
+        resolver: true
+      tags:
+        resolver: true
+  Story:
+    model: github.com/playingwithclouds/veil/internal/schema.Story
+    fields:
+      studio:
+        resolver: true
+      performers:
+        resolver: true
+      tags:
+        resolver: true
+  StoryChapter:
+    model: github.com/playingwithclouds/veil/internal/schema.StoryChapter
+  Post:
+    model: github.com/playingwithclouds/veil/internal/schema.Post
+    fields:
+      creator:
+        resolver: true
+      tags:
+        resolver: true
+      attachments:
+        resolver: true
+  Group:
+    model: github.com/playingwithclouds/veil/internal/schema.Group
+    fields:
+      studio:
+        resolver: true
+  # Curation.
+  Category:
+    model: github.com/playingwithclouds/veil/internal/schema.Category
+    fields:
+      parent:
+        resolver: true
+      matchTags:
+        resolver: true
+  Collection:
+    model: github.com/playingwithclouds/veil/internal/schema.Collection
+  CollectionKind:
+    model: github.com/playingwithclouds/veil/internal/schema.CollectionKind
+  CollectionItem:
+    model: github.com/playingwithclouds/veil/internal/schema.CollectionItem
+    fields:
+      record:
+        resolver: true
+      addedAt:
+        resolver: true
+  FieldDef:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldDef
+  FieldDefInput:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldDef
+  FieldType:
+    model: github.com/playingwithclouds/veil/internal/schema.FieldType
+  # Playback extras.
+  Segment:
+    model: github.com/playingwithclouds/veil/internal/schema.Segment
+    fields:
+      tag:
+        resolver: true
+      performers:
+        resolver: true
+  SegmentOrigin:
+    model: github.com/playingwithclouds/veil/internal/schema.SegmentOrigin
+  Clip:
+    model: github.com/playingwithclouds/veil/internal/schema.Clip
+    fields:
+      video:
+        resolver: true
+      file:
+        resolver: true
+  Subtitle:
+    model: github.com/playingwithclouds/veil/internal/schema.Subtitle
+  SubtitleOrigin:
+    model: github.com/playingwithclouds/veil/internal/schema.SubtitleOrigin
+  Script:
+    model: github.com/playingwithclouds/veil/internal/schema.Script
+  ScriptKind:
+    model: github.com/playingwithclouds/veil/internal/schema.ScriptKind
+  Comment:
+    model: github.com/playingwithclouds/veil/internal/schema.Comment
+    fields:
+      source:
+        resolver: true
+      mentions:
+        resolver: true
+  # Files, duplicates, fingerprints, embeddings.
+  AlikePair:
+    model: github.com/playingwithclouds/veil/internal/schema.Alike
+    fields:
+      first:
+        resolver: true
+      second:
+        resolver: true
+      provablySame:
+        resolver: true
+  LibraryRoot:
+    model: github.com/playingwithclouds/veil/internal/schema.LibraryRoot
+    fields:
+      location:
+        resolver: true
+  MediaFile:
+    model: github.com/playingwithclouds/veil/internal/schema.MediaFile
+    fields:
+      url:
+        resolver: true
+      location:
+        resolver: true
+  Fingerprint:
+    model: github.com/playingwithclouds/veil/internal/schema.Fingerprint
+  FingerprintAlgorithm:
+    model: github.com/playingwithclouds/veil/internal/schema.FingerprintAlgorithm
+  Embedding:
+    model: github.com/playingwithclouds/veil/internal/schema.Embedding
+  EmbeddingKind:
+    model: github.com/playingwithclouds/veil/internal/schema.EmbeddingKind
+  # Features.
+  Match:
+    model: github.com/playingwithclouds/veil/internal/schema.Match
+    fields:
+      record:
+        resolver: true
+  Evidence:
+    model: github.com/playingwithclouds/veil/internal/schema.Evidence
+  Short:
+    model: github.com/playingwithclouds/veil/internal/recommend.Short
+    fields:
+      video:
+        resolver: true
+  Taste:
+    model: github.com/playingwithclouds/veil/internal/recommend.Taste
+  TasteEntry:
+    model: github.com/playingwithclouds/veil/internal/recommend.TasteEntry
+  # Following, notifications, limits, automations.
+  Follow:
+    model: github.com/playingwithclouds/veil/internal/schema.Follow
+    fields:
+      target:
+        resolver: true
+  Notification:
+    model: github.com/playingwithclouds/veil/internal/schema.Notification
+    fields:
+      record:
+        resolver: true
+  NotificationChannel:
+    model: github.com/playingwithclouds/veil/internal/schema.NotificationChannel
+    fields:
+      delivers:
+        resolver: true
+  ChannelKind:
+    model: github.com/playingwithclouds/veil/internal/schema.ChannelKind
+  Limit:
+    model: github.com/playingwithclouds/veil/internal/schema.Limit
+  LimitKind:
+    model: github.com/playingwithclouds/veil/internal/schema.LimitKind
+  LimitWindow:
+    model: github.com/playingwithclouds/veil/internal/schema.LimitWindow
+  LimitAction:
+    model: github.com/playingwithclouds/veil/internal/schema.LimitAction
+  LimitStatus:
+    model: github.com/playingwithclouds/veil/internal/limits.LimitStatus
+  Usage:
+    model: github.com/playingwithclouds/veil/internal/limits.Usage
+    fields:
+      since:
+        resolver: true
+      until:
+        resolver: true
+  TriggerKind:
+    model: github.com/playingwithclouds/veil/internal/schema.TriggerKind
+  Trigger:
+    model: github.com/playingwithclouds/veil/internal/schema.Trigger
+  TriggerInput:
+    model: github.com/playingwithclouds/veil/internal/schema.Trigger
+  Step:
+    model: github.com/playingwithclouds/veil/internal/schema.Step
+  StepInput:
+    model: github.com/playingwithclouds/veil/internal/schema.Step
+  StepResult:
+    model: github.com/playingwithclouds/veil/internal/schema.StepResult
+  Automation:
+    model: github.com/playingwithclouds/veil/internal/schema.Automation
+  AutomationRun:
+    model: github.com/playingwithclouds/veil/internal/schema.AutomationRun
+    fields:
+      automation:
+        resolver: true
+  RunStatus:
+    model: github.com/playingwithclouds/veil/internal/schema.RunStatus
+  # Cams.
+  CamModel:
+    model: github.com/playingwithclouds/veil/internal/schema.CamModel
+    fields:
+      performer:
+        resolver: true
+  CamLive:
+    model: github.com/playingwithclouds/veil/internal/schema.CamLive
+  ActiveRecording:
+    model: github.com/playingwithclouds/veil/internal/cams.ActiveRecording
+    fields:
+      job:
+        resolver: true
+      camModel:
+        resolver: true
+      startedAt:
+        resolver: true
+  # Platform.
+  ApiToken:
+    model: github.com/playingwithclouds/veil/internal/schema.ApiToken
+  Account:
+    model: github.com/playingwithclouds/veil/internal/schema.Account
+  AccountStatus:
+    model: github.com/playingwithclouds/veil/internal/schema.AccountStatus
+  Plugin:
+    fields:
+      contributions:
+        resolver: true
+      account:
         resolver: true

@@ -84,7 +84,7 @@ type RecordRef {
 }
 
 # A record of any stored kind.
-union Record = Video | Gallery | Performer | Studio | Tag
+union Record = Video | Gallery | Audio | Story | Post | Performer | Studio | Tag | Group | Category | Collection | CamModel | Segment | Clip
 
 # The user's state on one record. Records nobody touched yet have the
 # defaults: no rating, not favourite or blocked, never viewed.

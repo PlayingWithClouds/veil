@@ -1,0 +1,146 @@
+# Media beyond videos and galleries (audio, stories, creator posts), site
+# groups, mixed lists over every kind, and edits that apply to any media.
+
+extend type Query {
+  # A page of media of every kind filter.kinds names (all when empty),
+  # merged in the filter's order.
+  media(filter: FilterInput, limit: Int, offset: Int): [Record!]!
+  mediaCount(filter: FilterInput): Int!
+  audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
+  audioCount(filter: FilterInput): Int!
+  audio(id: ID!): Audio
+  stories(filter: FilterInput, limit: Int, offset: Int): [Story!]!
+  storyCount(filter: FilterInput): Int!
+  story(id: ID!): Story
+  posts(filter: FilterInput, limit: Int, offset: Int): [Post!]!
+  postCount(filter: FilterInput): Int!
+  post(id: ID!): Post
+  # Site groups (movies, series, compilations), newest first; by title text
+  # or one of their videos.
+  groups(text: String, videoId: ID, limit: Int, offset: Int): [Group!]!
+  group(id: ID!): Group
+}
+
+extend type Mutation {
+  # Edits any media kind; see MediaEdit. Returns the edited record.
+  editMedia(subject: RecordRefInput!, edit: MediaEdit!): Record
+  # Reads the pages behind a record's unread sources (any media kind).
+  fetchMedia(subject: RecordRefInput!): Record
+  # Reads a chapter's text from the site when the story listed it without.
+  readChapter(storyId: ID!, position: Int!): StoryChapter
+}
+
+input VrFormatInput {
+  projection: VrProjection!
+  stereo: VrStereo!
+  fieldOfView: Int
+}
+
+enum VrProjection {
+  equirectangular180
+  equirectangular360
+  fisheye
+  cubemap
+}
+
+enum VrStereo {
+  mono
+  sideBySide
+  topBottom
+}
+
+# Erotic audio and ASMR; performers are the voices.
+type Audio {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  durationSeconds: Float
+  sources: [Source!]!
+  streams: [Stream!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+# Erotic fiction, read chapter by chapter.
+type Story {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  studio: Studio
+  performers: [Performer!]!
+  tags: [Tag!]!
+  chapterCount: Int!
+  wordCount: Int
+  # False while the author still adds chapters.
+  complete: Boolean!
+  chapters: [StoryChapter!]!
+  sources: [Source!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type StoryChapter {
+  id: ID!
+  position: Int!
+  title: String
+  # Empty until read (see readChapter).
+  text: String!
+  wordCount: Int!
+  url: String
+}
+
+# A post on a creator platform: ordinary media credited to its creator.
+type Post {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  title: String!
+  date: String
+  cover: Asset
+  status: MediaStatus!
+  creator: Performer
+  text: String
+  tags: [Tag!]!
+  attachments: [Record!]!
+  # Paywalled for the logged-in account.
+  locked: Boolean!
+  priceCents: Int
+  currency: String
+  sources: [Source!]!
+  userState: UserState!
+  fieldSources: [FieldSource!]!
+  revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+# A site's own grouping of videos: a movie, a series, a compilation.
+type Group {
+  id: ID!
+  createdAt: String!
+  title: String!
+  details: String
+  date: String
+  cover: Asset
+  studio: Studio
+  # In the group's order.
+  videos: [Video!]!
+  sources: [Source!]!
+}
+
+extend type Video {
+  groups: [Group!]!
+}

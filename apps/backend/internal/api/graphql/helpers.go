@@ -148,7 +148,97 @@ func (r *Resolver) loadRecord(ctx context.Context, kind schema.RecordKind, id st
 	case schema.RecordKindTag:
 		return nilIfMissing(r.library.Tag(ctx, id))
 	}
+	return r.loadOtherRecord(ctx, kind, id)
+}
+
+// loadOtherRecord loads the records of the kinds beyond the core ones.
+func (r *Resolver) loadOtherRecord(ctx context.Context, kind schema.RecordKind, id string) (model.Record, error) {
+	switch kind {
+	case schema.RecordKindAudio:
+		return nilIfMissing(r.library.Audio(ctx, id))
+	case schema.RecordKindStory:
+		return nilIfMissing(r.library.Story(ctx, id))
+	case schema.RecordKindPost:
+		return nilIfMissing(r.library.Post(ctx, id))
+	case schema.RecordKindGroup:
+		return nilIfMissing(r.library.Group(ctx, id))
+	case schema.RecordKindCategory:
+		return nilIfMissing(r.library.Category(ctx, id))
+	case schema.RecordKindCollection:
+		return nilIfMissing(r.user.Collection(ctx, id))
+	case schema.RecordKindCamModel:
+		return nilIfMissing(db.Get[schema.CamModel](ctx, r.library.DB(), "CamModel", id))
+	case schema.RecordKindSegment:
+		return nilIfMissing(r.library.Segment(ctx, id))
+	case schema.RecordKindClip:
+		return nilIfMissing(r.library.Clip(ctx, id))
+	}
 	return nil, nil
+}
+
+// loadRecords loads records by reference in order, skipping missing ones.
+func (r *Resolver) loadRecords(ctx context.Context, refs []schema.RecordRef) ([]model.Record, error) {
+	records := make([]model.Record, 0, len(refs))
+	for _, ref := range refs {
+		record, err := r.loadRecord(ctx, ref.Kind, ref.Id)
+		if err != nil {
+			return nil, err
+		}
+		if record != nil {
+			records = append(records, record)
+		}
+	}
+	return records, nil
+}
+
+// refOf is the reference of a record of kind with id.
+func refOf(kind schema.RecordKind, id string) schema.RecordRef {
+	return schema.RecordRef{Kind: kind, Id: id}
+}
+
+// ok turns an error into the Boolean! answer of a mutation.
+func ok(err error) (bool, error) {
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// mediaEditOf maps the API's media edit to the library's, VR and size
+// included.
+func mediaEditOf(edit model.MediaEdit) library.MediaEdit {
+	converted := mediaEdit(edit)
+	converted.Status = edit.Status
+	converted.VR = edit.Vr
+	converted.ClearVR = edit.ClearVr != nil && *edit.ClearVr
+	converted.Width = edit.Width
+	converted.Height = edit.Height
+	converted.DurationSeconds = edit.DurationSeconds
+	return converted
+}
+
+// refsOf collects the references of a list of records.
+func refsOf(subjects []*schema.RecordRef) []schema.RecordRef {
+	refs := make([]schema.RecordRef, 0, len(subjects))
+	for _, subject := range subjects {
+		if subject != nil {
+			refs = append(refs, *subject)
+		}
+	}
+	return refs
+}
+
+// pointerTo returns a pointer to a copy of value.
+func pointerTo[T any](value T) *T {
+	return &value
+}
+
+// textOrNil returns nil for an empty string.
+func textOrNil(value *string) *string {
+	if value == nil || *value == "" {
+		return nil
+	}
+	return value
 }
 
 // nilIfMissing turns a typed nil record into an untyped nil, so a missing
