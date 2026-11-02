@@ -18,7 +18,7 @@ var MergeableKinds = []schema.RecordKind{
 
 // rowsMovedBySubject are the tables whose rows follow their record into
 // the survivor of a merge.
-var rowsMovedBySubject = []string{"Source", "Stream", "Segment", "Subtitle", "Script", "Fingerprint", "Embedding", "MediaFile", "Event"}
+var rowsMovedBySubject = []string{"Source", "Stream", "Segment", "Subtitle", "Script", "Fingerprint", "Embedding", "FaceScan", "MediaFile", "Event"}
 
 // Merge folds the record mergeID into keepID for good: its sources, streams,
 // files, extras, user state and events move over, its credits and tags join

@@ -1,0 +1,110 @@
+# Faces clients found in videos' sampled frames and performers' pictures
+# (the backend runs no model), the performers' faces learned from them, and
+# guesses of who is in a video.
+
+extend type Query {
+  # A record's face scans, newest first.
+  faceScans(subject: RecordRefInput!): [FaceScan!]!
+  # A performer's pictures to look for their face in (their image, then
+  # each site profile's), and whether each is scanned with the model.
+  facePictures(performerId: ID!, model: String!): [FacePicture!]!
+  # Who is probably in a video: its faces grouped into people, each
+  # compared with every performer's known faces. model defaults to the one
+  # of the video's newest scan.
+  videoFaces(videoId: ID!, model: String): VideoFaces!
+}
+
+extend type Mutation {
+  # Records the faces a client found, replacing the subject's earlier scan
+  # with the model (and picture), then learns the faces of the performers
+  # it concerns.
+  recordFaceScan(input: FaceScanInput!): FaceScan!
+  # Learns a scanned video's credited performers' faces again (after its
+  # credits changed); returns how many were learned.
+  learnFaces(videoId: ID!, model: String): Int!
+}
+
+# A client looked for faces with one model: a video's sampled frames, or
+# one picture of a performer. Kept even when no face was found, so the work
+# isn't repeated.
+type FaceScan {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  model: String!
+  # The picture's URI for a performer's picture; null for a video.
+  picture: String
+  frames: Int!
+  faces: Int!
+  createdAt: String!
+}
+
+input FaceScanInput {
+  # A video, or a performer with picture set.
+  subject: RecordRefInput!
+  # Names detector, recognizer and version; vectors of other models never mix.
+  model: String!
+  picture: String
+  # Frames looked at (1 for a picture).
+  frames: Int!
+  faces: [FaceInput!]!
+}
+
+input FaceInput {
+  vector: [Float!]!
+  atSeconds: Float
+  # Face box as shares of the frame: {x, y, width, height}, plus the
+  # detector's score.
+  region: JSON
+}
+
+type FacePicture {
+  uri: String!
+  scanned: Boolean!
+}
+
+type VideoFaces {
+  # The scan the faces come from; null when the video isn't scanned.
+  scan: FaceScan
+  # The video's faces grouped into people, most seen first.
+  people: [FacePerson!]!
+  # At most one performer per person and person per performer, only
+  # likely ones, best first.
+  guesses: [FaceGuess!]!
+}
+
+type FacePerson {
+  # In time order.
+  sightings: [FaceSighting!]!
+  # Best first; similarity at least 0.3.
+  candidates: [FaceCandidate!]!
+}
+
+type FaceSighting {
+  embeddingId: ID!
+  atSeconds: Float
+  region: JSON
+}
+
+type FaceCandidate {
+  performer: Performer!
+  # Cosine similarity (-1..1) of the person's mean face and the performer's
+  # closest known face.
+  similarity: Float!
+  # Similar enough to be probably the same person (0.45 or more).
+  likely: Boolean!
+  # The video credits the performer.
+  credited: Boolean!
+  # Where the closest known face came from: a picture of the performer, or
+  # a video crediting them.
+  picture: String
+  video: Video
+}
+
+type FaceGuess {
+  performer: Performer!
+  similarity: Float!
+  credited: Boolean!
+  # Index into VideoFaces.people.
+  person: Int!
+}

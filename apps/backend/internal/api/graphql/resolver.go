@@ -9,6 +9,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/devices"
 	"github.com/playingwithclouds/veil/internal/embeddings"
+	"github.com/playingwithclouds/veil/internal/faces"
 	"github.com/playingwithclouds/veil/internal/files"
 	"github.com/playingwithclouds/veil/internal/follows"
 	"github.com/playingwithclouds/veil/internal/jobs"
@@ -51,6 +52,7 @@ type Services struct {
 	Files       *files.Service
 	Recommend   *recommend.Engine
 	Embeddings  *embeddings.Service
+	Faces       *faces.Service
 	Lookup      *lookup.Service
 	Tokens      *tokens.Service
 	Accounts    *accounts.Service
@@ -79,6 +81,7 @@ type Resolver struct {
 	files       *files.Service
 	recommend   *recommend.Engine
 	embeddings  *embeddings.Service
+	faces       *faces.Service
 	lookup      *lookup.Service
 	tokens      *tokens.Service
 	accounts    *accounts.Service
@@ -108,6 +111,7 @@ func NewResolver(services Services) *Resolver {
 		files:       services.Files,
 		recommend:   services.Recommend,
 		embeddings:  services.Embeddings,
+		faces:       services.Faces,
 		lookup:      services.Lookup,
 		tokens:      services.Tokens,
 		accounts:    services.Accounts,

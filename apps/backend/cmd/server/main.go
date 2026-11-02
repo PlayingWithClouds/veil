@@ -416,6 +416,7 @@ func main() {
 		Files:       feature.files,
 		Recommend:   feature.recommend,
 		Embeddings:  feature.embeddings,
+		Faces:       feature.faces,
 		Lookup:      feature.lookup,
 		Tokens:      feature.tokens,
 		Accounts:    feature.accounts,

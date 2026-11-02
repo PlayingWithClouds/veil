@@ -309,6 +309,49 @@ type ComplexityRoot struct {
 		Url    func(childComplexity int) int
 	}
 
+	FaceCandidate struct {
+		Credited   func(childComplexity int) int
+		Likely     func(childComplexity int) int
+		Performer  func(childComplexity int) int
+		Picture    func(childComplexity int) int
+		Similarity func(childComplexity int) int
+		Video      func(childComplexity int) int
+	}
+
+	FaceGuess struct {
+		Credited   func(childComplexity int) int
+		Performer  func(childComplexity int) int
+		Person     func(childComplexity int) int
+		Similarity func(childComplexity int) int
+	}
+
+	FacePerson struct {
+		Candidates func(childComplexity int) int
+		Sightings  func(childComplexity int) int
+	}
+
+	FacePicture struct {
+		Scanned func(childComplexity int) int
+		URI     func(childComplexity int) int
+	}
+
+	FaceScan struct {
+		CreatedAt   func(childComplexity int) int
+		Faces       func(childComplexity int) int
+		Frames      func(childComplexity int) int
+		Id          func(childComplexity int) int
+		Model       func(childComplexity int) int
+		Picture     func(childComplexity int) int
+		SubjectId   func(childComplexity int) int
+		SubjectKind func(childComplexity int) int
+	}
+
+	FaceSighting struct {
+		AtSeconds   func(childComplexity int) int
+		EmbeddingID func(childComplexity int) int
+		Region      func(childComplexity int) int
+	}
+
 	FieldCondition struct {
 		FieldDefId func(childComplexity int) int
 		Operator   func(childComplexity int) int
@@ -561,6 +604,7 @@ type ComplexityRoot struct {
 		FollowRecord              func(childComplexity int, subject schema.RecordRef, intervalHours *int, notify *bool) int
 		FollowSearch              func(childComplexity int, text string, intervalHours *int, notify *bool) int
 		InstallPlugin             func(childComplexity int, packageName string) int
+		LearnFaces                func(childComplexity int, videoID string, model *string) int
 		LinkCamPerformer          func(childComplexity int, id string, performerID *string) int
 		LockField                 func(childComplexity int, subject schema.RecordRef, field string, locked bool) int
 		LoginAccount              func(childComplexity int, plugin string, values interface{}) int
@@ -577,6 +621,7 @@ type ComplexityRoot struct {
 		ReadChapter               func(childComplexity int, storyID string, position int) int
 		RecordEvent               func(childComplexity int, event model.EventInput) int
 		RecordEvents              func(childComplexity int, events []*model.EventInput) int
+		RecordFaceScan            func(childComplexity int, input model.FaceScanInput) int
 		RefreshSources            func(childComplexity int, subject schema.RecordRef) int
 		RemoveEmbedding           func(childComplexity int, id string) int
 		RemoveFromCollection      func(childComplexity int, collectionID string, subjects []*schema.RecordRef) int
@@ -842,6 +887,8 @@ type ComplexityRoot struct {
 		Downloads                func(childComplexity int) int
 		EventCount               func(childComplexity int, filter *model.EventFilter) int
 		Events                   func(childComplexity int, filter *model.EventFilter, limit *int, offset *int) int
+		FacePictures             func(childComplexity int, performerID string, model string) int
+		FaceScans                func(childComplexity int, subject schema.RecordRef) int
 		FieldDefs                func(childComplexity int, kind *schema.RecordKind) int
 		Follow                   func(childComplexity int, id string) int
 		FollowOf                 func(childComplexity int, subject schema.RecordRef) int
@@ -902,6 +949,7 @@ type ComplexityRoot struct {
 		UserStates               func(childComplexity int, filter *model.UserStateFilter, limit *int, offset *int) int
 		Video                    func(childComplexity int, id string) int
 		VideoCount               func(childComplexity int, filter *schema.Filter) int
+		VideoFaces               func(childComplexity int, videoID string, model *string) int
 		VideoTagCounts           func(childComplexity int, filter *schema.Filter, limit *int) int
 		Videos                   func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 	}
@@ -1211,6 +1259,12 @@ type ComplexityRoot struct {
 		Width               func(childComplexity int) int
 	}
 
+	VideoFaces struct {
+		Guesses func(childComplexity int) int
+		People  func(childComplexity int) int
+		Scan    func(childComplexity int) int
+	}
+
 	VrFormat struct {
 		FieldOfView func(childComplexity int) int
 		Projection  func(childComplexity int) int
@@ -1376,6 +1430,8 @@ type MutationResolver interface {
 	SaveFieldDef(ctx context.Context, id *string, input schema.FieldDef) (*schema.FieldDef, error)
 	DeleteFieldDef(ctx context.Context, id string) (bool, error)
 	SetFieldValue(ctx context.Context, subject schema.RecordRef, fieldDefID string, value interface{}) (*schema.UserState, error)
+	RecordFaceScan(ctx context.Context, input model.FaceScanInput) (*schema.FaceScan, error)
+	LearnFaces(ctx context.Context, videoID string, model *string) (int, error)
 	Lookup(ctx context.Context, input model.LookupInput) (*model.LookupResult, error)
 	Merge(ctx context.Context, kind schema.RecordKind, keepID string, mergeID string) (model.Record, error)
 	MergeAlike(ctx context.Context, id string) (model.Record, error)
@@ -1514,6 +1570,9 @@ type QueryResolver interface {
 	BuiltInCollection(ctx context.Context, kind schema.CollectionKind) (*schema.Collection, error)
 	CollectionsWith(ctx context.Context, subject schema.RecordRef) ([]*schema.Collection, error)
 	FieldDefs(ctx context.Context, kind *schema.RecordKind) ([]*schema.FieldDef, error)
+	FaceScans(ctx context.Context, subject schema.RecordRef) ([]*schema.FaceScan, error)
+	FacePictures(ctx context.Context, performerID string, model string) ([]*model.FacePicture, error)
+	VideoFaces(ctx context.Context, videoID string, model *string) (*model.VideoFaces, error)
 	Recommendations(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Match, error)
 	Related(ctx context.Context, subject schema.RecordRef, limit *int) ([]*schema.Match, error)
 	Shorts(ctx context.Context, filter *schema.Filter, limit *int) ([]*recommend.Short, error)
@@ -2675,6 +2734,162 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Evidence.Url(childComplexity), true
+
+	case "FaceCandidate.credited":
+		if e.ComplexityRoot.FaceCandidate.Credited == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Credited(childComplexity), true
+	case "FaceCandidate.likely":
+		if e.ComplexityRoot.FaceCandidate.Likely == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Likely(childComplexity), true
+	case "FaceCandidate.performer":
+		if e.ComplexityRoot.FaceCandidate.Performer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Performer(childComplexity), true
+	case "FaceCandidate.picture":
+		if e.ComplexityRoot.FaceCandidate.Picture == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Picture(childComplexity), true
+	case "FaceCandidate.similarity":
+		if e.ComplexityRoot.FaceCandidate.Similarity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Similarity(childComplexity), true
+	case "FaceCandidate.video":
+		if e.ComplexityRoot.FaceCandidate.Video == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceCandidate.Video(childComplexity), true
+
+	case "FaceGuess.credited":
+		if e.ComplexityRoot.FaceGuess.Credited == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceGuess.Credited(childComplexity), true
+	case "FaceGuess.performer":
+		if e.ComplexityRoot.FaceGuess.Performer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceGuess.Performer(childComplexity), true
+	case "FaceGuess.person":
+		if e.ComplexityRoot.FaceGuess.Person == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceGuess.Person(childComplexity), true
+	case "FaceGuess.similarity":
+		if e.ComplexityRoot.FaceGuess.Similarity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceGuess.Similarity(childComplexity), true
+
+	case "FacePerson.candidates":
+		if e.ComplexityRoot.FacePerson.Candidates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePerson.Candidates(childComplexity), true
+	case "FacePerson.sightings":
+		if e.ComplexityRoot.FacePerson.Sightings == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePerson.Sightings(childComplexity), true
+
+	case "FacePicture.scanned":
+		if e.ComplexityRoot.FacePicture.Scanned == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePicture.Scanned(childComplexity), true
+	case "FacePicture.uri":
+		if e.ComplexityRoot.FacePicture.URI == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FacePicture.URI(childComplexity), true
+
+	case "FaceScan.createdAt":
+		if e.ComplexityRoot.FaceScan.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.CreatedAt(childComplexity), true
+	case "FaceScan.faces":
+		if e.ComplexityRoot.FaceScan.Faces == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.Faces(childComplexity), true
+	case "FaceScan.frames":
+		if e.ComplexityRoot.FaceScan.Frames == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.Frames(childComplexity), true
+	case "FaceScan.id":
+		if e.ComplexityRoot.FaceScan.Id == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.Id(childComplexity), true
+	case "FaceScan.model":
+		if e.ComplexityRoot.FaceScan.Model == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.Model(childComplexity), true
+	case "FaceScan.picture":
+		if e.ComplexityRoot.FaceScan.Picture == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.Picture(childComplexity), true
+	case "FaceScan.subjectId":
+		if e.ComplexityRoot.FaceScan.SubjectId == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.SubjectId(childComplexity), true
+	case "FaceScan.subjectKind":
+		if e.ComplexityRoot.FaceScan.SubjectKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceScan.SubjectKind(childComplexity), true
+
+	case "FaceSighting.atSeconds":
+		if e.ComplexityRoot.FaceSighting.AtSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceSighting.AtSeconds(childComplexity), true
+	case "FaceSighting.embeddingId":
+		if e.ComplexityRoot.FaceSighting.EmbeddingID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceSighting.EmbeddingID(childComplexity), true
+	case "FaceSighting.region":
+		if e.ComplexityRoot.FaceSighting.Region == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceSighting.Region(childComplexity), true
 
 	case "FieldCondition.fieldDefId":
 		if e.ComplexityRoot.FieldCondition.FieldDefId == nil {
@@ -4136,6 +4351,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.InstallPlugin(childComplexity, args["packageName"].(string)), true
+	case "Mutation.learnFaces":
+		if e.ComplexityRoot.Mutation.LearnFaces == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_learnFaces_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.LearnFaces(childComplexity, args["videoId"].(string), args["model"].(*string)), true
 	case "Mutation.linkCamPerformer":
 		if e.ComplexityRoot.Mutation.LinkCamPerformer == nil {
 			break
@@ -4307,6 +4533,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordEvents(childComplexity, args["events"].([]*model.EventInput)), true
+	case "Mutation.recordFaceScan":
+		if e.ComplexityRoot.Mutation.RecordFaceScan == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordFaceScan_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordFaceScan(childComplexity, args["input"].(model.FaceScanInput)), true
 	case "Mutation.refreshSources":
 		if e.ComplexityRoot.Mutation.RefreshSources == nil {
 			break
@@ -5919,6 +6156,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Events(childComplexity, args["filter"].(*model.EventFilter), args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.facePictures":
+		if e.ComplexityRoot.Query.FacePictures == nil {
+			break
+		}
+
+		args, err := ec.field_Query_facePictures_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.FacePictures(childComplexity, args["performerId"].(string), args["model"].(string)), true
+	case "Query.faceScans":
+		if e.ComplexityRoot.Query.FaceScans == nil {
+			break
+		}
+
+		args, err := ec.field_Query_faceScans_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.FaceScans(childComplexity, args["subject"].(schema.RecordRef)), true
 	case "Query.fieldDefs":
 		if e.ComplexityRoot.Query.FieldDefs == nil {
 			break
@@ -6525,6 +6784,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.VideoCount(childComplexity, args["filter"].(*schema.Filter)), true
+	case "Query.videoFaces":
+		if e.ComplexityRoot.Query.VideoFaces == nil {
+			break
+		}
+
+		args, err := ec.field_Query_videoFaces_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.VideoFaces(childComplexity, args["videoId"].(string), args["model"].(*string)), true
 	case "Query.videoTagCounts":
 		if e.ComplexityRoot.Query.VideoTagCounts == nil {
 			break
@@ -7898,6 +8168,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Video.Width(childComplexity), true
 
+	case "VideoFaces.guesses":
+		if e.ComplexityRoot.VideoFaces.Guesses == nil {
+			break
+		}
+
+		return e.ComplexityRoot.VideoFaces.Guesses(childComplexity), true
+	case "VideoFaces.people":
+		if e.ComplexityRoot.VideoFaces.People == nil {
+			break
+		}
+
+		return e.ComplexityRoot.VideoFaces.People(childComplexity), true
+	case "VideoFaces.scan":
+		if e.ComplexityRoot.VideoFaces.Scan == nil {
+			break
+		}
+
+		return e.ComplexityRoot.VideoFaces.Scan(childComplexity), true
+
 	case "VrFormat.fieldOfView":
 		if e.ComplexityRoot.VrFormat.FieldOfView == nil {
 			break
@@ -7933,6 +8222,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEmbeddingInput,
 		ec.unmarshalInputEventFilter,
 		ec.unmarshalInputEventInput,
+		ec.unmarshalInputFaceInput,
+		ec.unmarshalInputFaceScanInput,
 		ec.unmarshalInputFieldConditionInput,
 		ec.unmarshalInputFieldDefInput,
 		ec.unmarshalInputFileMoveInput,
@@ -8545,6 +8836,117 @@ extend type Video {
 
 extend type Gallery {
   categories: [Category!]!
+}
+`, BuiltIn: false},
+	{Name: "../schema/faces.graphql", Input: `# Faces clients found in videos' sampled frames and performers' pictures
+# (the backend runs no model), the performers' faces learned from them, and
+# guesses of who is in a video.
+
+extend type Query {
+  # A record's face scans, newest first.
+  faceScans(subject: RecordRefInput!): [FaceScan!]!
+  # A performer's pictures to look for their face in (their image, then
+  # each site profile's), and whether each is scanned with the model.
+  facePictures(performerId: ID!, model: String!): [FacePicture!]!
+  # Who is probably in a video: its faces grouped into people, each
+  # compared with every performer's known faces. model defaults to the one
+  # of the video's newest scan.
+  videoFaces(videoId: ID!, model: String): VideoFaces!
+}
+
+extend type Mutation {
+  # Records the faces a client found, replacing the subject's earlier scan
+  # with the model (and picture), then learns the faces of the performers
+  # it concerns.
+  recordFaceScan(input: FaceScanInput!): FaceScan!
+  # Learns a scanned video's credited performers' faces again (after its
+  # credits changed); returns how many were learned.
+  learnFaces(videoId: ID!, model: String): Int!
+}
+
+# A client looked for faces with one model: a video's sampled frames, or
+# one picture of a performer. Kept even when no face was found, so the work
+# isn't repeated.
+type FaceScan {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  model: String!
+  # The picture's URI for a performer's picture; null for a video.
+  picture: String
+  frames: Int!
+  faces: Int!
+  createdAt: String!
+}
+
+input FaceScanInput {
+  # A video, or a performer with picture set.
+  subject: RecordRefInput!
+  # Names detector, recognizer and version; vectors of other models never mix.
+  model: String!
+  picture: String
+  # Frames looked at (1 for a picture).
+  frames: Int!
+  faces: [FaceInput!]!
+}
+
+input FaceInput {
+  vector: [Float!]!
+  atSeconds: Float
+  # Face box as shares of the frame: {x, y, width, height}, plus the
+  # detector's score.
+  region: JSON
+}
+
+type FacePicture {
+  uri: String!
+  scanned: Boolean!
+}
+
+type VideoFaces {
+  # The scan the faces come from; null when the video isn't scanned.
+  scan: FaceScan
+  # The video's faces grouped into people, most seen first.
+  people: [FacePerson!]!
+  # At most one performer per person and person per performer, only
+  # likely ones, best first.
+  guesses: [FaceGuess!]!
+}
+
+type FacePerson {
+  # In time order.
+  sightings: [FaceSighting!]!
+  # Best first; similarity at least 0.3.
+  candidates: [FaceCandidate!]!
+}
+
+type FaceSighting {
+  embeddingId: ID!
+  atSeconds: Float
+  region: JSON
+}
+
+type FaceCandidate {
+  performer: Performer!
+  # Cosine similarity (-1..1) of the person's mean face and the performer's
+  # closest known face.
+  similarity: Float!
+  # Similar enough to be probably the same person (0.45 or more).
+  likely: Boolean!
+  # The video credits the performer.
+  credited: Boolean!
+  # Where the closest known face came from: a picture of the performer, or
+  # a video crediting them.
+  picture: String
+  video: Video
+}
+
+type FaceGuess {
+  performer: Performer!
+  similarity: Float!
+  credited: Boolean!
+  # Index into VideoFaces.people.
+  person: Int!
 }
 `, BuiltIn: false},
 	{Name: "../schema/features.graphql", Input: `# Features over the records: each answers with matches that say why they're
@@ -10606,6 +11008,92 @@ func (ec *executionContext) childFields_Evidence(ctx context.Context, field grap
 	return nil, fmt.Errorf("no field named %q was found under type Evidence", field.Name)
 }
 
+func (ec *executionContext) childFields_FaceCandidate(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "performer":
+		return ec.fieldContext_FaceCandidate_performer(ctx, field)
+	case "similarity":
+		return ec.fieldContext_FaceCandidate_similarity(ctx, field)
+	case "likely":
+		return ec.fieldContext_FaceCandidate_likely(ctx, field)
+	case "credited":
+		return ec.fieldContext_FaceCandidate_credited(ctx, field)
+	case "picture":
+		return ec.fieldContext_FaceCandidate_picture(ctx, field)
+	case "video":
+		return ec.fieldContext_FaceCandidate_video(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceCandidate", field.Name)
+}
+
+func (ec *executionContext) childFields_FaceGuess(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "performer":
+		return ec.fieldContext_FaceGuess_performer(ctx, field)
+	case "similarity":
+		return ec.fieldContext_FaceGuess_similarity(ctx, field)
+	case "credited":
+		return ec.fieldContext_FaceGuess_credited(ctx, field)
+	case "person":
+		return ec.fieldContext_FaceGuess_person(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceGuess", field.Name)
+}
+
+func (ec *executionContext) childFields_FacePerson(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "sightings":
+		return ec.fieldContext_FacePerson_sightings(ctx, field)
+	case "candidates":
+		return ec.fieldContext_FacePerson_candidates(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FacePerson", field.Name)
+}
+
+func (ec *executionContext) childFields_FacePicture(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "uri":
+		return ec.fieldContext_FacePicture_uri(ctx, field)
+	case "scanned":
+		return ec.fieldContext_FacePicture_scanned(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FacePicture", field.Name)
+}
+
+func (ec *executionContext) childFields_FaceScan(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_FaceScan_id(ctx, field)
+	case "subjectKind":
+		return ec.fieldContext_FaceScan_subjectKind(ctx, field)
+	case "subjectId":
+		return ec.fieldContext_FaceScan_subjectId(ctx, field)
+	case "model":
+		return ec.fieldContext_FaceScan_model(ctx, field)
+	case "picture":
+		return ec.fieldContext_FaceScan_picture(ctx, field)
+	case "frames":
+		return ec.fieldContext_FaceScan_frames(ctx, field)
+	case "faces":
+		return ec.fieldContext_FaceScan_faces(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_FaceScan_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceScan", field.Name)
+}
+
+func (ec *executionContext) childFields_FaceSighting(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "embeddingId":
+		return ec.fieldContext_FaceSighting_embeddingId(ctx, field)
+	case "atSeconds":
+		return ec.fieldContext_FaceSighting_atSeconds(ctx, field)
+	case "region":
+		return ec.fieldContext_FaceSighting_region(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceSighting", field.Name)
+}
+
 func (ec *executionContext) childFields_FieldCondition(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "fieldDefId":
@@ -11968,6 +12456,18 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 	return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
 }
 
+func (ec *executionContext) childFields_VideoFaces(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "scan":
+		return ec.fieldContext_VideoFaces_scan(ctx, field)
+	case "people":
+		return ec.fieldContext_VideoFaces_people(ctx, field)
+	case "guesses":
+		return ec.fieldContext_VideoFaces_guesses(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type VideoFaces", field.Name)
+}
+
 func (ec *executionContext) childFields_VrFormat(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "projection":
@@ -13276,6 +13776,28 @@ func (ec *executionContext) field_Mutation_installPlugin_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_learnFaces_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "videoId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["videoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "model",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["model"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_linkCamPerformer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13563,6 +14085,20 @@ func (ec *executionContext) field_Mutation_recordEvents_args(ctx context.Context
 		return nil, err
 	}
 	args["events"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_recordFaceScan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.FaceScanInput, error) {
+			return ec.unmarshalNFaceScanInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceScanInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -15002,6 +15538,42 @@ func (ec *executionContext) field_Query_events_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_facePictures_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "performerId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["performerId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "model",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["model"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_faceScans_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "subject",
+		func(ctx context.Context, v any) (schema.RecordRef, error) {
+			return ec.unmarshalNRecordRefInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordRef(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["subject"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_fieldDefs_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16023,6 +16595,28 @@ func (ec *executionContext) field_Query_videoCount_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["filter"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_videoFaces_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "videoId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["videoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "model",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["model"] = arg1
 	return args, nil
 }
 
@@ -20424,6 +21018,626 @@ func (ec *executionContext) _Evidence_detail(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Evidence_detail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Evidence", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceCandidate_performer(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_performer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Performer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_performer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceCandidate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FaceCandidate_similarity(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_similarity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Similarity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_similarity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceCandidate", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _FaceCandidate_likely(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_likely(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Likely, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_likely(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceCandidate", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _FaceCandidate_credited(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_credited(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Credited, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_credited(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceCandidate", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _FaceCandidate_picture(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_picture(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Picture, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_picture(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceCandidate", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceCandidate_video(ctx context.Context, field graphql.CollectedField, obj *model.FaceCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceCandidate_video(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Video, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Video) graphql.Marshaler {
+			return ec.marshalOVideo2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideo(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceCandidate_video(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceCandidate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FaceGuess_performer(ctx context.Context, field graphql.CollectedField, obj *model.FaceGuess) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceGuess_performer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Performer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceGuess_performer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceGuess",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FaceGuess_similarity(ctx context.Context, field graphql.CollectedField, obj *model.FaceGuess) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceGuess_similarity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Similarity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceGuess_similarity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceGuess", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _FaceGuess_credited(ctx context.Context, field graphql.CollectedField, obj *model.FaceGuess) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceGuess_credited(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Credited, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceGuess_credited(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceGuess", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _FaceGuess_person(ctx context.Context, field graphql.CollectedField, obj *model.FaceGuess) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceGuess_person(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Person, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceGuess_person(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceGuess", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _FacePerson_sightings(ctx context.Context, field graphql.CollectedField, obj *model.FacePerson) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePerson_sightings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sightings, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FaceSighting) graphql.Marshaler {
+			return ec.marshalNFaceSighting2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceSightingᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePerson_sightings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FacePerson",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceSighting(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FacePerson_candidates(ctx context.Context, field graphql.CollectedField, obj *model.FacePerson) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePerson_candidates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Candidates, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FaceCandidate) graphql.Marshaler {
+			return ec.marshalNFaceCandidate2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceCandidateᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePerson_candidates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FacePerson",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceCandidate(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FacePicture_uri(ctx context.Context, field graphql.CollectedField, obj *model.FacePicture) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePicture_uri(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URI, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePicture_uri(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePicture", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FacePicture_scanned(ctx context.Context, field graphql.CollectedField, obj *model.FacePicture) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FacePicture_scanned(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Scanned, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FacePicture_scanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FacePicture", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_id(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Id, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_subjectKind(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_subjectKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v schema.RecordKind) graphql.Marshaler {
+			return ec.marshalNRecordKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_subjectKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type RecordKind does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_subjectId(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_subjectId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectId, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_subjectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_model(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_model(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_picture(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_picture(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Picture, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_picture(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_frames(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_frames(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Frames, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_frames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_faces(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_faces(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Faces, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int32) graphql.Marshaler {
+			return ec.marshalNInt2int32(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_faces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _FaceScan_createdAt(ctx context.Context, field graphql.CollectedField, obj *schema.FaceScan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceScan_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceScan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceScan", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _FaceSighting_embeddingId(ctx context.Context, field graphql.CollectedField, obj *model.FaceSighting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceSighting_embeddingId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EmbeddingID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceSighting_embeddingId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceSighting", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _FaceSighting_atSeconds(ctx context.Context, field graphql.CollectedField, obj *model.FaceSighting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceSighting_atSeconds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AtSeconds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *float64) graphql.Marshaler {
+			return ec.marshalOFloat2ᚖfloat64(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceSighting_atSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceSighting", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _FaceSighting_region(ctx context.Context, field graphql.CollectedField, obj *model.FaceSighting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceSighting_region(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Region, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v any) graphql.Marshaler {
+			return ec.marshalOJSON2interface(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_FaceSighting_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceSighting", field, false, false, errors.New("field of type JSON does not have child fields"))
 }
 
 func (ec *executionContext) _FieldCondition_fieldDefId(ctx context.Context, field graphql.CollectedField, obj *schema.FieldCondition) (ret graphql.Marshaler) {
@@ -25754,6 +26968,94 @@ func (ec *executionContext) fieldContext_Mutation_setFieldValue(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setFieldValue_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_recordFaceScan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordFaceScan(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordFaceScan(ctx, fc.Args["input"].(model.FaceScanInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.FaceScan) graphql.Marshaler {
+			return ec.marshalNFaceScan2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordFaceScan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceScan(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordFaceScan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_learnFaces(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_learnFaces(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().LearnFaces(ctx, fc.Args["videoId"].(string), fc.Args["model"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_learnFaces(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_learnFaces_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -33413,6 +34715,138 @@ func (ec *executionContext) fieldContext_Query_fieldDefs(ctx context.Context, fi
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_fieldDefs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_faceScans(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_faceScans(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().FaceScans(ctx, fc.Args["subject"].(schema.RecordRef))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.FaceScan) graphql.Marshaler {
+			return ec.marshalNFaceScan2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScanᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_faceScans(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceScan(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_faceScans_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_facePictures(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_facePictures(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().FacePictures(ctx, fc.Args["performerId"].(string), fc.Args["model"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FacePicture) graphql.Marshaler {
+			return ec.marshalNFacePicture2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePictureᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_facePictures(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FacePicture(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_facePictures_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_videoFaces(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_videoFaces(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().VideoFaces(ctx, fc.Args["videoId"].(string), fc.Args["model"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.VideoFaces) graphql.Marshaler {
+			return ec.marshalNVideoFaces2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐVideoFaces(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_videoFaces(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_VideoFaces(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_videoFaces_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -41881,6 +43315,102 @@ func (ec *executionContext) fieldContext_Video_comments(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _VideoFaces_scan(ctx context.Context, field graphql.CollectedField, obj *model.VideoFaces) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_VideoFaces_scan(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Scan, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.FaceScan) graphql.Marshaler {
+			return ec.marshalOFaceScan2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_VideoFaces_scan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VideoFaces",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceScan(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VideoFaces_people(ctx context.Context, field graphql.CollectedField, obj *model.VideoFaces) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_VideoFaces_people(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.People, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FacePerson) graphql.Marshaler {
+			return ec.marshalNFacePerson2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePersonᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_VideoFaces_people(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VideoFaces",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FacePerson(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VideoFaces_guesses(ctx context.Context, field graphql.CollectedField, obj *model.VideoFaces) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_VideoFaces_guesses(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Guesses, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FaceGuess) graphql.Marshaler {
+			return ec.marshalNFaceGuess2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceGuessᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_VideoFaces_guesses(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VideoFaces",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceGuess(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VrFormat_projection(ctx context.Context, field graphql.CollectedField, obj *schema.VrFormat) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -43454,6 +44984,108 @@ func (ec *executionContext) unmarshalInputEventInput(ctx context.Context, obj an
 				return it, err
 			}
 			it.SessionID = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFaceInput(ctx context.Context, obj any) (model.FaceInput, error) {
+	var it model.FaceInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"vector", "atSeconds", "region"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "vector":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vector"))
+			data, err := ec.unmarshalNFloat2ᚕfloat64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Vector = data
+		case "atSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("atSeconds"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AtSeconds = data
+		case "region":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+			data, err := ec.unmarshalOJSON2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Region = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFaceScanInput(ctx context.Context, obj any) (model.FaceScanInput, error) {
+	var it model.FaceScanInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"subject", "model", "picture", "frames", "faces"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "subject":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subject"))
+			data, err := ec.unmarshalNRecordRefInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordRef(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Subject = data
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
+		case "picture":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("picture"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Picture = data
+		case "frames":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frames"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frames = data
+		case "faces":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("faces"))
+			data, err := ec.unmarshalNFaceInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Faces = data
 		}
 	}
 	return it, nil
@@ -47502,6 +49134,320 @@ func (ec *executionContext) _Evidence(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var faceCandidateImplementors = []string{"FaceCandidate"}
+
+func (ec *executionContext) _FaceCandidate(ctx context.Context, sel ast.SelectionSet, obj *model.FaceCandidate) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceCandidateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceCandidate")
+		case "performer":
+			out.Values[i] = ec._FaceCandidate_performer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "similarity":
+			out.Values[i] = ec._FaceCandidate_similarity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "likely":
+			out.Values[i] = ec._FaceCandidate_likely(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "credited":
+			out.Values[i] = ec._FaceCandidate_credited(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "picture":
+			out.Values[i] = ec._FaceCandidate_picture(ctx, field, obj)
+		case "video":
+			out.Values[i] = ec._FaceCandidate_video(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var faceGuessImplementors = []string{"FaceGuess"}
+
+func (ec *executionContext) _FaceGuess(ctx context.Context, sel ast.SelectionSet, obj *model.FaceGuess) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceGuessImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceGuess")
+		case "performer":
+			out.Values[i] = ec._FaceGuess_performer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "similarity":
+			out.Values[i] = ec._FaceGuess_similarity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "credited":
+			out.Values[i] = ec._FaceGuess_credited(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "person":
+			out.Values[i] = ec._FaceGuess_person(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var facePersonImplementors = []string{"FacePerson"}
+
+func (ec *executionContext) _FacePerson(ctx context.Context, sel ast.SelectionSet, obj *model.FacePerson) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, facePersonImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FacePerson")
+		case "sightings":
+			out.Values[i] = ec._FacePerson_sightings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "candidates":
+			out.Values[i] = ec._FacePerson_candidates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var facePictureImplementors = []string{"FacePicture"}
+
+func (ec *executionContext) _FacePicture(ctx context.Context, sel ast.SelectionSet, obj *model.FacePicture) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, facePictureImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FacePicture")
+		case "uri":
+			out.Values[i] = ec._FacePicture_uri(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scanned":
+			out.Values[i] = ec._FacePicture_scanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var faceScanImplementors = []string{"FaceScan"}
+
+func (ec *executionContext) _FaceScan(ctx context.Context, sel ast.SelectionSet, obj *schema.FaceScan) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceScanImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceScan")
+		case "id":
+			out.Values[i] = ec._FaceScan_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectKind":
+			out.Values[i] = ec._FaceScan_subjectKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectId":
+			out.Values[i] = ec._FaceScan_subjectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "model":
+			out.Values[i] = ec._FaceScan_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "picture":
+			out.Values[i] = ec._FaceScan_picture(ctx, field, obj)
+		case "frames":
+			out.Values[i] = ec._FaceScan_frames(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "faces":
+			out.Values[i] = ec._FaceScan_faces(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._FaceScan_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var faceSightingImplementors = []string{"FaceSighting"}
+
+func (ec *executionContext) _FaceSighting(ctx context.Context, sel ast.SelectionSet, obj *model.FaceSighting) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceSightingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceSighting")
+		case "embeddingId":
+			out.Values[i] = ec._FaceSighting_embeddingId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "atSeconds":
+			out.Values[i] = ec._FaceSighting_atSeconds(ctx, field, obj)
+		case "region":
+			out.Values[i] = ec._FaceSighting_region(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var fieldConditionImplementors = []string{"FieldCondition"}
 
 func (ec *executionContext) _FieldCondition(ctx context.Context, sel ast.SelectionSet, obj *schema.FieldCondition) graphql.Marshaler {
@@ -49900,6 +51846,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setFieldValue":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setFieldValue(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordFaceScan":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordFaceScan(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "learnFaces":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_learnFaces(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -52698,6 +54658,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_fieldDefs(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "faceScans":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_faceScans(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "facePictures":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_facePictures(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "videoFaces":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_videoFaces(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -57653,6 +59679,52 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
+var videoFacesImplementors = []string{"VideoFaces"}
+
+func (ec *executionContext) _VideoFaces(ctx context.Context, sel ast.SelectionSet, obj *model.VideoFaces) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, videoFacesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("VideoFaces")
+		case "scan":
+			out.Values[i] = ec._VideoFaces_scan(ctx, field, obj)
+		case "people":
+			out.Values[i] = ec._VideoFaces_people(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "guesses":
+			out.Values[i] = ec._VideoFaces_guesses(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var vrFormatImplementors = []string{"VrFormat"}
 
 func (ec *executionContext) _VrFormat(ctx context.Context, sel ast.SelectionSet, obj *schema.VrFormat) graphql.Marshaler {
@@ -58760,6 +60832,191 @@ func (ec *executionContext) marshalNEvidence2ᚕgithubᚗcomᚋplayingwithclouds
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNFaceCandidate2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceCandidateᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceCandidate) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceCandidate2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceCandidate(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceCandidate2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceCandidate(ctx context.Context, sel ast.SelectionSet, v *model.FaceCandidate) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceCandidate(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFaceGuess2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceGuessᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceGuess) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceGuess2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceGuess(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceGuess2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceGuess(ctx context.Context, sel ast.SelectionSet, v *model.FaceGuess) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceGuess(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFaceInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceInputᚄ(ctx context.Context, v any) ([]*model.FaceInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.FaceInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNFaceInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNFaceInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceInput(ctx context.Context, v any) (*model.FaceInput, error) {
+	res, err := ec.unmarshalInputFaceInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFacePerson2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePersonᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FacePerson) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFacePerson2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePerson(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFacePerson2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePerson(ctx context.Context, sel ast.SelectionSet, v *model.FacePerson) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FacePerson(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFacePicture2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePictureᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FacePicture) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFacePicture2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePicture(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFacePicture2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePicture(ctx context.Context, sel ast.SelectionSet, v *model.FacePicture) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FacePicture(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFaceScan2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx context.Context, sel ast.SelectionSet, v schema.FaceScan) graphql.Marshaler {
+	return ec._FaceScan(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFaceScan2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScanᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.FaceScan) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceScan2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceScan2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx context.Context, sel ast.SelectionSet, v *schema.FaceScan) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceScan(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFaceScanInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceScanInput(ctx context.Context, v any) (model.FaceScanInput, error) {
+	res, err := ec.unmarshalInputFaceScanInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFaceSighting2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceSightingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceSighting) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceSighting2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceSighting(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceSighting2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceSighting(ctx context.Context, sel ast.SelectionSet, v *model.FaceSighting) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceSighting(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFieldCondition2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFieldCondition(ctx context.Context, sel ast.SelectionSet, v schema.FieldCondition) graphql.Marshaler {
@@ -61011,6 +63268,20 @@ func (ec *executionContext) marshalNVideo2ᚖgithubᚗcomᚋplayingwithcloudsᚋ
 	return ec._Video(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNVideoFaces2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐVideoFaces(ctx context.Context, sel ast.SelectionSet, v model.VideoFaces) graphql.Marshaler {
+	return ec._VideoFaces(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVideoFaces2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐVideoFaces(ctx context.Context, sel ast.SelectionSet, v *model.VideoFaces) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._VideoFaces(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNVrProjection2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVrProjection(ctx context.Context, v any) (schema.VrProjection, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := schema.VrProjection(tmp)
@@ -61363,6 +63634,13 @@ func (ec *executionContext) marshalOEventKind2ᚕgithubᚗcomᚋplayingwithcloud
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOFaceScan2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFaceScan(ctx context.Context, sel ast.SelectionSet, v *schema.FaceScan) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FaceScan(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOFieldCondition2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFieldConditionᚄ(ctx context.Context, sel ast.SelectionSet, v []schema.FieldCondition) graphql.Marshaler {

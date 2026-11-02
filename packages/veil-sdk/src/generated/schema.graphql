@@ -26,6 +26,9 @@ type Query {
   builtInCollection(kind: CollectionKind!): Collection!
   collectionsWith(subject: RecordRefInput!): [Collection!]!
   fieldDefs(kind: RecordKind): [FieldDef!]!
+  faceScans(subject: RecordRefInput!): [FaceScan!]!
+  facePictures(performerId: ID!, model: String!): [FacePicture!]!
+  videoFaces(videoId: ID!, model: String): VideoFaces!
   recommendations(filter: FilterInput, limit: Int, offset: Int): [Match!]!
   related(subject: RecordRefInput!, limit: Int): [Match!]!
   shorts(filter: FilterInput, limit: Int): [Short!]!
@@ -134,6 +137,8 @@ type Mutation {
   saveFieldDef(id: ID, input: FieldDefInput!): FieldDef!
   deleteFieldDef(id: ID!): Boolean!
   setFieldValue(subject: RecordRefInput!, fieldDefId: ID!, value: JSON): UserState!
+  recordFaceScan(input: FaceScanInput!): FaceScan!
+  learnFaces(videoId: ID!, model: String): Int!
   lookup(input: LookupInput!): LookupResult!
   merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
   mergeAlike(id: ID!): Record
@@ -598,6 +603,69 @@ type Gallery {
   oCount: Int!
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type FaceScan {
+  id: ID!
+  subjectKind: RecordKind!
+  subjectId: ID!
+  model: String!
+  picture: String
+  frames: Int!
+  faces: Int!
+  createdAt: String!
+}
+
+input FaceScanInput {
+  subject: RecordRefInput!
+  model: String!
+  picture: String
+  frames: Int!
+  faces: [FaceInput!]!
+}
+
+input FaceInput {
+  vector: [Float!]!
+  atSeconds: Float
+  region: JSON
+}
+
+type FacePicture {
+  uri: String!
+  scanned: Boolean!
+}
+
+type VideoFaces {
+  scan: FaceScan
+  people: [FacePerson!]!
+  guesses: [FaceGuess!]!
+}
+
+type FacePerson {
+  sightings: [FaceSighting!]!
+  candidates: [FaceCandidate!]!
+}
+
+type FaceSighting {
+  embeddingId: ID!
+  atSeconds: Float
+  region: JSON
+}
+
+type FaceCandidate {
+  performer: Performer!
+  similarity: Float!
+  likely: Boolean!
+  credited: Boolean!
+  picture: String
+  video: Video
+}
+
+type FaceGuess {
+  performer: Performer!
+  similarity: Float!
+  credited: Boolean!
+  person: Int!
 }
 
 type Match {

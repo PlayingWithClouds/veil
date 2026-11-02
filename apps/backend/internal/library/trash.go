@@ -181,7 +181,7 @@ func purgeCreatorPosts(ctx context.Context, tx *db.DB, kind schema.RecordKind, i
 // subjectKind and subjectId.
 var subjectTables = []string{
 	"Stream", "Revision", "UserState", "CollectionItem", "Segment", "Subtitle", "Script",
-	"Fingerprint", "Embedding", "MediaFile",
+	"Fingerprint", "Embedding", "FaceScan", "MediaFile",
 }
 
 // deleteDependents deletes the rows that only exist for the record.
@@ -192,6 +192,8 @@ func deleteDependents(ctx context.Context, tx *db.DB, kind schema.RecordKind, id
 		   OR "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
 		`DELETE FROM "Comment" WHERE "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
 		`DELETE FROM "Alike" WHERE "subjectKind" = $kind AND ("firstId" = $id OR "secondId" = $id)`,
+		// Performers' faces learned from the record's face scans go with them.
+		`DELETE FROM "Embedding" WHERE "scan" IN (SELECT "id" FROM "FaceScan" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
 	}
 	for _, table := range subjectTables {
 		statements = append(statements, `DELETE FROM `+db.Quote(table)+` WHERE "subjectKind" = $kind AND "subjectId" = $id`)

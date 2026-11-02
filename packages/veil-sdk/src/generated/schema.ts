@@ -40,6 +40,9 @@ export interface Query {
     builtInCollection: Collection
     collectionsWith: Collection[]
     fieldDefs: FieldDef[]
+    faceScans: FaceScan[]
+    facePictures: FacePicture[]
+    videoFaces: VideoFaces
     recommendations: Match[]
     related: Match[]
     shorts: Short[]
@@ -149,6 +152,8 @@ export interface Mutation {
     saveFieldDef: FieldDef
     deleteFieldDef: Scalars['Boolean']
     setFieldValue: UserState
+    recordFaceScan: FaceScan
+    learnFaces: Scalars['Int']
     lookup: LookupResult
     merge: (Record | null)
     mergeAlike: (Record | null)
@@ -530,6 +535,62 @@ export interface Gallery {
     fieldSources: FieldSource[]
     revisions: Revision[]
     __typename: 'Gallery'
+}
+
+export interface FaceScan {
+    id: Scalars['ID']
+    subjectKind: RecordKind
+    subjectId: Scalars['ID']
+    model: Scalars['String']
+    picture: (Scalars['String'] | null)
+    frames: Scalars['Int']
+    faces: Scalars['Int']
+    createdAt: Scalars['String']
+    __typename: 'FaceScan'
+}
+
+export interface FacePicture {
+    uri: Scalars['String']
+    scanned: Scalars['Boolean']
+    __typename: 'FacePicture'
+}
+
+export interface VideoFaces {
+    scan: (FaceScan | null)
+    people: FacePerson[]
+    guesses: FaceGuess[]
+    __typename: 'VideoFaces'
+}
+
+export interface FacePerson {
+    sightings: FaceSighting[]
+    candidates: FaceCandidate[]
+    __typename: 'FacePerson'
+}
+
+export interface FaceSighting {
+    embeddingId: Scalars['ID']
+    atSeconds: (Scalars['Float'] | null)
+    region: (Scalars['JSON'] | null)
+    __typename: 'FaceSighting'
+}
+
+export interface FaceCandidate {
+    performer: Performer
+    similarity: Scalars['Float']
+    likely: Scalars['Boolean']
+    credited: Scalars['Boolean']
+    picture: (Scalars['String'] | null)
+    video: (Video | null)
+    __typename: 'FaceCandidate'
+}
+
+export interface FaceGuess {
+    performer: Performer
+    similarity: Scalars['Float']
+    credited: Scalars['Boolean']
+    person: Scalars['Int']
+    __typename: 'FaceGuess'
 }
 
 export interface Match {
@@ -1326,6 +1387,9 @@ export interface QueryGenqlSelection{
     builtInCollection?: (CollectionGenqlSelection & { __args: {kind: CollectionKind} })
     collectionsWith?: (CollectionGenqlSelection & { __args: {subject: RecordRefInput} })
     fieldDefs?: (FieldDefGenqlSelection & { __args?: {kind?: (RecordKind | null)} })
+    faceScans?: (FaceScanGenqlSelection & { __args: {subject: RecordRefInput} })
+    facePictures?: (FacePictureGenqlSelection & { __args: {performerId: Scalars['ID'], model: Scalars['String']} })
+    videoFaces?: (VideoFacesGenqlSelection & { __args: {videoId: Scalars['ID'], model?: (Scalars['String'] | null)} })
     recommendations?: (MatchGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     related?: (MatchGenqlSelection & { __args: {subject: RecordRefInput, limit?: (Scalars['Int'] | null)} })
     shorts?: (ShortGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null)} })
@@ -1436,6 +1500,8 @@ export interface MutationGenqlSelection{
     saveFieldDef?: (FieldDefGenqlSelection & { __args: {id?: (Scalars['ID'] | null), input: FieldDefInput} })
     deleteFieldDef?: { __args: {id: Scalars['ID']} }
     setFieldValue?: (UserStateGenqlSelection & { __args: {subject: RecordRefInput, fieldDefId: Scalars['ID'], value?: (Scalars['JSON'] | null)} })
+    recordFaceScan?: (FaceScanGenqlSelection & { __args: {input: FaceScanInput} })
+    learnFaces?: { __args: {videoId: Scalars['ID'], model?: (Scalars['String'] | null)} }
     lookup?: (LookupResultGenqlSelection & { __args: {input: LookupInput} })
     merge?: (RecordGenqlSelection & { __args: {kind: RecordKind, keepId: Scalars['ID'], mergeId: Scalars['ID']} })
     mergeAlike?: (RecordGenqlSelection & { __args: {id: Scalars['ID']} })
@@ -1842,6 +1908,73 @@ export interface GalleryGenqlSelection{
     oCount?: boolean | number
     fieldSources?: FieldSourceGenqlSelection
     revisions?: (RevisionGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceScanGenqlSelection{
+    id?: boolean | number
+    subjectKind?: boolean | number
+    subjectId?: boolean | number
+    model?: boolean | number
+    picture?: boolean | number
+    frames?: boolean | number
+    faces?: boolean | number
+    createdAt?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceScanInput {subject: RecordRefInput,model: Scalars['String'],picture?: (Scalars['String'] | null),frames: Scalars['Int'],faces: FaceInput[]}
+
+export interface FaceInput {vector: Scalars['Float'][],atSeconds?: (Scalars['Float'] | null),region?: (Scalars['JSON'] | null)}
+
+export interface FacePictureGenqlSelection{
+    uri?: boolean | number
+    scanned?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface VideoFacesGenqlSelection{
+    scan?: FaceScanGenqlSelection
+    people?: FacePersonGenqlSelection
+    guesses?: FaceGuessGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FacePersonGenqlSelection{
+    sightings?: FaceSightingGenqlSelection
+    candidates?: FaceCandidateGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceSightingGenqlSelection{
+    embeddingId?: boolean | number
+    atSeconds?: boolean | number
+    region?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceCandidateGenqlSelection{
+    performer?: PerformerGenqlSelection
+    similarity?: boolean | number
+    likely?: boolean | number
+    credited?: boolean | number
+    picture?: boolean | number
+    video?: VideoGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceGuessGenqlSelection{
+    performer?: PerformerGenqlSelection
+    similarity?: boolean | number
+    credited?: boolean | number
+    person?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2903,6 +3036,62 @@ export interface SavedFilterGenqlSelection{
     export const isGallery = (obj?: { __typename?: any } | null): obj is Gallery => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isGallery"')
       return Gallery_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceScan_possibleTypes: string[] = ['FaceScan']
+    export const isFaceScan = (obj?: { __typename?: any } | null): obj is FaceScan => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceScan"')
+      return FaceScan_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FacePicture_possibleTypes: string[] = ['FacePicture']
+    export const isFacePicture = (obj?: { __typename?: any } | null): obj is FacePicture => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFacePicture"')
+      return FacePicture_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const VideoFaces_possibleTypes: string[] = ['VideoFaces']
+    export const isVideoFaces = (obj?: { __typename?: any } | null): obj is VideoFaces => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isVideoFaces"')
+      return VideoFaces_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FacePerson_possibleTypes: string[] = ['FacePerson']
+    export const isFacePerson = (obj?: { __typename?: any } | null): obj is FacePerson => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFacePerson"')
+      return FacePerson_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceSighting_possibleTypes: string[] = ['FaceSighting']
+    export const isFaceSighting = (obj?: { __typename?: any } | null): obj is FaceSighting => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceSighting"')
+      return FaceSighting_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceCandidate_possibleTypes: string[] = ['FaceCandidate']
+    export const isFaceCandidate = (obj?: { __typename?: any } | null): obj is FaceCandidate => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceCandidate"')
+      return FaceCandidate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceGuess_possibleTypes: string[] = ['FaceGuess']
+    export const isFaceGuess = (obj?: { __typename?: any } | null): obj is FaceGuess => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceGuess"')
+      return FaceGuess_possibleTypes.includes(obj.__typename)
     }
     
 

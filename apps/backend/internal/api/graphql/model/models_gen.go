@@ -95,6 +95,52 @@ type EventInput struct {
 	SessionID *string           `json:"sessionId,omitempty"`
 }
 
+type FaceCandidate struct {
+	Performer  *schema.Performer `json:"performer"`
+	Similarity float64           `json:"similarity"`
+	Likely     bool              `json:"likely"`
+	Credited   bool              `json:"credited"`
+	Picture    *string           `json:"picture,omitempty"`
+	Video      *schema.Video     `json:"video,omitempty"`
+}
+
+type FaceGuess struct {
+	Performer  *schema.Performer `json:"performer"`
+	Similarity float64           `json:"similarity"`
+	Credited   bool              `json:"credited"`
+	Person     int               `json:"person"`
+}
+
+type FaceInput struct {
+	Vector    []float64 `json:"vector"`
+	AtSeconds *float64  `json:"atSeconds,omitempty"`
+	Region    any       `json:"region,omitempty"`
+}
+
+type FacePerson struct {
+	Sightings  []*FaceSighting  `json:"sightings"`
+	Candidates []*FaceCandidate `json:"candidates"`
+}
+
+type FacePicture struct {
+	URI     string `json:"uri"`
+	Scanned bool   `json:"scanned"`
+}
+
+type FaceScanInput struct {
+	Subject *schema.RecordRef `json:"subject"`
+	Model   string            `json:"model"`
+	Picture *string           `json:"picture,omitempty"`
+	Frames  int               `json:"frames"`
+	Faces   []*FaceInput      `json:"faces"`
+}
+
+type FaceSighting struct {
+	EmbeddingID string   `json:"embeddingId"`
+	AtSeconds   *float64 `json:"atSeconds,omitempty"`
+	Region      any      `json:"region,omitempty"`
+}
+
 type FileMove struct {
 	FileID string `json:"fileId"`
 	From   string `json:"from"`
@@ -355,6 +401,12 @@ type UserStateFilter struct {
 	Blocked  *bool              `json:"blocked,omitempty"`
 	Rated    *bool              `json:"rated,omitempty"`
 	Viewed   *bool              `json:"viewed,omitempty"`
+}
+
+type VideoFaces struct {
+	Scan    *schema.FaceScan `json:"scan,omitempty"`
+	People  []*FacePerson    `json:"people"`
+	Guesses []*FaceGuess     `json:"guesses"`
 }
 
 type ListKind string

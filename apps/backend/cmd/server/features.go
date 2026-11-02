@@ -11,6 +11,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/devices"
 	"github.com/playingwithclouds/veil/internal/embeddings"
+	"github.com/playingwithclouds/veil/internal/faces"
 	"github.com/playingwithclouds/veil/internal/files"
 	"github.com/playingwithclouds/veil/internal/follows"
 	"github.com/playingwithclouds/veil/internal/jobs"
@@ -53,7 +54,7 @@ type core struct {
 
 // features are the services past the core library: notifications,
 // follows, limits, automations, cams, files, recommendations, embeddings,
-// lookups, tokens and accounts.
+// faces, lookups, tokens and accounts.
 type features struct {
 	notify      *notify.Service
 	follows     *follows.Service
@@ -64,6 +65,7 @@ type features struct {
 	files       *files.Service
 	recommend   *recommend.Engine
 	embeddings  *embeddings.Service
+	faces       *faces.Service
 	lookup      *lookup.Service
 	tokens      *tokens.Service
 	accounts    *accounts.Service
@@ -77,6 +79,7 @@ func openFeatures(ctx context.Context, base core) *features {
 		limits:     limits.New(base.database),
 		recommend:  recommend.New(base.database),
 		embeddings: embeddings.New(base.database),
+		faces:      faces.New(base.database),
 		lookup:     lookup.New(base.registry, base.runner, base.library),
 		tokens:     tokens.New(base.database),
 		accounts:   openAccounts(base),

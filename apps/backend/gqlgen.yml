@@ -298,6 +298,8 @@ models:
     model: github.com/playingwithclouds/veil/internal/schema.Embedding
   EmbeddingKind:
     model: github.com/playingwithclouds/veil/internal/schema.EmbeddingKind
+  FaceScan:
+    model: github.com/playingwithclouds/veil/internal/schema.FaceScan
   # Features.
   Match:
     model: github.com/playingwithclouds/veil/internal/schema.Match
