@@ -26,6 +26,22 @@ func setAsset(fields db.Vars, column, uri string) {
 	fields[column] = asset
 }
 
+// setAssetList sets a list-of-assets column from the URIs that aren't blank,
+// when at least one is left.
+func setAssetList(fields db.Vars, column string, uris []string) {
+	assets := make([]schema.Asset, 0, len(uris))
+	for _, uri := range uris {
+		asset := assetOf(uri)
+		if asset != nil {
+			assets = append(assets, *asset)
+		}
+	}
+	if len(assets) == 0 {
+		return
+	}
+	fields[column] = assets
+}
+
 // assetOf wraps a URI as an asset; nil for a blank one.
 func assetOf(uri string) *schema.Asset {
 	uri = strings.TrimSpace(uri)

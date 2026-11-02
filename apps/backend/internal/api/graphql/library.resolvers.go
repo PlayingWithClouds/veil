@@ -221,6 +221,15 @@ func (r *queryResolver) VideoCount(ctx context.Context, filter *schema.Filter) (
 	return r.library.CountMedia(ctx, schema.RecordKindVideo, filterOrEmpty(filter))
 }
 
+// VideoTagCounts is the resolver for the videoTagCounts field.
+func (r *queryResolver) VideoTagCounts(ctx context.Context, filter *schema.Filter, limit *int) ([]*model.TagCount, error) {
+	counts, err := r.library.TagCounts(ctx, schema.RecordKindVideo, filterOrEmpty(filter), number(limit))
+	if err != nil {
+		return nil, err
+	}
+	return tagCounts(counts), nil
+}
+
 // Video is the resolver for the video field.
 func (r *queryResolver) Video(ctx context.Context, id string) (*schema.Video, error) {
 	return r.library.Video(ctx, id)

@@ -14,7 +14,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import ActionSheet from './ActionSheet.svelte';
 	import SiteIcon from './scene/SiteIcon.svelte';
-	import { formatClock } from './SceneCard.svelte';
+	import { formatClock } from '$lib/time';
 	import { isCompact } from '$lib/stores/viewport';
 	import { portal } from '$lib/portal';
 	import { sites } from '$lib/stores/sites';
@@ -126,6 +126,9 @@
 		keyboard?: boolean;
 		// An inline player fills its parent's height instead of keeping 16:9.
 		fill?: boolean;
+		// Called with the element that plays, e.g. to log the watch; returns
+		// what to run when the player lets go of it.
+		onattach?: (video: HTMLVideoElement) => () => void;
 		onclose: () => void;
 	}
 
@@ -160,6 +163,7 @@
 		silenced,
 		keyboard = true,
 		fill = false,
+		onattach,
 		onclose
 	}: Props = $props();
 
@@ -944,7 +948,9 @@
 		if (!slot) return;
 		const current = untrack(() => adoptPlayback(slot));
 		const stopListening = listenToVideo(current.video);
+		const detach = untrack(() => onattach?.(current.video));
 		return () => {
+			detach?.();
 			stopListening();
 			releasePlayback(current, slot);
 		};

@@ -1,6 +1,7 @@
 <!--
-	Global top bar: logo on the left, the search in the middle. A search opens
-	home with ?q=, which asks every site and stores what they return. Phones get
+	Global top bar: logo on the left, the search (with "Who is this?") in the
+	middle, notifications on the right. A search opens home with ?q=, which
+	asks every site and stores what they return. Phones get
 	a slim bar floating over the page that slides away while scrolling down
 	(chromeHidden), with a back button on detail pages.
 -->
@@ -12,6 +13,8 @@
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { activeNavIndex } from '$lib/navigation';
+	import WhoIsThis from '$lib/components/WhoIsThis.svelte';
+	import NotificationBell from '$lib/components/NotificationBell.svelte';
 
 	let query = $state(page.url.searchParams.get('q') ?? '');
 
@@ -54,6 +57,7 @@
 			placeholder="Search the sites"
 			class="h-full min-w-0 flex-1 bg-transparent px-2.5 text-[15px] outline-none"
 		/>
+		<WhoIsThis />
 	</form>
 {/snippet}
 
@@ -79,6 +83,7 @@
 				</button>
 			{/if}
 			{@render searchBox()}
+			<NotificationBell />
 		</div>
 	</header>
 {:else}
@@ -93,7 +98,9 @@
 		<div class="mx-auto flex w-full max-w-2xl items-center">
 			{@render searchBox()}
 		</div>
-		<div class="w-56 shrink-0"></div>
+		<div class="flex w-56 shrink-0 justify-end">
+			<NotificationBell />
+		</div>
 	</header>
 {/if}
 

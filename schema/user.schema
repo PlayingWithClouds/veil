@@ -118,6 +118,9 @@ model Filter {
   19 fields: [FieldCondition]?
 
   20 sort: Sort?
+
+  /// Lowest frame height in pixels (720, 1080, 2160); narrows videos only.
+  21 minHeight: i32?
 }
 
 /// A named filter. Every saved filter can also be played as a smart playlist.

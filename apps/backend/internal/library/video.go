@@ -62,6 +62,7 @@ func (l *Library) videoFields(ctx context.Context, plugin string, scene *plugins
 	}
 	setAsset(fields, "cover", posterOf(scene))
 	setAsset(fields, "preview", scene.PreviewVideo)
+	setAssetList(fields, "previewFrames", scene.PreviewImages)
 	setFrameSize(fields, scene.Width, scene.Height)
 	if scene.VR != nil {
 		fields["vr"] = vrFormat(*scene.VR)

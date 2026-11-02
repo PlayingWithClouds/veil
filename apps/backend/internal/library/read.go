@@ -113,6 +113,36 @@ func (l *Library) CountMedia(ctx context.Context, kind schema.RecordKind, filter
 	return l.database.Int(ctx, `SELECT COUNT(*)`+mediaSelect(kind)+` WHERE `+strings.Join(conditions, " AND "), vars)
 }
 
+// TagCount is a tag and how many media of a filter's results carry it.
+type TagCount struct {
+	schema.Tag
+	Count int `json:"count"`
+}
+
+// TagCounts lists the tags most common among the videos or galleries
+// matching filter, most common first, at most limit. Tags the filter already
+// requires are left out: every result carries them.
+func (l *Library) TagCounts(ctx context.Context, kind schema.RecordKind, filter schema.Filter, limit int) ([]TagCount, error) {
+	conditions, vars := filterConditions(kind, filter)
+	conditions = append(conditions, `"tag"."deletedAt" IS NULL`,
+		`"tag"."id" NOT IN (SELECT value FROM json_each($requiredTagIds))`)
+	vars["requiredTagIds"] = nonNil(filter.IncludeTagIds)
+	vars["limit"], _ = pageBounds(limit, 0)
+	return db.QueryAs[TagCount](ctx, l.database, `SELECT "tag".*, COUNT(*) AS "count"`+mediaSelect(kind)+`
+		JOIN json_each("media"."tags") AS "credit"
+		JOIN "Tag" AS "tag" ON "tag"."id" = "credit".value
+		WHERE `+strings.Join(conditions, " AND ")+`
+		GROUP BY "tag"."id" ORDER BY "count" DESC, "tag"."name" LIMIT $limit`, vars)
+}
+
+// nonNil returns ids, or an empty list for nil, so it binds as a JSON array.
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
+}
+
 // mediaQuery builds the SELECT for a filtered page of videos or galleries.
 func mediaQuery(kind schema.RecordKind, query MediaQuery) (string, db.Vars) {
 	conditions, vars := filterConditions(kind, query.Filter)

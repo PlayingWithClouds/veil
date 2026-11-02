@@ -70,3 +70,4 @@ After writing a change, decide if it needs a test; put it beside the code (`*_te
 ## Tools
 
 Edit with Read/Write/Edit, not `sed`, `awk` or Python.
+Don't start work immediately. I prefer discussing what we could do first otherwise you need to revert your edits.

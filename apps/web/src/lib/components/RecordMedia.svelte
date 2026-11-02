@@ -9,14 +9,10 @@
 	import {
 		fetchVideos,
 		fetchGalleries,
-		videoCard,
 		type MediaFilter,
 		type VideoCardRow,
 		type GalleryCardRow
 	} from '$lib/library';
-	import { cacheUrl } from '$lib/img';
-	import { pluginForUrl } from '$lib/plugins';
-	import { sites } from '$lib/stores/sites';
 	import { videoUrl, galleryUrl } from '$lib/routes';
 
 	interface Props {
@@ -51,7 +47,7 @@
 			class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-6 max-md:grid-cols-1"
 		>
 			{#each videos as video (video.id)}
-				<SceneCard item={videoCard(video)} onclick={() => goto(videoUrl(video.id))} />
+				<SceneCard {video} onclick={() => goto(videoUrl(video.id))} />
 			{/each}
 		</div>
 	</section>
@@ -62,16 +58,7 @@
 		<h2 class="text-lg font-semibold">Galleries</h2>
 		<div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-x-4 gap-y-6">
 			{#each galleries as gallery (gallery.id)}
-				<GalleryCard
-					gallery={{
-						title: gallery.title,
-						coverUrl: cacheUrl(gallery.cover?.uri),
-						imageCount: gallery.imageCount,
-						studioName: gallery.studio?.name
-					}}
-					site={pluginForUrl(gallery.sources[0]?.url ?? '', $sites)}
-					onclick={() => goto(galleryUrl(gallery.id))}
-				/>
+				<GalleryCard {gallery} onclick={() => goto(galleryUrl(gallery.id))} />
 			{/each}
 		</div>
 	</section>

@@ -8,9 +8,8 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import { fetchGalleries, browse, type GalleryCardRow } from '$lib/library';
-	import { listers, pluginForUrl } from '$lib/plugins';
+	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
-	import { cacheUrl } from '$lib/img';
 	import { galleryUrl } from '$lib/routes';
 
 	const PAGE_SIZE = 40;
@@ -105,16 +104,7 @@
 
 	<div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-x-4 gap-y-6">
 		{#each galleries as gallery (gallery.id)}
-			<GalleryCard
-				gallery={{
-					title: gallery.title,
-					coverUrl: cacheUrl(gallery.cover?.uri),
-					imageCount: gallery.imageCount,
-					studioName: gallery.studio?.name
-				}}
-				site={pluginForUrl(gallery.sources[0]?.url ?? '', $sites)}
-				onclick={() => goto(galleryUrl(gallery.id))}
-			/>
+			<GalleryCard {gallery} onclick={() => goto(galleryUrl(gallery.id))} />
 		{/each}
 	</div>
 

@@ -55,6 +55,7 @@ export interface Query {
     similar: Match[]
     videos: Video[]
     videoCount: Scalars['Int']
+    videoTagCounts: TagCount[]
     video: (Video | null)
     galleries: Gallery[]
     galleryCount: Scalars['Int']
@@ -214,6 +215,7 @@ export interface Mutation {
     setBlocked: UserState
     setNotes: UserState
     recordEvent: Event
+    recordEvents: Scalars['Int']
     clearEvents: Scalars['Int']
     saveFilter: SavedFilter
     deleteSavedFilter: Scalars['Boolean']
@@ -428,6 +430,7 @@ export interface Video {
     vr: (VrFormat | null)
     preview: (Asset | null)
     trickplay: (Trickplay | null)
+    previewFrames: (Asset[] | null)
     gallery: (Gallery | null)
     sources: Source[]
     streams: Stream[]
@@ -703,6 +706,12 @@ export interface Revision {
 export type Actor = 'user' | 'plugin' | 'automation' | 'system'
 
 export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG'
+
+export interface TagCount {
+    tag: Tag
+    count: Scalars['Int']
+    __typename: 'TagCount'
+}
 
 export interface Listed {
     videos: Video[]
@@ -1224,6 +1233,7 @@ export interface Filter {
     favorite: (Scalars['Boolean'] | null)
     unwatched: (Scalars['Boolean'] | null)
     vr: (Scalars['Boolean'] | null)
+    minHeight: (Scalars['Int'] | null)
     fields: (FieldCondition[] | null)
     sort: (Sort | null)
     __typename: 'Filter'
@@ -1282,6 +1292,7 @@ export interface QueryGenqlSelection{
     similar?: (MatchGenqlSelection & { __args: {subject: RecordRefInput, kind: EmbeddingKind, model: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     videos?: (VideoGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     videoCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
+    videoTagCounts?: (TagCountGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null)} })
     video?: (VideoGenqlSelection & { __args: {id: Scalars['ID']} })
     galleries?: (GalleryGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     galleryCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
@@ -1442,6 +1453,7 @@ export interface MutationGenqlSelection{
     setBlocked?: (UserStateGenqlSelection & { __args: {subject: RecordRefInput, blocked: Scalars['Boolean']} })
     setNotes?: (UserStateGenqlSelection & { __args: {subject: RecordRefInput, notes: Scalars['String']} })
     recordEvent?: (EventGenqlSelection & { __args: {event: EventInput} })
+    recordEvents?: { __args: {events: EventInput[]} }
     clearEvents?: { __args: {kinds?: (EventKind[] | null)} } | boolean | number
     saveFilter?: (SavedFilterGenqlSelection & { __args: {id?: (Scalars['ID'] | null), name: Scalars['String'], filter: FilterInput, pinned?: (Scalars['Boolean'] | null)} })
     deleteSavedFilter?: { __args: {id: Scalars['ID']} }
@@ -1677,6 +1689,7 @@ export interface VideoGenqlSelection{
     vr?: VrFormatGenqlSelection
     preview?: AssetGenqlSelection
     trickplay?: TrickplayGenqlSelection
+    previewFrames?: AssetGenqlSelection
     gallery?: GalleryGenqlSelection
     sources?: SourceGenqlSelection
     streams?: StreamGenqlSelection
@@ -1978,6 +1991,13 @@ export interface RevisionGenqlSelection{
     after?: boolean | number
     writtenBy?: boolean | number
     actorName?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface TagCountGenqlSelection{
+    tag?: TagGenqlSelection
+    count?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2553,13 +2573,14 @@ export interface FilterGenqlSelection{
     favorite?: boolean | number
     unwatched?: boolean | number
     vr?: boolean | number
+    minHeight?: boolean | number
     fields?: FieldConditionGenqlSelection
     sort?: SortGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
 
-export interface FilterInput {kinds?: (MediaKind[] | null),text?: (Scalars['String'] | null),performerIds?: (Scalars['ID'][] | null),studioIds?: (Scalars['ID'][] | null),categoryIds?: (Scalars['ID'][] | null),includeTagIds?: (Scalars['ID'][] | null),excludeTagIds?: (Scalars['ID'][] | null),sources?: (Scalars['String'][] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),minDurationSeconds?: (Scalars['Int'] | null),maxDurationSeconds?: (Scalars['Int'] | null),minRating?: (Scalars['Float'] | null),status?: (MediaStatus[] | null),inLibrary?: (Scalars['Boolean'] | null),favorite?: (Scalars['Boolean'] | null),unwatched?: (Scalars['Boolean'] | null),vr?: (Scalars['Boolean'] | null),fields?: (FieldConditionInput[] | null),sort?: (SortInput | null)}
+export interface FilterInput {kinds?: (MediaKind[] | null),text?: (Scalars['String'] | null),performerIds?: (Scalars['ID'][] | null),studioIds?: (Scalars['ID'][] | null),categoryIds?: (Scalars['ID'][] | null),includeTagIds?: (Scalars['ID'][] | null),excludeTagIds?: (Scalars['ID'][] | null),sources?: (Scalars['String'][] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),minDurationSeconds?: (Scalars['Int'] | null),maxDurationSeconds?: (Scalars['Int'] | null),minRating?: (Scalars['Float'] | null),status?: (MediaStatus[] | null),inLibrary?: (Scalars['Boolean'] | null),favorite?: (Scalars['Boolean'] | null),unwatched?: (Scalars['Boolean'] | null),vr?: (Scalars['Boolean'] | null),minHeight?: (Scalars['Int'] | null),fields?: (FieldConditionInput[] | null),sort?: (SortInput | null)}
 
 export interface SavedFilterGenqlSelection{
     id?: boolean | number
@@ -2913,6 +2934,14 @@ export interface SavedFilterGenqlSelection{
     export const isRevision = (obj?: { __typename?: any } | null): obj is Revision => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isRevision"')
       return Revision_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const TagCount_possibleTypes: string[] = ['TagCount']
+    export const isTagCount = (obj?: { __typename?: any } | null): obj is TagCount => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isTagCount"')
+      return TagCount_possibleTypes.includes(obj.__typename)
     }
     
 

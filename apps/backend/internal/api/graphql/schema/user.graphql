@@ -30,6 +30,9 @@ extend type Mutation {
   # progress (data.position in seconds) moves the resume point; finish
   # clears it.
   recordEvent(event: EventInput!): Event!
+  # Logs several events at once, e.g. a batch of impressions. Returns how
+  # many were logged.
+  recordEvents(events: [EventInput!]!): Int!
   # Forgets every logged event of kinds (all when omitted), e.g. the search
   # history. View counts and resume points stay.
   clearEvents(kinds: [EventKind!]): Int!
@@ -216,6 +219,8 @@ type Filter {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  # Lowest frame height (shorter side) in pixels: 720, 1080, 2160.
+  minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
 }
@@ -239,6 +244,8 @@ input FilterInput {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  # Lowest frame height (shorter side) in pixels: 720, 1080, 2160.
+  minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
 }

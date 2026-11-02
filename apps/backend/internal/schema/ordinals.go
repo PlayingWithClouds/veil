@@ -624,5 +624,6 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"trickplay":       35,
 		"gallery":         36,
 		"recordedFrom":    37,
+		"previewFrames":   38,
 	},
 }

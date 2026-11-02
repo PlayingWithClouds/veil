@@ -274,6 +274,7 @@ export interface Filter {
   vr?: boolean;
   fields?: FieldCondition[];
   sort?: Sort;
+  minHeight?: number;
 }
 
 export interface SavedFilter extends Entity {
@@ -453,6 +454,7 @@ export interface Video extends Media {
   trickplay?: Trickplay;
   gallery?: string;
   recordedFrom?: string;
+  previewFrames?: Asset[];
 }
 
 export interface GroupItem extends Entity {

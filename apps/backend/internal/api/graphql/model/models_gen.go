@@ -295,6 +295,11 @@ type SubtitleInput struct {
 	Origin   *schema.SubtitleOrigin `json:"origin,omitempty"`
 }
 
+type TagCount struct {
+	Tag   *schema.Tag `json:"tag"`
+	Count int         `json:"count"`
+}
+
 type TagEdit struct {
 	Name    *string  `json:"name,omitempty"`
 	Aliases []string `json:"aliases,omitempty"`

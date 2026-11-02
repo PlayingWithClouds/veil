@@ -6,7 +6,6 @@
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import { fetchPerformers, fetchStudios, type MemberRow } from '$lib/library';
-	import { performerUrl, studioUrl } from '$lib/routes';
 
 	let { kind }: { kind: 'performer' | 'studio' } = $props();
 
@@ -52,20 +51,6 @@
 			loading = false;
 		}
 	}
-
-	/** "12 videos · 3 galleries", leaving out what's zero. */
-	function counts(member: MemberRow): string | null {
-		const parts: string[] = [];
-		if (member.videoCount > 0) parts.push(`${member.videoCount} videos`);
-		if (member.galleryCount > 0) parts.push(`${member.galleryCount} galleries`);
-		return parts.join(' · ') || null;
-	}
-
-	/** The member's page. */
-	function memberHref(id: string): string {
-		if (kind === 'performer') return performerUrl(id);
-		return studioUrl(id);
-	}
 </script>
 
 <svelte:head><title>{title} · Veil</title></svelte:head>
@@ -88,13 +73,7 @@
 		class:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]={kind === 'studio'}
 	>
 		{#each members as member (member.id)}
-			<MemberCard
-				{kind}
-				name={member.name}
-				imageUrl={member.image?.uri ?? null}
-				detail={counts(member)}
-				href={memberHref(member.id)}
-			/>
+			<MemberCard {kind} {member} />
 		{/each}
 	</div>
 

@@ -41,6 +41,7 @@ type Query {
   similar(subject: RecordRefInput!, kind: EmbeddingKind!, model: String!, limit: Int): [Match!]!
   videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
   videoCount(filter: FilterInput): Int!
+  videoTagCounts(filter: FilterInput, limit: Int): [TagCount!]!
   video(id: ID!): Video
   galleries(filter: FilterInput, limit: Int, offset: Int): [Gallery!]!
   galleryCount(filter: FilterInput): Int!
@@ -199,6 +200,7 @@ type Mutation {
   setBlocked(subject: RecordRefInput!, blocked: Boolean!): UserState!
   setNotes(subject: RecordRefInput!, notes: String!): UserState!
   recordEvent(event: EventInput!): Event!
+  recordEvents(events: [EventInput!]!): Int!
   clearEvents(kinds: [EventKind!]): Int!
   saveFilter(id: ID, name: String!, filter: FilterInput!, pinned: Boolean): SavedFilter!
   deleteSavedFilter(id: ID!): Boolean!
@@ -474,6 +476,7 @@ type Video {
   vr: VrFormat
   preview: Asset
   trickplay: Trickplay
+  previewFrames: [Asset!]
   gallery: Gallery
   sources: [Source!]!
   streams: [Stream!]!
@@ -830,6 +833,11 @@ enum ListKind {
   PERFORMER
   STUDIO
   TAG
+}
+
+type TagCount {
+  tag: Tag!
+  count: Int!
 }
 
 type Listed {
@@ -1495,6 +1503,7 @@ type Filter {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
 }
@@ -1518,6 +1527,7 @@ input FilterInput {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
 }

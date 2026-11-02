@@ -21,6 +21,67 @@ export function galleryUrl(id: string): string {
 	return `/galleries/${encodeURIComponent(id)}`;
 }
 
+/** The page of any record by kind; null for kinds without a page. */
+export function recordUrl(kind: string, id: string): string | null {
+	const builders: Record<string, (recordId: string) => string> = {
+		video: videoUrl,
+		gallery: galleryUrl,
+		performer: performerUrl,
+		studio: studioUrl,
+		tag: tagFilterUrl,
+		audio: audioUrl,
+		story: storyUrl,
+		post: postUrl,
+		group: groupUrl,
+		category: categoryUrl,
+		collection: collectionUrl,
+		camModel: camUrl
+	};
+	const build = builders[kind];
+	if (!build) return null;
+	return build(id);
+}
+
+/** One audio's page. */
+export function audioUrl(id: string): string {
+	return `/audio/${encodeURIComponent(id)}`;
+}
+
+/** One story's page. */
+export function storyUrl(id: string): string {
+	return `/stories/${encodeURIComponent(id)}`;
+}
+
+/** One creator post's page. */
+export function postUrl(id: string): string {
+	return `/posts/${encodeURIComponent(id)}`;
+}
+
+/** One site group's page (a movie, series, compilation). */
+export function groupUrl(id: string): string {
+	return `/groups/${encodeURIComponent(id)}`;
+}
+
+/** One category's page. */
+export function categoryUrl(id: string): string {
+	return `/categories/${encodeURIComponent(id)}`;
+}
+
+/** One collection's page. */
+export function collectionUrl(id: string): string {
+	return `/collections/${encodeURIComponent(id)}`;
+}
+
+/** One cam room's live stream. */
+export function camUrl(id: string): string {
+	return `/cams/${encodeURIComponent(id)}`;
+}
+
+/** Home with the video grid playing one saved filter. */
+export function savedFilterUrl(id: string): string {
+	return `/?${new URLSearchParams({ saved: id })}`;
+}
+
 /** Home with the video grid filtered to one tag. Tags have no page of their own. */
 export function tagFilterUrl(id: string): string {
 	return `/?${new URLSearchParams({ tag: id })}`;

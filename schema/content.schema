@@ -89,6 +89,10 @@ model Video extends Media {
 
   /// Set when this is a cam recording.
   37 recordedFrom: ref<CamModel>?
+
+  /// Evenly spaced stills from the site's listing, in order; cards scrub
+  /// through them on hover.
+  38 previewFrames: [Asset]?
 }
 
 /// A video's place in a site group.

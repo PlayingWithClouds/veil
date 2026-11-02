@@ -45,8 +45,8 @@ func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, d
 	if hasDuration(kind) {
 		addDurationConditions(builder, filter)
 	}
-	if kind == schema.RecordKindVideo && filter.Vr != nil {
-		builder.add(flagCondition(`"media"."vr" IS NOT NULL`, *filter.Vr))
+	if kind == schema.RecordKindVideo {
+		addVideoConditions(builder, filter)
 	}
 	for index, condition := range filter.Fields {
 		addFieldCondition(builder, index, condition)
@@ -175,6 +175,17 @@ func addDurationConditions(builder *conditionBuilder, filter schema.Filter) {
 	}
 }
 
+// addVideoConditions filters videos by VR and resolution. Resolution is the
+// frame's shorter side, so a portrait 1080×1920 video counts as 1080p.
+func addVideoConditions(builder *conditionBuilder, filter schema.Filter) {
+	if filter.Vr != nil {
+		builder.add(flagCondition(`"media"."vr" IS NOT NULL`, *filter.Vr))
+	}
+	if filter.MinHeight != nil {
+		builder.bind(`MIN("media"."width", "media"."height") >= $minHeight`, "minHeight", *filter.MinHeight)
+	}
+}
+
 // fieldOperators maps a custom field condition's operator to SQL.
 var fieldOperators = map[string]string{"eq": "=", "ne": "!=", "lt": "<", "gt": ">"}
 
@@ -208,6 +219,18 @@ func flagCondition(condition string, wanted bool) string {
 	return "NOT (" + condition + ")"
 }
 
+// mixedNewest orders newest added day first and, within a day, has the sites
+// take turns (each site's newest, then each site's second newest, …), so one
+// browse or search that stored a page of one site doesn't fill the list. A
+// record's site is the plugin of its first source.
+func mixedNewest(kind schema.RecordKind) string {
+	site := `(SELECT "plugin" FROM "Source" WHERE "Source"."subjectKind" = '` + string(kind) + `'
+		AND "Source"."subjectId" = "media"."id" ORDER BY "Source"."createdAt" LIMIT 1)`
+	day := `substr("media"."createdAt", 1, 10)`
+	return day + ` DESC, ROW_NUMBER() OVER (PARTITION BY ` + day + `, ` + site + ` ORDER BY "media"."createdAt" DESC, "media".rowid DESC),
+		"media"."createdAt" DESC, "media".rowid DESC`
+}
+
 // sortColumns maps a sort field to the expression it orders by.
 var sortColumns = map[schema.SortField]string{
 	schema.SortFieldRelevance:    `"media"."createdAt"`,
@@ -219,11 +242,12 @@ var sortColumns = map[schema.SortField]string{
 	schema.SortFieldLastViewedAt: `"state"."lastViewedAt"`,
 }
 
-// orderBy renders the ORDER BY of a filter's sort; newest added first by
-// default. Missing values sort last either way.
+// orderBy renders the ORDER BY of a filter's sort; by default newest added
+// first, with sites taking turns (see mixedNewest). Missing values sort last
+// either way.
 func orderBy(kind schema.RecordKind, sort *schema.Sort) string {
 	if sort == nil {
-		return `"media"."createdAt" DESC, "media".rowid DESC`
+		return mixedNewest(kind)
 	}
 	if sort.Field == schema.SortFieldRandom {
 		return `RANDOM()`

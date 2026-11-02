@@ -1,64 +1,49 @@
-<script lang="ts" module>
-	// The shared scene card for grids (history, library, subscriptions, tags, …).
-	// Same look as Home's cards: landscape banner with a hover preview (cycling
-	// frame strip + optional clip), duration badge bottom-right, a resume bar for
-	// partially-watched scenes, and a YouTube-style caption under it.
-
-	export interface SceneCardData {
-		// Local scene id, when the scene is already ingested. Enables the resume bar
-		// lookup; absent for fresh plugin results that haven't been scraped yet.
-		id?: string;
-		title: string;
-		bannerUrl: string | null;
-		previewImages?: string[];
-		previewVideo?: string | null;
-		// Source plugin icon, the caption avatar when there is no channel or site.
-		providerIconUrl?: string | null;
-		durationSeconds?: number | null;
-		// Channel/studio and its image, known once the scene's page was visited.
-		channelName?: string | null;
-		channelImageUrl?: string | null;
-		// The page the scene came from; its host names the site in the caption.
-		sourceUrl?: string | null;
-		// Release date, shown as "3 weeks ago".
-		date?: string | null;
-		// True when the card matched a tag filter via its studio/performer rather
-		// than its own tags; rendered as a muted corner badge.
-		inheritedTag?: boolean;
-		// True for feed entries that arrived since the last visit; shows a "New" badge.
-		isNew?: boolean;
-		// Short label in the top-left corner, like "Live 720p" on a recorded stream.
-		badge?: string | null;
-	}
-
-	// Formats a duration as a clock: "9:05", "12:34", "1:02:03".
-	export function formatClock(seconds: number | null | undefined): string | null {
-		if (!seconds || seconds <= 0) return null;
-		const total = Math.round(seconds);
-		const hours = Math.floor(total / 3600);
-		const minutes = Math.floor((total % 3600) / 60);
-		const secs = total % 60;
-		const mm = hours > 0 ? String(minutes).padStart(2, '0') : String(minutes);
-		const ss = String(secs).padStart(2, '0');
-		if (hours > 0) return `${hours}:${mm}:${ss}`;
-		return `${mm}:${ss}`;
-	}
-</script>
-
+<!--
+	The shared video card for grids and rows: landscape cover, quality top left,
+	the user's rating and favourite top right, duration bottom right, a resume
+	bar for partly watched videos and a Watched mark for finished ones. Hovering
+	scrubs through the preview frames; a video without frames plays its hover
+	clip instead. Under it a YouTube-style caption with the performers and a ⋮
+	menu (watchlist, favourite, not interested, block). The card hides when the
+	video, its studio or a performer is blocked or dismissed on this page.
+-->
 <script lang="ts">
+	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+	import StarIcon from 'phosphor-svelte/lib/StarIcon';
 	import CardCaption from './CardCaption.svelte';
-	import { formatRelativeTime } from '$lib/time';
+	import CardBadge from './CardBadge.svelte';
+	import CardMenu from './CardMenu.svelte';
+	import ScrubPreview from './ScrubPreview.svelte';
+	import dayjs from 'dayjs';
+	import { formatClock } from '$lib/time';
 	import { pluginForUrl } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
+	import { cacheUrl } from '$lib/img';
+	import type { VideoCardRow } from '$lib/library';
+	import { logChosen, type Shown } from '$lib/events';
+	import { impression } from '$lib/impression';
+	import { hiddenRecords, hiddenKey } from '$lib/userState';
+	import { qualityLabel, videoCardActions } from '$lib/videoCard';
 
 	interface Props {
-		item: SceneCardData;
+		video: VideoCardRow;
+		// A quiet last caption line, e.g. why the video was recommended.
+		note?: string | null;
+		// Where the card is shown; logs it as shown there and, on click, chosen.
+		shown?: Shown | null;
 		onclick: () => void;
 	}
 
-	let { item, onclick }: Props = $props();
+	let { video, note = null, shown = null, onclick }: Props = $props();
 
-	let frames = $derived(item.previewImages ?? []);
+	let subject = $derived({ kind: 'video', id: video.id } as const);
+
+	/** Logs the pick from its surface, then opens the video. */
+	function open() {
+		if (shown) logChosen(subject, shown);
+		onclick();
+	}
+
 	// Hover and focus tracked apart: the hover player covering the card takes
 	// focus from its button without the pointer leaving.
 	let hovered = $state(false);
@@ -70,130 +55,166 @@
 		hovered = true;
 	}
 	let previewing = $derived(hovered || focused);
-	let frameIndex = $state(0);
 
-	// Cycle preview frames only while hovered/focused; torn down when inactive.
-	$effect(() => {
-		if (!previewing || frames.length <= 1) {
-			frameIndex = 0;
-			return;
-		}
-		const timer = setInterval(() => {
-			frameIndex = (frameIndex + 1) % frames.length;
-		}, 700);
-		return () => clearInterval(timer);
-	});
-
-	let imageSrc = $derived(previewing && frames.length > 0 ? frames[frameIndex] : item.bannerUrl);
+	let coverSrc = $derived(cacheUrl(video.cover?.uri));
 	// The image URL that failed to load; the placeholder shows instead of its alt text.
 	let failedSrc = $state<string | null>(null);
-	let showVideo = $derived(previewing && Boolean(item.previewVideo));
+	let frames = $derived(video.previewFrames ?? []);
+	let canScrub = $derived(frames.length > 0 || video.trickplay !== null);
+	let previewSrc = $derived(video.preview?.uri ?? null);
+	let showVideo = $derived(previewing && previewSrc !== null && !canScrub);
 
-	let durationLabel = $derived(formatClock(item.durationSeconds));
+	// Favourite changed from the menu; the row itself is the parent's.
+	let favoriteOverride = $state<boolean | null>(null);
+	let favorite = $derived(favoriteOverride ?? video.userState.favorite);
+	let menuAnchor = $state<HTMLElement | null>(null);
+	let menuActions = $derived(
+		videoCardActions(
+			{ ...video, userState: { ...video.userState, favorite } },
+			{ onfavorite: (value) => (favoriteOverride = value) }
+		)
+	);
+
+	let hidden = $derived.by(() => {
+		const keys = $hiddenRecords;
+		if (keys.size === 0) return false;
+		if (keys.has(hiddenKey('video', video.id))) return true;
+		if (video.studio && keys.has(hiddenKey('studio', video.studio.id))) return true;
+		return video.performers.some((performer) => keys.has(hiddenKey('performer', performer.id)));
+	});
+
+	let durationLabel = $derived(formatClock(video.durationSeconds));
+	let quality = $derived(qualityLabel(video.width, video.height));
+	let rating = $derived(video.userState.rating);
 	let site = $derived.by(() => {
-		if (!item.sourceUrl) return null;
-		return pluginForUrl(item.sourceUrl, $sites);
+		const sourceUrl = video.sources[0]?.url;
+		if (!sourceUrl) return null;
+		return pluginForUrl(sourceUrl, $sites);
 	});
 	let ageLabel = $derived.by(() => {
-		if (!item.date) return null;
-		return formatRelativeTime(item.date);
+		if (!video.date) return null;
+		return dayjs(video.date).fromNow();
+	});
+	// How far the user got, 0..1; null when not started or finished.
+	let resume = $derived.by(() => {
+		const position = video.userState.progress;
+		if (!position || !video.durationSeconds) return null;
+		return Math.min(position / video.durationSeconds, 1);
+	});
+	let watched = $derived(video.userState.viewCount > 0 && resume === null);
+	// With performers on their own line, the studio joins the site line.
+	let byline = $derived.by(() => {
+		if (video.performers.length > 0) return null;
+		return video.studio?.name ?? null;
+	});
+	let siteName = $derived.by(() => {
+		if (video.performers.length === 0 || !video.studio) return null;
+		const siteLabel = site?.displayName ?? site?.name;
+		if (!siteLabel) return video.studio.name;
+		return `${video.studio.name} · ${siteLabel}`;
 	});
 </script>
 
-<div class="group flex w-full flex-col gap-3">
-	<div
-		class="relative"
-		role="presentation"
-		onpointerenter={onPointerEnter}
-		onpointerleave={() => (hovered = false)}
-	>
-		<button
-			type="button"
-			{onclick}
-			onfocus={() => (focused = true)}
-			onblur={() => (focused = false)}
-			class="tv-card relative block aspect-video w-full overflow-hidden ring-1 ring-white/5 transition-transform duration-200 group-hover:scale-[1.02] group-hover:shadow-xl focus:outline-none"
+{#if !hidden}
+	<div class="group flex w-full flex-col gap-3" use:impression={{ subject, shown }}>
+		<div
+			class="relative"
+			role="presentation"
+			onpointerenter={onPointerEnter}
+			onpointerleave={() => (hovered = false)}
 		>
-			{#if imageSrc && imageSrc !== failedSrc}
-				<img
-					src={imageSrc}
-					alt={item.title}
-					loading="lazy"
-					onerror={() => (failedSrc = imageSrc)}
-					class="h-full w-full object-cover"
-				/>
-			{:else}
-				<div class="flex h-full w-full items-center justify-center">
-					<span class="text-5xl opacity-10">🔞</span>
-				</div>
-			{/if}
+			<button
+				type="button"
+				onclick={open}
+				onfocus={() => (focused = true)}
+				onblur={() => (focused = false)}
+				class="tv-card relative block aspect-video w-full overflow-hidden ring-1 ring-white/5 transition-transform duration-200 group-hover:scale-[1.02] group-hover:shadow-xl focus:outline-none"
+			>
+				{#if coverSrc && coverSrc !== failedSrc}
+					<img
+						src={coverSrc}
+						alt={video.title}
+						loading="lazy"
+						onerror={() => (failedSrc = coverSrc)}
+						class="h-full w-full object-cover"
+					/>
+				{:else}
+					<div class="flex h-full w-full items-center justify-center">
+						<span class="text-5xl opacity-10">🔞</span>
+					</div>
+				{/if}
 
-			{#if showVideo}
-				<!-- Preview clip overlays the frame strip when the source provides one. -->
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<video
-					src={item.previewVideo ?? undefined}
-					class="absolute inset-0 h-full w-full object-cover"
-					autoplay
-					muted
-					loop
-					playsinline
-				></video>
-			{/if}
+				{#if showVideo}
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video
+						src={previewSrc}
+						class="absolute inset-0 h-full w-full object-cover"
+						autoplay
+						muted
+						loop
+						playsinline
+					></video>
+				{/if}
 
-			{#if item.inheritedTag}
-				<span
-					class="absolute top-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/60"
-					title="Matched via studio or performer tag"
-				>
-					via studio/performer
-				</span>
-			{/if}
+				{#if quality}
+					<CardBadge corner="top-left">{quality}</CardBadge>
+				{/if}
+				{#if rating !== null || favorite}
+					<CardBadge corner="top-right">
+						{#if favorite}
+							<HeartIcon size={12} weight="fill" class="text-error" />
+						{/if}
+						{#if rating !== null}
+							<StarIcon size={12} weight="fill" class="text-warning" />
+							{Math.round(rating * 10) / 10}
+						{/if}
+					</CardBadge>
+				{/if}
+				{#if watched}
+					<CardBadge corner="bottom-left">Watched</CardBadge>
+				{/if}
+				{#if durationLabel}
+					<CardBadge corner="bottom-right">{durationLabel}</CardBadge>
+				{/if}
 
-			{#if item.badge}
-				<span
-					class="absolute top-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-				>
-					{item.badge}
-				</span>
-			{/if}
+				{#if resume && !previewing}
+					<span class="absolute inset-x-0 bottom-0 h-1 bg-white/25">
+						<span class="bg-primary block h-full" style:width="{resume * 100}%"></span>
+					</span>
+				{/if}
 
-			{#if item.isNew}
-				<span
-					class="bg-primary text-primary-content absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-				>
-					New
-				</span>
-			{/if}
+				{#if canScrub}
+					<ScrubPreview
+						{frames}
+						trickplay={video.trickplay}
+						durationSeconds={video.durationSeconds}
+					/>
+				{/if}
+			</button>
+		</div>
 
-			{#if durationLabel}
-				<span
-					class="absolute right-1.5 bottom-1.5 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums"
-				>
-					{durationLabel}
-				</span>
-			{/if}
-
-			<!-- Frame-position ticks, shown while previewing a multi-frame strip. -->
-			{#if previewing && frames.length > 1 && !showVideo}
-				<div class="absolute inset-x-2 bottom-2 flex gap-1">
-					{#each frames as _, index (index)}
-						<span
-							class="h-0.5 flex-1 rounded-full bg-white/30"
-							class:bg-white={index === frameIndex}
-						></span>
-					{/each}
-				</div>
-			{/if}
-		</button>
+		<CardCaption
+			title={video.title}
+			{byline}
+			performers={video.performers}
+			avatarUrl={cacheUrl(video.studio?.image?.uri)}
+			{site}
+			{siteName}
+			detail={ageLabel}
+			{note}
+			onclick={open}
+			onmore={(button) => (menuAnchor = button)}
+		/>
 	</div>
 
-	<CardCaption
-		title={item.title}
-		byline={item.channelName}
-		avatarUrl={item.channelImageUrl || item.providerIconUrl}
-		{site}
-		detail={ageLabel}
-		{onclick}
-	/>
-</div>
+	{#if menuAnchor}
+		<CardMenu
+			anchor={menuAnchor}
+			title={video.title}
+			subtitle={video.studio?.name}
+			imageUrl={coverSrc}
+			actions={menuActions}
+			onclose={() => (menuAnchor = null)}
+		/>
+	{/if}
+{/if}

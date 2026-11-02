@@ -4,12 +4,20 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
+	import UndoToast from '$lib/components/UndoToast.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { isNativeApp } from '$lib/server';
 	import { listenToBackButton } from '$lib/native';
+	import dayjs from 'dayjs';
+	import duration from 'dayjs/plugin/duration';
+	import relativeTime from 'dayjs/plugin/relativeTime';
 
 	let { children } = $props();
+
+	// Registered once on the shared instance; every import of dayjs has them.
+	dayjs.extend(duration);
+	dayjs.extend(relativeTime);
 
 	afterNavigate(() => {
 		chromeHidden.set(false);
@@ -71,6 +79,7 @@
 	{#if $isCompact}
 		<BottomNav />
 	{/if}
+	<UndoToast />
 </div>
 
 <style>

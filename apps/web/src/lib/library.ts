@@ -1,8 +1,6 @@
 import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
-import { cacheUrl } from '$lib/img';
 import { backendUrl } from '$lib/server';
-import type { SceneCardData } from '$lib/components/SceneCard.svelte';
 import type { ListKind } from '$lib/plugins';
 
 /** Narrows a list of videos or galleries. Empty fields don't filter. */
@@ -27,8 +25,31 @@ export interface VideoCardRow {
 	durationSeconds: number | null;
 	cover: { uri: string } | null;
 	preview: { uri: string } | null;
+	// Stills the card scrubs through on hover, in order.
+	previewFrames: { uri: string }[] | null;
+	trickplay: Trickplay | null;
+	width: number | null;
+	height: number | null;
 	studio: (NamedRef & { image: { uri: string } | null }) | null;
+	performers: NamedRef[];
 	sources: { url: string }[];
+	// progress is the resume point in seconds; rating is 0..10.
+	userState: {
+		progress: number | null;
+		rating: number | null;
+		favorite: boolean;
+		viewCount: number;
+	};
+}
+
+/** A video's scrubbing thumbnails: tiles of frames packed into sprite sheets. */
+export interface Trickplay {
+	sheets: { uri: string }[];
+	columns: number;
+	rows: number;
+	tileWidth: number;
+	tileHeight: number;
+	intervalSeconds: number;
 }
 
 /** A gallery as a card shows it. */
@@ -112,18 +133,31 @@ export interface Listed {
 	studios: MemberRow[];
 }
 
-const VIDEO_CARD = {
+export const VIDEO_CARD = {
 	id: true,
 	title: true,
 	date: true,
 	durationSeconds: true,
 	cover: { uri: true },
 	preview: { uri: true },
+	previewFrames: { uri: true },
+	trickplay: {
+		sheets: { uri: true },
+		columns: true,
+		rows: true,
+		tileWidth: true,
+		tileHeight: true,
+		intervalSeconds: true
+	},
+	width: true,
+	height: true,
 	studio: { id: true, name: true, image: { uri: true } },
-	sources: { url: true }
+	performers: { id: true, name: true },
+	sources: { url: true },
+	userState: { progress: true, rating: true, favorite: true, viewCount: true }
 } as const;
 
-const GALLERY_CARD = {
+export const GALLERY_CARD = {
 	id: true,
 	title: true,
 	date: true,
@@ -133,7 +167,7 @@ const GALLERY_CARD = {
 	sources: { url: true }
 } as const;
 
-const MEMBER = {
+export const MEMBER = {
 	id: true,
 	name: true,
 	image: { uri: true },
@@ -180,6 +214,18 @@ export async function fetchVideos(
 	return data.videos;
 }
 
+/** Videos matching a full API filter, e.g. a saved filter's. */
+export async function fetchVideosMatching(
+	filter: FilterInput,
+	limit = 40,
+	offset = 0
+): Promise<VideoCardRow[]> {
+	const data = await gqlClient.query({
+		videos: { __args: { filter, limit, offset }, ...VIDEO_CARD }
+	});
+	return data.videos;
+}
+
 /** Newest galleries matching filter. */
 export async function fetchGalleries(
 	filter: MediaFilter = {},
@@ -204,12 +250,6 @@ export async function fetchPerformers(text = '', limit = 60, offset = 0): Promis
 export async function fetchStudios(text = '', limit = 60, offset = 0): Promise<MemberRow[]> {
 	const data = await gqlClient.query({ studios: { __args: { text, limit, offset }, ...MEMBER } });
 	return data.studios;
-}
-
-/** One tag's name, for the filter chip on home. */
-export async function fetchTagName(id: string): Promise<string | null> {
-	const data = await gqlClient.query({ tag: { __args: { id }, name: true } });
-	return data.tag?.name ?? null;
 }
 
 /**
@@ -319,19 +359,4 @@ export async function play(url: string): Promise<{ url: string; mimeType: string
 	const data = await gqlClient.query({ play: { __args: { url }, url: true, mimeType: true } });
 	if (!data.play) return null;
 	return { url: backendUrl(data.play.url), mimeType: data.play.mimeType };
-}
-
-/** The card data of a video. */
-export function videoCard(video: VideoCardRow): SceneCardData {
-	return {
-		id: video.id,
-		title: video.title,
-		bannerUrl: cacheUrl(video.cover?.uri),
-		previewVideo: video.preview?.uri ?? null,
-		durationSeconds: video.durationSeconds,
-		channelName: video.studio?.name ?? null,
-		channelImageUrl: cacheUrl(video.studio?.image?.uri),
-		sourceUrl: video.sources[0]?.url ?? null,
-		date: video.date
-	};
 }

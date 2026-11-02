@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
@@ -12,6 +13,21 @@ import (
 	"github.com/playingwithclouds/veil/internal/schema"
 	"github.com/playingwithclouds/veil/internal/user"
 )
+
+// newEventOf turns an event input into the event to log; its data must be
+// an object.
+func newEventOf(event model.EventInput) (user.NewEvent, error) {
+	data, isObject := event.Data.(map[string]any)
+	if event.Data != nil && !isObject {
+		return user.NewEvent{}, fmt.Errorf("an event's data is an object")
+	}
+	recorded := user.NewEvent{Kind: event.Kind, Data: data, SessionID: event.SessionID}
+	if event.Subject != nil {
+		recorded.SubjectKind = &event.Subject.Kind
+		recorded.SubjectID = &event.Subject.Id
+	}
+	return recorded, nil
+}
 
 // pointers turns a slice of values into the slice of pointers gqlgen wants.
 func pointers[T any](values []T) []*T {
@@ -75,6 +91,15 @@ func mediaQuery(filter *schema.Filter, limit, offset *int) library.MediaQuery {
 		query.Filter = *filter
 	}
 	return query
+}
+
+// tagCounts maps the library's tag counts to the API's.
+func tagCounts(counts []library.TagCount) []*model.TagCount {
+	result := make([]*model.TagCount, 0, len(counts))
+	for index := range counts {
+		result = append(result, &model.TagCount{Tag: &counts[index].Tag, Count: counts[index].Count})
+	}
+	return result
 }
 
 // filterOrEmpty returns the filter, or one that matches everything.

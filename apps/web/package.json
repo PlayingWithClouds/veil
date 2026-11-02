@@ -47,6 +47,7 @@
 		"@capacitor/screen-orientation": "^8.0.1",
 		"@genql/runtime": "^2.10.0",
 		"@playingwithclouds/veil-sdk": "workspace:*",
+		"dayjs": "^1.11.23",
 		"graphql-ws": "^6.0.8",
 		"hls.js": "^1.6.16",
 		"phosphor-svelte": "^3.1.0"

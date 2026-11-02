@@ -395,6 +395,8 @@ type Filter struct {
 	Vr        *bool            `json:"vr,omitempty"`
 	Fields    []FieldCondition `json:"fields,omitempty"`
 	Sort      *Sort            `json:"sort,omitempty"`
+	// Lowest frame height in pixels (720, 1080, 2160); narrows videos only.
+	MinHeight *int32 `json:"minHeight,omitempty"`
 }
 
 // A named filter. Every saved filter can also be played as a smart playlist.
@@ -634,6 +636,9 @@ type Video struct {
 	Gallery *string `json:"gallery,omitempty"`
 	// Set when this is a cam recording.
 	RecordedFrom *string `json:"recordedFrom,omitempty"`
+	// Evenly spaced stills from the site's listing, in order; cards scrub
+	// through them on hover.
+	PreviewFrames []Asset `json:"previewFrames,omitempty"`
 }
 
 // A video's place in a site group.

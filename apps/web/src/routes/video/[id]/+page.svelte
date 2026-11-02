@@ -10,13 +10,15 @@
 	import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOutIcon';
 	import VideoPlayer, { type PlayerSource } from '$lib/components/VideoPlayer.svelte';
 	import TagChips from '$lib/components/TagChips.svelte';
-	import { formatClock } from '$lib/components/SceneCard.svelte';
+	import { formatClock } from '$lib/time';
 	import { openVideo, play, type VideoDetail, type StreamRow } from '$lib/library';
 	import { siteDisplayName } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl, studioUrl } from '$lib/routes';
 	import { isCompact } from '$lib/stores/viewport';
+	import { logEvent } from '$lib/events';
+	import { trackWatch } from '$lib/watchLog';
 
 	/** What the player is loading. */
 	interface ActiveStream {
@@ -54,6 +56,7 @@
 		loading = true;
 		try {
 			video = await openVideo(videoId);
+			if (video) logEvent({ kind: 'view', subject: { kind: 'video', id: video.id } });
 			if (video && video.streams.length > 0) await start(video.streams[0]);
 		} catch (failure) {
 			error = String(failure);
@@ -108,6 +111,8 @@
 			inline
 			square={$isCompact}
 			{poster}
+			startPosition={video.userState.progress ?? 0}
+			onattach={(element) => trackWatch(element, id)}
 			onclose={() => (active = null)}
 		/>
 	{:else}

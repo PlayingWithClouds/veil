@@ -342,6 +342,7 @@ type ComplexityRoot struct {
 		Kinds              func(childComplexity int) int
 		MaxDurationSeconds func(childComplexity int) int
 		MinDurationSeconds func(childComplexity int) int
+		MinHeight          func(childComplexity int) int
 		MinRating          func(childComplexity int) int
 		PerformerIds       func(childComplexity int) int
 		Sort               func(childComplexity int) int
@@ -565,6 +566,7 @@ type ComplexityRoot struct {
 		Rate                      func(childComplexity int, subject schema.RecordRef, rating *float64) int
 		ReadChapter               func(childComplexity int, storyID string, position int) int
 		RecordEvent               func(childComplexity int, event model.EventInput) int
+		RecordEvents              func(childComplexity int, events []*model.EventInput) int
 		RefreshSources            func(childComplexity int, subject schema.RecordRef) int
 		RemoveEmbedding           func(childComplexity int, id string) int
 		RemoveFromCollection      func(childComplexity int, collectionID string, subjects []*schema.RecordRef) int
@@ -874,6 +876,7 @@ type ComplexityRoot struct {
 		UserStates              func(childComplexity int, filter *model.UserStateFilter, limit *int, offset *int) int
 		Video                   func(childComplexity int, id string) int
 		VideoCount              func(childComplexity int, filter *schema.Filter) int
+		VideoTagCounts          func(childComplexity int, filter *schema.Filter, limit *int) int
 		Videos                  func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 	}
 
@@ -1058,6 +1061,11 @@ type ComplexityRoot struct {
 		VideoCount   func(childComplexity int) int
 	}
 
+	TagCount struct {
+		Count func(childComplexity int) int
+		Tag   func(childComplexity int) int
+	}
+
 	Taste struct {
 		Performers  func(childComplexity int) int
 		SignalCount func(childComplexity int) int
@@ -1138,6 +1146,7 @@ type ComplexityRoot struct {
 		OCount          func(childComplexity int) int
 		Performers      func(childComplexity int) int
 		Preview         func(childComplexity int) int
+		PreviewFrames   func(childComplexity int) int
 		RecordedFrom    func(childComplexity int) int
 		Related         func(childComplexity int, limit *int) int
 		Revisions       func(childComplexity int, limit *int, offset *int) int
@@ -1392,6 +1401,7 @@ type MutationResolver interface {
 	SetBlocked(ctx context.Context, subject schema.RecordRef, blocked bool) (*schema.UserState, error)
 	SetNotes(ctx context.Context, subject schema.RecordRef, notes string) (*schema.UserState, error)
 	RecordEvent(ctx context.Context, event model.EventInput) (*schema.Event, error)
+	RecordEvents(ctx context.Context, events []*model.EventInput) (int, error)
 	ClearEvents(ctx context.Context, kinds []schema.EventKind) (int, error)
 	SaveFilter(ctx context.Context, id *string, name string, filter schema.Filter, pinned *bool) (*schema.SavedFilter, error)
 	DeleteSavedFilter(ctx context.Context, id string) (bool, error)
@@ -1469,6 +1479,7 @@ type QueryResolver interface {
 	Similar(ctx context.Context, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) ([]*schema.Match, error)
 	Videos(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Video, error)
 	VideoCount(ctx context.Context, filter *schema.Filter) (int, error)
+	VideoTagCounts(ctx context.Context, filter *schema.Filter, limit *int) ([]*model.TagCount, error)
 	Video(ctx context.Context, id string) (*schema.Video, error)
 	Galleries(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Gallery, error)
 	GalleryCount(ctx context.Context, filter *schema.Filter) (int, error)
@@ -2756,6 +2767,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Filter.MinDurationSeconds(childComplexity), true
+	case "Filter.minHeight":
+		if e.ComplexityRoot.Filter.MinHeight == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Filter.MinHeight(childComplexity), true
 	case "Filter.minRating":
 		if e.ComplexityRoot.Filter.MinRating == nil {
 			break
@@ -4176,6 +4193,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordEvent(childComplexity, args["event"].(model.EventInput)), true
+	case "Mutation.recordEvents":
+		if e.ComplexityRoot.Mutation.RecordEvents == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordEvents_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordEvents(childComplexity, args["events"].([]*model.EventInput)), true
 	case "Mutation.refreshSources":
 		if e.ComplexityRoot.Mutation.RefreshSources == nil {
 			break
@@ -6317,6 +6345,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.VideoCount(childComplexity, args["filter"].(*schema.Filter)), true
+	case "Query.videoTagCounts":
+		if e.ComplexityRoot.Query.VideoTagCounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_videoTagCounts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.VideoTagCounts(childComplexity, args["filter"].(*schema.Filter), args["limit"].(*int)), true
 	case "Query.videos":
 		if e.ComplexityRoot.Query.Videos == nil {
 			break
@@ -7107,6 +7146,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Tag.VideoCount(childComplexity), true
 
+	case "TagCount.count":
+		if e.ComplexityRoot.TagCount.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TagCount.Count(childComplexity), true
+	case "TagCount.tag":
+		if e.ComplexityRoot.TagCount.Tag == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TagCount.Tag(childComplexity), true
+
 	case "Taste.performers":
 		if e.ComplexityRoot.Taste.Performers == nil {
 			break
@@ -7462,6 +7514,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Video.Preview(childComplexity), true
+	case "Video.previewFrames":
+		if e.ComplexityRoot.Video.PreviewFrames == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Video.PreviewFrames(childComplexity), true
 	case "Video.recordedFrom":
 		if e.ComplexityRoot.Video.RecordedFrom == nil {
 			break
@@ -8490,6 +8548,9 @@ extend type Query {
   # in the filter's order; newest added first by default.
   videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
   videoCount(filter: FilterInput): Int!
+  # The tags most common among the videos matching filter, most common
+  # first; tags the filter already requires are left out.
+  videoTagCounts(filter: FilterInput, limit: Int): [TagCount!]!
   video(id: ID!): Video
   galleries(filter: FilterInput, limit: Int, offset: Int): [Gallery!]!
   galleryCount(filter: FilterInput): Int!
@@ -8612,6 +8673,11 @@ enum ListKind {
 }
 
 # What a browse or search stored, by kind.
+type TagCount {
+  tag: Tag!
+  count: Int!
+}
+
 type Listed {
   videos: [Video!]!
   galleries: [Gallery!]!
@@ -8650,6 +8716,8 @@ type Video {
   vr: VrFormat
   preview: Asset
   trickplay: Trickplay
+  # Evenly spaced stills from the site's listing, in order.
+  previewFrames: [Asset!]
   gallery: Gallery
   sources: [Source!]!
   # Playable streams, fastest measured first.
@@ -9460,6 +9528,9 @@ extend type Mutation {
   # progress (data.position in seconds) moves the resume point; finish
   # clears it.
   recordEvent(event: EventInput!): Event!
+  # Logs several events at once, e.g. a batch of impressions. Returns how
+  # many were logged.
+  recordEvents(events: [EventInput!]!): Int!
   # Forgets every logged event of kinds (all when omitted), e.g. the search
   # history. View counts and resume points stay.
   clearEvents(kinds: [EventKind!]): Int!
@@ -9646,6 +9717,8 @@ type Filter {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  # Lowest frame height (shorter side) in pixels: 720, 1080, 2160.
+  minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
 }
@@ -9669,6 +9742,8 @@ input FilterInput {
   favorite: Boolean
   unwatched: Boolean
   vr: Boolean
+  # Lowest frame height (shorter side) in pixels: 720, 1080, 2160.
+  minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
 }
@@ -10232,6 +10307,8 @@ func (ec *executionContext) childFields_Filter(ctx context.Context, field graphq
 		return ec.fieldContext_Filter_unwatched(ctx, field)
 	case "vr":
 		return ec.fieldContext_Filter_vr(ctx, field)
+	case "minHeight":
+		return ec.fieldContext_Filter_minHeight(ctx, field)
 	case "fields":
 		return ec.fieldContext_Filter_fields(ctx, field)
 	case "sort":
@@ -11230,6 +11307,16 @@ func (ec *executionContext) childFields_Tag(ctx context.Context, field graphql.C
 	return nil, fmt.Errorf("no field named %q was found under type Tag", field.Name)
 }
 
+func (ec *executionContext) childFields_TagCount(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "tag":
+		return ec.fieldContext_TagCount_tag(ctx, field)
+	case "count":
+		return ec.fieldContext_TagCount_count(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TagCount", field.Name)
+}
+
 func (ec *executionContext) childFields_Taste(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "signalCount":
@@ -11388,6 +11475,8 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 		return ec.fieldContext_Video_preview(ctx, field)
 	case "trickplay":
 		return ec.fieldContext_Video_trickplay(ctx, field)
+	case "previewFrames":
+		return ec.fieldContext_Video_previewFrames(ctx, field)
 	case "gallery":
 		return ec.fieldContext_Video_gallery(ctx, field)
 	case "sources":
@@ -12973,6 +13062,20 @@ func (ec *executionContext) field_Mutation_recordEvent_args(ctx context.Context,
 		return nil, err
 	}
 	args["event"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_recordEvents_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "events",
+		func(ctx context.Context, v any) ([]*model.EventInput, error) {
+			return ec.unmarshalNEventInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐEventInputᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["events"] = arg0
 	return args, nil
 }
 
@@ -15367,6 +15470,28 @@ func (ec *executionContext) field_Query_videoCount_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["filter"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_videoTagCounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter",
+		func(ctx context.Context, v any) (*schema.Filter, error) {
+			return ec.unmarshalOFilterInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -20405,6 +20530,29 @@ func (ec *executionContext) _Filter_vr(ctx context.Context, field graphql.Collec
 }
 func (ec *executionContext) fieldContext_Filter_vr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Filter", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Filter_minHeight(ctx context.Context, field graphql.CollectedField, obj *schema.Filter) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Filter_minHeight(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MinHeight, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int32) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint32(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Filter_minHeight(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Filter", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Filter_fields(ctx context.Context, field graphql.CollectedField, obj *schema.Filter) (ret graphql.Marshaler) {
@@ -27989,6 +28137,50 @@ func (ec *executionContext) fieldContext_Mutation_recordEvent(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_recordEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordEvents(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordEvents(ctx, fc.Args["events"].([]*model.EventInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordEvents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordEvents_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_clearEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32872,6 +33064,50 @@ func (ec *executionContext) fieldContext_Query_videoCount(ctx context.Context, f
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_videoCount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_videoTagCounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_videoTagCounts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().VideoTagCounts(ctx, fc.Args["filter"].(*schema.Filter), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TagCount) graphql.Marshaler {
+			return ec.marshalNTagCount2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCountᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_videoTagCounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TagCount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_videoTagCounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38067,6 +38303,61 @@ func (ec *executionContext) fieldContext_Tag_revisions(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _TagCount_tag(ctx context.Context, field graphql.CollectedField, obj *model.TagCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TagCount_tag(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tag, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Tag) graphql.Marshaler {
+			return ec.marshalNTag2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐTag(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TagCount_tag(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TagCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Tag(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TagCount_count(ctx context.Context, field graphql.CollectedField, obj *model.TagCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TagCount_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TagCount_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TagCount", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _Taste_signalCount(ctx context.Context, field graphql.CollectedField, obj *recommend.Taste) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39499,6 +39790,38 @@ func (ec *executionContext) fieldContext_Video_trickplay(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Trickplay(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_previewFrames(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Video_previewFrames(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PreviewFrames, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []schema.Asset) graphql.Marshaler {
+			return ec.marshalOAsset2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAssetᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Video_previewFrames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
 		},
 	}
 	return fc, nil
@@ -41823,7 +42146,7 @@ func (ec *executionContext) unmarshalInputFilterInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"kinds", "text", "performerIds", "studioIds", "categoryIds", "includeTagIds", "excludeTagIds", "sources", "dateFrom", "dateTo", "minDurationSeconds", "maxDurationSeconds", "minRating", "status", "inLibrary", "favorite", "unwatched", "vr", "fields", "sort"}
+	fieldsInOrder := [...]string{"kinds", "text", "performerIds", "studioIds", "categoryIds", "includeTagIds", "excludeTagIds", "sources", "dateFrom", "dateTo", "minDurationSeconds", "maxDurationSeconds", "minRating", "status", "inLibrary", "favorite", "unwatched", "vr", "minHeight", "fields", "sort"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -41956,6 +42279,13 @@ func (ec *executionContext) unmarshalInputFilterInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.Vr = data
+		case "minHeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minHeight"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinHeight = data
 		case "fields":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
 			data, err := ec.unmarshalOFieldConditionInput2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFieldConditionᚄ(ctx, v)
@@ -45837,6 +46167,8 @@ func (ec *executionContext) _Filter(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Filter_unwatched(ctx, field, obj)
 		case "vr":
 			out.Values[i] = ec._Filter_vr(ctx, field, obj)
+		case "minHeight":
+			out.Values[i] = ec._Filter_minHeight(ctx, field, obj)
 		case "fields":
 			out.Values[i] = ec._Filter_fields(ctx, field, obj)
 		case "sort":
@@ -48353,6 +48685,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "recordEvent":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordEvent(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordEvents":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordEvents(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -50883,6 +51222,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_videoCount(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "videoTagCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_videoTagCounts(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -53844,6 +54205,50 @@ func (ec *executionContext) _Tag(ctx context.Context, sel ast.SelectionSet, obj 
 	return out
 }
 
+var tagCountImplementors = []string{"TagCount"}
+
+func (ec *executionContext) _TagCount(ctx context.Context, sel ast.SelectionSet, obj *model.TagCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tagCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TagCount")
+		case "tag":
+			out.Values[i] = ec._TagCount_tag(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._TagCount_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var tasteImplementors = []string{"Taste"}
 
 func (ec *executionContext) _Taste(ctx context.Context, sel ast.SelectionSet, obj *recommend.Taste) graphql.Marshaler {
@@ -54532,6 +54937,8 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Video_preview(ctx, field, obj)
 		case "trickplay":
 			out.Values[i] = ec._Video_trickplay(ctx, field, obj)
+		case "previewFrames":
+			out.Values[i] = ec._Video_previewFrames(ctx, field, obj)
 		case "gallery":
 			field := field
 
@@ -56221,6 +56628,26 @@ func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋplayingwithcloudsᚋ
 func (ec *executionContext) unmarshalNEventInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐEventInput(ctx context.Context, v any) (model.EventInput, error) {
 	res, err := ec.unmarshalInputEventInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNEventInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐEventInputᚄ(ctx context.Context, v any) ([]*model.EventInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.EventInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNEventInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐEventInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNEventInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐEventInput(ctx context.Context, v any) (*model.EventInput, error) {
+	res, err := ec.unmarshalInputEventInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNEventKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐEventKind(ctx context.Context, v any) (schema.EventKind, error) {
@@ -58242,6 +58669,32 @@ func (ec *executionContext) marshalNTag2ᚖgithubᚗcomᚋplayingwithcloudsᚋve
 	return ec._Tag(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTagCount2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TagCount) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTagCount2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCount(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTagCount2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCount(ctx context.Context, sel ast.SelectionSet, v *model.TagCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TagCount(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNTagEdit2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagEdit(ctx context.Context, v any) (model.TagEdit, error) {
 	res, err := ec.unmarshalInputTagEdit(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -58583,6 +59036,25 @@ func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋplayingwithclouds�
 		return graphql.Null
 	}
 	return ec._Account(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAsset2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAssetᚄ(ctx context.Context, sel ast.SelectionSet, v []schema.Asset) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAsset2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAsset(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOAsset2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAsset(ctx context.Context, sel ast.SelectionSet, v *schema.Asset) graphql.Marshaler {

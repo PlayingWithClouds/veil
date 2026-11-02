@@ -7,6 +7,9 @@ extend type Query {
   # in the filter's order; newest added first by default.
   videos(filter: FilterInput, limit: Int, offset: Int): [Video!]!
   videoCount(filter: FilterInput): Int!
+  # The tags most common among the videos matching filter, most common
+  # first; tags the filter already requires are left out.
+  videoTagCounts(filter: FilterInput, limit: Int): [TagCount!]!
   video(id: ID!): Video
   galleries(filter: FilterInput, limit: Int, offset: Int): [Gallery!]!
   galleryCount(filter: FilterInput): Int!
@@ -129,6 +132,11 @@ enum ListKind {
 }
 
 # What a browse or search stored, by kind.
+type TagCount {
+  tag: Tag!
+  count: Int!
+}
+
 type Listed {
   videos: [Video!]!
   galleries: [Gallery!]!
@@ -167,6 +175,8 @@ type Video {
   vr: VrFormat
   preview: Asset
   trickplay: Trickplay
+  # Evenly spaced stills from the site's listing, in order.
+  previewFrames: [Asset!]
   gallery: Gallery
   sources: [Source!]!
   # Playable streams, fastest measured first.

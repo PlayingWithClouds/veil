@@ -7,7 +7,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
@@ -37,16 +36,27 @@ func (r *mutationResolver) SetNotes(ctx context.Context, subject schema.RecordRe
 
 // RecordEvent is the resolver for the recordEvent field.
 func (r *mutationResolver) RecordEvent(ctx context.Context, event model.EventInput) (*schema.Event, error) {
-	data, isObject := event.Data.(map[string]any)
-	if event.Data != nil && !isObject {
-		return nil, fmt.Errorf("an event's data is an object")
-	}
-	recorded := user.NewEvent{Kind: event.Kind, Data: data, SessionID: event.SessionID}
-	if event.Subject != nil {
-		recorded.SubjectKind = &event.Subject.Kind
-		recorded.SubjectID = &event.Subject.Id
+	recorded, err := newEventOf(event)
+	if err != nil {
+		return nil, err
 	}
 	return r.user.Record(ctx, recorded)
+}
+
+// RecordEvents is the resolver for the recordEvents field.
+func (r *mutationResolver) RecordEvents(ctx context.Context, events []*model.EventInput) (int, error) {
+	logged := 0
+	for _, event := range events {
+		recorded, err := newEventOf(*event)
+		if err != nil {
+			return logged, err
+		}
+		if _, err := r.user.Record(ctx, recorded); err != nil {
+			return logged, err
+		}
+		logged++
+	}
+	return logged, nil
 }
 
 // ClearEvents is the resolver for the clearEvents field.
