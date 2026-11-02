@@ -45,6 +45,18 @@ func (l *Library) tagIDs(ctx context.Context, tagNames []string) ([]string, erro
 	return ids, nil
 }
 
+// TagIDs finds or creates a tag for every name and returns their ids, for
+// records the backend describes itself (cam recordings).
+func (l *Library) TagIDs(ctx context.Context, tagNames []string) ([]string, error) {
+	return l.tagIDs(ctx, tagNames)
+}
+
+// StudioID finds or creates the studio named name and returns its id; "" for
+// a blank name.
+func (l *Library) StudioID(ctx context.Context, name string) (string, error) {
+	return l.findOrCreateNamed(ctx, tableStudio, name)
+}
+
 // findOrCreateNamed returns the id of the performer, studio or tag whose
 // folded name matches, creating one when none does. A blank name yields "".
 func (l *Library) findOrCreateNamed(ctx context.Context, table, name string) (string, error) {

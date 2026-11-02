@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/livebuffer"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/storage"
 )
@@ -46,6 +47,13 @@ type Proxy struct {
 	cache   *CacheService
 	kv      *cache.Client
 	baseURL string // public backend URL, e.g. "http://localhost:8080"
+	// liveBuffer keeps the last minutes of watched live rooms; nil disables rewinding.
+	liveBuffer *livebuffer.Manager
+}
+
+// SetLiveBuffer turns on rewinding for live room sessions.
+func (p *Proxy) SetLiveBuffer(buffer *livebuffer.Manager) {
+	p.liveBuffer = buffer
 }
 
 func NewProxy(cs *CacheService, kv *cache.Client, baseURL string) *Proxy {
@@ -147,6 +155,9 @@ func (p *Proxy) serveManifest(w http.ResponseWriter, r *http.Request) {
 	manifest := string(body)
 	if session.Live {
 		manifest = stripLowLatencyTags(manifest)
+	}
+	if p.serveBufferedPlaylist(w, session, sessID, manifestURL, manifest, q.Get("a") == "1") {
+		return
 	}
 	rewritten := p.rewriteManifest(manifest, base, sessID)
 
@@ -284,6 +295,9 @@ func (p *Proxy) serveSeg(w http.ResponseWriter, r *http.Request) {
 // serveLiveSeg relays a live segment (or init/key file) from the origin without
 // touching the stream cache.
 func (p *Proxy) serveLiveSeg(w http.ResponseWriter, r *http.Request, segURL string, session sessionData) {
+	if p.serveBufferedSeg(w, r, session) {
+		return
+	}
 	if segURL == "" {
 		http.NotFound(w, r)
 		return
