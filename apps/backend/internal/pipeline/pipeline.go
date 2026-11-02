@@ -27,6 +27,9 @@ type Pipeline struct {
 	// visiting holds one lock per record being visited, so two requests for
 	// the same page fetch it once.
 	visiting sync.Map
+	// identified holds when each plugin last answered about a performer
+	// ("plugin|id" → time.Time), so opening a page doesn't ask every site again.
+	identified sync.Map
 }
 
 // New returns a pipeline.

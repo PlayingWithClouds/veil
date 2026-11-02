@@ -1,8 +1,9 @@
 <!--
 	One performer: picture, facts, links, tags, and their videos and galleries.
 	Opening the page reads their pages on the sites they came from (bio,
-	picture, attributes) and shows the result when it's in; Refresh reads them
-	all again. Edit changes any detail (those stay as set; each can be handed
+	picture, attributes) and asks the other sites to identify them, adding the
+	profiles they're sure of; the result shows when it's in. Refresh reads and
+	asks everything again. Edit changes any detail (those stay as set; each can be handed
 	back to the sites), Merge folds another performer into this one, and
 	"Possibly the same person" suggests performers sharing a name or alias.
 -->
@@ -189,7 +190,7 @@
 						<button
 							type="button"
 							class="btn btn-sm"
-							disabled={reading || performer.sources.length === 0}
+							disabled={reading}
 							onclick={() => performer && read(performer.id, true)}
 						>
 							<ArrowClockwiseIcon size={16} class={reading ? 'animate-spin' : ''} />

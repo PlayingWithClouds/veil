@@ -23,6 +23,10 @@ const (
 	CapabilityGalleryList   Capability = "gallery:list"
 	CapabilityPerformerFind Capability = "performer:find"
 	CapabilityPerformerList Capability = "performer:list"
+	// CapabilityPerformerIdentify finds the site's profile of a performer the
+	// library knows (PerformerIdentifyArgs), returned only when the plugin is
+	// sure it's the same person.
+	CapabilityPerformerIdentify Capability = "performer:identify"
 	CapabilityStudioFind    Capability = "studio:find"
 	CapabilityStudioList    Capability = "studio:list"
 	CapabilityTagFind       Capability = "tag:find"
@@ -777,6 +781,27 @@ type SiteSuggestion struct {
 // SuggestResult is returned by a plugin's search:suggest capability, best first.
 type SuggestResult struct {
 	Suggestions []SiteSuggestion `json:"suggestions"`
+}
+
+// PerformerIdentifyArgs is passed to performer:identify: what the library
+// knows about one performer. A plugin answers only when the name or an alias
+// matches its profile exactly (case, accents and punctuation folded) and the
+// birthdate, when both know it, agrees (SDK isSamePerformer).
+type PerformerIdentifyArgs struct {
+	Name      string   `json:"name"`
+	Aliases   []string `json:"aliases,omitempty"`
+	Birthdate string   `json:"birthdate,omitempty"` // YYYY-MM-DD
+	Country   string   `json:"country,omitempty"`
+	Gender    string   `json:"gender,omitempty"`
+	// URLs are profile pages already known, on this and other sites.
+	URLs     []string `json:"urls,omitempty"`
+	ImageURL string   `json:"image_url,omitempty"`
+}
+
+// PerformerIdentifyResult is returned by performer:identify: the site's
+// profile as performer:find fills it, nil when not found or unsure.
+type PerformerIdentifyResult struct {
+	Performer *Performer `json:"performer,omitempty"`
 }
 
 // FaceIdentifyArgs is passed to a plugin's face:identify capability. The

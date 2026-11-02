@@ -91,3 +91,28 @@ func TestEditPerformerAttributesAndPicture(t *testing.T) {
 		t.Errorf("image after clearing = %+v", performer.Image)
 	}
 }
+
+// TestAttachIdentifiedProfile adds a site's profile to the performer it was
+// identified as, and leaves a profile that is another performer's source.
+func TestAttachIdentifiedProfile(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	mia, _ := library.upsertPerformer(ctx, "spankbang", &plugins.Performer{Name: "Mia Malkova", SourceURL: "https://spankbang.test/mia"})
+	profile := &plugins.Performer{Name: "Mia Malkova", ExternalID: "mia-malkova", SourceURL: "https://freeones.test/mia-malkova", Country: "US"}
+
+	attached, err := library.AttachPerformerProfile(ctx, mia, "freeones", profile)
+	if err != nil || !attached {
+		t.Fatalf("attached = %v, err = %v", attached, err)
+	}
+	performer, _ := library.Performer(ctx, mia)
+	sources, _ := library.Sources(ctx, schema.RecordKindPerformer, mia)
+	if performer.Attributes.Country == nil || len(sources) != 2 || sources[1].FetchedAt == nil {
+		t.Errorf("after attaching: attributes %+v, sources %+v", performer.Attributes, sources)
+	}
+
+	other, _ := library.upsertPerformer(ctx, "eporner", &plugins.Performer{Name: "Mia M", ExternalID: "m1"})
+	attached, err = library.AttachPerformerProfile(ctx, other, "freeones", profile)
+	if err != nil || attached {
+		t.Errorf("profile of another performer: attached = %v, err = %v", attached, err)
+	}
+}

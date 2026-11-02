@@ -15,6 +15,8 @@ import type {
   ContentKind,
   FaceIdentifyArgs,
   FaceIdentifyResult,
+  PerformerIdentifyArgs,
+  PerformerIdentifyResult,
   ForumPost,
   ForumSearchArgs,
   ForumSearchResult,
@@ -64,6 +66,11 @@ export interface PluginHandlers {
   camStream?: (args: CamStreamArgs) => Promise<ResolveResult>;
   /** Serves the "face:identify" capability: performers who look like the face in a picture. */
   identifyFace?: (args: FaceIdentifyArgs) => Promise<FaceIdentifyResult>;
+  /**
+   * Serves "performer:identify": this site's profile of a performer the
+   * library knows, only when sure it's the same person (see PerformerIdentifyArgs).
+   */
+  identifyPerformer?: (args: PerformerIdentifyArgs) => Promise<PerformerIdentifyResult>;
   /** Serves the "forum:find" capability: one forum thread by URL. */
   findForumPost?: (url: string) => Promise<ForumPost>;
   /** Serves the "forum:search" capability: forum threads matching a query. */
@@ -301,6 +308,15 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       let mimeType = "image/jpeg";
       if (typeof input.args?.mime_type === "string" && input.args.mime_type !== "") mimeType = input.args.mime_type;
       respond<FaceIdentifyResult>(await handlers.identifyFace({ image_base64: imageBase64, mime_type: mimeType }));
+    }
+
+    if (input.capability === "performer:identify") {
+      if (!handlers.identifyPerformer) fail("performer:identify not implemented");
+      const name = input.args?.name;
+      if (typeof name !== "string" || name === "") fail("args.name required for performer:identify");
+      respond<PerformerIdentifyResult>(
+        await handlers.identifyPerformer(input.args as unknown as PerformerIdentifyArgs),
+      );
     }
 
     fail(`unsupported capability: ${input.capability}`);

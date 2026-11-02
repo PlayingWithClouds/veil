@@ -8600,7 +8600,9 @@ extend type Mutation {
   # Same for a gallery: its pages list the images.
   fetchGallery(id: ID!): Gallery
   # Same for a performer: reads their pages on the sites they came from
-  # (bio, picture, attributes). refresh reads every page again.
+  # (bio, picture, attributes), then asks every site that can identify
+  # performers for its profile of them (each site at most weekly). refresh
+  # reads every page and asks every site again.
   fetchPerformer(id: ID!, refresh: Boolean): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!

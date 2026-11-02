@@ -35,6 +35,11 @@ export type Capability =
   // Only for services whose database holds professional performers or cam
   // models (stage personas), never general face search.
   | "face:identify"
+  // Finds this site's profile of a performer the library already knows
+  // (args: PerformerIdentifyArgs), the way the site allows best: a profile URL
+  // built from the name, the site's own lookup, a known id. Returns the
+  // profile as performer:find would, only when sure it's the same person.
+  | "performer:identify"
   // One thread of a porn identification forum (args.url): the post and its
   // comments, with the names, links and pictures they give.
   | "forum:find"
@@ -559,6 +564,31 @@ export interface SiteSuggestion {
 /** Result of the search:suggest capability, best first. */
 export interface SuggestResult {
   suggestions: SiteSuggestion[];
+}
+
+/**
+ * Arguments of the performer:identify capability: everything the library
+ * knows about one performer, so the plugin can find the same person on its
+ * site. A plugin answers only when sure: the name or an alias matches the
+ * profile exactly (after folding case, accents and punctuation) and the
+ * birthdate, when both know it, agrees. Check with isSamePerformer.
+ */
+export interface PerformerIdentifyArgs {
+  name: string;
+  aliases?: string[];
+  /** YYYY-MM-DD */
+  birthdate?: string;
+  country?: string;
+  gender?: string;
+  /** Profile pages already known, on this and other sites (an id may be read off them). */
+  urls?: string[];
+  image_url?: string;
+}
+
+/** Result of the performer:identify capability. */
+export interface PerformerIdentifyResult {
+  /** The site's profile, filled as performer:find fills it; absent when not found or unsure. */
+  performer?: Performer;
 }
 
 /** Arguments of the face:identify capability; the backend downloads the picture itself. */

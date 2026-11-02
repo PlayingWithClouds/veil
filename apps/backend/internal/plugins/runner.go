@@ -231,6 +231,23 @@ func (r *Runner) IdentifyFace(ctx context.Context, p *Plugin, args FaceIdentifyA
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// IdentifyPerformer invokes "performer:identify" — the site's profile of a
+// performer the library knows, nil when the plugin isn't sure it's them.
+func (r *Runner) IdentifyPerformer(ctx context.Context, p *Plugin, args PerformerIdentifyArgs) (*Performer, error) {
+	if !p.Meta.Has(CapabilityPerformerIdentify) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityPerformerIdentify)
+	}
+	raw, err := r.invoke(ctx, p, CapabilityPerformerIdentify, args)
+	if err != nil {
+		return nil, err
+	}
+	var result PerformerIdentifyResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return result.Performer, nil
+}
+
 // FindForumPost invokes "forum:find" — one forum thread by URL, its comments
 // in site order.
 func (r *Runner) FindForumPost(ctx context.Context, p *Plugin, url string) (*ForumPost, error) {
