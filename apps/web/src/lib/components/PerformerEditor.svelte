@@ -10,6 +10,7 @@
 	import { onMount, untrack } from 'svelte';
 	import UploadSimpleIcon from 'phosphor-svelte/lib/UploadSimpleIcon';
 	import Combobox from '$lib/components/Combobox.svelte';
+	import PictureDialog from '$lib/components/PictureDialog.svelte';
 	import { cacheUrl } from '$lib/img';
 	import {
 		editPerformer,
@@ -89,7 +90,7 @@
 	let uploading = $state(false);
 	let dragging = $state(false);
 	let error = $state<string | null>(null);
-	let fileInput = $state<HTMLInputElement>();
+	let choosingPicture = $state(false);
 
 	let preview = $derived(cacheUrl(imageUrl.trim()));
 
@@ -272,10 +273,10 @@
 				class="bg-base-200 group relative aspect-[2/3] overflow-hidden rounded-xl"
 				class:ring-2={dragging}
 				class:ring-primary={dragging}
-				aria-label="Upload a picture"
-				title="Click or drop a picture"
+				aria-label="Change the picture"
+				title="Change the picture, or drop one here"
 				disabled={uploading}
-				onclick={() => fileInput?.click()}
+				onclick={() => (choosingPicture = true)}
 				ondragover={(event) => {
 					event.preventDefault();
 					dragging = true;
@@ -291,16 +292,19 @@
 					class:opacity-100={uploading || dragging || !preview}
 				>
 					<UploadSimpleIcon size={22} />
-					{uploading ? 'Uploading…' : 'Click or drop a picture'}
+					{uploading ? 'Uploading…' : 'Change picture'}
 				</span>
 			</button>
-			<input
-				bind:this={fileInput}
-				type="file"
-				accept="image/*"
-				class="hidden"
-				onchange={(event) => upload(event.currentTarget.files?.[0])}
-			/>
+			{#if choosingPicture}
+				<PictureDialog
+					performerId={performer.id}
+					onpicked={(uri) => {
+						imageUrl = uri;
+						choosingPicture = false;
+					}}
+					onclose={() => (choosingPicture = false)}
+				/>
+			{/if}
 			<div class="flex flex-col gap-3">
 				<label class="form-control">
 					<span class="label-text">Name</span>

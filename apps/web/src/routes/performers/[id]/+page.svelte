@@ -26,6 +26,7 @@
 	import UserMinusIcon from 'phosphor-svelte/lib/UserMinusIcon';
 	import CardMenu from '$lib/components/CardMenu.svelte';
 	import Shelf from '$lib/components/Shelf.svelte';
+	import PictureDialog from '$lib/components/PictureDialog.svelte';
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
 	import { setBlocked, setFavorite, logNotInterested } from '$lib/userState';
@@ -38,6 +39,7 @@
 	import {
 		fetchPerformer,
 		unassignPerformer,
+		editPerformer,
 		readPerformer,
 		fetchPerformerDuplicates,
 		fetchPerformerFetching,
@@ -90,6 +92,7 @@
 	let merging = $state(false);
 	let mergeWith = $state<MemberRow | null>(null);
 	let menuAnchor = $state<HTMLElement | null>(null);
+	let choosingPicture = $state(false);
 	let fetching = $state<PerformerFetching | null>(null);
 	// Bumped to reload the videos as more come in.
 	let mediaKey = $state(0);
@@ -199,6 +202,14 @@
 		return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
 	}
 
+	/** Saves a chosen picture as the user's (the sites then leave it). */
+	async function setPicture(uri: string) {
+		choosingPicture = false;
+		if (!performer) return;
+		const saved = await editPerformer(performer.id, { imageUrl: uri });
+		if (saved) performer = saved;
+	}
+
 	/** The extra ⋮ entry on each of their videos: they aren't in it. */
 	function videoActions(video: VideoCardRow, remove: () => void): SheetAction[] {
 		if (!performer) return [];
@@ -299,8 +310,11 @@
 <div class="flex flex-col gap-6 pt-2">
 	{#if performer}
 		<div class="flex gap-5 max-md:flex-col">
-			<div
-				class="bg-base-200 flex aspect-[2/3] w-48 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+			<button
+				type="button"
+				class="bg-base-200 group relative flex aspect-[2/3] w-48 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+				aria-label="Change the picture"
+				onclick={() => (choosingPicture = true)}
 			>
 				{#if performer.image}
 					<img
@@ -311,7 +325,12 @@
 				{:else}
 					<UserIcon size={48} class="opacity-15" />
 				{/if}
-			</div>
+				<span
+					class="bg-base-300/80 absolute inset-x-0 bottom-0 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+				>
+					Change picture
+				</span>
+			</button>
 			<div class="flex min-w-0 flex-1 flex-col gap-3">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
@@ -489,6 +508,13 @@
 				{performer}
 				onsaved={(saved) => (performer = saved)}
 				onclose={() => (editing = false)}
+			/>
+		{/if}
+		{#if choosingPicture}
+			<PictureDialog
+				performerId={performer.id}
+				onpicked={(uri) => void setPicture(uri)}
+				onclose={() => (choosingPicture = false)}
 			/>
 		{/if}
 		{#if menuAnchor}
