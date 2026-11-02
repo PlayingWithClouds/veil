@@ -86,14 +86,29 @@ const STREAM = {
 	source: { plugin: true }
 } as const;
 
+/** A comment from a site, as the video page lists it. */
+const COMMENT = {
+	id: true,
+	author: true,
+	text: true,
+	postedAt: true,
+	likes: true,
+	replyTo: true,
+	source: { plugin: true }
+} as const;
+
 /** Everything the video page shows. */
 const VIDEO_DETAIL = {
 	...VIDEO_CARD,
 	details: true,
-	performers: { ...NAMED, image: { uri: true } },
+	studio: { ...NAMED, image: { uri: true } },
+	performers: MEMBER,
+	suggestedPerformers: { performer: MEMBER, reason: true },
 	tags: NAMED,
 	sources: SOURCE,
-	streams: STREAM
+	streams: STREAM,
+	segments: { id: true, startSeconds: true, endSeconds: true, title: true, tag: NAMED },
+	comments: COMMENT
 } as const;
 
 /** Everything the gallery page shows. */
@@ -212,6 +227,45 @@ export async function fetchStudios(text = '', limit = 60, offset = 0): Promise<M
 export async function openVideo(id: string): Promise<VideoDetail | null> {
 	const data = await gqlClient.mutation({ fetchVideo: { __args: { id }, ...VIDEO_DETAIL } });
 	return data.fetchVideo ?? null;
+}
+
+/** The video as stored, without reading its pages again. */
+export async function fetchVideoDetail(id: string): Promise<VideoDetail | null> {
+	const data = await gqlClient.query({ video: { __args: { id }, ...VIDEO_DETAIL } });
+	return data.video ?? null;
+}
+
+/**
+ * Sets who's in a video, as the user: the credits are locked, so the sites
+ * leave them as set.
+ */
+export async function setVideoPerformers(id: string, performerIds: string[]): Promise<VideoDetail | null> {
+	const data = await gqlClient.mutation({
+		editVideo: { __args: { id, edit: { performerIds } }, ...VIDEO_DETAIL }
+	});
+	return data.editVideo ?? null;
+}
+
+/** Sets a video's studio as the user; null clears it. */
+export async function setVideoStudio(id: string, studioId: string | null): Promise<VideoDetail | null> {
+	const data = await gqlClient.mutation({
+		editVideo: { __args: { id, edit: { studioId: studioId ?? '' } }, ...VIDEO_DETAIL }
+	});
+	return data.editVideo ?? null;
+}
+
+/** Videos like this one, most alike first. */
+export async function fetchRelatedVideos(id: string, limit = 20): Promise<VideoCardRow[]> {
+	const data = await gqlClient.query({
+		related: {
+			__args: { subject: { kind: 'video', id }, limit },
+			record: { on_Video: { __typename: true, ...VIDEO_CARD } }
+		}
+	});
+	return data.related.flatMap((match) => {
+		if (match.record?.__typename !== 'Video') return [];
+		return [match.record];
+	});
 }
 
 /** Opens a gallery: reads its pages (they list the images) and returns it. */
