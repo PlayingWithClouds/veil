@@ -40,6 +40,25 @@ model Revision extends Entity {
   17 automationRunId: uuid?
 }
 
+/// One merge, kept so it can be undone: every row the merge changed or
+/// deleted, before and after. Undoing writes the before values back where
+/// nothing changed them since, and inserts the deleted rows again.
+@index(fields: ["subjectKind", "keptId"])
+model MergeJournal extends Entity {
+  10 subjectKind: RecordKind
+  11 keptId: uuid
+  12 mergedId: uuid
+  /// The merged record's name or title, to say what an undo brings back.
+  13 mergedName: string?
+
+  /// [{table, id, before, after}]: before is null for nothing, after null
+  /// for a deleted row.
+  14 rows: json
+
+  15 writtenBy: Actor
+  16 undoneAt: timestamp?
+}
+
 enum FingerprintAlgorithm {
   1 phash
   2 oshash

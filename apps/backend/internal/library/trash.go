@@ -186,30 +186,35 @@ var subjectTables = []string{
 
 // deleteDependents deletes the rows that only exist for the record.
 func deleteDependents(ctx context.Context, tx *db.DB, kind schema.RecordKind, id string) error {
-	vars := db.Vars{"kind": kind, "id": id}
-	statements := []string{
-		`DELETE FROM "FieldSource" WHERE ("subjectKind" = $kind AND "subjectId" = $id)
-		   OR "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
-		`DELETE FROM "Comment" WHERE "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
-		`DELETE FROM "Alike" WHERE "subjectKind" = $kind AND ("firstId" = $id OR "secondId" = $id)`,
+	var unjournaled *journal
+	return unjournaled.apply(ctx, tx, dependents(kind), db.Vars{"kind": kind, "id": id})
+}
+
+// dependents are the deletions of the rows that only exist for the record
+// $kind $id.
+func dependents(kind schema.RecordKind) []change {
+	const owned = `"subjectKind" = $kind AND "subjectId" = $id`
+	changes := []change{
+		deleteRows("FieldSource", `(`+owned+`) OR "source" IN (SELECT "id" FROM "Source" WHERE `+owned+`)`),
+		deleteRows("Comment", `"source" IN (SELECT "id" FROM "Source" WHERE `+owned+`)`),
+		deleteRows("Alike", `"subjectKind" = $kind AND ("firstId" = $id OR "secondId" = $id)`),
 		// Performers' faces learned from the record's face scans go with them.
-		`DELETE FROM "Embedding" WHERE "scan" IN (SELECT "id" FROM "FaceScan" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
+		deleteRows("Embedding", `"scan" IN (SELECT "id" FROM "FaceScan" WHERE `+owned+`)`),
 	}
 	for _, table := range subjectTables {
-		statements = append(statements, `DELETE FROM `+db.Quote(table)+` WHERE "subjectKind" = $kind AND "subjectId" = $id`)
+		changes = append(changes, deleteRows(table, owned))
 	}
-	statements = append(statements, `DELETE FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id`)
-	statements = append(statements, kindDependents[kind]...)
-	return execAll(ctx, tx, statements, vars)
+	changes = append(changes, deleteRows("Source", owned))
+	return append(changes, kindDependents[kind]...)
 }
 
 // kindDependents are the rows only one kind of record has.
-var kindDependents = map[schema.RecordKind][]string{
-	schema.RecordKindGallery:    {`DELETE FROM "Image" WHERE "gallery" = $id`},
-	schema.RecordKindVideo:      {`DELETE FROM "GroupItem" WHERE "video" = $id`, `DELETE FROM "Clip" WHERE "video" = $id`},
-	schema.RecordKindStory:      {`DELETE FROM "StoryChapter" WHERE "story" = $id`},
-	schema.RecordKindGroup:      {`DELETE FROM "GroupItem" WHERE "group" = $id`},
-	schema.RecordKindCollection: {`DELETE FROM "CollectionItem" WHERE "collection" = $id`},
+var kindDependents = map[schema.RecordKind][]change{
+	schema.RecordKindGallery:    {deleteRows("Image", `"gallery" = $id`)},
+	schema.RecordKindVideo:      {deleteRows("GroupItem", `"video" = $id`), deleteRows("Clip", `"video" = $id`)},
+	schema.RecordKindStory:      {deleteRows("StoryChapter", `"story" = $id`)},
+	schema.RecordKindGroup:      {deleteRows("GroupItem", `"group" = $id`)},
+	schema.RecordKindCollection: {deleteRows("CollectionItem", `"collection" = $id`)},
 }
 
 // clearReferences removes the record's id from the records that point at it.

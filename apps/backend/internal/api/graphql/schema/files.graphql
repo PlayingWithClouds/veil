@@ -4,6 +4,8 @@
 extend type Query {
   # Probable duplicates waiting for review, most likely first.
   alikes(kind: RecordKind!, limit: Int, offset: Int): [AlikePair!]!
+  # Merges into a record that can still be undone, newest first.
+  merges(kind: RecordKind!, keptId: ID!): [MergeJournal!]!
   # Folders of the user's own files, scanned into the library.
   libraryRoots: [LibraryRoot!]!
   libraryRoot(id: ID!): LibraryRoot
@@ -20,9 +22,13 @@ extend type Query {
 }
 
 extend type Mutation {
-  # Merges mergeId into keepId for good: performers, studios, tags or
-  # groups the user knows are one. Media merges go through mergeAlike.
+  # Merges mergeId into keepId: performers, studios, tags or groups the
+  # user knows are one. Media merges go through mergeAlike. Undo with
+  # undoMerge (merges lists them).
   merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
+  # Brings the merged record back as it was before the merge; what reached
+  # the survivor since stays. Returns the merged record.
+  undoMerge(id: ID!): Record
   # Merges a pair's second record into its first, only when they're
   # provably the same (a shared fingerprint or the strict matcher).
   mergeAlike(id: ID!): Record
@@ -49,6 +55,16 @@ extend type Mutation {
   # Stores a vector a client or plugin computed for a record.
   addEmbedding(input: EmbeddingInput!): Embedding!
   removeEmbedding(id: ID!): Boolean!
+}
+
+# One merge that can be undone: mergedId was folded into keptId.
+type MergeJournal {
+  id: ID!
+  createdAt: String!
+  subjectKind: RecordKind!
+  keptId: ID!
+  mergedId: ID!
+  mergedName: String
 }
 
 # Two records that are probably the same; the second is hidden until the

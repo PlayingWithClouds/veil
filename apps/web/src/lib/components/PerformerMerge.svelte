@@ -1,7 +1,7 @@
 <!--
 	Merging two performers in a dialog: find the other one by name (or start
 	from a suggested duplicate), see both side by side, pick which one stays,
-	confirm. Merging can't be undone, and the dialog says so.
+	confirm. The page offers Undo afterwards.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
@@ -16,8 +16,8 @@
 		performer: MemberRow;
 		// A suggested duplicate to start from.
 		other?: MemberRow | null;
-		// Called with the id of the performer that stayed.
-		onmerged: (keptId: string) => void;
+		// Called with who stayed, who was merged in, and the merge to undo.
+		onmerged: (kept: MemberRow, merged: MemberRow, mergeId: string | null) => void;
 		onclose: () => void;
 	}
 
@@ -59,8 +59,8 @@
 		merging = true;
 		error = null;
 		try {
-			await mergePerformers(kept.id, folded.id);
-			onmerged(kept.id);
+			const mergeId = await mergePerformers(kept.id, folded.id);
+			onmerged(kept, folded, mergeId);
 		} catch (failure) {
 			error = String(failure);
 			merging = false;
@@ -106,7 +106,7 @@
 			</div>
 			<p class="text-base-content/70 text-sm">
 				{folded.name}'s videos, galleries, sources and your ratings move to {kept.name}; the name
-				{folded.name} becomes an alias. <strong>This can't be undone.</strong>
+				{folded.name} becomes an alias. You can undo it afterwards.
 			</p>
 			<button
 				type="button"

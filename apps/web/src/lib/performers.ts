@@ -137,15 +137,47 @@ export async function fetchPerformerDuplicates(id: string): Promise<MemberRow[]>
 	return data.performerDuplicates;
 }
 
+/** A merge into a performer that can still be undone. */
+export interface MergeRow {
+	id: string;
+	createdAt: string;
+	mergedId: string;
+	mergedName: string | null;
+}
+
 /**
- * Folds mergeId into keepId for good: its sources, credits and the user's
- * state move over, its name becomes an alias, and it is gone.
+ * Folds mergeId into keepId: its sources, credits and the user's state move
+ * over, its name becomes an alias, and it is gone. Returns the merge's id,
+ * to undo it with undoMerge.
  */
-export async function mergePerformers(keepId: string, mergeId: string): Promise<void> {
+export async function mergePerformers(keepId: string, mergeId: string): Promise<string | null> {
 	await gqlClient.mutation({
 		merge: {
 			__args: { kind: 'performer', keepId, mergeId },
 			on_Performer: { id: true }
 		}
 	});
+	const merges = await fetchMerges(keepId);
+	const merge = merges.find((candidate) => candidate.mergedId === mergeId);
+	if (!merge) return null;
+	return merge.id;
+}
+
+/** The merges into a performer that can still be undone, newest first. */
+export async function fetchMerges(keptId: string): Promise<MergeRow[]> {
+	const data = await gqlClient.query({
+		merges: {
+			__args: { kind: 'performer', keptId },
+			id: true,
+			createdAt: true,
+			mergedId: true,
+			mergedName: true
+		}
+	});
+	return data.merges;
+}
+
+/** Brings a merged performer back as before the merge. */
+export async function undoMerge(mergeId: string): Promise<void> {
+	await gqlClient.mutation({ undoMerge: { __args: { id: mergeId }, on_Performer: { id: true } } });
 }

@@ -49,6 +49,7 @@ export interface Query {
     taste: Taste
     bestMoment: (Scalars['Float'] | null)
     alikes: AlikePair[]
+    merges: MergeJournal[]
     libraryRoots: LibraryRoot[]
     libraryRoot: (LibraryRoot | null)
     planOrganize: FileMove[]
@@ -156,6 +157,7 @@ export interface Mutation {
     learnFaces: Scalars['Int']
     lookup: LookupResult
     merge: (Record | null)
+    undoMerge: (Record | null)
     mergeAlike: (Record | null)
     dismissAlike: Scalars['Boolean']
     addLibraryRoot: LibraryRoot
@@ -639,6 +641,16 @@ export interface LookupResult {
     matches: Match[]
     failures: Scalars['String'][]
     __typename: 'LookupResult'
+}
+
+export interface MergeJournal {
+    id: Scalars['ID']
+    createdAt: Scalars['String']
+    subjectKind: RecordKind
+    keptId: Scalars['ID']
+    mergedId: Scalars['ID']
+    mergedName: (Scalars['String'] | null)
+    __typename: 'MergeJournal'
 }
 
 export interface AlikePair {
@@ -1396,6 +1408,7 @@ export interface QueryGenqlSelection{
     taste?: TasteGenqlSelection
     bestMoment?: { __args: {videoId: Scalars['ID']} }
     alikes?: (AlikePairGenqlSelection & { __args: {kind: RecordKind, limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    merges?: (MergeJournalGenqlSelection & { __args: {kind: RecordKind, keptId: Scalars['ID']} })
     libraryRoots?: LibraryRootGenqlSelection
     libraryRoot?: (LibraryRootGenqlSelection & { __args: {id: Scalars['ID']} })
     planOrganize?: (FileMoveGenqlSelection & { __args: {rootId: Scalars['ID']} })
@@ -1504,6 +1517,7 @@ export interface MutationGenqlSelection{
     learnFaces?: { __args: {videoId: Scalars['ID'], model?: (Scalars['String'] | null)} }
     lookup?: (LookupResultGenqlSelection & { __args: {input: LookupInput} })
     merge?: (RecordGenqlSelection & { __args: {kind: RecordKind, keepId: Scalars['ID'], mergeId: Scalars['ID']} })
+    undoMerge?: (RecordGenqlSelection & { __args: {id: Scalars['ID']} })
     mergeAlike?: (RecordGenqlSelection & { __args: {id: Scalars['ID']} })
     dismissAlike?: { __args: {id: Scalars['ID']} }
     addLibraryRoot?: (LibraryRootGenqlSelection & { __args: {locationId: Scalars['ID'], path: Scalars['String'], scanIntervalMinutes?: (Scalars['Int'] | null), organizeTemplate?: (Scalars['String'] | null)} })
@@ -2031,6 +2045,17 @@ export interface LookupInput {text?: (Scalars['String'] | null),imageBase64?: (S
 export interface LookupResultGenqlSelection{
     matches?: MatchGenqlSelection
     failures?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface MergeJournalGenqlSelection{
+    id?: boolean | number
+    createdAt?: boolean | number
+    subjectKind?: boolean | number
+    keptId?: boolean | number
+    mergedId?: boolean | number
+    mergedName?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3140,6 +3165,14 @@ export interface SavedFilterGenqlSelection{
     export const isLookupResult = (obj?: { __typename?: any } | null): obj is LookupResult => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isLookupResult"')
       return LookupResult_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const MergeJournal_possibleTypes: string[] = ['MergeJournal']
+    export const isMergeJournal = (obj?: { __typename?: any } | null): obj is MergeJournal => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isMergeJournal"')
+      return MergeJournal_possibleTypes.includes(obj.__typename)
     }
     
 

@@ -45,6 +45,61 @@ func TestMergePerformers(t *testing.T) {
 	}
 }
 
+// TestUndoMerge merges a performer into another, renames the survivor, then
+// undoes the merge: the merged performer, their credit and rating come back,
+// the survivor loses the merged alias but keeps the later rename.
+func TestUndoMerge(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	ref, err := library.IngestFound(ctx, "site", foundScene())
+	if err != nil {
+		t.Fatal(err)
+	}
+	video, _ := library.Video(ctx, ref.Id)
+	ada, bea := video.Performers[0], video.Performers[1]
+	rating := 7.0
+	states := user.New(library.DB(), "")
+	if _, err := states.Rate(ctx, schema.RecordKindPerformer, bea, &rating); err != nil {
+		t.Fatal(err)
+	}
+	if err := library.Merge(ctx, schema.RecordKindPerformer, ada, bea); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := library.DB().Exec(ctx, `UPDATE "Performer" SET "details" = 'later' WHERE "id" = $id`, db.Vars{"id": ada}); err != nil {
+		t.Fatal(err)
+	}
+	merges, err := library.Merges(ctx, schema.RecordKindPerformer, ada)
+	if err != nil || len(merges) != 1 {
+		t.Fatalf("merges = %v, %v", merges, err)
+	}
+	if _, err := library.UndoMerge(ctx, merges[0].Id); err != nil {
+		t.Fatal(err)
+	}
+
+	video, _ = library.Video(ctx, ref.Id)
+	if len(video.Performers) != 2 || video.Performers[1] != bea {
+		t.Errorf("performers = %v, want both again", video.Performers)
+	}
+	back, _ := library.Performer(ctx, bea)
+	if back == nil || back.Name != "Bea" {
+		t.Fatalf("merged performer = %+v, want Bea back", back)
+	}
+	survivor, _ := library.Performer(ctx, ada)
+	if len(survivor.Aliases) != 0 {
+		t.Errorf("survivor aliases = %v, want the merged name gone", survivor.Aliases)
+	}
+	if survivor.Details == nil || *survivor.Details != "later" {
+		t.Errorf("survivor details = %v, want the later edit kept", survivor.Details)
+	}
+	state, _ := states.State(ctx, schema.RecordKindPerformer, bea)
+	if state == nil || state.Rating == nil || *state.Rating != 7 {
+		t.Errorf("merged state = %+v, want the rating back", state)
+	}
+	if _, err := library.UndoMerge(ctx, merges[0].Id); err == nil {
+		t.Error("undoing twice succeeded")
+	}
+}
+
 // TestAlikeCopiesHideAndMerge stores the same scene from two sites, expects
 // the newer copy hidden as a pair, refuses to merge it without proof, and
 // merges it once both share a fingerprint.

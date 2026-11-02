@@ -19,6 +19,8 @@ resolver:
 # internal/schema). Fields that hold a reference id there resolve to the
 # record here.
 models:
+  MergeJournal:
+    model: github.com/playingwithclouds/veil/internal/schema.MergeJournal
   SitePreference:
     model: github.com/playingwithclouds/veil/internal/user.SitePreference
   Video:

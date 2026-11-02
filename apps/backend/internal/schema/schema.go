@@ -1043,6 +1043,23 @@ type Revision struct {
 	AutomationRunId *string `json:"automationRunId,omitempty"`
 }
 
+// One merge, kept so it can be undone: every row the merge changed or
+// deleted, before and after. Undoing writes the before values back where
+// nothing changed them since, and inserts the deleted rows again.
+type MergeJournal struct {
+	Entity
+	SubjectKind RecordKind `json:"subjectKind"`
+	KeptId      string     `json:"keptId"`
+	MergedId    string     `json:"mergedId"`
+	// The merged record's name or title, to say what an undo brings back.
+	MergedName *string `json:"mergedName,omitempty"`
+	// [{table, id, before, after}]: before is null for nothing, after null
+	// for a deleted row.
+	Rows      any     `json:"rows"`
+	WrittenBy Actor   `json:"writtenBy"`
+	UndoneAt  *string `json:"undoneAt,omitempty"`
+}
+
 // A content hash of a file or stream. Matching fingerprints prove two
 // records are the same media, which strict merging relies on.
 type Fingerprint struct {

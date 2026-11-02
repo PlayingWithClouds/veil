@@ -20,11 +20,12 @@ var MergeableKinds = []schema.RecordKind{
 // the survivor of a merge.
 var rowsMovedBySubject = []string{"Source", "Stream", "Segment", "Subtitle", "Script", "Fingerprint", "Embedding", "FaceScan", "MediaFile", "Event"}
 
-// Merge folds the record mergeID into keepID for good: its sources, streams,
-// files, extras, user state and events move over, its credits and tags join
-// the survivor's, fields the survivor lacks are filled from it, every
-// reference to it now names the survivor, and it's deleted. Merges can't be
-// undone, so callers decide sameness strictly (see MergeAlike).
+// Merge folds the record mergeID into keepID: its sources, streams, files,
+// extras, user state and events move over, its credits and tags join the
+// survivor's, fields the survivor lacks are filled from it, every reference
+// to it now names the survivor, and it's deleted. Every row it changes is
+// journaled (MergeJournal), so UndoMerge can bring the record back.
+// Automatic matching still decides sameness strictly (see MergeAlike).
 func (l *Library) Merge(ctx context.Context, kind schema.RecordKind, keepID, mergeID string) error {
 	if !slices.Contains(MergeableKinds, kind) {
 		return fmt.Errorf("%s records can't be merged", kind)
@@ -37,22 +38,20 @@ func (l *Library) Merge(ctx context.Context, kind schema.RecordKind, keepID, mer
 		if err != nil {
 			return err
 		}
-		if err := fillFromMerged(ctx, tx, kind, keep, merged); err != nil {
+		changes := &journal{}
+		if err := fillFromMerged(ctx, tx, changes, kind, keep, merged); err != nil {
 			return err
 		}
-		if err := moveSubjectRows(ctx, tx, kind, keepID, mergeID); err != nil {
+		vars := db.Vars{"kind": kind, "keep": keepID, "merge": mergeID, "id": mergeID}
+		steps := moveSubjectRows()
+		steps = append(steps, mergeUserState()...)
+		steps = append(steps, redirectReferences(kind)...)
+		steps = append(steps, dependents(kind)...)
+		steps = append(steps, deleteRows(tableFor(kind), `"id" = $merge`))
+		if err := changes.apply(ctx, tx, steps, vars); err != nil {
 			return err
 		}
-		if err := mergeUserState(ctx, tx, kind, keepID, mergeID); err != nil {
-			return err
-		}
-		if err := redirectReferences(ctx, tx, kind, keepID, mergeID); err != nil {
-			return err
-		}
-		if err := deleteDependents(ctx, tx, kind, mergeID); err != nil {
-			return err
-		}
-		return tx.Delete(ctx, tableFor(kind), mergeID)
+		return changes.save(ctx, tx, kind, keepID, merged)
 	})
 }
 
@@ -79,7 +78,7 @@ var unionColumns = map[string]bool{"performers": true, "tags": true, "aliases": 
 // fillFromMerged sets the survivor's empty fields from the merged record and
 // joins their lists; a performer, studio or tag also keeps the merged name
 // as an alias.
-func fillFromMerged(ctx context.Context, tx *db.DB, kind schema.RecordKind, keep, merged db.Row) error {
+func fillFromMerged(ctx context.Context, tx *db.DB, changes *journal, kind schema.RecordKind, keep, merged db.Row) error {
 	fields := db.Vars{}
 	for column, value := range merged {
 		if mergeKeptColumns[column] || value == nil {
@@ -103,7 +102,7 @@ func fillFromMerged(ctx context.Context, tx *db.DB, kind schema.RecordKind, keep
 	if len(fields) == 0 {
 		return nil
 	}
-	return tx.Update(ctx, tableFor(kind), keep["id"].(string), fields)
+	return changes.update(ctx, tx, tableFor(kind), keep["id"].(string), fields)
 }
 
 // unionJSON joins two JSON arrays (texts, or a RawMessage from an earlier
@@ -147,38 +146,31 @@ func decodeJSONList(value any) []any {
 // moveSubjectRows points the merged record's own rows at the survivor.
 // Comments come along with their sources; user state and collection items
 // are merged separately because they're one per record.
-func moveSubjectRows(ctx context.Context, tx *db.DB, kind schema.RecordKind, keepID, mergeID string) error {
-	vars := db.Vars{"kind": kind, "keep": keepID, "merge": mergeID}
-	statements := []string{}
+func moveSubjectRows() []change {
+	const merged = `"subjectKind" = $kind AND "subjectId" = $merge`
+	changes := []change{}
 	for _, table := range rowsMovedBySubject {
-		statements = append(statements, `UPDATE `+db.Quote(table)+` SET "subjectId" = $keep WHERE "subjectKind" = $kind AND "subjectId" = $merge`)
+		changes = append(changes, updateRows(table, `"subjectId" = $keep`, merged))
 	}
-	statements = append(statements,
-		`DELETE FROM "CollectionItem" WHERE "subjectKind" = $kind AND "subjectId" = $merge AND "collection" IN
-		   (SELECT "collection" FROM "CollectionItem" WHERE "subjectKind" = $kind AND "subjectId" = $keep)`,
-		`UPDATE "CollectionItem" SET "subjectId" = $keep WHERE "subjectKind" = $kind AND "subjectId" = $merge`,
-		`DELETE FROM "Alike" WHERE "subjectKind" = $kind AND ("firstId" = $merge OR "secondId" = $merge)`,
+	return append(changes,
+		deleteRows("CollectionItem", merged+` AND "collection" IN
+		   (SELECT "collection" FROM "CollectionItem" WHERE "subjectKind" = $kind AND "subjectId" = $keep)`),
+		updateRows("CollectionItem", `"subjectId" = $keep`, merged),
+		deleteRows("Alike", `"subjectKind" = $kind AND ("firstId" = $merge OR "secondId" = $merge)`),
 	)
-	return execAll(ctx, tx, statements, vars)
 }
 
 // mergeUserState combines both records' user state into the survivor's:
-// either one's rating, favourite and block, both views, both notes.
-func mergeUserState(ctx context.Context, tx *db.DB, kind schema.RecordKind, keepID, mergeID string) error {
-	vars := db.Vars{"kind": kind, "keep": keepID, "merge": mergeID}
-	merged, err := tx.Int(ctx, `SELECT COUNT(*) FROM "UserState" WHERE "subjectKind" = $kind AND "subjectId" = $merge`, vars)
-	if err != nil || merged == 0 {
-		return err
+// either one's rating, favourite and block, both views, both notes. Without
+// a state of its own the survivor takes the merged one's.
+func mergeUserState() []change {
+	const merged = `"subjectKind" = $kind AND "subjectId" = $merge`
+	return []change{
+		{table: "UserState", where: `"subjectKind" = $kind AND "subjectId" = $keep`, statement: combineStates},
+		deleteRows("UserState", merged+` AND EXISTS
+		   (SELECT 1 FROM "UserState" AS "kept" WHERE "kept"."subjectKind" = $kind AND "kept"."subjectId" = $keep)`),
+		updateRows("UserState", `"subjectId" = $keep`, merged),
 	}
-	kept, err := tx.Int(ctx, `SELECT COUNT(*) FROM "UserState" WHERE "subjectKind" = $kind AND "subjectId" = $keep`, vars)
-	if err != nil {
-		return err
-	}
-	if kept == 0 {
-		_, err = tx.Exec(ctx, `UPDATE "UserState" SET "subjectId" = $keep WHERE "subjectKind" = $kind AND "subjectId" = $merge`, vars)
-		return err
-	}
-	return execAll(ctx, tx, []string{combineStates, `DELETE FROM "UserState" WHERE "subjectKind" = $kind AND "subjectId" = $merge`}, vars)
 }
 
 // combineStates folds the merged record's state row into the survivor's.
@@ -198,71 +190,71 @@ const combineStates = `UPDATE "UserState" AS "kept" SET
 
 // redirectReferences makes every record that named the merged one name the
 // survivor.
-func redirectReferences(ctx context.Context, tx *db.DB, kind schema.RecordKind, keepID, mergeID string) error {
-	vars := db.Vars{"kind": kind, "keep": keepID, "merge": mergeID}
-	statements := []string{redirectAttachments}
+func redirectReferences(kind schema.RecordKind) []change {
+	changes := []change{redirectAttachments}
 	switch kind {
 	case schema.RecordKindVideo:
-		statements = append(statements,
-			`UPDATE "Gallery" SET "video" = $keep WHERE "video" = $merge`,
-			`UPDATE "Clip" SET "video" = $keep WHERE "video" = $merge`,
-			`DELETE FROM "GroupItem" WHERE "video" = $merge AND "group" IN (SELECT "group" FROM "GroupItem" WHERE "video" = $keep)`,
-			`UPDATE "GroupItem" SET "video" = $keep WHERE "video" = $merge`)
+		changes = append(changes,
+			updateRows("Gallery", `"video" = $keep`, `"video" = $merge`),
+			updateRows("Clip", `"video" = $keep`, `"video" = $merge`),
+			deleteRows("GroupItem", `"video" = $merge AND "group" IN (SELECT "group" FROM "GroupItem" WHERE "video" = $keep)`),
+			updateRows("GroupItem", `"video" = $keep`, `"video" = $merge`))
 	case schema.RecordKindGallery:
-		statements = append(statements, `UPDATE "Video" SET "gallery" = $keep WHERE "gallery" = $merge`)
+		changes = append(changes, updateRows("Video", `"gallery" = $keep`, `"gallery" = $merge`))
 	case schema.RecordKindStudio:
-		statements = append(statements, redirectColumn([]string{"Studio"}, "parent")...)
-		statements = append(statements, redirectColumn(append([]string{"Group"}, mediaTables...), "studio")...)
+		changes = append(changes, redirectColumn([]string{"Studio"}, "parent")...)
+		changes = append(changes, redirectColumn(append([]string{"Group"}, mediaTables...), "studio")...)
 	case schema.RecordKindPerformer:
-		statements = append(statements, redirectColumn([]string{"Post"}, "creator")...)
-		statements = append(statements, redirectColumn([]string{"CamModel"}, "performer")...)
-		statements = append(statements, redirectInLists(append([]string{"Segment", "Comment"}, mediaTables...), "performers", "mentions")...)
+		changes = append(changes, redirectColumn([]string{"Post"}, "creator")...)
+		changes = append(changes, redirectColumn([]string{"CamModel"}, "performer")...)
+		changes = append(changes, redirectInLists(append([]string{"Segment", "Comment"}, mediaTables...), "performers", "mentions")...)
 	case schema.RecordKindTag:
-		statements = append(statements, redirectColumn([]string{"Segment"}, "tag")...)
-		statements = append(statements, redirectInLists(append([]string{"Performer", "Studio"}, mediaTables...), "tags")...)
-		statements = append(statements, redirectInLists([]string{"Category"}, "matchTags")...)
+		changes = append(changes, redirectColumn([]string{"Segment"}, "tag")...)
+		changes = append(changes, redirectInLists(append([]string{"Performer", "Studio"}, mediaTables...), "tags")...)
+		changes = append(changes, redirectInLists([]string{"Category"}, "matchTags")...)
 	case schema.RecordKindGroup:
-		statements = append(statements,
-			`DELETE FROM "GroupItem" WHERE "group" = $merge AND "video" IN (SELECT "video" FROM "GroupItem" WHERE "group" = $keep)`,
-			`UPDATE "GroupItem" SET "group" = $keep WHERE "group" = $merge`)
+		changes = append(changes,
+			deleteRows("GroupItem", `"group" = $merge AND "video" IN (SELECT "video" FROM "GroupItem" WHERE "group" = $keep)`),
+			updateRows("GroupItem", `"group" = $keep`, `"group" = $merge`))
 	}
-	return execAll(ctx, tx, statements, vars)
+	return changes
 }
 
 // redirectAttachments makes posts that attach the merged record attach the
 // survivor.
-const redirectAttachments = `UPDATE "Post" SET "attachments" =
+var redirectAttachments = updateRows("Post", `"attachments" =
 	(SELECT json_group_array(CASE
 		WHEN json_extract(value, '$.kind') = $kind AND json_extract(value, '$.id') = $merge
-		THEN json_object('kind', $kind, 'id', $keep) ELSE json(value) END) FROM json_each("attachments"))
-	WHERE EXISTS (SELECT 1 FROM json_each("attachments")
-		WHERE json_extract(value, '$.kind') = $kind AND json_extract(value, '$.id') = $merge)`
+		THEN json_object('kind', $kind, 'id', $keep) ELSE json(value) END) FROM json_each("attachments"))`,
+	`EXISTS (SELECT 1 FROM json_each("attachments")
+		WHERE json_extract(value, '$.kind') = $kind AND json_extract(value, '$.id') = $merge)`)
 
-// redirectColumn builds the statements that point a reference column at the
+// redirectColumn builds the changes that point a reference column at the
 // survivor.
-func redirectColumn(tables []string, column string) []string {
-	statements := make([]string, 0, len(tables))
+func redirectColumn(tables []string, column string) []change {
+	changes := make([]change, 0, len(tables))
+	quoted := db.Quote(column)
 	for _, table := range tables {
-		statements = append(statements, `UPDATE `+db.Quote(table)+` SET `+db.Quote(column)+` = $keep WHERE `+db.Quote(column)+` = $merge`)
+		changes = append(changes, updateRows(table, quoted+` = $keep`, quoted+` = $merge`))
 	}
-	return statements
+	return changes
 }
 
-// redirectInLists builds the statements that replace the merged id with the
+// redirectInLists builds the changes that replace the merged id with the
 // survivor's in JSON id lists, without repeating the survivor. Each table
 // gets the first of columns it has; Comment has mentions, the rest the first.
-func redirectInLists(tables []string, columns ...string) []string {
-	statements := []string{}
+func redirectInLists(tables []string, columns ...string) []change {
+	changes := []change{}
 	for _, table := range tables {
 		column := columns[0]
 		if table == "Comment" && len(columns) > 1 {
 			column = columns[1]
 		}
 		quoted := db.Quote(column)
-		statements = append(statements, `UPDATE `+db.Quote(table)+` SET `+quoted+` =
+		changes = append(changes, updateRows(table, quoted+` =
 			(SELECT json_group_array("id") FROM (SELECT DISTINCT CASE WHEN value = $merge THEN $keep ELSE value END AS "id"
-			 FROM json_each(`+quoted+`) ORDER BY "key"))
-			WHERE EXISTS (SELECT 1 FROM json_each(`+quoted+`) WHERE value = $merge)`)
+			 FROM json_each(`+quoted+`) ORDER BY "key"))`,
+			`EXISTS (SELECT 1 FROM json_each(`+quoted+`) WHERE value = $merge)`))
 	}
-	return statements
+	return changes
 }

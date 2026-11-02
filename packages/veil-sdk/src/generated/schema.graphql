@@ -35,6 +35,7 @@ type Query {
   taste: Taste!
   bestMoment(videoId: ID!): Float
   alikes(kind: RecordKind!, limit: Int, offset: Int): [AlikePair!]!
+  merges(kind: RecordKind!, keptId: ID!): [MergeJournal!]!
   libraryRoots: [LibraryRoot!]!
   libraryRoot(id: ID!): LibraryRoot
   planOrganize(rootId: ID!): [FileMove!]!
@@ -141,6 +142,7 @@ type Mutation {
   learnFaces(videoId: ID!, model: String): Int!
   lookup(input: LookupInput!): LookupResult!
   merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
+  undoMerge(id: ID!): Record
   mergeAlike(id: ID!): Record
   dismissAlike(id: ID!): Boolean!
   addLibraryRoot(locationId: ID!, path: String!, scanIntervalMinutes: Int, organizeTemplate: String): LibraryRoot!
@@ -715,6 +717,15 @@ input LookupInput {
 type LookupResult {
   matches: [Match!]!
   failures: [String!]!
+}
+
+type MergeJournal {
+  id: ID!
+  createdAt: String!
+  subjectKind: RecordKind!
+  keptId: ID!
+  mergedId: ID!
+  mergedName: String
 }
 
 type AlikePair {

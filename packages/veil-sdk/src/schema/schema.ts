@@ -754,6 +754,16 @@ export interface Revision extends Entity {
   automationRunId?: string;
 }
 
+export interface MergeJournal extends Entity {
+  subjectKind: RecordKind;
+  keptId: string;
+  mergedId: string;
+  mergedName?: string;
+  rows: unknown;
+  writtenBy: Actor;
+  undoneAt?: string;
+}
+
 export interface Fingerprint extends Entity {
   subjectKind: RecordKind;
   subjectId: string;

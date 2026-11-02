@@ -550,6 +550,15 @@ type ComplexityRoot struct {
 		Width           func(childComplexity int) int
 	}
 
+	MergeJournal struct {
+		CreatedAt   func(childComplexity int) int
+		Id          func(childComplexity int) int
+		KeptId      func(childComplexity int) int
+		MergedId    func(childComplexity int) int
+		MergedName  func(childComplexity int) int
+		SubjectKind func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AddClip                   func(childComplexity int, videoID string, input model.ClipInput) int
 		AddEmbedding              func(childComplexity int, input model.EmbeddingInput) int
@@ -659,6 +668,7 @@ type ComplexityRoot struct {
 		TrashRecord               func(childComplexity int, subject schema.RecordRef) int
 		UnassignPerformer         func(childComplexity int, videoID string, performerID string) int
 		UndoAutomationRun         func(childComplexity int, id string) int
+		UndoMerge                 func(childComplexity int, id string) int
 		Unfollow                  func(childComplexity int, id string) int
 		UninstallPlugin           func(childComplexity int, name string) int
 		UpdateAutomation          func(childComplexity int, id string, input model.AutomationEditInput) int
@@ -907,6 +917,7 @@ type ComplexityRoot struct {
 		Limits                   func(childComplexity int) int
 		Media                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 		MediaCount               func(childComplexity int, filter *schema.Filter) int
+		Merges                   func(childComplexity int, kind schema.RecordKind, keptID string) int
 		Nearest                  func(childComplexity int, kind schema.EmbeddingKind, model string, vector []float64, kinds []schema.RecordKind, limit *int) int
 		NewSince                 func(childComplexity int, followID string, since *string, limit *int) int
 		NotificationChannels     func(childComplexity int) int
@@ -1434,6 +1445,7 @@ type MutationResolver interface {
 	LearnFaces(ctx context.Context, videoID string, model *string) (int, error)
 	Lookup(ctx context.Context, input model.LookupInput) (*model.LookupResult, error)
 	Merge(ctx context.Context, kind schema.RecordKind, keepID string, mergeID string) (model.Record, error)
+	UndoMerge(ctx context.Context, id string) (model.Record, error)
 	MergeAlike(ctx context.Context, id string) (model.Record, error)
 	DismissAlike(ctx context.Context, id string) (bool, error)
 	AddLibraryRoot(ctx context.Context, locationID string, path string, scanIntervalMinutes *int, organizeTemplate *string) (*schema.LibraryRoot, error)
@@ -1579,6 +1591,7 @@ type QueryResolver interface {
 	Taste(ctx context.Context) (*recommend.Taste, error)
 	BestMoment(ctx context.Context, videoID string) (*float64, error)
 	Alikes(ctx context.Context, kind schema.RecordKind, limit *int, offset *int) ([]*schema.Alike, error)
+	Merges(ctx context.Context, kind schema.RecordKind, keptID string) ([]*schema.MergeJournal, error)
 	LibraryRoots(ctx context.Context) ([]*schema.LibraryRoot, error)
 	LibraryRoot(ctx context.Context, id string) (*schema.LibraryRoot, error)
 	PlanOrganize(ctx context.Context, rootID string) ([]*model.FileMove, error)
@@ -3783,6 +3796,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.MediaFile.Width(childComplexity), true
 
+	case "MergeJournal.createdAt":
+		if e.ComplexityRoot.MergeJournal.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.CreatedAt(childComplexity), true
+	case "MergeJournal.id":
+		if e.ComplexityRoot.MergeJournal.Id == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.Id(childComplexity), true
+	case "MergeJournal.keptId":
+		if e.ComplexityRoot.MergeJournal.KeptId == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.KeptId(childComplexity), true
+	case "MergeJournal.mergedId":
+		if e.ComplexityRoot.MergeJournal.MergedId == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.MergedId(childComplexity), true
+	case "MergeJournal.mergedName":
+		if e.ComplexityRoot.MergeJournal.MergedName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.MergedName(childComplexity), true
+	case "MergeJournal.subjectKind":
+		if e.ComplexityRoot.MergeJournal.SubjectKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MergeJournal.SubjectKind(childComplexity), true
+
 	case "Mutation.addClip":
 		if e.ComplexityRoot.Mutation.AddClip == nil {
 			break
@@ -4951,6 +5001,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UndoAutomationRun(childComplexity, args["id"].(string)), true
+	case "Mutation.undoMerge":
+		if e.ComplexityRoot.Mutation.UndoMerge == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_undoMerge_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UndoMerge(childComplexity, args["id"].(string)), true
 	case "Mutation.unfollow":
 		if e.ComplexityRoot.Mutation.Unfollow == nil {
 			break
@@ -6357,6 +6418,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MediaCount(childComplexity, args["filter"].(*schema.Filter)), true
+	case "Query.merges":
+		if e.ComplexityRoot.Query.Merges == nil {
+			break
+		}
+
+		args, err := ec.field_Query_merges_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Merges(childComplexity, args["kind"].(schema.RecordKind), args["keptId"].(string)), true
 	case "Query.nearest":
 		if e.ComplexityRoot.Query.Nearest == nil {
 			break
@@ -9048,6 +9120,8 @@ extend type Gallery {
 extend type Query {
   # Probable duplicates waiting for review, most likely first.
   alikes(kind: RecordKind!, limit: Int, offset: Int): [AlikePair!]!
+  # Merges into a record that can still be undone, newest first.
+  merges(kind: RecordKind!, keptId: ID!): [MergeJournal!]!
   # Folders of the user's own files, scanned into the library.
   libraryRoots: [LibraryRoot!]!
   libraryRoot(id: ID!): LibraryRoot
@@ -9064,9 +9138,13 @@ extend type Query {
 }
 
 extend type Mutation {
-  # Merges mergeId into keepId for good: performers, studios, tags or
-  # groups the user knows are one. Media merges go through mergeAlike.
+  # Merges mergeId into keepId: performers, studios, tags or groups the
+  # user knows are one. Media merges go through mergeAlike. Undo with
+  # undoMerge (merges lists them).
   merge(kind: RecordKind!, keepId: ID!, mergeId: ID!): Record
+  # Brings the merged record back as it was before the merge; what reached
+  # the survivor since stays. Returns the merged record.
+  undoMerge(id: ID!): Record
   # Merges a pair's second record into its first, only when they're
   # provably the same (a shared fingerprint or the strict matcher).
   mergeAlike(id: ID!): Record
@@ -9093,6 +9171,16 @@ extend type Mutation {
   # Stores a vector a client or plugin computed for a record.
   addEmbedding(input: EmbeddingInput!): Embedding!
   removeEmbedding(id: ID!): Boolean!
+}
+
+# One merge that can be undone: mergedId was folded into keptId.
+type MergeJournal {
+  id: ID!
+  createdAt: String!
+  subjectKind: RecordKind!
+  keptId: ID!
+  mergedId: ID!
+  mergedName: String
 }
 
 # Two records that are probably the same; the second is hidden until the
@@ -11488,6 +11576,24 @@ func (ec *executionContext) childFields_MediaFile(ctx context.Context, field gra
 		return ec.fieldContext_MediaFile_missing(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type MediaFile", field.Name)
+}
+
+func (ec *executionContext) childFields_MergeJournal(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_MergeJournal_id(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_MergeJournal_createdAt(ctx, field)
+	case "subjectKind":
+		return ec.fieldContext_MergeJournal_subjectKind(ctx, field)
+	case "keptId":
+		return ec.fieldContext_MergeJournal_keptId(ctx, field)
+	case "mergedId":
+		return ec.fieldContext_MergeJournal_mergedId(ctx, field)
+	case "mergedName":
+		return ec.fieldContext_MergeJournal_mergedName(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MergeJournal", field.Name)
 }
 
 func (ec *executionContext) childFields_Notification(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -14852,6 +14958,20 @@ func (ec *executionContext) field_Mutation_undoAutomationRun_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_undoMerge_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_unfollow_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15863,6 +15983,28 @@ func (ec *executionContext) field_Query_media_args(ctx context.Context, rawArgs 
 		return nil, err
 	}
 	args["offset"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_merges_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (schema.RecordKind, error) {
+			return ec.unmarshalNRecordKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keptId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["keptId"] = arg1
 	return args, nil
 }
 
@@ -25282,6 +25424,144 @@ func (ec *executionContext) fieldContext_MediaFile_missing(_ context.Context, fi
 	return graphql.NewScalarFieldContext("MediaFile", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _MergeJournal_id(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Id, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MergeJournal_createdAt(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MergeJournal_subjectKind(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_subjectKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v schema.RecordKind) graphql.Marshaler {
+			return ec.marshalNRecordKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_subjectKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type RecordKind does not have child fields"))
+}
+
+func (ec *executionContext) _MergeJournal_keptId(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_keptId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.KeptId, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_keptId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MergeJournal_mergedId(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_mergedId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MergedId, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_mergedId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MergeJournal_mergedName(ctx context.Context, field graphql.CollectedField, obj *schema.MergeJournal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MergeJournal_mergedName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MergedName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MergeJournal_mergedName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MergeJournal", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Mutation_scrape(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27144,6 +27424,50 @@ func (ec *executionContext) fieldContext_Mutation_merge(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_merge_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_undoMerge(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_undoMerge(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UndoMerge(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Record) graphql.Marshaler {
+			return ec.marshalORecord2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐRecord(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_undoMerge(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Record does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_undoMerge_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -35099,6 +35423,50 @@ func (ec *executionContext) fieldContext_Query_alikes(ctx context.Context, field
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_alikes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_merges(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_merges(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Merges(ctx, fc.Args["kind"].(schema.RecordKind), fc.Args["keptId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.MergeJournal) graphql.Marshaler {
+			return ec.marshalNMergeJournal2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMergeJournalᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_merges(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MergeJournal(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_merges_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -51558,6 +51926,67 @@ func (ec *executionContext) _MediaFile(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var mergeJournalImplementors = []string{"MergeJournal"}
+
+func (ec *executionContext) _MergeJournal(ctx context.Context, sel ast.SelectionSet, obj *schema.MergeJournal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mergeJournalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MergeJournal")
+		case "id":
+			out.Values[i] = ec._MergeJournal_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._MergeJournal_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectKind":
+			out.Values[i] = ec._MergeJournal_subjectKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "keptId":
+			out.Values[i] = ec._MergeJournal_keptId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mergedId":
+			out.Values[i] = ec._MergeJournal_mergedId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mergedName":
+			out.Values[i] = ec._MergeJournal_mergedName(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -51874,6 +52303,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "merge":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_merge(ctx, field)
+			})
+		case "undoMerge":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_undoMerge(ctx, field)
 			})
 		case "mergeAlike":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -54853,6 +55286,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_alikes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "merges":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_merges(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -61877,6 +62332,32 @@ func (ec *executionContext) marshalNMediaStatus2githubᚗcomᚋplayingwithclouds
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNMergeJournal2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMergeJournalᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.MergeJournal) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMergeJournal2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMergeJournal(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMergeJournal2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMergeJournal(ctx context.Context, sel ast.SelectionSet, v *schema.MergeJournal) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MergeJournal(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNotification2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐNotification(ctx context.Context, sel ast.SelectionSet, v schema.Notification) graphql.Marshaler {

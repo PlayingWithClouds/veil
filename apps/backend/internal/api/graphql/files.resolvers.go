@@ -66,6 +66,15 @@ func (r *mutationResolver) Merge(ctx context.Context, kind schema.RecordKind, ke
 	return r.loadRecord(ctx, kind, keepID)
 }
 
+// UndoMerge is the resolver for the undoMerge field.
+func (r *mutationResolver) UndoMerge(ctx context.Context, id string) (model.Record, error) {
+	entry, err := r.library.UndoMerge(ctx, id)
+	if err != nil || entry == nil {
+		return nil, err
+	}
+	return r.loadRecord(ctx, entry.SubjectKind, entry.MergedId)
+}
+
 // MergeAlike is the resolver for the mergeAlike field.
 func (r *mutationResolver) MergeAlike(ctx context.Context, id string) (model.Record, error) {
 	pair, err := r.library.AlikePair(ctx, id)
@@ -167,6 +176,12 @@ func (r *queryResolver) Alikes(ctx context.Context, kind schema.RecordKind, limi
 	size, start := page(limit, offset)
 	pairs, err := r.library.Alikes(ctx, kind, size, start)
 	return pointers(pairs), err
+}
+
+// Merges is the resolver for the merges field.
+func (r *queryResolver) Merges(ctx context.Context, kind schema.RecordKind, keptID string) ([]*schema.MergeJournal, error) {
+	merges, err := r.library.Merges(ctx, kind, keptID)
+	return pointers(merges), err
 }
 
 // LibraryRoots is the resolver for the libraryRoots field.

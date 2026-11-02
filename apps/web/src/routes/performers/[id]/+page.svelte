@@ -5,7 +5,9 @@
 	profiles they're sure of; the result shows when it's in. Refresh reads and
 	asks everything again. Edit changes any detail (those stay as set; each can be handed
 	back to the sites). "Could be the same person" lists performers sharing a
-	name or alias to merge with, and anyone else through the last card. A
+	name or alias: Merge folds one in at once (Undo in the toast), ⇄ compares
+	first, the last card finds anyone else. "Merged in" lists merges that can
+	still be undone. A
 	video's ⋮ "Not …" takes them off it; when a profile of theirs put them
 	there, that profile moves away with its videos.
 -->
@@ -17,6 +19,7 @@
 	import ArrowClockwiseIcon from 'phosphor-svelte/lib/ArrowClockwiseIcon';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
+	import ArrowsLeftRightIcon from 'phosphor-svelte/lib/ArrowsLeftRightIcon';
 	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
@@ -43,6 +46,10 @@
 		readPerformer,
 		fetchPerformerDuplicates,
 		fetchPerformerFetching,
+		fetchMerges,
+		mergePerformers,
+		undoMerge,
+		type MergeRow,
 		type PerformerFetching,
 		unlockPerformerField,
 		type PerformerAttributes,
@@ -91,6 +98,7 @@
 	let editing = $state(false);
 	let merging = $state(false);
 	let mergeWith = $state<MemberRow | null>(null);
+	let merges = $state<MergeRow[]>([]);
 	let menuAnchor = $state<HTMLElement | null>(null);
 	let choosingPicture = $state(false);
 	let fetching = $state<PerformerFetching | null>(null);
@@ -125,6 +133,7 @@
 		loading = true;
 		performer = null;
 		duplicates = [];
+		merges = [];
 		try {
 			performer = await fetchPerformer(performerId);
 		} finally {
@@ -132,6 +141,7 @@
 		}
 		if (!performer) return;
 		void loadDuplicates(performerId);
+		void loadMerges(performerId);
 		await read(performerId, false);
 	}
 
@@ -288,14 +298,55 @@
 		merging = true;
 	}
 
-	/** Goes to the performer that stayed after a merge, or reloads this one. */
-	function afterMerge(keptId: string) {
+	/** Merges a suggested duplicate into this performer at once, with Undo. */
+	async function mergeNow(duplicate: MemberRow) {
+		if (!performer) return;
+		const kept = performer;
+		duplicates = duplicates.filter((candidate) => candidate.id !== duplicate.id);
+		const mergeId = await mergePerformers(kept.id, duplicate.id);
+		afterMerge(kept, duplicate, mergeId);
+	}
+
+	/**
+	 * Goes to the performer that stayed after a merge, or reloads this one,
+	 * and offers Undo.
+	 */
+	function afterMerge(kept: MemberRow, merged: MemberRow, mergeId: string | null) {
 		merging = false;
-		if (keptId === id) {
+		const stayed = kept.id === id;
+		if (stayed) {
 			void load(id);
+			mediaKey++;
+		} else {
+			goto(performerUrl(kept.id));
+		}
+		if (!mergeId) return;
+		let returnTo: string | null = null;
+		if (!stayed) returnTo = merged.id;
+		showUndo({
+			message: `Merged ${merged.name} into ${kept.name}`,
+			undo: () => void unmerge(mergeId, returnTo)
+		});
+	}
+
+	/**
+	 * Undoes a merge, then goes back to the performer whose page it started
+	 * on (returnTo), or reloads this one.
+	 */
+	async function unmerge(mergeId: string, returnTo: string | null) {
+		await undoMerge(mergeId);
+		if (returnTo) {
+			goto(performerUrl(returnTo));
 			return;
 		}
-		goto(performerUrl(keptId));
+		void load(id);
+		mediaKey++;
+	}
+
+	/** Loads the merges into the performer that can still be undone. */
+	async function loadMerges(performerId: string) {
+		const found = await fetchMerges(performerId);
+		if (performerId === id) merges = found;
 	}
 
 	/** "read 3 days ago", or that the page hasn't been read. */
@@ -467,6 +518,27 @@
 			</section>
 		{/if}
 
+		{#if merges.length > 0}
+			<section class="flex flex-col gap-2">
+				<h2 class="text-lg font-semibold">Merged in</h2>
+				<div class="flex flex-wrap gap-2">
+					{#each merges as merge (merge.id)}
+						<span class="bg-base-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm">
+							<span class="font-medium">{merge.mergedName ?? 'A performer'}</span>
+							<span class="text-base-content/50 text-xs">{dayjs(merge.createdAt).fromNow()}</span>
+							<button
+								type="button"
+								class="text-primary text-xs"
+								onclick={() => void unmerge(merge.id, null)}
+							>
+								Undo
+							</button>
+						</span>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
 		<!-- The suggestions, then a card to merge with anyone else. -->
 		<Shelf
 			title="Could be the same person"
@@ -478,9 +550,20 @@
 				{#if duplicate}
 					<div class="flex flex-col gap-2">
 						<MemberCard kind="performer" member={duplicate} />
-						<button type="button" class="btn btn-sm" onclick={() => startMerge(duplicate)}>
-							<UsersThreeIcon size={16} /> Merge
-						</button>
+						<span class="flex gap-1">
+							<button type="button" class="btn btn-sm flex-1" onclick={() => void mergeNow(duplicate)}>
+								<UsersThreeIcon size={16} /> Merge
+							</button>
+							<button
+								type="button"
+								class="btn btn-ghost btn-sm btn-square"
+								aria-label="Compare before merging"
+								title="Compare before merging"
+								onclick={() => startMerge(duplicate)}
+							>
+								<ArrowsLeftRightIcon size={16} />
+							</button>
+						</span>
 					</div>
 				{:else}
 					<button
