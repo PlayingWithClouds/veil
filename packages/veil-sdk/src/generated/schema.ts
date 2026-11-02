@@ -43,6 +43,7 @@ export interface Query {
     faceScans: FaceScan[]
     facePictures: FacePicture[]
     videoFaces: VideoFaces
+    performerFaceMatches: FaceMatch[]
     recommendations: Match[]
     related: Match[]
     shorts: Short[]
@@ -587,6 +588,12 @@ export interface FaceCandidate {
     picture: (Scalars['String'] | null)
     video: (Video | null)
     __typename: 'FaceCandidate'
+}
+
+export interface FaceMatch {
+    video: Video
+    similarity: Scalars['Float']
+    __typename: 'FaceMatch'
 }
 
 export interface FaceGuess {
@@ -1404,6 +1411,7 @@ export interface QueryGenqlSelection{
     faceScans?: (FaceScanGenqlSelection & { __args: {subject: RecordRefInput} })
     facePictures?: (FacePictureGenqlSelection & { __args: {performerId: Scalars['ID'], model: Scalars['String']} })
     videoFaces?: (VideoFacesGenqlSelection & { __args: {videoId: Scalars['ID'], model?: (Scalars['String'] | null)} })
+    performerFaceMatches?: (FaceMatchGenqlSelection & { __args: {performerId: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
     recommendations?: (MatchGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     related?: (MatchGenqlSelection & { __args: {subject: RecordRefInput, limit?: (Scalars['Int'] | null)} })
     shorts?: (ShortGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null)} })
@@ -1984,6 +1992,13 @@ export interface FaceCandidateGenqlSelection{
     credited?: boolean | number
     picture?: boolean | number
     video?: VideoGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FaceMatchGenqlSelection{
+    video?: VideoGenqlSelection
+    similarity?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3113,6 +3128,14 @@ export interface SavedFilterGenqlSelection{
     export const isFaceCandidate = (obj?: { __typename?: any } | null): obj is FaceCandidate => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isFaceCandidate"')
       return FaceCandidate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FaceMatch_possibleTypes: string[] = ['FaceMatch']
+    export const isFaceMatch = (obj?: { __typename?: any } | null): obj is FaceMatch => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFaceMatch"')
+      return FaceMatch_possibleTypes.includes(obj.__typename)
     }
     
 

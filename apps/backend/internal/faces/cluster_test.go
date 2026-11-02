@@ -103,6 +103,25 @@ func TestLearnFallsBackToTheDominantPerson(t *testing.T) {
 	}
 }
 
+// TestLearnGivesTheLeftoverToTheNewCredit learns a performer added beside
+// one whose face is known from the person seen most besides her.
+func TestLearnGivesTheLeftoverToTheNewCredit(t *testing.T) {
+	people := []Person{
+		{Sightings: make([]Sighting, 6), Centroid: identity(0)},
+		{Sightings: make([]Sighting, 4), Centroid: identity(1)},
+		{Sightings: make([]Sighting, 1), Centroid: identity(2)},
+	}
+	known := []Reference{{PerformerID: "ada", Vector: identity(0)}}
+	learned := Learn(people, known, []string{"ada", "bea"})
+	if learned[0] != "ada" || learned[1] != "bea" || len(learned) != 2 {
+		t.Errorf("learned = %v", learned)
+	}
+	people[2].Sightings = make([]Sighting, 3)
+	if learned := Learn(people, known, []string{"ada", "bea"}); len(learned) != 1 {
+		t.Errorf("learned from an even leftover: %v", learned)
+	}
+}
+
 // ids joins a person's sighting ids.
 func ids(person Person) string {
 	joined := ""

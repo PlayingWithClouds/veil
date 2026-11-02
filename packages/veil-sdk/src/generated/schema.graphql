@@ -29,6 +29,7 @@ type Query {
   faceScans(subject: RecordRefInput!): [FaceScan!]!
   facePictures(performerId: ID!, model: String!): [FacePicture!]!
   videoFaces(videoId: ID!, model: String): VideoFaces!
+  performerFaceMatches(performerId: ID!, limit: Int): [FaceMatch!]!
   recommendations(filter: FilterInput, limit: Int, offset: Int): [Match!]!
   related(subject: RecordRefInput!, limit: Int): [Match!]!
   shorts(filter: FilterInput, limit: Int): [Short!]!
@@ -663,6 +664,11 @@ type FaceCandidate {
   credited: Boolean!
   picture: String
   video: Video
+}
+
+type FaceMatch {
+  video: Video!
+  similarity: Float!
 }
 
 type FaceGuess {

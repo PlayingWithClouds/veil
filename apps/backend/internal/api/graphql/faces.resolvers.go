@@ -41,3 +41,16 @@ func (r *queryResolver) VideoFaces(ctx context.Context, videoID string, model *s
 	}
 	return r.videoFaces(ctx, found)
 }
+
+// PerformerFaceMatches is the resolver for the performerFaceMatches field.
+func (r *queryResolver) PerformerFaceMatches(ctx context.Context, performerID string, limit *int) ([]*model.FaceMatch, error) {
+	limited := number(limit)
+	if limited <= 0 {
+		limited = defaultFaceMatches
+	}
+	found, err := r.faces.PerformerMatches(ctx, performerID, limited)
+	if err != nil {
+		return nil, err
+	}
+	return r.faceMatches(ctx, found)
+}

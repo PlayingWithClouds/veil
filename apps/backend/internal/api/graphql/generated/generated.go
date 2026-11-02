@@ -325,6 +325,11 @@ type ComplexityRoot struct {
 		Similarity func(childComplexity int) int
 	}
 
+	FaceMatch struct {
+		Similarity func(childComplexity int) int
+		Video      func(childComplexity int) int
+	}
+
 	FacePerson struct {
 		Candidates func(childComplexity int) int
 		Sightings  func(childComplexity int) int
@@ -927,6 +932,7 @@ type ComplexityRoot struct {
 		Performer                func(childComplexity int, id string) int
 		PerformerAttributeValues func(childComplexity int, attribute string, limit *int) int
 		PerformerDuplicates      func(childComplexity int, id string) int
+		PerformerFaceMatches     func(childComplexity int, performerID string, limit *int) int
 		Performers               func(childComplexity int, text *string, limit *int, offset *int) int
 		PlanOrganize             func(childComplexity int, rootID string) int
 		Play                     func(childComplexity int, url string) int
@@ -1589,6 +1595,7 @@ type QueryResolver interface {
 	FaceScans(ctx context.Context, subject schema.RecordRef) ([]*schema.FaceScan, error)
 	FacePictures(ctx context.Context, performerID string, model string) ([]*model.FacePicture, error)
 	VideoFaces(ctx context.Context, videoID string, model *string) (*model.VideoFaces, error)
+	PerformerFaceMatches(ctx context.Context, performerID string, limit *int) ([]*model.FaceMatch, error)
 	Recommendations(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Match, error)
 	Related(ctx context.Context, subject schema.RecordRef, limit *int) ([]*schema.Match, error)
 	Shorts(ctx context.Context, filter *schema.Filter, limit *int) ([]*recommend.Short, error)
@@ -2813,6 +2820,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.FaceGuess.Similarity(childComplexity), true
+
+	case "FaceMatch.similarity":
+		if e.ComplexityRoot.FaceMatch.Similarity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceMatch.Similarity(childComplexity), true
+	case "FaceMatch.video":
+		if e.ComplexityRoot.FaceMatch.Video == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FaceMatch.Video(childComplexity), true
 
 	case "FacePerson.candidates":
 		if e.ComplexityRoot.FacePerson.Candidates == nil {
@@ -6527,6 +6547,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PerformerDuplicates(childComplexity, args["id"].(string)), true
+	case "Query.performerFaceMatches":
+		if e.ComplexityRoot.Query.PerformerFaceMatches == nil {
+			break
+		}
+
+		args, err := ec.field_Query_performerFaceMatches_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PerformerFaceMatches(childComplexity, args["performerId"].(string), args["limit"].(*int)), true
 	case "Query.performers":
 		if e.ComplexityRoot.Query.Performers == nil {
 			break
@@ -8950,6 +8981,10 @@ extend type Query {
   # compared with every performer's known faces. model defaults to the one
   # of the video's newest scan.
   videoFaces(videoId: ID!, model: String): VideoFaces!
+  # Scanned videos not crediting the performer that probably show them:
+  # their known faces win one of the video's people, as in videoFaces'
+  # guesses. Best first; limit defaults to 40.
+  performerFaceMatches(performerId: ID!, limit: Int): [FaceMatch!]!
 }
 
 extend type Mutation {
@@ -9037,6 +9072,11 @@ type FaceCandidate {
   # a video crediting them.
   picture: String
   video: Video
+}
+
+type FaceMatch {
+  video: Video!
+  similarity: Float!
 }
 
 type FaceGuess {
@@ -11157,6 +11197,16 @@ func (ec *executionContext) childFields_FaceGuess(ctx context.Context, field gra
 		return ec.fieldContext_FaceGuess_person(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FaceGuess", field.Name)
+}
+
+func (ec *executionContext) childFields_FaceMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "video":
+		return ec.fieldContext_FaceMatch_video(ctx, field)
+	case "similarity":
+		return ec.fieldContext_FaceMatch_similarity(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FaceMatch", field.Name)
 }
 
 func (ec *executionContext) childFields_FacePerson(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -16206,6 +16256,28 @@ func (ec *executionContext) field_Query_performerDuplicates_args(ctx context.Con
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_performerFaceMatches_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "performerId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["performerId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -21476,6 +21548,61 @@ func (ec *executionContext) _FaceGuess_person(ctx context.Context, field graphql
 }
 func (ec *executionContext) fieldContext_FaceGuess_person(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("FaceGuess", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _FaceMatch_video(ctx context.Context, field graphql.CollectedField, obj *model.FaceMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceMatch_video(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Video, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Video) graphql.Marshaler {
+			return ec.marshalNVideo2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceMatch_video(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FaceMatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FaceMatch_similarity(ctx context.Context, field graphql.CollectedField, obj *model.FaceMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FaceMatch_similarity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Similarity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FaceMatch_similarity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FaceMatch", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
 func (ec *executionContext) _FacePerson_sightings(ctx context.Context, field graphql.CollectedField, obj *model.FacePerson) (ret graphql.Marshaler) {
@@ -35318,6 +35445,50 @@ func (ec *executionContext) fieldContext_Query_videoFaces(ctx context.Context, f
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_videoFaces_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_performerFaceMatches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_performerFaceMatches(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PerformerFaceMatches(ctx, fc.Args["performerId"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FaceMatch) graphql.Marshaler {
+			return ec.marshalNFaceMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceMatchᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_performerFaceMatches(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FaceMatch(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_performerFaceMatches_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -49761,6 +49932,50 @@ func (ec *executionContext) _FaceGuess(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var faceMatchImplementors = []string{"FaceMatch"}
+
+func (ec *executionContext) _FaceMatch(ctx context.Context, sel ast.SelectionSet, obj *model.FaceMatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, faceMatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FaceMatch")
+		case "video":
+			out.Values[i] = ec._FaceMatch_video(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "similarity":
+			out.Values[i] = ec._FaceMatch_similarity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var facePersonImplementors = []string{"FacePerson"}
 
 func (ec *executionContext) _FacePerson(ctx context.Context, sel ast.SelectionSet, obj *model.FacePerson) graphql.Marshaler {
@@ -55318,6 +55533,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_videoFaces(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "performerFaceMatches":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_performerFaceMatches(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -61520,6 +61757,32 @@ func (ec *executionContext) unmarshalNFaceInput2ᚕᚖgithubᚗcomᚋplayingwith
 func (ec *executionContext) unmarshalNFaceInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceInput(ctx context.Context, v any) (*model.FaceInput, error) {
 	res, err := ec.unmarshalInputFaceInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFaceMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FaceMatch) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNFaceMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceMatch(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFaceMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFaceMatch(ctx context.Context, sel ast.SelectionSet, v *model.FaceMatch) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FaceMatch(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFacePerson2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐFacePersonᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FacePerson) graphql.Marshaler {

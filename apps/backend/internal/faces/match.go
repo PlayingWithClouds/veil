@@ -118,9 +118,9 @@ func Assign(candidates [][]Candidate) []Guess {
 
 // Learn decides which person of a video each credited performer is, for
 // learning their face: a person likely matching the performer's known
-// faces, or, when the video credits only one performer whose face is
-// unknown, the person clearly seen most. The result maps person index to
-// performer id.
+// faces, or, when exactly one credited performer's face is unknown, the
+// person clearly seen most among those nobody else was matched to. The
+// result maps person index to performer id.
 func Learn(people []Person, references []Reference, credited []string) map[int]string {
 	var creditedReferences []Reference
 	for _, reference := range references {
@@ -136,23 +136,45 @@ func Learn(people []Person, references []Reference, credited []string) map[int]s
 	for _, guess := range Assign(candidates) {
 		learned[guess.Person] = guess.PerformerID
 	}
-	if len(learned) > 0 || len(credited) != 1 || len(creditedReferences) > 0 {
+	unknown := withoutKnownFace(credited, creditedReferences)
+	if len(unknown) != 1 {
 		return learned
 	}
-	if person, found := dominantPerson(people); found {
-		learned[person] = credited[0]
+	if person, found := dominantLeftover(people, learned); found {
+		learned[person] = unknown[0]
 	}
 	return learned
 }
 
-// dominantPerson is the index of the person seen clearly most, if any;
-// people come most seen first, as Cluster returns them.
-func dominantPerson(people []Person) (int, bool) {
-	if len(people) == 0 || len(people[0].Sightings) < dominantSightings {
+// withoutKnownFace lists the credited performers no reference shows.
+func withoutKnownFace(credited []string, references []Reference) []string {
+	var unknown []string
+	for _, performerID := range credited {
+		known := slices.ContainsFunc(references, func(reference Reference) bool {
+			return reference.PerformerID == performerID
+		})
+		if !known {
+			unknown = append(unknown, performerID)
+		}
+	}
+	return unknown
+}
+
+// dominantLeftover is the index of the person seen clearly most among those
+// not learned already, if any; people come most seen first, as Cluster
+// returns them.
+func dominantLeftover(people []Person, learned map[int]string) (int, bool) {
+	var leftover []int
+	for index := range people {
+		if _, taken := learned[index]; !taken {
+			leftover = append(leftover, index)
+		}
+	}
+	if len(leftover) == 0 || len(people[leftover[0]].Sightings) < dominantSightings {
 		return 0, false
 	}
-	if len(people) > 1 && len(people[0].Sightings) < dominantRatio*len(people[1].Sightings) {
+	if len(leftover) > 1 && len(people[leftover[0]].Sightings) < dominantRatio*len(people[leftover[1]].Sightings) {
 		return 0, false
 	}
-	return 0, true
+	return leftover[0], true
 }

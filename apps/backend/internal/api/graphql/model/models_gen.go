@@ -117,6 +117,11 @@ type FaceInput struct {
 	Region    any       `json:"region,omitempty"`
 }
 
+type FaceMatch struct {
+	Video      *schema.Video `json:"video"`
+	Similarity float64       `json:"similarity"`
+}
+
 type FacePerson struct {
 	Sightings  []*FaceSighting  `json:"sightings"`
 	Candidates []*FaceCandidate `json:"candidates"`

@@ -67,6 +67,26 @@ func (records *faceRecords) video(ctx context.Context, id *string) (*schema.Vide
 	return loaded, err
 }
 
+// defaultFaceMatches is how many face matches a performer lists by default.
+const defaultFaceMatches = 40
+
+// faceMatches loads the videos of a performer's face matches, skipping any
+// gone since.
+func (r *Resolver) faceMatches(ctx context.Context, found []faces.FaceMatch) ([]*model.FaceMatch, error) {
+	matches := []*model.FaceMatch{}
+	for _, match := range found {
+		video, err := r.library.Video(ctx, match.VideoID)
+		if err != nil {
+			return nil, err
+		}
+		if video == nil {
+			continue
+		}
+		matches = append(matches, &model.FaceMatch{Video: video, Similarity: match.Similarity})
+	}
+	return matches, nil
+}
+
 // videoFaces turns the service's people and guesses into the API's,
 // loading the performers and videos they name.
 func (r *Resolver) videoFaces(ctx context.Context, found *faces.VideoFaces) (*model.VideoFaces, error) {

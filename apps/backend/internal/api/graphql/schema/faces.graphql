@@ -12,6 +12,10 @@ extend type Query {
   # compared with every performer's known faces. model defaults to the one
   # of the video's newest scan.
   videoFaces(videoId: ID!, model: String): VideoFaces!
+  # Scanned videos not crediting the performer that probably show them:
+  # their known faces win one of the video's people, as in videoFaces'
+  # guesses. Best first; limit defaults to 40.
+  performerFaceMatches(performerId: ID!, limit: Int): [FaceMatch!]!
 }
 
 extend type Mutation {
@@ -99,6 +103,11 @@ type FaceCandidate {
   # a video crediting them.
   picture: String
   video: Video
+}
+
+type FaceMatch {
+  video: Video!
+  similarity: Float!
 }
 
 type FaceGuess {

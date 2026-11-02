@@ -135,6 +135,28 @@ func TestRescanReplacesTheEarlierScan(t *testing.T) {
 	}
 }
 
+// TestPerformerMatches finds the uncredited video showing a performer's
+// learned face, and neither the video crediting her nor one without her.
+func TestPerformerMatches(t *testing.T) {
+	ctx := context.Background()
+	service, database := openService(t)
+	ada := insert(t, database, "Performer", schema.Performer{Name: "Ada"})
+	credited := video(t, database, ada)
+	scanVideo(t, service, credited, frames([]int{0}, []int{0}, []int{0}, []int{0}))
+	showsHer := video(t, database)
+	scanVideo(t, service, showsHer, frames([]int{0, 1}, []int{0}, []int{1}))
+	without := video(t, database)
+	scanVideo(t, service, without, frames([]int{2}, []int{2}))
+
+	matches, err := service.PerformerMatches(ctx, ada, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 1 || matches[0].VideoID != showsHer {
+		t.Errorf("matches = %+v, want only %s", matches, showsHer)
+	}
+}
+
 // guessedPerformers counts the guesses per performer.
 func guessedPerformers(found *VideoFaces) map[string]int {
 	guessed := map[string]int{}
