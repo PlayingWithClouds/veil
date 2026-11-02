@@ -4,8 +4,10 @@
 	picture, attributes) and asks the other sites to identify them, adding the
 	profiles they're sure of; the result shows when it's in. Refresh reads and
 	asks everything again. Edit changes any detail (those stay as set; each can be handed
-	back to the sites), Merge folds another performer into this one, and
-	"Possibly the same person" suggests performers sharing a name or alias.
+	back to the sites). "Could be the same person" lists performers sharing a
+	name or alias to merge with, and anyone else through the last card. A
+	video's ⋮ "Not …" takes them off it; when a profile of theirs put them
+	there, that profile moves away with its videos.
 -->
 <script lang="ts">
 	import { page } from '$app/state';
@@ -21,7 +23,10 @@
 	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
 	import EyeSlashIcon from 'phosphor-svelte/lib/EyeSlashIcon';
 	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
+	import UserMinusIcon from 'phosphor-svelte/lib/UserMinusIcon';
 	import CardMenu from '$lib/components/CardMenu.svelte';
+	import Shelf from '$lib/components/Shelf.svelte';
+	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
 	import { setBlocked, setFavorite, logNotInterested } from '$lib/userState';
 	import { showUndo } from '$lib/stores/undoToast';
@@ -29,9 +34,10 @@
 	import RecordMedia from '$lib/components/RecordMedia.svelte';
 	import PerformerEditor from '$lib/components/PerformerEditor.svelte';
 	import PerformerMerge from '$lib/components/PerformerMerge.svelte';
-	import type { MemberRow } from '$lib/library';
+	import type { MemberRow, VideoCardRow } from '$lib/library';
 	import {
 		fetchPerformer,
+		unassignPerformer,
 		readPerformer,
 		fetchPerformerDuplicates,
 		fetchPerformerFetching,
@@ -90,6 +96,8 @@
 	// Counts watches started, so a watch for an earlier page or favourite stops.
 	let watchGeneration = 0;
 
+	// Width of a card in the "Could be the same person" row (px).
+	const DUPLICATE_WIDTH = 140;
 	// How often the page asks what's being fetched while something is.
 	const WATCH_INTERVAL_MS = 3000;
 
@@ -164,23 +172,20 @@
 	}
 
 	/**
-	 * Shows what's being fetched about the performer until it's done,
-	 * reloading their videos whenever more have come in.
+	 * Shows what's being fetched about the performer until it's done, then
+	 * reloads their videos when more came in (not while scrolling through them).
 	 */
 	async function watchFetching(performerId: string) {
 		const generation = ++watchGeneration;
-		let lastCount = performer?.videoCount ?? 0;
+		const startCount = performer?.videoCount ?? 0;
 		for (;;) {
 			const status = await fetchPerformerFetching(performerId);
 			if (generation !== watchGeneration || performerId !== id) return;
 			fetching = status;
 			if (!status) return;
-			if (status.videoCount !== lastCount) {
-				lastCount = status.videoCount;
-				mediaKey++;
-			}
 			if (!status.reading && status.listing.length === 0) {
 				fetching = null;
+				if (status.videoCount !== startCount) mediaKey++;
 				return;
 			}
 			await new Promise((resolve) => setTimeout(resolve, WATCH_INTERVAL_MS));
@@ -192,6 +197,36 @@
 		const names = plugins.map((plugin) => siteDisplayName(plugin, $sites));
 		if (names.length <= 3) return names.join(', ');
 		return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
+	}
+
+	/** The extra ⋮ entry on each of their videos: they aren't in it. */
+	function videoActions(video: VideoCardRow, remove: () => void): SheetAction[] {
+		if (!performer) return [];
+		const name = performer.name;
+		return [{ label: `Not ${name}`, icon: UserMinusIcon, run: () => void notInVideo(video, remove) }];
+	}
+
+	/**
+	 * Takes the performer off a video. When a profile of theirs credited it,
+	 * that profile was someone else's: it moved away with its videos, so the
+	 * performer and their videos are shown again.
+	 */
+	async function notInVideo(video: VideoCardRow, remove: () => void) {
+		if (!performer) return;
+		const performerId = performer.id;
+		const name = performer.name;
+		remove();
+		const other = await unassignPerformer(video.id, performerId);
+		if (!other) {
+			showUndo({ message: `Took ${name} off “${video.title}”` });
+			return;
+		}
+		showUndo({
+			message: `That site's ${name} is someone else: their profile and its videos moved to a new performer`
+		});
+		performer = await fetchPerformer(performerId);
+		mediaKey++;
+		void loadDuplicates(performerId);
 	}
 
 	/** The ⋮ menu: not interested, block. */
@@ -311,9 +346,6 @@
 						<button type="button" class="btn btn-sm" onclick={() => (editing = true)}>
 							<PencilSimpleIcon size={16} /> Edit
 						</button>
-						<button type="button" class="btn btn-sm" onclick={() => startMerge(null)}>
-							<UsersThreeIcon size={16} /> Merge…
-						</button>
 						<button
 							type="button"
 							class="btn btn-sm"
@@ -416,40 +448,39 @@
 			</section>
 		{/if}
 
-		{#if duplicates.length > 0}
-			<section class="flex flex-col gap-2">
-				<h2 class="text-base font-semibold">Possibly the same person</h2>
-				<div class="flex flex-wrap gap-2">
-					{#each duplicates as duplicate (duplicate.id)}
-						<div class="bg-base-200 flex items-center gap-3 rounded-xl p-2 pr-3">
-							<a href={performerUrl(duplicate.id)} class="flex items-center gap-3">
-								<span class="bg-base-300 h-10 w-10 shrink-0 overflow-hidden rounded-full">
-									{#if duplicate.image}
-										<img
-											src={cacheUrl(duplicate.image.uri)}
-											alt=""
-											class="h-full w-full object-cover"
-										/>
-									{/if}
-								</span>
-								<span class="flex flex-col">
-									<span class="text-sm font-medium">{duplicate.name}</span>
-									<span class="text-base-content/50 text-xs">{duplicate.videoCount} videos</span>
-								</span>
-							</a>
-							<button type="button" class="btn btn-xs" onclick={() => startMerge(duplicate)}
-								>Merge…</button
-							>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
+		<!-- The suggestions, then a card to merge with anyone else. -->
+		<Shelf
+			title="Could be the same person"
+			items={[...duplicates, null]}
+			key={(duplicate) => duplicate?.id ?? 'someone-else'}
+			itemWidth={DUPLICATE_WIDTH}
+		>
+			{#snippet card(duplicate)}
+				{#if duplicate}
+					<div class="flex flex-col gap-2">
+						<MemberCard kind="performer" member={duplicate} />
+						<button type="button" class="btn btn-sm" onclick={() => startMerge(duplicate)}>
+							<UsersThreeIcon size={16} /> Merge
+						</button>
+					</div>
+				{:else}
+					<button
+						type="button"
+						class="bg-base-200 hover:bg-base-300 text-base-content/60 flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded-xl text-sm"
+						onclick={() => startMerge(null)}
+					>
+						<UsersThreeIcon size={28} />
+						Someone else…
+					</button>
+				{/if}
+			{/snippet}
+		</Shelf>
 
 		{#key mediaKey}
 			<RecordMedia
 				filter={{ performerId: performer.id }}
 				allVideosHref={`/?${new URLSearchParams({ performer: performer.id })}`}
+				{videoActions}
 			/>
 		{/key}
 

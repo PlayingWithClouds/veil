@@ -24,6 +24,7 @@
 	import { impression } from '$lib/impression';
 	import { hiddenRecords, hiddenKey } from '$lib/userState';
 	import { qualityLabel, videoCardActions } from '$lib/videoCard';
+	import type { SheetAction } from './ActionSheet.svelte';
 
 	interface Props {
 		video: VideoCardRow;
@@ -31,10 +32,12 @@
 		note?: string | null;
 		// Where the card is shown; logs it as shown there and, on click, chosen.
 		shown?: Shown | null;
+		// Entries the page adds to the top of the ⋮ menu, e.g. "Not Mia Malkova".
+		actions?: SheetAction[];
 		onclick: () => void;
 	}
 
-	let { video, note = null, shown = null, onclick }: Props = $props();
+	let { video, note = null, shown = null, actions = [], onclick }: Props = $props();
 
 	let subject = $derived({ kind: 'video', id: video.id } as const);
 
@@ -68,12 +71,13 @@
 	let favoriteOverride = $state<boolean | null>(null);
 	let favorite = $derived(favoriteOverride ?? video.userState.favorite);
 	let menuAnchor = $state<HTMLElement | null>(null);
-	let menuActions = $derived(
-		videoCardActions(
+	let menuActions = $derived([
+		...actions,
+		...videoCardActions(
 			{ ...video, userState: { ...video.userState, favorite } },
 			{ onfavorite: (value) => (favoriteOverride = value) }
 		)
-	);
+	]);
 
 	let hidden = $derived.by(() => {
 		const keys = $hiddenRecords;

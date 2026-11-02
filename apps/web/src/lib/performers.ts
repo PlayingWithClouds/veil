@@ -75,6 +75,18 @@ export async function editPerformer(
 	return data.editPerformer ?? null;
 }
 
+/**
+ * Takes a performer off a video they aren't in. When one of their site
+ * profiles credited them, that profile was someone else's and moved to a new
+ * performer, which is returned, with the videos only it credited.
+ */
+export async function unassignPerformer(videoId: string, performerId: string): Promise<MemberRow | null> {
+	const data = await gqlClient.mutation({
+		unassignPerformer: { __args: { videoId, performerId }, ...MEMBER }
+	});
+	return data.unassignPerformer ?? null;
+}
+
 /** What's being fetched about a performer now, and how many videos they have so far. */
 export interface PerformerFetching {
 	reading: boolean;
