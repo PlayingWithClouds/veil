@@ -91,15 +91,8 @@ export class VideoSampler {
 		if (Math.abs(this.element.currentTime - seconds) > SEEK_TOLERANCE_SECONDS) {
 			throw new Error(`The video can't seek to ${seconds} s`);
 		}
-		const { width, height } = frameSize(this.element.videoWidth, this.element.videoHeight);
-		this.canvas.width = width;
-		this.canvas.height = height;
-		const context = this.canvas.getContext('2d', { willReadFrequently: true });
-		if (!context) throw new Error('No 2D canvas to draw frames on');
-		context.drawImage(this.element, 0, 0, width, height);
 		draw?.(this.element);
-		const pixels = context.getImageData(0, 0, width, height);
-		return { rgba: pixels.data, width, height };
+		return readFrame(this.element, this.canvas);
 	}
 
 	/** Stops loading and lets go of the stream. */
@@ -109,6 +102,21 @@ export class VideoSampler {
 		this.element.removeAttribute('src');
 		this.element.load();
 	}
+}
+
+/**
+ * The frame an element shows, scaled to the detector's size. Throws when
+ * the element's source doesn't allow reading its pixels.
+ */
+export function readFrame(element: HTMLVideoElement, canvas: HTMLCanvasElement): Frame {
+	const { width, height } = frameSize(element.videoWidth, element.videoHeight);
+	canvas.width = width;
+	canvas.height = height;
+	const context = canvas.getContext('2d', { willReadFrequently: true });
+	if (!context) throw new Error('No 2D canvas to draw frames on');
+	context.drawImage(element, 0, 0, width, height);
+	const pixels = context.getImageData(0, 0, width, height);
+	return { rgba: pixels.data, width, height };
 }
 
 /** Waits for an element's event; rejects on its error, the timeout or the signal. */

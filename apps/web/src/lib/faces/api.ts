@@ -52,16 +52,18 @@ export async function fetchScanVideo(videoId: string) {
 	return data.video ?? null;
 }
 
-/** Whether the record has a face scan with the model. */
-export async function hasFaceScan(
+/** How many frames the record's face scan with the model looked at; null when there's none. */
+export async function scannedFrames(
 	kind: 'video' | 'performer',
 	id: string,
 	model: string
-): Promise<boolean> {
+): Promise<number | null> {
 	const data = await gqlClient.query({
-		faceScans: { __args: { subject: { kind, id } }, model: true }
+		faceScans: { __args: { subject: { kind, id } }, model: true, frames: true }
 	});
-	return data.faceScans.some((scan) => scan.model === model);
+	const scan = data.faceScans.find((found) => found.model === model);
+	if (!scan) return null;
+	return scan.frames;
 }
 
 /** A performer's pictures and whether each is scanned with the model. */

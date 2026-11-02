@@ -65,6 +65,8 @@
 	let fullDetails = $state(false);
 	let changingStudio = $state(false);
 	let faces = $state<VideoFaceGuesses | null>(null);
+	// The element the player plays in, for the face scan; not reactive, only read.
+	let playerElement: HTMLVideoElement | null = null;
 
 	let id = $derived(page.params.id ?? '');
 	let playerSources = $derived<PlayerSource[]>(
@@ -110,12 +112,26 @@
 
 	/**
 	 * Shows who earlier scans recognised, scans the video for faces in the
-	 * background, and shows the new guesses once that's done.
+	 * background (also from the frames the player shows), and shows the
+	 * guesses again each time the scan grows and once it's done.
 	 */
 	async function watchFaces(videoId: string) {
 		void loadFaces(videoId);
-		const outcome = await trackVideo(videoId);
+		const outcome = await trackVideo(videoId, {
+			player: () => playerElement,
+			onsaved: () => void loadFaces(videoId)
+		});
 		if (outcome === 'scanned' || outcome === 'skipped') void loadFaces(videoId);
+	}
+
+	/** Keeps the playing element for the face scan, and logs the watch. */
+	function attachPlayer(element: HTMLVideoElement): () => void {
+		playerElement = element;
+		const stopTracking = trackWatch(element, id);
+		return () => {
+			stopTracking();
+			if (playerElement === element) playerElement = null;
+		};
 	}
 
 	/** Loads the face guesses for the video, unless the page moved on. */
@@ -194,7 +210,7 @@
 				square={$isCompact}
 				{poster}
 				startPosition={video.userState.progress ?? 0}
-				onattach={(element) => trackWatch(element, id)}
+				onattach={attachPlayer}
 				onclose={() => (active = null)}
 			/>
 		{:else}

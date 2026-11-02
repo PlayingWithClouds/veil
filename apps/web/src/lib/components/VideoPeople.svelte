@@ -57,6 +57,7 @@
 	const FACE_PHASES: Record<FaceTracking['phase'], string> = {
 		pictures: 'Learning the performers’ faces',
 		stills: 'Looking for faces in the stills',
+		playback: 'Looking for faces as the video plays',
 		waiting: 'Waiting for the video to pause',
 		frames: 'Looking for faces in the video',
 		saving: 'Saving the faces'

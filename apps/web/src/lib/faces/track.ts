@@ -1,12 +1,15 @@
 /**
- * Background face tracking. Opening a video scans it once per face model:
- * the credited performers' unscanned pictures first, then the video's
- * stills (cover and the sites' preview frames, plain image fetches). Only
- * when those show too few faces does it seek through 25 evenly spaced
- * frames of the stream, and only while nothing on the page plays. Those
- * frames also make the video's perceptual hash and, when it has none, its
- * trickplay sheet. One record at a time (a newer request cancels the
- * older), models in a worker.
+ * Background face tracking. Opening a video scans it per face model: the
+ * credited performers' unscanned pictures first, then the video's stills
+ * (cover and the sites' preview frames, plain image fetches), then 25
+ * evenly spaced frames. Each frame is taken from the page's player as its
+ * playback passes that time, so watching costs no extra download; while
+ * nothing plays, a hidden player seeks to the frames still missing, unless
+ * the stills already showed enough faces. The scan is saved as it grows,
+ * so the guesses refine while it runs, and a later visit picks up a scan
+ * that didn't get all its frames. All 25 frames also make the video's
+ * perceptual hash and, when it has none, its trickplay sheet. One record
+ * at a time (a newer request cancels the older), models in a worker.
  */
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
@@ -18,6 +21,7 @@ import * as api from './api';
 import { FACE_MODEL, type Frame } from './engine';
 import { grayscale, perceptualHash } from './phash';
 import {
+	SAMPLE_COUNT,
 	compactVector,
 	frameSize,
 	pickStream,
@@ -27,7 +31,7 @@ import {
 	type ScannedFace,
 	type SheetLayout
 } from './plan';
-import { VideoSampler } from './sampler';
+import { VideoSampler, readFrame } from './sampler';
 
 /** How long tracking waits after a video opens, so its player gets the bandwidth first. */
 const START_DELAY_MS = 4000;
@@ -38,21 +42,42 @@ const MAX_PICTURES = 4;
 /** Stills showing a face that make seeking through the stream unnecessary. */
 const ENOUGH_STILLS_WITH_FACES = 3;
 
-/** How often seeking checks whether the page's playback has stopped. */
-const PLAYBACK_POLL_MS = 2000;
+/** How often the page's playback is checked for a frame at a sample time. */
+const PLAYBACK_POLL_MS = 250;
+
+/** How far from a sample time a played frame may be to stand in for it. */
+const PLAYED_TOLERANCE_SECONDS = 1;
+
+/** How far the player's length may be from the video's for it to count as playing this video. */
+const LENGTH_TOLERANCE_SECONDS = 5;
+
+/** New frames between saves of the growing scan. */
+const SAVE_EVERY_FRAMES = 5;
+
+/** Seeks failing in a row after which the hidden player gives up (a stream that can't seek). */
+const MAX_SEEK_FAILURES = 3;
 
 /** How a tracking request ended. */
 export type TrackOutcome = 'scanned' | 'skipped' | 'cancelled' | 'failed';
 
 /**
- * What tracking is doing now, for a quiet progress hint. `waiting` means the
- * stream's frames wait for playback to pause.
+ * What tracking is doing now, for a quiet progress hint. `playback` takes
+ * frames from the playing video; `waiting` means seeking waits for another
+ * video on the page to stop.
  */
 export interface FaceTracking {
 	subject: { kind: 'video' | 'performer'; id: string };
-	phase: 'pictures' | 'stills' | 'waiting' | 'frames' | 'saving';
+	phase: 'pictures' | 'stills' | 'playback' | 'waiting' | 'frames' | 'saving';
 	// 0..1 through the phase.
 	progress: number;
+}
+
+/** What scanning a video can use from its page. */
+export interface VideoTrackOptions {
+	// The page's player element, null while it has none.
+	player?: () => HTMLVideoElement | null;
+	// Called each time the growing scan is saved, e.g. to reload the guesses.
+	onsaved?: () => void;
 }
 
 /** The running tracking, null when idle. */
@@ -62,12 +87,15 @@ let current: { key: string; controller: AbortController; done: Promise<TrackOutc
 	null;
 
 /**
- * Scans a video for faces in the background, unless it's scanned with this
- * model already (then its credited performers' faces are only learned
- * again). Resolves when done; `fetchVideoFaces` then has the guesses.
+ * Scans a video for faces in the background, unless it's fully scanned with
+ * this model already (then its credited performers' faces are only learned
+ * again). `fetchVideoFaces` has the guesses after each save and when done.
  */
-export function trackVideo(videoId: string): Promise<TrackOutcome> {
-	return runExclusive(`video:${videoId}`, (signal) => scanVideo(videoId, signal));
+export function trackVideo(
+	videoId: string,
+	options: VideoTrackOptions = {}
+): Promise<TrackOutcome> {
+	return runExclusive(`video:${videoId}`, (signal) => scanVideo(videoId, options, signal));
 }
 
 /** Scans a performer's unscanned pictures for their face in the background. */
@@ -120,42 +148,63 @@ async function settle(job: Promise<TrackOutcome>): Promise<TrackOutcome> {
 }
 
 /**
- * Scans a video's credited performers' pictures, then (unless done before)
- * its stills, and its stream's frames when the stills show too few faces.
+ * Scans a video's credited performers' pictures, then (unless fully done
+ * before) its stills and its frames, saving the scan as it grows.
  */
-async function scanVideo(videoId: string, signal: AbortSignal): Promise<TrackOutcome> {
+async function scanVideo(
+	videoId: string,
+	options: VideoTrackOptions,
+	signal: AbortSignal
+): Promise<TrackOutcome> {
 	await delay(START_DELAY_MS, signal);
 	const video = await api.fetchScanVideo(videoId);
 	if (!video) return 'failed';
 	for (const performer of video.performers) {
 		await scanPictures(performer.id, signal);
 	}
-	if (await api.hasFaceScan('video', videoId, FACE_MODEL)) {
+	const earlierFrames = await api.scannedFrames('video', videoId, FACE_MODEL);
+	if (earlierFrames !== null && earlierFrames >= SAMPLE_COUNT) {
 		await api.learnFaces(videoId, FACE_MODEL);
 		return 'skipped';
 	}
 	const stills = await scanStills(video, signal);
-	if (stills.withFaces >= ENOUGH_STILLS_WITH_FACES) {
-		await api.recordFaceScan({
-			kind: 'video',
-			id: video.id,
-			model: FACE_MODEL,
-			frames: stills.read,
-			faces: stills.faces
-		});
-		return 'scanned';
-	}
-	const stream = pickStream(video.streams);
-	if (!stream) return 'failed';
-	const playable = await play(stream.url);
-	if (!playable) return 'failed';
-	const sampler = await VideoSampler.open(playable.url, playable.mimeType, signal);
+	const seeker = new Seeker(video, signal);
 	try {
-		await scanFrames(video, sampler, stills, signal);
+		const duration = await videoLength(video, options.player, seeker);
+		if (duration <= 0) throw new Error('The video has no length to sample');
+		const scan = new FrameScan(video, stills, duration, earlierFrames ?? 0, options.onsaved);
+		await scan.save();
+		// Enough faces in the stills: frames only refine it while it plays, without seeking.
+		const seeking = stills.withFaces < ENOUGH_STILLS_WITH_FACES;
+		await scanFrames(scan, options.player, seeking, seeker, signal);
 	} finally {
-		sampler.close();
+		seeker.close();
 	}
 	return 'scanned';
+}
+
+/**
+ * The video's length, as its stream says: the page's player's when it
+ * plays a video this long, else the hidden player's, else the site's.
+ */
+async function videoLength(
+	video: ScanVideo,
+	player: (() => HTMLVideoElement | null) | undefined,
+	seeker: Seeker
+): Promise<number> {
+	const element = player?.();
+	if (element && Number.isFinite(element.duration) && element.duration > 0) {
+		if (sameLength(element.duration, video.durationSeconds)) return element.duration;
+	}
+	const sought = await seeker.duration();
+	if (sought > 0) return sought;
+	return video.durationSeconds ?? 0;
+}
+
+/** Whether a player's length fits the video's (unknown fits anything). */
+function sameLength(seconds: number, videoSeconds: number | null | undefined): boolean {
+	if (!videoSeconds) return true;
+	return Math.abs(seconds - videoSeconds) <= LENGTH_TOLERANCE_SECONDS;
 }
 
 /** A video as scanning reads it. */
@@ -214,62 +263,97 @@ function stillsOf(video: ScanVideo): Still[] {
 }
 
 /**
- * Samples the stream's frames while nothing plays, finds their faces, and
- * records them with the stills' as one scan, plus the hash and sheet.
+ * Fills the scan's frames until it has them all: from the page's player as
+ * its playback passes a missing time, and, with seeking, by having the
+ * hidden player seek to one while nothing on the page plays. Then saves
+ * the hash, the sheet and the scan.
  */
 async function scanFrames(
-	video: ScanVideo,
-	sampler: VideoSampler,
-	stills: StillsScan,
+	scan: FrameScan,
+	player: (() => HTMLVideoElement | null) | undefined,
+	seeking: boolean,
+	seeker: Seeker,
 	signal: AbortSignal
 ) {
-	let duration = sampler.duration;
-	if (duration <= 0) duration = video.durationSeconds ?? 0;
-	if (duration <= 0) throw new Error('The video has no length to sample');
-	const times = sampleTimes(duration);
-	const sheet = new TrickplayCanvas(
-		sheetLayout(times.length, sampler.size.width, sampler.size.height)
-	);
-	const faces: ScannedFace[] = [...stills.faces];
-	let frames = 0;
-	for (const [index, seconds] of times.entries()) {
-		await quietPlayback(video.id, index / times.length, signal);
-		await idle(signal);
-		const frame = await sampleFrame(sampler, seconds, signal, (source) =>
-			sheet.draw(index, source)
-		);
-		faceTracking.set({
-			subject: { kind: 'video', id: video.id },
-			phase: 'frames',
-			progress: (index + 1) / times.length
-		});
-		if (!frame) continue;
-		frames++;
-		faces.push(...(await facesOf(frame, Math.round(seconds * 100) / 100)));
+	let readablePlayer = true;
+	while (!scan.complete) {
+		const playing = readablePlayer ? playingElement(player, scan.duration) : null;
+		if (playing) {
+			readablePlayer = await takePlayed(scan, playing, signal);
+			continue;
+		}
+		if (!seeking || !seeker.usable || isPlaying()) {
+			await waitForPlayback(scan, seeking && seeker.usable, signal);
+			continue;
+		}
+		await takeSought(scan, seeker, signal);
 	}
-	if (frames < times.length / 2)
-		throw new Error(`Only ${frames} of ${times.length} frames could be read`);
-	faceTracking.set({ subject: { kind: 'video', id: video.id }, phase: 'saving', progress: 0 });
-	if (frames === times.length) await saveSheet(video, sheet, duration, times.length);
-	await api.recordFaceScan({
-		kind: 'video',
-		id: video.id,
-		model: FACE_MODEL,
-		frames: frames + stills.read,
-		faces
-	});
+	scan.show('saving', 0);
+	await scan.finish();
 }
 
 /**
- * Waits until no video on the page plays (paused or ended), so seeking
- * never takes bandwidth from what's being watched. The sampler's own
- * element isn't in the page.
+ * Takes the playing frame when it's at a missing time, else waits a moment.
+ * Returns false when the player's pixels can't be read, so it's not asked again.
  */
-async function quietPlayback(videoId: string, progress: number, signal: AbortSignal) {
-	while (isPlaying()) {
-		faceTracking.set({ subject: { kind: 'video', id: videoId }, phase: 'waiting', progress });
+async function takePlayed(
+	scan: FrameScan,
+	element: HTMLVideoElement,
+	signal: AbortSignal
+): Promise<boolean> {
+	scan.show('playback', scan.progress);
+	const seconds = element.currentTime;
+	const index = scan.missingNear(seconds);
+	if (index === null) {
 		await delay(PLAYBACK_POLL_MS, signal);
+		return true;
 	}
+	let frame: Frame;
+	try {
+		frame = readFrame(element, scan.canvas);
+	} catch {
+		return false;
+	}
+	scan.tile(index, element);
+	await scan.add(index, frame, seconds);
+	return true;
+}
+
+/** Has the hidden player seek to the first missing time and takes that frame. */
+async function takeSought(scan: FrameScan, seeker: Seeker, signal: AbortSignal) {
+	scan.show('frames', scan.progress);
+	await idle(signal);
+	const index = scan.firstMissing();
+	if (index === null) return;
+	const seconds = scan.times[index];
+	const frame = await seeker.frameAt(seconds, (source) => scan.tile(index, source));
+	if (!frame) return;
+	await scan.add(index, frame, seconds);
+}
+
+/**
+ * Waits for the page's playback to change. Seeking waits for the page's
+ * other video to stop; without seeking there's nothing to show meanwhile.
+ */
+async function waitForPlayback(scan: FrameScan, seeking: boolean, signal: AbortSignal) {
+	if (seeking) {
+		scan.show('waiting', scan.progress);
+	} else {
+		faceTracking.set(null);
+	}
+	await delay(PLAYBACK_POLL_MS, signal);
+}
+
+/** The page's player while it plays a video of the scan's length, else null. */
+function playingElement(
+	player: (() => HTMLVideoElement | null) | undefined,
+	duration: number
+): HTMLVideoElement | null {
+	const element = player?.();
+	if (!element || element.paused || element.ended || element.seeking) return null;
+	if (!Number.isFinite(element.duration)) return null;
+	if (Math.abs(element.duration - duration) > LENGTH_TOLERANCE_SECONDS) return null;
+	return element;
 }
 
 /** Whether any video in the page is playing. */
@@ -280,20 +364,174 @@ function isPlaying(): boolean {
 }
 
 /**
- * The frame at a time, null when the seek times out; a cancel or a stream
- * that forbids reading its pixels ends the scan.
+ * A video's frame scan in progress: which sample times have their frame,
+ * the faces found so far (after the stills'), and the trickplay sheet.
  */
-async function sampleFrame(
-	sampler: VideoSampler,
-	seconds: number,
-	signal: AbortSignal,
-	draw: (source: HTMLVideoElement) => void
-): Promise<Frame | null> {
-	try {
-		return await sampler.frameAt(seconds, signal, draw);
-	} catch (error) {
-		if (error instanceof DOMException) throw error;
-		return null;
+class FrameScan {
+	readonly times: number[];
+	readonly canvas = document.createElement('canvas');
+	private readonly filled: boolean[];
+	private readonly faces: ScannedFace[] = [];
+	private sheet: TrickplayCanvas | null = null;
+	private frames = 0;
+	private unsaved = 0;
+
+	constructor(
+		private readonly video: ScanVideo,
+		private readonly stills: StillsScan,
+		readonly duration: number,
+		// Frames of the scan saved before; a save never replaces it with fewer.
+		private savedFrames: number,
+		private readonly onsaved: (() => void) | undefined
+	) {
+		this.times = sampleTimes(duration);
+		this.filled = this.times.map(() => false);
+	}
+
+	/** Whether every sample time has its frame. */
+	get complete(): boolean {
+		return this.frames === this.times.length;
+	}
+
+	/** How far through the frames, 0..1. */
+	get progress(): number {
+		return this.frames / this.times.length;
+	}
+
+	/** The missing sample time a played frame at `seconds` can stand in for, else null. */
+	missingNear(seconds: number): number | null {
+		const index = this.times.findIndex(
+			(time, position) =>
+				!this.filled[position] && Math.abs(time - seconds) <= PLAYED_TOLERANCE_SECONDS
+		);
+		if (index === -1) return null;
+		return index;
+	}
+
+	/** The first sample time without its frame, else null. */
+	firstMissing(): number | null {
+		const index = this.filled.indexOf(false);
+		if (index === -1) return null;
+		return index;
+	}
+
+	/** Shows what the scan is doing. */
+	show(phase: FaceTracking['phase'], progress: number) {
+		faceTracking.set({ subject: { kind: 'video', id: this.video.id }, phase, progress });
+	}
+
+	/** Draws a sample time's frame into its trickplay tile; the sheet is sized by the first. */
+	tile(index: number, source: HTMLVideoElement) {
+		if (!this.sheet) {
+			this.sheet = new TrickplayCanvas(
+				sheetLayout(this.times.length, source.videoWidth, source.videoHeight)
+			);
+		}
+		this.sheet.draw(index, source);
+	}
+
+	/** Adds a sample time's frame and its faces; saves every few frames. */
+	async add(index: number, frame: Frame, seconds: number) {
+		this.filled[index] = true;
+		this.frames++;
+		this.faces.push(...(await facesOf(frame, Math.round(seconds * 100) / 100)));
+		this.unsaved++;
+		if (this.unsaved >= SAVE_EVERY_FRAMES) await this.save();
+	}
+
+	/** Saves the scan so far, unless the saved one looked at as many frames. */
+	async save() {
+		const frames = this.frames + this.stills.read;
+		if (frames <= this.savedFrames) return;
+		await api.recordFaceScan({
+			kind: 'video',
+			id: this.video.id,
+			model: FACE_MODEL,
+			frames,
+			faces: [...this.stills.faces, ...this.faces]
+		});
+		this.savedFrames = frames;
+		this.unsaved = 0;
+		this.onsaved?.();
+	}
+
+	/** Saves the hash and sheet of the complete frames, then the scan. */
+	async finish() {
+		if (this.sheet) await saveSheet(this.video, this.sheet, this.duration, this.times.length);
+		await this.save();
+	}
+}
+
+/**
+ * The hidden player that seeks to sample times, opened on first use. Gives
+ * up after a few failed seeks in a row, or when the video has no stream.
+ */
+class Seeker {
+	private sampler: VideoSampler | null = null;
+	private failures = 0;
+
+	constructor(
+		private readonly video: ScanVideo,
+		private readonly signal: AbortSignal
+	) {}
+
+	/** Whether seeking still works. */
+	get usable(): boolean {
+		return this.failures < MAX_SEEK_FAILURES;
+	}
+
+	/** The stream's length in seconds; 0 when it can't be opened or doesn't say. */
+	async duration(): Promise<number> {
+		const sampler = await this.open();
+		if (!sampler) return 0;
+		return sampler.duration;
+	}
+
+	/**
+	 * The frame at a time, null when the seek fails; a cancel or a stream
+	 * that forbids reading its pixels ends the scan.
+	 */
+	async frameAt(seconds: number, draw: (source: HTMLVideoElement) => void): Promise<Frame | null> {
+		const sampler = await this.open();
+		if (!sampler) return null;
+		try {
+			const frame = await sampler.frameAt(seconds, this.signal, draw);
+			this.failures = 0;
+			return frame;
+		} catch (error) {
+			if (error instanceof DOMException) throw error;
+			this.failures++;
+			return null;
+		}
+	}
+
+	/** Lets go of the stream. */
+	close() {
+		this.sampler?.close();
+		this.sampler = null;
+	}
+
+	/** The open sampler, opening it first; null (and unusable) when it can't. */
+	private async open(): Promise<VideoSampler | null> {
+		if (this.sampler) return this.sampler;
+		if (!this.usable) return null;
+		try {
+			this.sampler = await this.openStream();
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') throw error;
+			this.sampler = null;
+		}
+		if (!this.sampler) this.failures = MAX_SEEK_FAILURES;
+		return this.sampler;
+	}
+
+	/** Opens the video's stream best suited to sampling, null when it has none. */
+	private async openStream(): Promise<VideoSampler | null> {
+		const stream = pickStream(this.video.streams);
+		if (!stream) return null;
+		const playable = await play(stream.url);
+		if (!playable) return null;
+		return VideoSampler.open(playable.url, playable.mimeType, this.signal);
 	}
 }
 
