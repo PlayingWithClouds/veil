@@ -54,6 +54,18 @@ func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, d
 	return builder.conditions, builder.vars
 }
 
+// MediaFrom is the FROM clause of a media query ("media" joined with its
+// "state"), for packages that join media with tables of their own.
+func MediaFrom(kind schema.RecordKind) string {
+	return mediaSelect(kind)
+}
+
+// FilterConditions is the WHERE conditions of a filter on MediaFrom's
+// "media" and "state", trashed and blocked media left out.
+func FilterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, db.Vars) {
+	return filterConditions(kind, filter)
+}
+
 // notBlocked excludes blocked media and media crediting anything blocked.
 const notBlocked = `NOT EXISTS (SELECT 1 FROM "UserState" AS "blocked"
 	WHERE "blocked"."blocked" = 1 AND "blocked"."deletedAt" IS NULL AND (
