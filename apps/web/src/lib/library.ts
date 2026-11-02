@@ -1,4 +1,18 @@
-import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
+// Reads of the core records. Each row type is derived from the selection
+// that fetches it, so it can't drift from the API.
+import type {
+	FieldsSelection,
+	FilterInput,
+	Gallery,
+	Listed as ListedResult,
+	Performer,
+	Source,
+	Stream,
+	Studio,
+	Tag,
+	Trickplay as TrickplayResult,
+	Video
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { backendUrl } from '$lib/server';
 import type { ListKind } from '$lib/plugins';
@@ -11,118 +25,18 @@ export interface MediaFilter {
 	tagId?: string;
 }
 
-/** A named reference: a performer, studio or tag. */
-export interface NamedRef {
-	id: string;
-	name: string;
-}
+const NAMED = { id: true, name: true } as const;
 
-/** A video as a card shows it. */
-export interface VideoCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	durationSeconds: number | null;
-	cover: { uri: string } | null;
-	preview: { uri: string } | null;
-	// Stills the card scrubs through on hover, in order.
-	previewFrames: { uri: string }[] | null;
-	trickplay: Trickplay | null;
-	width: number | null;
-	height: number | null;
-	studio: (NamedRef & { image: { uri: string } | null }) | null;
-	performers: NamedRef[];
-	sources: { url: string }[];
-	// progress is the resume point in seconds; rating is 0..10.
-	userState: {
-		progress: number | null;
-		rating: number | null;
-		favorite: boolean;
-		viewCount: number;
-	};
-}
+const TRICKPLAY = {
+	sheets: { uri: true },
+	columns: true,
+	rows: true,
+	tileWidth: true,
+	tileHeight: true,
+	intervalSeconds: true
+} as const;
 
-/** A video's scrubbing thumbnails: tiles of frames packed into sprite sheets. */
-export interface Trickplay {
-	sheets: { uri: string }[];
-	columns: number;
-	rows: number;
-	tileWidth: number;
-	tileHeight: number;
-	intervalSeconds: number;
-}
-
-/** A gallery as a card shows it. */
-export interface GalleryCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	imageCount: number;
-	cover: { uri: string } | null;
-	studio: NamedRef | null;
-	sources: { url: string }[];
-}
-
-/** A performer or studio as a card shows it. */
-export interface MemberRow {
-	id: string;
-	name: string;
-	image: { uri: string } | null;
-	videoCount: number;
-	galleryCount: number;
-}
-
-/** One site a record was found on. */
-export interface SourceRow {
-	plugin: string;
-	url: string;
-	fetchedAt: string | null;
-}
-
-/** A playable stream a source offers. */
-export interface StreamRow {
-	id: string;
-	url: string;
-	mimeType: string;
-	quality: string | null;
-	source: { plugin: string } | null;
-}
-
-/** Everything the video page shows. */
-export interface VideoDetail extends VideoCardRow {
-	details: string | null;
-	performers: (NamedRef & { image: { uri: string } | null })[];
-	tags: NamedRef[];
-	sources: SourceRow[];
-	streams: StreamRow[];
-}
-
-/** Everything the gallery page shows. */
-export interface GalleryDetail extends GalleryCardRow {
-	details: string | null;
-	performers: NamedRef[];
-	tags: NamedRef[];
-	images: { id: string; position: number; asset: { uri: string } }[];
-	sources: SourceRow[];
-}
-
-/** A studio's page. */
-export interface StudioDetail extends MemberRow {
-	aliases: string[];
-	details: string | null;
-	url: string | null;
-	parent: NamedRef | null;
-	sources: SourceRow[];
-}
-
-/** What a browse or search stored. */
-export interface Listed {
-	videos: VideoCardRow[];
-	galleries: GalleryCardRow[];
-	performers: MemberRow[];
-	studios: MemberRow[];
-}
-
+/** A video as a card shows it. previewFrames are the stills its card scrubs through. */
 export const VIDEO_CARD = {
 	id: true,
 	title: true,
@@ -131,32 +45,28 @@ export const VIDEO_CARD = {
 	cover: { uri: true },
 	preview: { uri: true },
 	previewFrames: { uri: true },
-	trickplay: {
-		sheets: { uri: true },
-		columns: true,
-		rows: true,
-		tileWidth: true,
-		tileHeight: true,
-		intervalSeconds: true
-	},
+	trickplay: TRICKPLAY,
 	width: true,
 	height: true,
-	studio: { id: true, name: true, image: { uri: true } },
-	performers: { id: true, name: true },
+	studio: { ...NAMED, image: { uri: true } },
+	performers: NAMED,
 	sources: { url: true },
+	// progress is the resume point in seconds; rating is 0..10.
 	userState: { progress: true, rating: true, favorite: true, viewCount: true }
 } as const;
 
+/** A gallery as a card shows it. */
 export const GALLERY_CARD = {
 	id: true,
 	title: true,
 	date: true,
 	imageCount: true,
 	cover: { uri: true },
-	studio: { id: true, name: true },
+	studio: NAMED,
 	sources: { url: true }
 } as const;
 
+/** A performer or studio as a card shows it. */
 export const MEMBER = {
 	id: true,
 	name: true,
@@ -165,14 +75,67 @@ export const MEMBER = {
 	galleryCount: true
 } as const;
 
-const SOURCE = { plugin: true, url: true, fetchedAt: true } as const;
+/** One site a record was found on. */
+export const SOURCE = { plugin: true, url: true, fetchedAt: true } as const;
 
+const STREAM = {
+	id: true,
+	url: true,
+	mimeType: true,
+	quality: true,
+	source: { plugin: true }
+} as const;
+
+/** Everything the video page shows. */
+const VIDEO_DETAIL = {
+	...VIDEO_CARD,
+	details: true,
+	performers: { ...NAMED, image: { uri: true } },
+	tags: NAMED,
+	sources: SOURCE,
+	streams: STREAM
+} as const;
+
+/** Everything the gallery page shows. */
+const GALLERY_DETAIL = {
+	...GALLERY_CARD,
+	details: true,
+	performers: NAMED,
+	tags: NAMED,
+	images: { id: true, position: true, asset: { uri: true } },
+	sources: SOURCE
+} as const;
+
+/** A studio's page. */
+const STUDIO_DETAIL = {
+	...MEMBER,
+	aliases: true,
+	details: true,
+	url: true,
+	parent: NAMED,
+	sources: SOURCE
+} as const;
+
+/** What a browse or search stored. */
 const LISTED = {
 	videos: VIDEO_CARD,
 	galleries: GALLERY_CARD,
 	performers: MEMBER,
 	studios: MEMBER
 } as const;
+
+/** A named reference: a performer, studio or tag. */
+export type NamedRef = FieldsSelection<Tag, typeof NAMED>;
+export type Trickplay = FieldsSelection<TrickplayResult, typeof TRICKPLAY>;
+export type VideoCardRow = FieldsSelection<Video, typeof VIDEO_CARD>;
+export type GalleryCardRow = FieldsSelection<Gallery, typeof GALLERY_CARD>;
+export type MemberRow = FieldsSelection<Performer, typeof MEMBER>;
+export type SourceRow = FieldsSelection<Source, typeof SOURCE>;
+export type StreamRow = FieldsSelection<Stream, typeof STREAM>;
+export type VideoDetail = FieldsSelection<Video, typeof VIDEO_DETAIL>;
+export type GalleryDetail = FieldsSelection<Gallery, typeof GALLERY_DETAIL>;
+export type StudioDetail = FieldsSelection<Studio, typeof STUDIO_DETAIL>;
+export type Listed = FieldsSelection<ListedResult, typeof LISTED>;
 
 /** Maps a page's filter onto the API's FilterInput. */
 function filterInput(filter: MediaFilter): FilterInput {
@@ -247,49 +210,19 @@ export async function fetchStudios(text = '', limit = 60, offset = 0): Promise<M
  * yet (credits, description, streams) and returns it.
  */
 export async function openVideo(id: string): Promise<VideoDetail | null> {
-	const data = await gqlClient.mutation({
-		fetchVideo: {
-			__args: { id },
-			...VIDEO_CARD,
-			details: true,
-			performers: { id: true, name: true, image: { uri: true } },
-			tags: { id: true, name: true },
-			sources: SOURCE,
-			streams: { id: true, url: true, mimeType: true, quality: true, source: { plugin: true } }
-		}
-	});
+	const data = await gqlClient.mutation({ fetchVideo: { __args: { id }, ...VIDEO_DETAIL } });
 	return data.fetchVideo ?? null;
 }
 
 /** Opens a gallery: reads its pages (they list the images) and returns it. */
 export async function openGallery(id: string): Promise<GalleryDetail | null> {
-	const data = await gqlClient.mutation({
-		fetchGallery: {
-			__args: { id },
-			...GALLERY_CARD,
-			details: true,
-			performers: { id: true, name: true },
-			tags: { id: true, name: true },
-			images: { id: true, position: true, asset: { uri: true } },
-			sources: SOURCE
-		}
-	});
+	const data = await gqlClient.mutation({ fetchGallery: { __args: { id }, ...GALLERY_DETAIL } });
 	return data.fetchGallery ?? null;
 }
 
 /** One studio's page. */
 export async function fetchStudio(id: string): Promise<StudioDetail | null> {
-	const data = await gqlClient.query({
-		studio: {
-			__args: { id },
-			...MEMBER,
-			aliases: true,
-			details: true,
-			url: true,
-			parent: { id: true, name: true },
-			sources: SOURCE
-		}
-	});
+	const data = await gqlClient.query({ studio: { __args: { id }, ...STUDIO_DETAIL } });
 	return data.studio ?? null;
 }
 

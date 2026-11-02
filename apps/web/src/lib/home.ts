@@ -1,4 +1,8 @@
-import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
+import type {
+	FieldsSelection,
+	FilterInput,
+	SavedFilter
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { VIDEO_CARD, MEMBER, type VideoCardRow, type MemberRow } from '$lib/library';
 
@@ -9,15 +13,38 @@ export interface RecommendedVideo {
 }
 
 /** A saved filter as its chip shows it. */
-export interface SavedFilterChip {
-	id: string;
-	name: string;
-}
+const SAVED_FILTER_CHIP = { id: true, name: true } as const;
 
-/** A saved filter with the filter it plays. */
-export interface SavedFilterDetail extends SavedFilterChip {
-	filter: FilterInput;
-}
+/** A saved filter with the filter it plays, every field of it. */
+const SAVED_FILTER = {
+	...SAVED_FILTER_CHIP,
+	filter: {
+		kinds: true,
+		text: true,
+		performerIds: true,
+		studioIds: true,
+		categoryIds: true,
+		includeTagIds: true,
+		excludeTagIds: true,
+		sources: true,
+		dateFrom: true,
+		dateTo: true,
+		minDurationSeconds: true,
+		maxDurationSeconds: true,
+		minRating: true,
+		status: true,
+		inLibrary: true,
+		favorite: true,
+		unwatched: true,
+		vr: true,
+		minHeight: true,
+		fields: { fieldDefId: true, operator: true, value: true },
+		sort: { field: true, descending: true }
+	}
+} as const;
+
+export type SavedFilterChip = FieldsSelection<SavedFilter, typeof SAVED_FILTER_CHIP>;
+export type SavedFilterDetail = FieldsSelection<SavedFilter, typeof SAVED_FILTER>;
 
 /** Videos the user stopped partway, most recently watched first. */
 export async function fetchContinueWatching(limit = 20): Promise<VideoCardRow[]> {
@@ -109,40 +136,12 @@ export async function fetchFavoritePerformers(limit = 30): Promise<MemberRow[]> 
 
 /** The saved filters pinned to home. */
 export async function fetchPinnedFilters(): Promise<SavedFilterChip[]> {
-	const data = await gqlClient.query({ savedFilters: { id: true, name: true, pinned: true } });
+	const data = await gqlClient.query({ savedFilters: { ...SAVED_FILTER_CHIP, pinned: true } });
 	return data.savedFilters.filter((saved) => saved.pinned);
 }
 
 /** One saved filter with the filter it plays. */
 export async function fetchSavedFilter(id: string): Promise<SavedFilterDetail | null> {
-	const data = await gqlClient.query({
-		savedFilter: {
-			__args: { id },
-			id: true,
-			name: true,
-			filter: {
-				kinds: true,
-				text: true,
-				performerIds: true,
-				studioIds: true,
-				categoryIds: true,
-				includeTagIds: true,
-				excludeTagIds: true,
-				sources: true,
-				dateFrom: true,
-				dateTo: true,
-				minDurationSeconds: true,
-				maxDurationSeconds: true,
-				minRating: true,
-				status: true,
-				inLibrary: true,
-				favorite: true,
-				unwatched: true,
-				vr: true,
-				fields: { fieldDefId: true, operator: true, value: true },
-				sort: { field: true, descending: true }
-			}
-		}
-	});
+	const data = await gqlClient.query({ savedFilter: { __args: { id }, ...SAVED_FILTER } });
 	return data.savedFilter ?? null;
 }

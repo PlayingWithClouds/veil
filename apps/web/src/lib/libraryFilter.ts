@@ -1,7 +1,12 @@
 // The library grid's filter as it lives in the URL on home, so a filtered view
 // can be shared, reloaded and gone back to. Each control reads its value from
 // the search params and builds the URL that changes it.
-import type { FilterInput, SortField } from '@playingwithclouds/veil-sdk/generated';
+import type {
+	FieldsSelection,
+	FilterInput,
+	SortField,
+	TagCount
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 
 /** Search params the grid filter uses; anything else on the URL is left alone. */
@@ -190,15 +195,14 @@ function pathAndQuery(url: URL): string {
 }
 
 /** A tag and how many grid videos carry it. */
-export interface TagCountRow {
-	tag: { id: string; name: string };
-	count: number;
-}
+const TAG_COUNT = { tag: { id: true, name: true }, count: true } as const;
+
+export type TagCountRow = FieldsSelection<TagCount, typeof TAG_COUNT>;
 
 /** The tags most common among the videos matching filter, most common first. */
 export async function fetchTagCounts(filter: FilterInput, limit = 24): Promise<TagCountRow[]> {
 	const data = await gqlClient.query({
-		videoTagCounts: { __args: { filter, limit }, tag: { id: true, name: true }, count: true }
+		videoTagCounts: { __args: { filter, limit }, ...TAG_COUNT }
 	});
 	return data.videoTagCounts;
 }

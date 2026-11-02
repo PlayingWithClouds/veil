@@ -22,7 +22,12 @@ export function trackWatch(video: HTMLVideoElement, videoId: string): () => void
 	function closeSpan() {
 		if (spanStart === null) return;
 		if (lastPosition - spanStart >= MIN_SPAN_SECONDS) {
-			logEvent({ kind: 'heatSpan', subject, data: { start: spanStart, end: lastPosition }, sessionId });
+			logEvent({
+				kind: 'heatSpan',
+				subject,
+				data: { start: spanStart, end: lastPosition },
+				sessionId
+			});
 		}
 		spanStart = null;
 	}

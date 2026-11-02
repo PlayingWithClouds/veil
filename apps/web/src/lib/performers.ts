@@ -1,77 +1,49 @@
 // A performer's page: reading them from their sites, the user's edits,
 // probable duplicates and merging.
+import type {
+	FieldsSelection,
+	Performer,
+	PerformerAttributes as PerformerAttributesResult,
+	PerformerEdit
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
-import { MEMBER, type MemberRow, type NamedRef, type SourceRow } from '$lib/library';
+import { MEMBER, SOURCE, type MemberRow } from '$lib/library';
+
+export type { PerformerEdit };
 
 /** A performer's body and career facts; null where nothing is known. */
-export interface PerformerAttributes {
-	gender: string | null;
-	birthdate: string | null;
-	deathDate: string | null;
-	country: string | null;
-	ethnicity: string | null;
-	eyeColor: string | null;
-	hairColor: string | null;
-	heightCm: number | null;
-	weightKg: number | null;
-	measurements: string | null;
-	fakeTits: string | null;
-	tattoos: string | null;
-	piercings: string | null;
-	careerStart: number | null;
-	careerEnd: number | null;
-}
+const ATTRIBUTES = {
+	gender: true,
+	birthdate: true,
+	deathDate: true,
+	country: true,
+	ethnicity: true,
+	eyeColor: true,
+	hairColor: true,
+	heightCm: true,
+	weightKg: true,
+	measurements: true,
+	fakeTits: true,
+	tattoos: true,
+	piercings: true,
+	careerStart: true,
+	careerEnd: true
+} as const;
 
-/** Everything the performer page shows and edits. */
-export interface PerformerDetail extends MemberRow {
-	aliases: string[];
-	details: string | null;
-	links: string[];
-	attributes: PerformerAttributes;
-	tags: NamedRef[];
-	sources: SourceRow[];
-	// Which fields the user set; sites don't change those until unlocked.
-	fieldSources: { field: string; locked: boolean }[];
-}
-
-/** The user's change to a performer; omitted fields stay as they are. */
-export interface PerformerEdit {
-	name?: string;
-	aliases?: string[];
-	details?: string;
-	links?: string[];
-	// Replaces every attribute.
-	attributes?: PerformerAttributes;
-	// "" clears the picture.
-	imageUrl?: string;
-}
-
+/** Everything the performer page shows and edits. fieldSources say which fields the user set. */
 const PERFORMER_DETAIL = {
 	...MEMBER,
 	aliases: true,
 	details: true,
 	links: true,
-	attributes: {
-		gender: true,
-		birthdate: true,
-		deathDate: true,
-		country: true,
-		ethnicity: true,
-		eyeColor: true,
-		hairColor: true,
-		heightCm: true,
-		weightKg: true,
-		measurements: true,
-		fakeTits: true,
-		tattoos: true,
-		piercings: true,
-		careerStart: true,
-		careerEnd: true
-	},
+	attributes: ATTRIBUTES,
 	tags: { id: true, name: true },
-	sources: { plugin: true, url: true, fetchedAt: true },
+	sources: SOURCE,
 	fieldSources: { field: true, locked: true }
 } as const;
+
+export type PerformerAttributes = FieldsSelection<PerformerAttributesResult, typeof ATTRIBUTES>;
+export type PerformerDetail = FieldsSelection<Performer, typeof PERFORMER_DETAIL>;
 
 /** One performer as stored, without reading any site. */
 export async function fetchPerformer(id: string): Promise<PerformerDetail | null> {

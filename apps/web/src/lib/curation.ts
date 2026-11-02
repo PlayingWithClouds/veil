@@ -1,42 +1,35 @@
 // The user's own organisation: categories, collections and the built-in
 // watchlist.
+import type { Category, Collection, FieldsSelection } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { VIDEO_CARD, type VideoCardRow } from '$lib/library';
 
 /** A category as a tile shows it. */
-export interface CategoryCardRow {
-	id: string;
-	name: string;
-	cover: { uri: string } | null;
-	videoCount: number;
-	galleryCount: number;
-	parent: { id: string } | null;
-}
+const CATEGORY_TILE = {
+	id: true,
+	name: true,
+	cover: { uri: true },
+	videoCount: true,
+	galleryCount: true,
+	parent: { id: true }
+} as const;
+
+/** The collection fields its tile shows; the stacked covers come from its items. */
+const COLLECTION_TILE = { id: true, name: true, cover: { uri: true }, itemCount: true } as const;
+
+export type CategoryCardRow = FieldsSelection<Category, typeof CATEGORY_TILE>;
 
 /** A collection as a tile shows it, with the covers of its first items. */
-export interface CollectionCardRow {
-	id: string;
-	name: string;
-	cover: { uri: string } | null;
-	itemCount: number;
+export type CollectionCardRow = FieldsSelection<Collection, typeof COLLECTION_TILE> & {
 	covers: string[];
-}
+};
 
 // Covers stacked on a collection's tile.
 const STACKED_COVERS = 3;
 
 /** The top-level categories, in their order. */
 export async function fetchCategories(): Promise<CategoryCardRow[]> {
-	const data = await gqlClient.query({
-		categories: {
-			id: true,
-			name: true,
-			cover: { uri: true },
-			videoCount: true,
-			galleryCount: true,
-			parent: { id: true }
-		}
-	});
+	const data = await gqlClient.query({ categories: CATEGORY_TILE });
 	return data.categories.filter((category) => category.parent === null);
 }
 
@@ -44,11 +37,8 @@ export async function fetchCategories(): Promise<CategoryCardRow[]> {
 export async function fetchCollections(): Promise<CollectionCardRow[]> {
 	const data = await gqlClient.query({
 		collections: {
-			id: true,
-			name: true,
+			...COLLECTION_TILE,
 			kind: true,
-			cover: { uri: true },
-			itemCount: true,
 			items: {
 				__args: { limit: STACKED_COVERS },
 				record: {
@@ -93,7 +83,9 @@ export async function fetchWatchlist(limit = 20): Promise<VideoCardRow[]> {
 
 /** Puts a video on the watchlist. */
 export async function addToWatchlist(videoId: string): Promise<void> {
-	const data = await gqlClient.query({ builtInCollection: { __args: { kind: 'watchlist' }, id: true } });
+	const data = await gqlClient.query({
+		builtInCollection: { __args: { kind: 'watchlist' }, id: true }
+	});
 	await gqlClient.mutation({
 		addToCollection: {
 			__args: {

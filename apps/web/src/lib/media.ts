@@ -1,55 +1,17 @@
 // Media beyond videos and galleries: audio, stories, creator posts, and the
 // sites' own groups of videos (movies, series, compilations).
+import type {
+	Audio,
+	FieldsSelection,
+	Group,
+	Post,
+	Story
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
-import type { NamedRef } from '$lib/library';
-
-/** An audio as a card shows it. */
-export interface AudioCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	durationSeconds: number | null;
-	cover: { uri: string } | null;
-	studio: (NamedRef & { image: { uri: string } | null }) | null;
-	performers: (NamedRef & { image: { uri: string } | null })[];
-	sources: { url: string }[];
-}
-
-/** A story as a card shows it. */
-export interface StoryCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	chapterCount: number;
-	complete: boolean;
-	cover: { uri: string } | null;
-	performers: NamedRef[];
-	sources: { url: string }[];
-}
-
-/** A creator post as a card shows it. */
-export interface PostCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	// Paywalled for the logged-in account.
-	locked: boolean;
-	cover: { uri: string } | null;
-	creator: (NamedRef & { image: { uri: string } | null }) | null;
-	sources: { url: string }[];
-}
-
-/** A site group (movie, series, compilation) as a card shows it. */
-export interface GroupCardRow {
-	id: string;
-	title: string;
-	date: string | null;
-	cover: { uri: string } | null;
-	studio: NamedRef | null;
-}
 
 const CREDIT = { id: true, name: true, image: { uri: true } } as const;
 
+/** An audio as a card shows it. */
 const AUDIO_CARD = {
 	id: true,
 	title: true,
@@ -61,6 +23,7 @@ const AUDIO_CARD = {
 	sources: { url: true }
 } as const;
 
+/** A story as a card shows it. */
 const STORY_CARD = {
 	id: true,
 	title: true,
@@ -72,6 +35,7 @@ const STORY_CARD = {
 	sources: { url: true }
 } as const;
 
+/** A creator post as a card shows it; locked when paywalled for the logged-in account. */
 const POST_CARD = {
 	id: true,
 	title: true,
@@ -82,6 +46,7 @@ const POST_CARD = {
 	sources: { url: true }
 } as const;
 
+/** A site group (movie, series, compilation) as a card shows it. */
 const GROUP_CARD = {
 	id: true,
 	title: true,
@@ -89,6 +54,11 @@ const GROUP_CARD = {
 	cover: { uri: true },
 	studio: { id: true, name: true }
 } as const;
+
+export type AudioCardRow = FieldsSelection<Audio, typeof AUDIO_CARD>;
+export type StoryCardRow = FieldsSelection<Story, typeof STORY_CARD>;
+export type PostCardRow = FieldsSelection<Post, typeof POST_CARD>;
+export type GroupCardRow = FieldsSelection<Group, typeof GROUP_CARD>;
 
 /** Newest audio, sites taking turns. */
 export async function fetchAudios(limit = 20, offset = 0): Promise<AudioCardRow[]> {

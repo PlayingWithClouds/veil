@@ -1,15 +1,17 @@
-import type { RecordKind } from '@playingwithclouds/veil-sdk/generated';
+import type { FieldsSelection, Notification } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 
 /** A notification as the bell lists it. */
-export interface NotificationRow {
-	id: string;
-	at: string;
-	title: string;
-	body: string | null;
-	read: boolean;
-	subject: { kind: RecordKind; id: string } | null;
-}
+const NOTIFICATION = {
+	id: true,
+	at: true,
+	title: true,
+	body: true,
+	read: true,
+	subject: { kind: true, id: true }
+} as const;
+
+export type NotificationRow = FieldsSelection<Notification, typeof NOTIFICATION>;
 
 /** How many notifications are unread. */
 export async function fetchUnreadCount(): Promise<number> {
@@ -19,17 +21,7 @@ export async function fetchUnreadCount(): Promise<number> {
 
 /** The newest notifications. */
 export async function fetchNotifications(limit = 30): Promise<NotificationRow[]> {
-	const data = await gqlClient.query({
-		notifications: {
-			__args: { limit },
-			id: true,
-			at: true,
-			title: true,
-			body: true,
-			read: true,
-			subject: { kind: true, id: true }
-		}
-	});
+	const data = await gqlClient.query({ notifications: { __args: { limit }, ...NOTIFICATION } });
 	return data.notifications;
 }
 
