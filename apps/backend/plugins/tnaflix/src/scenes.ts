@@ -6,19 +6,37 @@ import type { ListArgs, ItemsResult, DiscoveredItem } from "@playingwithclouds/v
 
 const MAX_SEARCH_PAGES = 20;
 const MAX_BROWSE_PAGES = 500;
+const MAX_PROFILE_PAGES = 200;
 
-// A query searches /search?what=<query> (paginated via &page=N); without one
-// the newest-uploads feed at /new/<page> is crawled. offset skips leading
-// items so callers can paginate for infinite scroll.
+// A url lists that profile page's videos (paginated via ?page=N). A query
+// searches /search?what=<query> (paginated via &page=N); without one the
+// newest-uploads feed at /new/<page> is crawled. offset skips leading items so
+// callers can paginate for infinite scroll.
 export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   const query = (args.query ?? "").trim();
   const limit = args.limit ?? 0;
   const offset = args.offset ?? 0;
   const target = limit > 0 ? offset + limit : 0;
 
-  const maxPages = query ? MAX_SEARCH_PAGES : MAX_BROWSE_PAGES;
-  const items = await crawlCards(maxPages, target, (page) => pageUrl(query, page));
+  let maxPages = MAX_BROWSE_PAGES;
+  let urlForPage = (page: number) => pageUrl(query, page);
+  if (args.url) {
+    maxPages = MAX_PROFILE_PAGES;
+    urlForPage = profilePageUrl(args.url);
+  } else if (query) {
+    maxPages = MAX_SEARCH_PAGES;
+  }
+  const items = await crawlCards(maxPages, target, urlForPage);
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
+}
+
+/** Page URL builder for a profile page: page 1 is the URL itself, later pages add ?page=N. Past the last page the site answers 200 with no cards. */
+export function profilePageUrl(url: string): (page: number) => string {
+  const base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  return (page) => {
+    if (page === 1) return base;
+    return `${base}?page=${page}`;
+  };
 }
 
 function pageUrl(query: string, page: number): string {

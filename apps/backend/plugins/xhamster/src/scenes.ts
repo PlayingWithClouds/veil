@@ -7,8 +7,10 @@ import type { ListArgs, ItemsResult, DiscoveredItem } from "@playingwithclouds/v
 
 const MAX_SEARCH_PAGES = 20;
 const MAX_BROWSE_PAGES = 500;
+const MAX_PROFILE_PAGES = 200;
 
-// A query searches /search/<query> (paginated via ?page=N, spaces map to '+');
+// A url lists that pornstar/channel page's videos (page N lives at <url>/N). A
+// query searches /search/<query> (paginated via ?page=N, spaces map to '+');
 // without one the newest feed at /newest/<page> is crawled. offset skips
 // leading items so callers can paginate for infinite scroll.
 export async function sceneList(args: ListArgs): Promise<ItemsResult> {
@@ -17,9 +19,25 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   const offset = args.offset ?? 0;
   const target = limit > 0 ? offset + limit : 0;
 
-  const maxPages = query ? MAX_SEARCH_PAGES : MAX_BROWSE_PAGES;
-  const items = await crawlCards(maxPages, target, (page) => pageUrl(query, page));
+  let maxPages = MAX_BROWSE_PAGES;
+  let urlForPage = (page: number) => pageUrl(query, page);
+  if (args.url) {
+    maxPages = MAX_PROFILE_PAGES;
+    urlForPage = profilePageUrl(args.url);
+  } else if (query) {
+    maxPages = MAX_SEARCH_PAGES;
+  }
+  const items = await crawlCards(maxPages, target, urlForPage);
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
+}
+
+/** Page URL builder for a profile or channel page: page 1 is the URL itself, later pages append /N. Past the last page the site answers 404. */
+export function profilePageUrl(url: string): (page: number) => string {
+  const base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  return (page) => {
+    if (page === 1) return base;
+    return `${base}/${page}`;
+  };
 }
 
 function pageUrl(query: string, page: number): string {

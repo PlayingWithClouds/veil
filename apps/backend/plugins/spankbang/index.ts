@@ -12,7 +12,7 @@ runPlugin({
     description: "Adult streaming site — browse, search and scrape videos from spankbang.com",
     icon: "https://spankbang.com/favicon.ico",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "stream:resolve"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve"],
     // The site sits behind Cloudflare; fetches route through FlareSolverr. The
     // in-page mp4/HLS sources are served straight from the video page URL.
     domains: ["spankbang.com"],

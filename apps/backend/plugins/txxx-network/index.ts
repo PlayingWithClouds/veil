@@ -16,7 +16,7 @@ runPlugin({
     // /favicon.ico is a near-transparent 16px placeholder; this is the real logo.
     icon: "https://txxx.com/static/images/favicons/apple-touch-icon.png",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "stream:resolve", "search:suggest"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve", "search:suggest"],
     // find/resolve derive the host from the video URL, so every network
     // domain routes to this plugin.
     domains: NETWORK_DOMAINS,

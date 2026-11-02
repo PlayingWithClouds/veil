@@ -20,7 +20,7 @@ runPlugin({
     description: "Adult streaming site — browse, search and scrape videos from xhamster.com",
     icon: "https://xhamster.com/favicon.ico",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "stream:resolve"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve"],
     domains: ["xhamster.com"],
   },
   find,

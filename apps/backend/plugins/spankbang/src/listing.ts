@@ -88,3 +88,17 @@ function cardPreview(card: HTMLElement): string | undefined {
   const src = card.querySelector("video source")?.getAttribute("data-src");
   return src ? resolveUrl(src) : undefined;
 }
+
+/**
+ * Cards of a pornstar/channel page, leaving out the promoted block that tops
+ * every page (the `js-forced-layout` list, identical on all pages and the only
+ * list left past the last page).
+ */
+export function parseProfileCards(root: HTMLElement): DiscoveredItem[] {
+  const items: DiscoveredItem[] = [];
+  for (const list of root.querySelectorAll('[data-testid="video-list"]')) {
+    if (list.classList.contains("js-forced-layout")) continue;
+    items.push(...parseCardsIn(list));
+  }
+  return items;
+}

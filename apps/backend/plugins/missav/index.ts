@@ -12,7 +12,7 @@ runPlugin({
     description: "Adult JAV streaming site — browse, search and scrape videos from missav.ws",
     icon: "https://missav.ws/favicon.ico",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "stream:resolve"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve"],
     domains: ["missav.ws"],
     content: ["jav"],
     requires_solver: true,

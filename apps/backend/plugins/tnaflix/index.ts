@@ -21,7 +21,7 @@ runPlugin({
     description: "Adult streaming site — browse, search and scrape videos from tnaflix.com",
     icon: "https://www.tnaflix.com/assets/img/favicon/tnaflix/favicon-32x32.png",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "stream:resolve", "search:suggest"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve", "search:suggest"],
     // Downloads carry the tnaflix video page URL; the resolver re-fetches it
     // for a freshly signed mp4.
     domains: ["tnaflix.com"],

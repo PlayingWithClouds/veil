@@ -5,8 +5,10 @@ import type { ListArgs, ItemsResult, DiscoveredItem } from "@playingwithclouds/v
 
 const MAX_SEARCH_PAGES = 10;
 const MAX_BROWSE_PAGES = 500;
+const MAX_PROFILE_PAGES = 200;
 
-// A query searches /en/search/<query> (paginated via ?page=N); without one the
+// A url lists that actress page's videos (paginated via ?page=N). A query
+// searches /en/search/<query> (paginated via ?page=N); without one the
 // newest-feed catalog at /en/new?page=<n> is crawled. offset skips leading
 // items so callers can paginate for infinite scroll.
 export async function sceneList(args: ListArgs): Promise<ItemsResult> {
@@ -15,14 +17,19 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   const offset = args.offset ?? 0;
   const target = limit > 0 ? offset + limit : 0;
 
-  const maxPages = query ? MAX_SEARCH_PAGES : MAX_BROWSE_PAGES;
+  let maxPages = MAX_BROWSE_PAGES;
+  if (args.url) {
+    maxPages = MAX_PROFILE_PAGES;
+  } else if (query) {
+    maxPages = MAX_SEARCH_PAGES;
+  }
   const items: DiscoveredItem[] = [];
   const seen = new Set<string>();
 
   for (let page = 1; page <= maxPages; page++) {
     let html: string;
     try {
-      html = await fetchPage(pageUrl(query, page));
+      html = await fetchPage(pageUrl(args.url, query, page));
     } catch {
       break;
     }
@@ -35,8 +42,14 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
 }
 
-function pageUrl(query: string, page: number): string {
-  const base = query ? `${BASE_URL}/en/search/${encodeURIComponent(query)}` : `${BASE_URL}/en/new`;
+/** Page URL: a profile url (query string and fragment dropped), else the search or newest feed. Page 1 has no ?page; past the last page the site answers 200 with no cards. */
+export function pageUrl(url: string | undefined, query: string, page: number): string {
+  let base = `${BASE_URL}/en/new`;
+  if (url) {
+    base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  } else if (query) {
+    base = `${BASE_URL}/en/search/${encodeURIComponent(query)}`;
+  }
   if (page === 1) return base;
   return `${base}?page=${page}`;
 }
