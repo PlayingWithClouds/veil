@@ -55,7 +55,7 @@ func (l *Library) storyFields(ctx context.Context, plugin string, story *plugins
 	if len(story.Chapters) > 0 {
 		fields["chapterCount"] = len(story.Chapters)
 	}
-	return fields, l.setCredits(ctx, fields, performerNames(story.Performers), story.Tags)
+	return fields, l.setCredits(ctx, fields, plugin, story.Performers, story.Tags)
 }
 
 // replaceChapters swaps a story's chapters for the ones its page lists,

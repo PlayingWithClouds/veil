@@ -6,15 +6,19 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/names"
+	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/schema"
 )
 
-// performerIDs finds or creates a performer for every credited name and
-// returns their ids in credit order, without duplicates.
-func (l *Library) performerIDs(ctx context.Context, credited []string) ([]string, error) {
+// performerIDs finds or creates a performer for every credit and returns
+// their ids in credit order, without duplicates. A credit that links the
+// performer's page on the site matches by that page first and keeps it as a
+// source, so the performer's details can be read from it later.
+func (l *Library) performerIDs(ctx context.Context, plugin string, credited []plugins.ScenePerformer) ([]string, error) {
 	ids := []string{}
 	seen := map[string]bool{}
-	for _, name := range credited {
-		id, err := l.findOrCreateNamed(ctx, tablePerformer, name)
+	for _, credit := range credited {
+		id, _, err := l.namedRecordID(ctx, schema.RecordKindPerformer, tablePerformer, plugin, credit.Name, credit.ExternalID, credit.SourceURL, "")
 		if err != nil {
 			return nil, err
 		}

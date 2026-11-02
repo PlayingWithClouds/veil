@@ -546,6 +546,7 @@ type ComplexityRoot struct {
 		EmptyTrash                func(childComplexity int) int
 		FetchGallery              func(childComplexity int, id string) int
 		FetchMedia                func(childComplexity int, subject schema.RecordRef) int
+		FetchPerformer            func(childComplexity int, id string, refresh *bool) int
 		FetchVideo                func(childComplexity int, id string) int
 		FingerprintFile           func(childComplexity int, fileID string) int
 		FollowRecord              func(childComplexity int, subject schema.RecordRef, intervalHours *int, notify *bool) int
@@ -842,6 +843,7 @@ type ComplexityRoot struct {
 		NotificationChannels    func(childComplexity int) int
 		Notifications           func(childComplexity int, unreadOnly *bool, limit *int, offset *int) int
 		Performer               func(childComplexity int, id string) int
+		PerformerDuplicates     func(childComplexity int, id string) int
 		Performers              func(childComplexity int, text *string, limit *int, offset *int) int
 		PlanOrganize            func(childComplexity int, rootID string) int
 		Play                    func(childComplexity int, url string) int
@@ -1348,6 +1350,7 @@ type MutationResolver interface {
 	RemoveEmbedding(ctx context.Context, id string) (bool, error)
 	FetchVideo(ctx context.Context, id string) (*schema.Video, error)
 	FetchGallery(ctx context.Context, id string) (*schema.Gallery, error)
+	FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error)
 	Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error)
 	Search(ctx context.Context, kind model.ListKind, query string, limit *int) (*model.Listed, error)
 	EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error)
@@ -1486,6 +1489,7 @@ type QueryResolver interface {
 	Gallery(ctx context.Context, id string) (*schema.Gallery, error)
 	Performers(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Performer, error)
 	Performer(ctx context.Context, id string) (*schema.Performer, error)
+	PerformerDuplicates(ctx context.Context, id string) ([]*schema.Performer, error)
 	Studios(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Studio, error)
 	Studio(ctx context.Context, id string) (*schema.Studio, error)
 	Tags(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Tag, error)
@@ -3978,6 +3982,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.FetchMedia(childComplexity, args["subject"].(schema.RecordRef)), true
+	case "Mutation.fetchPerformer":
+		if e.ComplexityRoot.Mutation.FetchPerformer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_fetchPerformer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.FetchPerformer(childComplexity, args["id"].(string), args["refresh"].(*bool)), true
 	case "Mutation.fetchVideo":
 		if e.ComplexityRoot.Mutation.FetchVideo == nil {
 			break
@@ -5996,6 +6011,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Performer(childComplexity, args["id"].(string)), true
+	case "Query.performerDuplicates":
+		if e.ComplexityRoot.Query.PerformerDuplicates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_performerDuplicates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PerformerDuplicates(childComplexity, args["id"].(string)), true
 	case "Query.performers":
 		if e.ComplexityRoot.Query.Performers == nil {
 			break
@@ -7676,6 +7702,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputFollowInput,
 		ec.unmarshalInputLookupInput,
 		ec.unmarshalInputMediaEdit,
+		ec.unmarshalInputPerformerAttributesInput,
 		ec.unmarshalInputPerformerEdit,
 		ec.unmarshalInputPluginSettingValueInput,
 		ec.unmarshalInputRecordRefInput,
@@ -8558,6 +8585,8 @@ extend type Query {
   gallery(id: ID!): Gallery
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
+  # Performers that are probably the same person: a name or alias in common.
+  performerDuplicates(id: ID!): [Performer!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!
@@ -8570,6 +8599,9 @@ extend type Mutation {
   fetchVideo(id: ID!): Video
   # Same for a gallery: its pages list the images.
   fetchGallery(id: ID!): Gallery
+  # Same for a performer: reads their pages on the sites they came from
+  # (bio, picture, attributes). refresh reads every page again.
+  fetchPerformer(id: ID!, refresh: Boolean): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results.
@@ -8615,6 +8647,30 @@ input PerformerEdit {
   aliases: [String!]
   details: String
   links: [String!]
+  # Replaces every attribute: ones left out are cleared. Attributes are one
+  # field, so an edit locks them all against later scrapes.
+  attributes: PerformerAttributesInput
+  # The picture's URL; an empty string clears it.
+  imageUrl: String
+}
+
+input PerformerAttributesInput {
+  gender: String
+  # YYYY-MM-DD
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerStart: Int
+  careerEnd: Int
 }
 
 input StudioEdit {
@@ -12688,6 +12744,28 @@ func (ec *executionContext) field_Mutation_fetchMedia_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_fetchPerformer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "refresh",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["refresh"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_fetchVideo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14889,6 +14967,20 @@ func (ec *executionContext) field_Query_notifications_args(ctx context.Context, 
 		return nil, err
 	}
 	args["offset"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_performerDuplicates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -25853,6 +25945,50 @@ func (ec *executionContext) fieldContext_Mutation_fetchGallery(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_fetchPerformer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_fetchPerformer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().FetchPerformer(ctx, fc.Args["id"].(string), fc.Args["refresh"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalOPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_fetchPerformer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_fetchPerformer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_browse(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33381,6 +33517,50 @@ func (ec *executionContext) fieldContext_Query_performer(ctx context.Context, fi
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_performer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_performerDuplicates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_performerDuplicates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PerformerDuplicates(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformerᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_performerDuplicates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_performerDuplicates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -42581,6 +42761,134 @@ func (ec *executionContext) unmarshalInputMediaEdit(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPerformerAttributesInput(ctx context.Context, obj any) (schema.PerformerAttributes, error) {
+	var it schema.PerformerAttributes
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"gender", "birthdate", "deathDate", "country", "ethnicity", "eyeColor", "hairColor", "heightCm", "weightKg", "measurements", "fakeTits", "tattoos", "piercings", "careerStart", "careerEnd"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "gender":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gender"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Gender = data
+		case "birthdate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("birthdate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Birthdate = data
+		case "deathDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deathDate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeathDate = data
+		case "country":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("country"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Country = data
+		case "ethnicity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ethnicity"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ethnicity = data
+		case "eyeColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eyeColor"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EyeColor = data
+		case "hairColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hairColor"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HairColor = data
+		case "heightCm":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("heightCm"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeightCm = data
+		case "weightKg":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightKg"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightKg = data
+		case "measurements":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("measurements"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Measurements = data
+		case "fakeTits":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fakeTits"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FakeTits = data
+		case "tattoos":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tattoos"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tattoos = data
+		case "piercings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("piercings"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Piercings = data
+		case "careerStart":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("careerStart"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CareerStart = data
+		case "careerEnd":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("careerEnd"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CareerEnd = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPerformerEdit(ctx context.Context, obj any) (model.PerformerEdit, error) {
 	var it model.PerformerEdit
 	if obj == nil {
@@ -42592,7 +42900,7 @@ func (ec *executionContext) unmarshalInputPerformerEdit(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "aliases", "details", "links"}
+	fieldsInOrder := [...]string{"name", "aliases", "details", "links", "attributes", "imageUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -42627,6 +42935,20 @@ func (ec *executionContext) unmarshalInputPerformerEdit(ctx context.Context, obj
 				return it, err
 			}
 			it.Links = data
+		case "attributes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("attributes"))
+			data, err := ec.unmarshalOPerformerAttributesInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformerAttributes(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Attributes = data
+		case "imageUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
 		}
 	}
 	return it, nil
@@ -48366,6 +48688,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_fetchGallery(ctx, field)
 			})
+		case "fetchPerformer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_fetchPerformer(ctx, field)
+			})
 		case "browse":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_browse(ctx, field)
@@ -51379,6 +51705,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_performer(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "performerDuplicates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_performerDuplicates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -59666,6 +60014,14 @@ func (ec *executionContext) marshalOPerformer2ᚖgithubᚗcomᚋplayingwithcloud
 		return graphql.Null
 	}
 	return ec._Performer(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPerformerAttributesInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformerAttributes(ctx context.Context, v any) (*schema.PerformerAttributes, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPerformerAttributesInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOPlayable2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPlayable(ctx context.Context, sel ast.SelectionSet, v *model.Playable) graphql.Marshaler {

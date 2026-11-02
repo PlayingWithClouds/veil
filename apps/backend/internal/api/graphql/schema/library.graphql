@@ -16,6 +16,8 @@ extend type Query {
   gallery(id: ID!): Gallery
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
+  # Performers that are probably the same person: a name or alias in common.
+  performerDuplicates(id: ID!): [Performer!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!
@@ -28,6 +30,9 @@ extend type Mutation {
   fetchVideo(id: ID!): Video
   # Same for a gallery: its pages list the images.
   fetchGallery(id: ID!): Gallery
+  # Same for a performer: reads their pages on the sites they came from
+  # (bio, picture, attributes). refresh reads every page again.
+  fetchPerformer(id: ID!, refresh: Boolean): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results.
@@ -73,6 +78,30 @@ input PerformerEdit {
   aliases: [String!]
   details: String
   links: [String!]
+  # Replaces every attribute: ones left out are cleared. Attributes are one
+  # field, so an edit locks them all against later scrapes.
+  attributes: PerformerAttributesInput
+  # The picture's URL; an empty string clears it.
+  imageUrl: String
+}
+
+input PerformerAttributesInput {
+  gender: String
+  # YYYY-MM-DD
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerStart: Int
+  careerEnd: Int
 }
 
 input StudioEdit {

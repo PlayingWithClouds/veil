@@ -106,16 +106,6 @@ export interface GalleryDetail extends GalleryCardRow {
 	sources: SourceRow[];
 }
 
-/** A performer's page. */
-export interface PerformerDetail extends MemberRow {
-	aliases: string[];
-	details: string | null;
-	links: string[];
-	attributes: Record<string, string | number | null>;
-	tags: NamedRef[];
-	sources: SourceRow[];
-}
-
 /** A studio's page. */
 export interface StudioDetail extends MemberRow {
 	aliases: string[];
@@ -285,37 +275,6 @@ export async function openGallery(id: string): Promise<GalleryDetail | null> {
 		}
 	});
 	return data.fetchGallery ?? null;
-}
-
-/** One performer's page. */
-export async function fetchPerformer(id: string): Promise<PerformerDetail | null> {
-	const data = await gqlClient.query({
-		performer: {
-			__args: { id },
-			...MEMBER,
-			aliases: true,
-			details: true,
-			links: true,
-			attributes: {
-				gender: true,
-				birthdate: true,
-				country: true,
-				ethnicity: true,
-				eyeColor: true,
-				hairColor: true,
-				heightCm: true,
-				weightKg: true,
-				measurements: true,
-				tattoos: true,
-				piercings: true,
-				careerStart: true,
-				careerEnd: true
-			},
-			tags: { id: true, name: true },
-			sources: SOURCE
-		}
-	});
-	return data.performer ?? null;
 }
 
 /** One studio's page. */

@@ -100,6 +100,18 @@ func (r *mutationResolver) FetchGallery(ctx context.Context, id string) (*schema
 	return r.library.Gallery(ctx, id)
 }
 
+// FetchPerformer is the resolver for the fetchPerformer field.
+func (r *mutationResolver) FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error) {
+	visit := r.pipeline.Visit
+	if refresh != nil && *refresh {
+		visit = r.pipeline.Refresh
+	}
+	if err := visit(ctx, schema.RecordKindPerformer, id); err != nil {
+		return nil, err
+	}
+	return r.library.Performer(ctx, id)
+}
+
 // Browse is the resolver for the browse field.
 func (r *mutationResolver) Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error) {
 	refs, err := r.pipeline.List(ctx, plugin, listEntity(kind), text(query), number(limit), number(offset))
@@ -132,7 +144,10 @@ func (r *mutationResolver) EditGallery(ctx context.Context, id string, edit mode
 
 // EditPerformer is the resolver for the editPerformer field.
 func (r *mutationResolver) EditPerformer(ctx context.Context, id string, edit model.PerformerEdit) (*schema.Performer, error) {
-	named := library.NamedEdit{Name: edit.Name, Aliases: optionalList(edit.Aliases), Details: edit.Details, Links: optionalList(edit.Links)}
+	named := library.NamedEdit{
+		Name: edit.Name, Aliases: optionalList(edit.Aliases), Details: edit.Details, Links: optionalList(edit.Links),
+		Attributes: edit.Attributes, Image: edit.ImageURL,
+	}
 	if err := r.library.EditNamed(ctx, schema.RecordKindPerformer, id, named); err != nil {
 		return nil, err
 	}
@@ -260,6 +275,12 @@ func (r *queryResolver) Performers(ctx context.Context, text *string, limit *int
 // Performer is the resolver for the performer field.
 func (r *queryResolver) Performer(ctx context.Context, id string) (*schema.Performer, error) {
 	return r.library.Performer(ctx, id)
+}
+
+// PerformerDuplicates is the resolver for the performerDuplicates field.
+func (r *queryResolver) PerformerDuplicates(ctx context.Context, id string) ([]*schema.Performer, error) {
+	duplicates, err := r.library.PerformerDuplicates(ctx, id)
+	return pointers(duplicates), err
 }
 
 // Studios is the resolver for the studios field.

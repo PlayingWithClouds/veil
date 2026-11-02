@@ -52,6 +52,8 @@ models:
         resolver: true
   PerformerAttributes:
     model: github.com/playingwithclouds/veil/internal/schema.PerformerAttributes
+  PerformerAttributesInput:
+    model: github.com/playingwithclouds/veil/internal/schema.PerformerAttributes
   Studio:
     model: github.com/playingwithclouds/veil/internal/schema.Studio
     fields:

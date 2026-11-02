@@ -88,13 +88,16 @@ func performerFields(performer *plugins.Performer) db.Vars {
 	return fields
 }
 
-// performerLinks collects a performer's own sites and socials.
+// performerLinks collects a performer's own sites and socials, each once.
 func performerLinks(performer *plugins.Performer) []string {
 	links := []string{}
+	seen := map[string]bool{}
 	for _, link := range []string{performer.URL, performer.Twitter, performer.Instagram} {
-		if link != "" {
-			links = append(links, link)
+		if link == "" || seen[link] {
+			continue
 		}
+		seen[link] = true
+		links = append(links, link)
 	}
 	return links
 }

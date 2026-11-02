@@ -48,6 +48,7 @@ type Query {
   gallery(id: ID!): Gallery
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
+  performerDuplicates(id: ID!): [Performer!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
   tags(text: String, limit: Int, offset: Int): [Tag!]!
@@ -147,6 +148,7 @@ type Mutation {
   removeEmbedding(id: ID!): Boolean!
   fetchVideo(id: ID!): Video
   fetchGallery(id: ID!): Gallery
+  fetchPerformer(id: ID!, refresh: Boolean): Performer
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   search(kind: ListKind!, query: String!, limit: Int): Listed!
   editVideo(id: ID!, edit: MediaEdit!): Video
@@ -785,6 +787,26 @@ input PerformerEdit {
   aliases: [String!]
   details: String
   links: [String!]
+  attributes: PerformerAttributesInput
+  imageUrl: String
+}
+
+input PerformerAttributesInput {
+  gender: String
+  birthdate: String
+  deathDate: String
+  country: String
+  ethnicity: String
+  eyeColor: String
+  hairColor: String
+  heightCm: Int
+  weightKg: Int
+  measurements: String
+  fakeTits: String
+  tattoos: String
+  piercings: String
+  careerStart: Int
+  careerEnd: Int
 }
 
 input StudioEdit {

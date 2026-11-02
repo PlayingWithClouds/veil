@@ -60,7 +60,7 @@ func (l *Library) galleryFields(ctx context.Context, plugin string, gallery *plu
 	if !fetched {
 		return fields, nil
 	}
-	return fields, l.setCredits(ctx, fields, performerNames(gallery.Performers), gallery.Tags)
+	return fields, l.setCredits(ctx, fields, plugin, gallery.Performers, gallery.Tags)
 }
 
 // galleryCover is the gallery's cover, else its first image.

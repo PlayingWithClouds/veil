@@ -73,7 +73,7 @@ func (l *Library) videoFields(ctx context.Context, plugin string, scene *plugins
 	if !fetched {
 		return fields, nil
 	}
-	return fields, l.setCredits(ctx, fields, performerNames(scene.Performers), scene.Tags)
+	return fields, l.setCredits(ctx, fields, plugin, scene.Performers, scene.Tags)
 }
 
 // setFrameSize sets width and height when the page gave both.
@@ -123,9 +123,10 @@ func (l *Library) setStudio(ctx context.Context, fields db.Vars, plugin string, 
 	return nil
 }
 
-// setCredits sets the performers and tags columns from names.
-func (l *Library) setCredits(ctx context.Context, fields db.Vars, performerNames, tagNames []string) error {
-	performerIDs, err := l.performerIDs(ctx, performerNames)
+// setCredits sets the performers column from a page's credits and the tags
+// column from names.
+func (l *Library) setCredits(ctx context.Context, fields db.Vars, plugin string, credits []plugins.ScenePerformer, tagNames []string) error {
+	performerIDs, err := l.performerIDs(ctx, plugin, credits)
 	if err != nil {
 		return err
 	}
@@ -136,15 +137,6 @@ func (l *Library) setCredits(ctx context.Context, fields db.Vars, performerNames
 	fields["performers"] = performerIDs
 	fields["tags"] = tagIDs
 	return nil
-}
-
-// performerNames lists the credited names of a scene, in credit order.
-func performerNames(credits []plugins.ScenePerformer) []string {
-	result := make([]string, 0, len(credits))
-	for _, credit := range credits {
-		result = append(result, credit.Name)
-	}
-	return result
 }
 
 // posterOf returns the scene's cover image: its poster path, else the first

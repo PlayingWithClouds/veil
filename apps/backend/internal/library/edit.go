@@ -37,8 +37,10 @@ type NamedEdit struct {
 	Name    *string
 	Aliases *[]string
 	Details *string
-	// Performers only.
-	Links *[]string
+	// Performers only. Attributes replace them all; Image "" clears the picture.
+	Links      *[]string
+	Attributes *schema.PerformerAttributes
+	Image      *string
 	// Studios only.
 	URL      *string
 	ParentID *string
@@ -117,8 +119,8 @@ func (l *Library) EditNamed(ctx context.Context, kind schema.RecordKind, id stri
 		return err
 	}
 	setOptionalText(fields, "details", edit.Details)
-	if kind == schema.RecordKindPerformer && edit.Links != nil {
-		fields["links"] = *edit.Links
+	if kind == schema.RecordKindPerformer {
+		setPerformerFields(fields, edit)
 	}
 	if kind == schema.RecordKindStudio {
 		setOptionalText(fields, "url", edit.URL)
@@ -126,6 +128,23 @@ func (l *Library) EditNamed(ctx context.Context, kind schema.RecordKind, id stri
 	}
 	_, err := l.recorder.Update(ctx, kind, id, fields, provenance.User())
 	return err
+}
+
+// setPerformerFields sets the edit's links, attributes and picture.
+func setPerformerFields(fields db.Vars, edit NamedEdit) {
+	if edit.Links != nil {
+		fields["links"] = *edit.Links
+	}
+	if edit.Attributes != nil {
+		fields["attributes"] = *edit.Attributes
+	}
+	if edit.Image == nil {
+		return
+	}
+	fields["image"] = nil
+	if asset := assetOf(*edit.Image); asset != nil {
+		fields["image"] = asset
+	}
 }
 
 // setName sets name and nameKey from a new name, when there is one.

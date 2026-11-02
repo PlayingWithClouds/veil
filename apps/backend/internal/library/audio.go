@@ -49,7 +49,7 @@ func (l *Library) audioFields(ctx context.Context, plugin string, audio *plugins
 	if !fetched {
 		return fields, nil
 	}
-	return fields, l.setCredits(ctx, fields, performerNames(audio.Performers), audio.Tags)
+	return fields, l.setCredits(ctx, fields, plugin, audio.Performers, audio.Tags)
 }
 
 // Audios lists a page of audio matching the query's filter.

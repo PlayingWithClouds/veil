@@ -155,10 +155,12 @@ type Mutation struct {
 }
 
 type PerformerEdit struct {
-	Name    *string  `json:"name,omitempty"`
-	Aliases []string `json:"aliases,omitempty"`
-	Details *string  `json:"details,omitempty"`
-	Links   []string `json:"links,omitempty"`
+	Name       *string                     `json:"name,omitempty"`
+	Aliases    []string                    `json:"aliases,omitempty"`
+	Details    *string                     `json:"details,omitempty"`
+	Links      []string                    `json:"links,omitempty"`
+	Attributes *schema.PerformerAttributes `json:"attributes,omitempty"`
+	ImageURL   *string                     `json:"imageUrl,omitempty"`
 }
 
 type Playable struct {

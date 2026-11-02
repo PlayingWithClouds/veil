@@ -27,11 +27,34 @@ func identity(plugin, externalID, url string) (siteIdentity, bool) {
 	return siteIdentity{Plugin: plugin, ExternalID: externalID, URL: url}, true
 }
 
-// findSource returns the source row for a site identity, or nil.
+// findSource returns the source row for a site identity, or nil. A row
+// stored from a link alone (a credit naming a performer's page: its URL
+// stands in for the id) is the same page as one read later with the site's
+// own id; it is found by URL and takes that id.
 func (l *Library) findSource(ctx context.Context, site siteIdentity) (*schema.Source, error) {
-	return db.QueryOneAs[schema.Source](ctx, l.database,
+	source, err := db.QueryOneAs[schema.Source](ctx, l.database,
 		`SELECT * FROM "Source" WHERE "plugin" = $plugin AND "externalId" = $externalId AND "deletedAt" IS NULL`,
 		db.Vars{"plugin": site.Plugin, "externalId": site.ExternalID})
+	if err != nil || source != nil || site.URL == "" || site.ExternalID == site.URL {
+		return source, err
+	}
+	return l.claimLinkedSource(ctx, site)
+}
+
+// claimLinkedSource finds the source stored from a link to site's URL and
+// gives it the site's own id; nil when there is none.
+func (l *Library) claimLinkedSource(ctx context.Context, site siteIdentity) (*schema.Source, error) {
+	linked, err := db.QueryOneAs[schema.Source](ctx, l.database,
+		`SELECT * FROM "Source" WHERE "plugin" = $plugin AND "externalId" = $url AND "url" = $url AND "deletedAt" IS NULL`,
+		db.Vars{"plugin": site.Plugin, "url": site.URL})
+	if err != nil || linked == nil {
+		return linked, err
+	}
+	if err := l.database.Update(ctx, tableSource, linked.Id, db.Vars{"externalId": site.ExternalID}); err != nil {
+		return nil, err
+	}
+	linked.ExternalId = site.ExternalID
+	return linked, nil
 }
 
 // addSource records that the record kind/id was found at site.
@@ -52,6 +75,12 @@ func (l *Library) addSource(ctx context.Context, kind schema.RecordKind, id stri
 // don't fetch it again.
 func (l *Library) markFetched(ctx context.Context, sourceID string) error {
 	return l.database.Update(ctx, tableSource, sourceID, db.Vars{"fetchedAt": db.Now()})
+}
+
+// MarkFetched notes that a source's page was read and stored, for readers
+// outside ingest (a visit of a performer's page).
+func (l *Library) MarkFetched(ctx context.Context, sourceID string) error {
+	return l.markFetched(ctx, sourceID)
 }
 
 // Sources lists every site a record was found on, oldest first.

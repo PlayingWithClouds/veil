@@ -62,6 +62,7 @@ export interface Query {
     gallery: (Gallery | null)
     performers: Performer[]
     performer: (Performer | null)
+    performerDuplicates: Performer[]
     studios: Studio[]
     studio: (Studio | null)
     tags: Tag[]
@@ -162,6 +163,7 @@ export interface Mutation {
     removeEmbedding: Scalars['Boolean']
     fetchVideo: (Video | null)
     fetchGallery: (Gallery | null)
+    fetchPerformer: (Performer | null)
     browse: Listed
     search: Listed
     editVideo: (Video | null)
@@ -1299,6 +1301,7 @@ export interface QueryGenqlSelection{
     gallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
     performers?: (PerformerGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     performer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
+    performerDuplicates?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
     studios?: (StudioGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     studio?: (StudioGenqlSelection & { __args: {id: Scalars['ID']} })
     tags?: (TagGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
@@ -1400,6 +1403,7 @@ export interface MutationGenqlSelection{
     removeEmbedding?: { __args: {id: Scalars['ID']} }
     fetchVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID']} })
     fetchGallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
+    fetchPerformer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID'], refresh?: (Scalars['Boolean'] | null)} })
     browse?: (ListedGenqlSelection & { __args: {plugin: Scalars['String'], kind: ListKind, query?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     search?: (ListedGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     editVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID'], edit: MediaEdit} })
@@ -1965,7 +1969,9 @@ export interface SourceGenqlSelection{
 
 export interface MediaEdit {title?: (Scalars['String'] | null),details?: (Scalars['String'] | null),date?: (Scalars['String'] | null),studioId?: (Scalars['ID'] | null),performerIds?: (Scalars['ID'][] | null),tagIds?: (Scalars['ID'][] | null),status?: (MediaStatus | null),vr?: (VrFormatInput | null),clearVr?: (Scalars['Boolean'] | null),width?: (Scalars['Int'] | null),height?: (Scalars['Int'] | null),durationSeconds?: (Scalars['Float'] | null)}
 
-export interface PerformerEdit {name?: (Scalars['String'] | null),aliases?: (Scalars['String'][] | null),details?: (Scalars['String'] | null),links?: (Scalars['String'][] | null)}
+export interface PerformerEdit {name?: (Scalars['String'] | null),aliases?: (Scalars['String'][] | null),details?: (Scalars['String'] | null),links?: (Scalars['String'][] | null),attributes?: (PerformerAttributesInput | null),imageUrl?: (Scalars['String'] | null)}
+
+export interface PerformerAttributesInput {gender?: (Scalars['String'] | null),birthdate?: (Scalars['String'] | null),deathDate?: (Scalars['String'] | null),country?: (Scalars['String'] | null),ethnicity?: (Scalars['String'] | null),eyeColor?: (Scalars['String'] | null),hairColor?: (Scalars['String'] | null),heightCm?: (Scalars['Int'] | null),weightKg?: (Scalars['Int'] | null),measurements?: (Scalars['String'] | null),fakeTits?: (Scalars['String'] | null),tattoos?: (Scalars['String'] | null),piercings?: (Scalars['String'] | null),careerStart?: (Scalars['Int'] | null),careerEnd?: (Scalars['Int'] | null)}
 
 export interface StudioEdit {name?: (Scalars['String'] | null),aliases?: (Scalars['String'][] | null),details?: (Scalars['String'] | null),url?: (Scalars['String'] | null),parentId?: (Scalars['ID'] | null)}
 

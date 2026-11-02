@@ -39,6 +39,18 @@ func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runne
 // can't read pages are skipped; a failing page is logged, not returned, so
 // one broken site doesn't hide the others.
 func (p *Pipeline) Visit(ctx context.Context, kind schema.RecordKind, id string) error {
+	return p.visit(ctx, kind, id, false)
+}
+
+// Refresh reads the page behind every one of a record's sources again, read
+// before or not, like Visit otherwise.
+func (p *Pipeline) Refresh(ctx context.Context, kind schema.RecordKind, id string) error {
+	return p.visit(ctx, kind, id, true)
+}
+
+// visit reads a record's unread sources, or all of them when again is set,
+// one visit per record at a time.
+func (p *Pipeline) visit(ctx context.Context, kind schema.RecordKind, id string, again bool) error {
 	lock, _ := p.visiting.LoadOrStore(id, &sync.Mutex{})
 	lock.(*sync.Mutex).Lock()
 	defer lock.(*sync.Mutex).Unlock()
@@ -47,7 +59,7 @@ func (p *Pipeline) Visit(ctx context.Context, kind schema.RecordKind, id string)
 		return err
 	}
 	for _, source := range sources {
-		if source.FetchedAt != nil {
+		if source.FetchedAt != nil && !again {
 			continue
 		}
 		p.readSource(ctx, kind, source)
@@ -68,6 +80,11 @@ func (p *Pipeline) readSource(ctx context.Context, kind schema.RecordKind, sourc
 	}
 	if _, err := p.library.IngestFound(ctx, source.Plugin, results); err != nil {
 		log.Printf("visit %s %s: store: %v", source.Plugin, source.Url, err)
+		return
+	}
+	// Media pages mark their source as they're stored; performer and studio pages don't.
+	if err := p.library.MarkFetched(ctx, source.Id); err != nil {
+		log.Printf("visit %s %s: mark read: %v", source.Plugin, source.Url, err)
 	}
 }
 

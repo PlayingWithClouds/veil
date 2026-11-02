@@ -1,0 +1,93 @@
+package library
+
+import (
+	"context"
+	"testing"
+
+	"github.com/playingwithclouds/veil/internal/plugins"
+	"github.com/playingwithclouds/veil/internal/schema"
+)
+
+// TestCreditKeepsPerformerPage stores a credited performer's page on the
+// site as their source, so the performer can be read from it later.
+func TestCreditKeepsPerformerPage(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	scene := foundScene()
+	scene[0].Scene.Performers = []plugins.ScenePerformer{{Name: "Ada Lane", SourceURL: "https://site.test/pornstar/ada-lane"}}
+	ref, err := library.IngestFound(ctx, "site", scene)
+	if err != nil {
+		t.Fatal(err)
+	}
+	video, _ := library.Video(ctx, ref.Id)
+	sources, err := library.Sources(ctx, schema.RecordKindPerformer, video.Performers[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources) != 1 || sources[0].Url != "https://site.test/pornstar/ada-lane" {
+		t.Errorf("performer sources = %+v", sources)
+	}
+
+	// Reading that page later, with the site's own id, lands on the same source.
+	page := &plugins.Performer{Name: "Ada Lane", ExternalID: "ps-ada", SourceURL: "https://site.test/pornstar/ada-lane", Country: "DE"}
+	id, err := library.upsertPerformer(ctx, "site", page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, _ = library.Sources(ctx, schema.RecordKindPerformer, id)
+	if id != video.Performers[0] || len(sources) != 1 || sources[0].ExternalId != "ps-ada" {
+		t.Errorf("after reading the page: performer %s, sources %+v", id, sources)
+	}
+}
+
+// TestPerformerDuplicatesByAlias suggests a performer whose alias is the
+// other's name, and not an unrelated one.
+func TestPerformerDuplicatesByAlias(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	ada, err := library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Ada Lane", Aliases: []string{"Ada L."}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	alias, _ := library.upsertPerformer(ctx, "other", &plugins.Performer{Name: "Ada L", ExternalID: "a1"})
+	library.upsertPerformer(ctx, "other", &plugins.Performer{Name: "Bea", ExternalID: "b1"})
+
+	duplicates, err := library.PerformerDuplicates(ctx, ada)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(duplicates) != 1 || duplicates[0].Id != alias {
+		t.Errorf("duplicates = %+v, want only %s", duplicates, alias)
+	}
+}
+
+// TestEditPerformerAttributesAndPicture replaces the attributes, sets and
+// clears the picture.
+func TestEditPerformerAttributesAndPicture(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	id, _ := library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Ada Lane", Country: "DE", ImagePath: "https://cdn.test/old.jpg"})
+
+	height := int32(170)
+	picture := "https://cdn.test/new.jpg"
+	edit := NamedEdit{Attributes: &schema.PerformerAttributes{HeightCm: &height}, Image: &picture}
+	if err := library.EditNamed(ctx, schema.RecordKindPerformer, id, edit); err != nil {
+		t.Fatal(err)
+	}
+	performer, _ := library.Performer(ctx, id)
+	if performer.Attributes.HeightCm == nil || *performer.Attributes.HeightCm != 170 || performer.Attributes.Country != nil {
+		t.Errorf("attributes = %+v", performer.Attributes)
+	}
+	if performer.Image == nil || performer.Image.Uri != picture {
+		t.Errorf("image = %+v", performer.Image)
+	}
+
+	cleared := ""
+	if err := library.EditNamed(ctx, schema.RecordKindPerformer, id, NamedEdit{Image: &cleared}); err != nil {
+		t.Fatal(err)
+	}
+	performer, _ = library.Performer(ctx, id)
+	if performer.Image != nil {
+		t.Errorf("image after clearing = %+v", performer.Image)
+	}
+}
