@@ -108,9 +108,27 @@ type pluginResponse struct {
 	NeedsLogin bool `json:"needs_login,omitempty"`
 }
 
-// ErrNeedsLogin wraps the error of a call the site refused for want of a
-// login the backend couldn't renew.
+// ErrNeedsLogin is what a call the site refused for want of a login the
+// backend couldn't renew is (errors.Is); errors.As finds the LoginNeeded
+// naming the plugin.
 var ErrNeedsLogin = errors.New("needs a login")
+
+// LoginNeeded is the error of a call the site refused for want of a login:
+// the user has to log into the plugin's site (or import its cookies).
+type LoginNeeded struct {
+	Plugin  string
+	Message string
+}
+
+// Error says which plugin wants a login, and why.
+func (err *LoginNeeded) Error() string {
+	return fmt.Sprintf("plugin %q needs a login: %s", err.Plugin, err.Message)
+}
+
+// Is makes a LoginNeeded match ErrNeedsLogin.
+func (err *LoginNeeded) Is(target error) bool {
+	return target == ErrNeedsLogin
+}
 
 // sessionLinePrefix starts the line a plugin writes when it renewed its
 // account's session during a call (SDK sessionFetch).
@@ -461,7 +479,7 @@ func scrapeLineError(line []byte) pluginResponse {
 // err is the error a failed response stands for.
 func (response pluginResponse) err(pluginName string) error {
 	if response.NeedsLogin {
-		return fmt.Errorf("plugin %q: %s: %w", pluginName, response.Error, ErrNeedsLogin)
+		return &LoginNeeded{Plugin: pluginName, Message: response.Error}
 	}
 	return fmt.Errorf("plugin %q: %s", pluginName, response.Error)
 }

@@ -4,13 +4,18 @@ import { createClient as createWsClient, type Client as WsClient } from 'graphql
 // plugin runtime never enters the browser build graph.
 import { createVeilClient } from '@playingwithclouds/veil-sdk/client';
 import { apiBase } from '$lib/server';
+import { fetchWithLoginPrompt } from '$lib/loginPrompt';
 
 /** GraphQL endpoint of the backend (public URL in the browser, internal in SSR). */
 function resolveEndpoint(): string {
 	return `${apiBase()}/graphql`;
 }
 
-export const veil = createVeilClient({ url: resolveEndpoint() });
+// In the browser, answers saying a site wants a login link to it.
+export const veil = createVeilClient({
+	url: resolveEndpoint(),
+	fetch: browser ? fetchWithLoginPrompt : undefined
+});
 
 /** Raw genql client for operations outside the CRUD facade. */
 export const gqlClient = veil.client;

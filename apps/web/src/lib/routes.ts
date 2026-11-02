@@ -6,6 +6,11 @@ export function videoUrl(id: string): string {
 	return `/video/${encodeURIComponent(id)}`;
 }
 
+/** A plugin on the plugins page, opened at its login. */
+export function pluginLoginUrl(name: string): string {
+	return `/plugins#${encodeURIComponent(name)}`;
+}
+
 /** One performer's page. */
 export function performerUrl(id: string): string {
 	return `/performers/${encodeURIComponent(id)}`;

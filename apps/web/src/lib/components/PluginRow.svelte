@@ -18,12 +18,21 @@
 
 	interface Props {
 		plugin: InstalledPlugin;
+		// Opened by a link to it (e.g. its login): shown open and scrolled to.
+		opened?: boolean;
 		onchanged: () => void;
 	}
 
-	let { plugin, onchanged }: Props = $props();
+	let { plugin, opened = false, onchanged }: Props = $props();
 
 	let open = $state(false);
+	let row = $state<HTMLLIElement>();
+
+	$effect(() => {
+		if (!opened) return;
+		open = true;
+		row?.scrollIntoView({ block: 'center' });
+	});
 	let busy = $state(false);
 	let message = $state<string | null>(null);
 	let values = $state<Record<string, string>>({});
@@ -81,7 +90,7 @@
 	}
 </script>
 
-<li class="bg-base-200 flex flex-col gap-3 rounded-xl p-4">
+<li bind:this={row} id={plugin.name} class="bg-base-200 flex flex-col gap-3 rounded-xl p-4">
 	<div class="flex items-center gap-3">
 		<SiteIcon iconUrl={plugin.iconUrl} class="h-8 w-8 shrink-0" />
 		<button

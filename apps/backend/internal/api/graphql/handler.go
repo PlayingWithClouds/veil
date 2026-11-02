@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -12,8 +13,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/gorilla/websocket"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
+	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/tokens"
 )
 
@@ -40,7 +43,24 @@ func NewHandler(resolver *Resolver) http.Handler {
 	server.Use(extension.Introspection{})
 	server.Use(extension.AutomaticPersistedQuery{Cache: lru.New[string](100)})
 	server.AroundOperations(checkOperationScope)
+	server.SetErrorPresenter(presentError)
 	return server
+}
+
+// presentError is gqlgen's usual error, plus for a site wanting a login the
+// code NEEDS_LOGIN and the plugin, so clients can link to its login.
+func presentError(ctx context.Context, err error) *gqlerror.Error {
+	presented := graphql.DefaultErrorPresenter(ctx, err)
+	var needed *plugins.LoginNeeded
+	if !errors.As(err, &needed) {
+		return presented
+	}
+	if presented.Extensions == nil {
+		presented.Extensions = map[string]any{}
+	}
+	presented.Extensions["code"] = "NEEDS_LOGIN"
+	presented.Extensions["plugin"] = needed.Plugin
+	return presented
 }
 
 // checkOperationScope refuses an operation the request's token doesn't

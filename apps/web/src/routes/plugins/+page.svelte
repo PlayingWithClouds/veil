@@ -3,6 +3,7 @@
 	the published packages to install.
 -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import PluginRow from '$lib/components/PluginRow.svelte';
 	import {
@@ -20,6 +21,8 @@
 	let busy = $state<string | null>(null);
 	let message = $state<string | null>(null);
 
+	// The plugin a link opened the page at (pluginLoginUrl), shown open.
+	let opened = $derived(decodeURIComponent(page.url.hash.slice(1)));
 	let sortedInstalled = $derived(
 		[...installed].sort((first, second) => first.name.localeCompare(second.name))
 	);
@@ -88,7 +91,7 @@
 		<h2 class="text-lg font-semibold">Installed</h2>
 		<ul class="flex flex-col gap-2">
 			{#each sortedInstalled as plugin (plugin.name)}
-				<PluginRow {plugin} onchanged={refresh} />
+				<PluginRow {plugin} opened={opened === plugin.name} onchanged={refresh} />
 			{/each}
 		</ul>
 		{#if installed.length === 0}
