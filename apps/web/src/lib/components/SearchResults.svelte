@@ -20,6 +20,7 @@
 	import { SearchLayout, TOP_PLACES } from '$lib/searchLayout';
 	import { logEvent, resetShown } from '$lib/events';
 	import { videoUrl } from '$lib/routes';
+	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 
 	// Grid rows between two breaking rows, after the top places.
 	const SECTION_ROWS = 6;
@@ -42,7 +43,17 @@
 		performers: MemberRow[];
 	}
 
-	let { query }: { query: string } = $props();
+	interface Props {
+		query: string;
+		// The header's filter, narrowing the results; null without one.
+		filter?: FilterInput | null;
+	}
+
+	let { query, filter = null }: Props = $props();
+
+	// The filter of the running search, as it started.
+	let activeFilter: FilterInput | null = null;
+	let filterActive = false;
 
 	let videos = $state<VideoCardRow[]>([]);
 	let rows = $state<(BreakRow | null)[]>([]);
@@ -65,6 +76,7 @@
 	let sites = new Set<string>();
 	let exhausted = new Set<string>();
 	let newThisPage = new Map<string, number>();
+	let returnedThisPage = new Map<string, number>();
 	let releaseTimer: ReturnType<typeof setTimeout> | null = null;
 	// Results waiting to be appended, and whether they're being appended now.
 	let queued: VideoCardRow[] = [];
@@ -78,7 +90,8 @@
 
 	$effect(() => {
 		const searchText = query;
-		untrack(() => void start(searchText));
+		const searchFilter = filter;
+		untrack(() => void start(searchText, searchFilter));
 		return stop;
 	});
 
@@ -113,7 +126,9 @@
 	}
 
 	/** Starts a search over: empty results, page 0. */
-	async function start(searchText: string) {
+	async function start(searchText: string, searchFilter: FilterInput | null) {
+		activeFilter = searchFilter;
+		filterActive = searchFilter !== null && Object.keys(searchFilter).length > 0;
 		stop();
 		generation++;
 		resetShown('search');
@@ -144,7 +159,8 @@
 		sitesAsked = 0;
 		sitesAnswered = 0;
 		newThisPage = new Map();
-		const running = searchPage('VIDEO', searchText, pageNumber, plugins, receive);
+		returnedThisPage = new Map();
+		const running = searchPage('VIDEO', searchText, pageNumber, plugins, activeFilter, receive);
 		current = running;
 		try {
 			await running.done;
@@ -164,12 +180,21 @@
 		sites.add(batch.plugin);
 		const fresh = batch.listed.videos.filter((video) => !layout.has(video.id));
 		newThisPage.set(batch.plugin, (newThisPage.get(batch.plugin) ?? 0) + fresh.length);
+		returnedThisPage.set(batch.plugin, (returnedThisPage.get(batch.plugin) ?? 0) + batch.returned);
 		show(layout.add(batch.plugin, batch.listed.videos));
 		if (layout.hasWaiting) scheduleRelease();
 		if (!batch.final) return;
 		sitesAnswered++;
-		// A site that had nothing new this page won't on the next either.
-		if (batch.exhausted || newThisPage.get(batch.plugin) === 0) exhausted.add(batch.plugin);
+		if (batch.exhausted || siteRanDry(batch.plugin)) exhausted.add(batch.plugin);
+	}
+
+	/**
+	 * Whether a site's page brought nothing: no results at all, or (without a
+	 * filter, which can hide a whole page) only ones already shown.
+	 */
+	function siteRanDry(site: string): boolean {
+		if (returnedThisPage.get(site) === 0) return true;
+		return !filterActive && newThisPage.get(site) === 0;
 	}
 
 	/** Lets waiting results in after a moment, once the top places are settled. */

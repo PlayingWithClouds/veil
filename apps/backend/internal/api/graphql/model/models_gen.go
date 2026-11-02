@@ -288,6 +288,7 @@ type SearchBatch struct {
 	Stored    bool    `json:"stored"`
 	Final     bool    `json:"final"`
 	Exhausted bool    `json:"exhausted"`
+	Returned  int     `json:"returned"`
 }
 
 type SegmentInput struct {

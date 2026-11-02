@@ -3,6 +3,7 @@
 import {
 	generateSubscriptionOp,
 	type FieldsSelection,
+	type FilterInput,
 	type ListKind,
 	type SearchBatch
 } from '@playingwithclouds/veil-sdk/generated';
@@ -16,6 +17,7 @@ const SEARCH_BATCH = {
 	stored: true,
 	final: true,
 	exhausted: true,
+	returned: true,
 	listed: { videos: VIDEO_CARD }
 } as const;
 
@@ -29,19 +31,21 @@ export interface SearchPage {
 
 /**
  * Asks the sites for one page of a search (only plugins, when given), calling
- * onBatch with each part of a site's answer as it arrives.
+ * onBatch with each part of a site's answer as it arrives; filter narrows
+ * the results to those it matches.
  */
 export function searchPage(
 	kind: ListKind,
 	query: string,
 	page: number,
 	plugins: string[] | null,
+	filter: FilterInput | null,
 	onBatch: (batch: SearchBatchRow) => void
 ): SearchPage {
 	const client = getWsClient();
 	if (!client) return { done: Promise.resolve(), cancel: () => {} };
 	const operation = generateSubscriptionOp({
-		searchResults: { __args: { kind, query, page, plugins }, ...SEARCH_BATCH }
+		searchResults: { __args: { kind, query, page, plugins, filter }, ...SEARCH_BATCH }
 	});
 	let cancel = () => {};
 	// A cancelled page settles too, so nothing waits on it forever.

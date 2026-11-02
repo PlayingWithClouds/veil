@@ -226,7 +226,7 @@ type Scraped {
 
 type Subscription {
   notificationAdded: Notification!
-  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!]): SearchBatch!
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput): SearchBatch!
 }
 
 type Follow {
@@ -780,6 +780,7 @@ type SearchBatch {
   stored: Boolean!
   final: Boolean!
   exhausted: Boolean!
+  returned: Int!
 }
 
 input MediaEdit {

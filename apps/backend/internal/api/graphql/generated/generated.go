@@ -943,6 +943,7 @@ type ComplexityRoot struct {
 		Final     func(childComplexity int) int
 		Listed    func(childComplexity int) int
 		Plugin    func(childComplexity int) int
+		Returned  func(childComplexity int) int
 		Sites     func(childComplexity int) int
 		Stored    func(childComplexity int) int
 	}
@@ -1069,7 +1070,7 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		NotificationAdded func(childComplexity int) int
-		SearchResults     func(childComplexity int, kind model.ListKind, query string, page *int, limit *int, plugins []string) int
+		SearchResults     func(childComplexity int, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) int
 	}
 
 	Subtitle struct {
@@ -1603,7 +1604,7 @@ type StudioResolver interface {
 }
 type SubscriptionResolver interface {
 	NotificationAdded(ctx context.Context) (<-chan *schema.Notification, error)
-	SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string) (<-chan *model.SearchBatch, error)
+	SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) (<-chan *model.SearchBatch, error)
 }
 type TagResolver interface {
 	VideoCount(ctx context.Context, obj *schema.Tag) (int, error)
@@ -6684,6 +6685,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SearchBatch.Plugin(childComplexity), true
+	case "SearchBatch.returned":
+		if e.ComplexityRoot.SearchBatch.Returned == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchBatch.Returned(childComplexity), true
 	case "SearchBatch.sites":
 		if e.ComplexityRoot.SearchBatch.Sites == nil {
 			break
@@ -7256,7 +7263,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Subscription.SearchResults(childComplexity, args["kind"].(model.ListKind), args["query"].(string), args["page"].(*int), args["limit"].(*int), args["plugins"].([]string)), true
+		return e.ComplexityRoot.Subscription.SearchResults(childComplexity, args["kind"].(model.ListKind), args["query"].(string), args["page"].(*int), args["limit"].(*int), args["plugins"].([]string), args["filter"].(*schema.Filter)), true
 
 	case "Subtitle.asset":
 		if e.ComplexityRoot.Subtitle.Asset == nil {
@@ -8808,7 +8815,8 @@ extend type Subscription {
   # across every site that lists this kind, or only the named plugins: each
   # site's results as they come, then the subscription completes. A site that
   # answered the same page within 6 hours isn't asked; its answer then is sent.
-  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!]): SearchBatch!
+  # filter narrows the results sent (and its sites who's asked).
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput): SearchBatch!
 }
 
 # Part of one site's answer to a search page.
@@ -8823,6 +8831,8 @@ type SearchBatch {
   final: Boolean!
   # The site has no further pages for this search.
   exhausted: Boolean!
+  # How many results the site gave in this batch, before the filter.
+  returned: Int!
 }
 
 # A change to a video or gallery. Omitted fields stay; an empty string
@@ -11350,6 +11360,8 @@ func (ec *executionContext) childFields_SearchBatch(ctx context.Context, field g
 		return ec.fieldContext_SearchBatch_final(ctx, field)
 	case "exhausted":
 		return ec.fieldContext_SearchBatch_exhausted(ctx, field)
+	case "returned":
+		return ec.fieldContext_SearchBatch_returned(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SearchBatch", field.Name)
 }
@@ -16051,6 +16063,14 @@ func (ec *executionContext) field_Subscription_searchResults_args(ctx context.Co
 		return nil, err
 	}
 	args["plugins"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "filter",
+		func(ctx context.Context, v any) (*schema.Filter, error) {
+			return ec.unmarshalOFilterInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg5
 	return args, nil
 }
 
@@ -36746,6 +36766,29 @@ func (ec *executionContext) fieldContext_SearchBatch_exhausted(_ context.Context
 	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _SearchBatch_returned(ctx context.Context, field graphql.CollectedField, obj *model.SearchBatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchBatch_returned(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Returned, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchBatch_returned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchBatch", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _Segment_id(ctx context.Context, field graphql.CollectedField, obj *schema.Segment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39047,7 +39090,7 @@ func (ec *executionContext) _Subscription_searchResults(ctx context.Context, fie
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().SearchResults(ctx, fc.Args["kind"].(model.ListKind), fc.Args["query"].(string), fc.Args["page"].(*int), fc.Args["limit"].(*int), fc.Args["plugins"].([]string))
+			return ec.Resolvers.Subscription().SearchResults(ctx, fc.Args["kind"].(model.ListKind), fc.Args["query"].(string), fc.Args["page"].(*int), fc.Args["limit"].(*int), fc.Args["plugins"].([]string), fc.Args["filter"].(*schema.Filter))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.SearchBatch) graphql.Marshaler {
@@ -54059,6 +54102,11 @@ func (ec *executionContext) _SearchBatch(ctx context.Context, sel ast.SelectionS
 			}
 		case "exhausted":
 			out.Values[i] = ec._SearchBatch_exhausted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "returned":
+			out.Values[i] = ec._SearchBatch_returned(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

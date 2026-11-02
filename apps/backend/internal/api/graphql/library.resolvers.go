@@ -410,12 +410,12 @@ func (r *studioResolver) Revisions(ctx context.Context, obj *schema.Studio, limi
 }
 
 // SearchResults is the resolver for the searchResults field.
-func (r *subscriptionResolver) SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string) (<-chan *model.SearchBatch, error) {
+func (r *subscriptionResolver) SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) (<-chan *model.SearchBatch, error) {
 	pageLimit := number(limit)
 	if pageLimit <= 0 {
 		pageLimit = defaultSearchLimit
 	}
-	batches, sites := r.pipeline.SearchStream(ctx, listEntity(kind), query, number(page), pageLimit, plugins)
+	batches, sites := r.pipeline.SearchStream(ctx, listEntity(kind), query, number(page), pageLimit, plugins, filter)
 	return r.searchBatchStream(ctx, batches, sites), nil
 }
 

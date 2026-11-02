@@ -696,6 +696,7 @@ export interface SearchBatch {
     stored: Scalars['Boolean']
     final: Scalars['Boolean']
     exhausted: Scalars['Boolean']
+    returned: Scalars['Int']
     __typename: 'SearchBatch'
 }
 
@@ -1517,7 +1518,7 @@ export interface ScrapedGenqlSelection{
 
 export interface SubscriptionGenqlSelection{
     notificationAdded?: NotificationGenqlSelection
-    searchResults?: (SearchBatchGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], page?: (Scalars['Int'] | null), limit?: (Scalars['Int'] | null), plugins?: (Scalars['String'][] | null)} })
+    searchResults?: (SearchBatchGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], page?: (Scalars['Int'] | null), limit?: (Scalars['Int'] | null), plugins?: (Scalars['String'][] | null), filter?: (FilterInput | null)} })
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2010,6 +2011,7 @@ export interface SearchBatchGenqlSelection{
     stored?: boolean | number
     final?: boolean | number
     exhausted?: boolean | number
+    returned?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }

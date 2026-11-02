@@ -30,6 +30,8 @@ type SearchBatch struct {
 	Final bool
 	// Exhausted: the site has no further pages for this search.
 	Exhausted bool
+	// Returned: how many results the site gave in this batch, before a filter.
+	Returned int
 }
 
 // storedAnswer is a site's answer to a search page as the cache keeps it.
@@ -43,27 +45,55 @@ type storedAnswer struct {
 // the returned channel as it comes, in batches when the site streams them. A
 // site that answered the same page within searchFresh isn't asked; its
 // stored answer is sent instead. Only pluginNames are asked when it's set.
-// The channel closes once every site answered, failed or timed out.
-func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, query string, page, limit int, pluginNames []string) (<-chan SearchBatch, int) {
+// A filter, when given, narrows what's sent (the stored answers stay whole)
+// and its sites narrow who's asked. The channel closes once every site
+// answered, failed or timed out.
+func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, query string, page, limit int, pluginNames []string, filter *schema.Filter) (<-chan SearchBatch, int) {
 	searchers := p.searchers(entity, pluginNames)
-	batches := make(chan SearchBatch)
+	if filter != nil && len(filter.Sources) > 0 {
+		searchers = slices.DeleteFunc(searchers, func(plugin *plugins.Plugin) bool {
+			return !slices.Contains(filter.Sources, plugin.Meta.Name)
+		})
+	}
+	answers := make(chan SearchBatch)
 	var group sync.WaitGroup
 	for _, plugin := range searchers {
 		group.Go(func() {
-			p.searchPage(ctx, plugin, entity, query, page, limit, batches)
+			p.searchPage(ctx, plugin, entity, query, page, limit, answers)
 		})
 	}
 	go func() {
 		group.Wait()
-		close(batches)
+		close(answers)
 	}()
-	return batches, len(searchers)
+	return p.filtered(ctx, answers, filter), len(searchers)
+}
+
+// filtered passes the batches on with the results filter doesn't match
+// left out, each counting what its site returned.
+func (p *Pipeline) filtered(ctx context.Context, answers <-chan SearchBatch, filter *schema.Filter) <-chan SearchBatch {
+	batches := make(chan SearchBatch)
+	go func() {
+		defer close(batches)
+		for batch := range answers {
+			batch.Returned = len(batch.Refs)
+			if filter != nil && len(batch.Refs) > 0 {
+				matching, err := p.library.Matching(ctx, batch.Refs, *filter)
+				if err != nil {
+					log.Printf("search %s: filter: %v", batch.Plugin, err)
+				}
+				batch.Refs = matching
+			}
+			send(ctx, batches, batch)
+		}
+	}()
+	return batches
 }
 
 // Search asks every active plugin that lists entity for the first page of
 // query, like SearchStream, and returns the results sites taking turns.
 func (p *Pipeline) Search(ctx context.Context, entity plugins.MediaType, query string, limit int) []schema.RecordRef {
-	batches, _ := p.SearchStream(ctx, entity, query, 0, limit, nil)
+	batches, _ := p.SearchStream(ctx, entity, query, 0, limit, nil, nil)
 	bySite := map[string][]schema.RecordRef{}
 	order := []string{}
 	for batch := range batches {

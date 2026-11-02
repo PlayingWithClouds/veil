@@ -137,10 +137,12 @@ function addLength(input: FilterInput, length: string | null): void {
 	}
 }
 
-/** The URL with one single-pick param set, or removed when value is null or already set. */
+/**
+ * The URL with one single-pick param set, or removed when value is null or
+ * already set. A search (?q=) stays: filters narrow its results too.
+ */
 export function toggledParam(url: URL, name: string, value: string | null): string {
 	const next = new URL(url);
-	next.searchParams.delete('q');
 	if (value === null || url.searchParams.get(name) === value) {
 		next.searchParams.delete(name);
 	} else {
@@ -152,7 +154,6 @@ export function toggledParam(url: URL, name: string, value: string | null): stri
 /** The URL with value added to a multi-value param, or taken out when it's there. */
 export function toggledListParam(url: URL, name: string, value: string): string {
 	const next = new URL(url);
-	next.searchParams.delete('q');
 	const values = next.searchParams.getAll(name);
 	next.searchParams.delete(name);
 	const kept = values.filter((existing) => existing !== value);
@@ -168,7 +169,6 @@ export function toggledListParam(url: URL, name: string, value: string): string 
 /** The URL with a tag moved between required and excluded (or added excluded). */
 export function excludedTagUrl(url: URL, tagId: string): string {
 	const next = new URL(url);
-	next.searchParams.delete('q');
 	const required = next.searchParams.getAll('tag').filter((id) => id !== tagId);
 	next.searchParams.delete('tag');
 	for (const id of required) {

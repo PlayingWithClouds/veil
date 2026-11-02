@@ -171,7 +171,10 @@
 	{/if}
 
 	{#if query}
-		<SearchResults {query} />
+		<!-- Keyed by the filter, so changing it starts the search over. -->
+		{#key filterKey}
+			<SearchResults {query} filter={filtered ? filterInput : null} />
+		{/key}
 	{:else}
 		<div
 			class="-mt-2 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 max-md:grid-cols-1"

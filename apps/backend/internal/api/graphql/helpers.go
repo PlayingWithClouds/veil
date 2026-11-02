@@ -385,7 +385,7 @@ func (r *Resolver) searchBatchStream(ctx context.Context, batches <-chan pipelin
 				return
 			}
 			select {
-			case forwarded <- &model.SearchBatch{Plugin: batch.Plugin, Listed: listed, Sites: sites, Stored: batch.Stored, Final: batch.Final, Exhausted: batch.Exhausted}:
+			case forwarded <- &model.SearchBatch{Plugin: batch.Plugin, Listed: listed, Sites: sites, Stored: batch.Stored, Final: batch.Final, Exhausted: batch.Exhausted, Returned: batch.Returned}:
 			case <-ctx.Done():
 				return
 			}
