@@ -66,6 +66,20 @@ func (l *Library) Source(ctx context.Context, id string) (*schema.Source, error)
 	return db.Get[schema.Source](ctx, l.database, tableSource, id)
 }
 
+// MoveSources moves every source of the record kind/fromID, with the streams
+// they offer, onto the record kind/toID: the sites now point at the
+// survivor. The emptied record is left as it is for the caller to trash.
+// Not a revision, so it can't be undone.
+func (l *Library) MoveSources(ctx context.Context, kind schema.RecordKind, fromID, toID string) error {
+	vars := db.Vars{"kind": string(kind), "from": fromID, "to": toID, "now": db.Now()}
+	return l.database.Tx(ctx, func(tx *db.DB) error {
+		return execAll(ctx, tx, []string{
+			`UPDATE "Stream" SET "subjectId" = $to, "updatedAt" = $now WHERE "subjectKind" = $kind AND "subjectId" = $from`,
+			`UPDATE "Source" SET "subjectId" = $to, "updatedAt" = $now WHERE "subjectKind" = $kind AND "subjectId" = $from`,
+		}, vars)
+	})
+}
+
 // optional returns nil for an empty string, else a pointer to it.
 func optional(text string) *string {
 	if text == "" {

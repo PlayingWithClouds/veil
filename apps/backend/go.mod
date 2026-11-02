@@ -11,6 +11,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/vektah/gqlparser/v2 v2.5.33
 	golang.org/x/image v0.43.0
 	golang.org/x/mod v0.41.0
