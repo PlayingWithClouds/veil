@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"log"
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -38,7 +39,15 @@ func (l *Library) afterVideoWrite(ctx context.Context, id, sourceID string, scen
 		downloads: scene.Downloads, markers: scene.Markers, subtitles: scene.Subtitles,
 		scripts: scene.Scripts, comments: scene.Comments,
 	}
-	return l.storeExtras(ctx, page)
+	if err := l.storeExtras(ctx, page); err != nil {
+		return err
+	}
+	if scene.Duration > 0 {
+		if err := l.DetectAlike(ctx, id); err != nil {
+			log.Printf("alike %s: %v", id, err)
+		}
+	}
+	return nil
 }
 
 // videoFields are the columns a scene fills. A listing card (not fetched)

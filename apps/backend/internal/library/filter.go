@@ -26,14 +26,16 @@ func mediaSelect(kind schema.RecordKind) string {
 // filterConditions turns a filter into WHERE conditions on "media" and
 // "state". Lists of performers, studios, categories (with their
 // subcategories) and sites match any of them; included tags must all be
-// there, excluded tags none. Blocked media,
-// and media crediting a blocked performer, studio or tag, never match.
+// there, excluded tags none. Blocked media, media crediting a blocked
+// performer, studio or tag, and hidden copies of a probable duplicate never
+// match.
 // Fields a kind doesn't have (duration outside videos and audio, VR outside
 // videos) don't filter.
 func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, db.Vars) {
 	builder := &conditionBuilder{vars: db.Vars{"mediaKind": string(kind)}}
 	builder.add(`"media"."deletedAt" IS NULL`)
 	builder.add(notBlocked)
+	builder.add(notHiddenCopy)
 	if filter.Text != nil && strings.TrimSpace(*filter.Text) != "" {
 		builder.bind(`"media"."title" LIKE $text`, "text", "%"+strings.TrimSpace(*filter.Text)+"%")
 	}
@@ -59,6 +61,12 @@ const notBlocked = `NOT EXISTS (SELECT 1 FROM "UserState" AS "blocked"
 		OR ("blocked"."subjectKind" = 'studio' AND "blocked"."subjectId" = "media"."studio")
 		OR ("blocked"."subjectKind" = 'performer' AND "blocked"."subjectId" IN (SELECT value FROM json_each("media"."performers")))
 		OR ("blocked"."subjectKind" = 'tag' AND "blocked"."subjectId" IN (SELECT value FROM json_each("media"."tags")))))`
+
+// notHiddenCopy excludes the newer record of a probable duplicate pair the
+// user hasn't dismissed, as long as the older one is still there.
+const notHiddenCopy = `NOT EXISTS (SELECT 1 FROM "Alike" AS "copy"
+	WHERE "copy"."subjectKind" = $mediaKind AND "copy"."secondId" = "media"."id"
+		AND "copy"."dismissed" = 0 AND "copy"."deletedAt" IS NULL)`
 
 // conditionBuilder collects WHERE conditions and their parameters.
 type conditionBuilder struct {

@@ -20,6 +20,8 @@ func TestFiltersOnUserState(t *testing.T) {
 	}
 	second := foundScene()
 	second[0].Scene.ExternalID = "v2"
+	second[0].Scene.Title = "Garden evening"
+	second[0].Scene.Duration = 1500
 	second[0].Scene.Performers = nil
 	other, err := library.IngestFound(ctx, "site", second)
 	if err != nil {
