@@ -107,9 +107,20 @@ async function castPerformers(cast: ScenePerformer[]): Promise<Performer[]> {
 }
 
 async function scrapeActress(slug: string): Promise<Performer> {
-  const sourceURL = `${BASE_URL}/actress/${slug}`;
-  const root = parse(await fetchHtml(sourceURL));
+  return performerFromActressPage(slug, parse(await fetchHtml(`${BASE_URL}/actress/${slug}`)));
+}
 
+/**
+ * Whether an actress page shows an actress. The site answers 200 for any slug
+ * and titles an unknown one "Can't find ...", so the heading has to say so.
+ */
+export function isActressPage(root: HTMLElement): boolean {
+  const heading = root.querySelector("h1.main-h1")?.text ?? "";
+  return /porn HD videos\s*$/i.test(heading.trim());
+}
+
+/** The performer an actress page describes: name, bio and photo. */
+export function performerFromActressPage(slug: string, root: HTMLElement): Performer {
   const performer = minimalPerformer(slug, extractActressName(root, slug));
   const bio = extractActressBio(root);
   if (bio) performer.details = bio;

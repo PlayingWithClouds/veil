@@ -5,6 +5,8 @@ import { sceneList } from "./src/scenes.ts";
 import { tagList } from "./src/tags.ts";
 import { resolve } from "./src/resolve.ts";
 import { suggest } from "./src/suggest.ts";
+import { isProfileUrl, profileFind } from "./src/profile.ts";
+import { identifyPerformer } from "./src/identify.ts";
 import { SITE_DOMAINS } from "./src/sites.ts";
 
 runPlugin({
@@ -14,7 +16,16 @@ runPlugin({
     description: "Aylo tube sites (Pornhub, RedTube, YouPorn, Tube8) — search, browse, scrape and resolve",
     icon: "https://www.pornhub.com/favicon.ico",
     version: packageJson.version,
-    capabilities: ["scene:find", "scene:list", "scene:list:page", "tag:list", "stream:resolve", "search:suggest"],
+    capabilities: [
+      "scene:find",
+      "performer:find",
+      "performer:identify",
+      "scene:list",
+      "scene:list:page",
+      "tag:list",
+      "stream:resolve",
+      "search:suggest",
+    ],
     // find/resolve/list-by-page derive the site from the URL, so every site domain routes here.
     domains: SITE_DOMAINS,
     settings: [
@@ -28,7 +39,12 @@ runPlugin({
       },
     ],
   },
-  find: (url) => scrape(url),
+  // One find handler serves scene and performer pages; the URL shape picks which.
+  find: (url) => {
+    if (isProfileUrl(url)) return profileFind(url);
+    return scrape(url);
+  },
+  identifyPerformer,
   sceneList,
   tagList,
   resolve: (url) => resolve(url),

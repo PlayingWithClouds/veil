@@ -4,6 +4,7 @@ import { scrape } from "./src/scrape.ts";
 import { sceneList } from "./src/scenes.ts";
 import { performerList, tagList } from "./src/catalog.ts";
 import { resolve } from "./src/resolve.ts";
+import { identifyPerformer } from "./src/identify.ts";
 
 runPlugin({
   meta: {
@@ -20,6 +21,7 @@ runPlugin({
       "scene:list",
       "scene:list:page",
       "performer:list",
+      "performer:identify",
       "tag:list",
       "stream:resolve",
     ],
@@ -31,4 +33,5 @@ runPlugin({
   performerList,
   tagList,
   resolve: (url) => resolve(url),
+  identifyPerformer,
 });

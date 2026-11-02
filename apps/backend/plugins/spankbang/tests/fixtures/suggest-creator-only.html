@@ -1,0 +1,365 @@
+<html><head></head><body><div class="flex flex-col gap-4" data-testid="search-suggestions">
+    
+        
+            
+    
+
+    
+    
+    <div>
+        <div class="flex w-full gap-2 overflow-x-auto shadow-[inset_0px_-1px_0px] shadow-border-base scrollbar-none">
+            <button type="button" @click="onTabClick('all')" class="relative rounded px-4 pb-2 capitalize text-secondary hover:text-primary whitespace-nowrap" :class="{'!text-action-tertiary after:absolute after:left-0 after:bottom-0 after:w-full after:border-b after:border-solid after:border-surface-brand-secondary': tabs.active === 'all'}" data-testid="search-tabs-all">
+                
+    
+    <span class="inherit text-body-md font-bold ">All</span>
+
+
+            </button>
+            
+                <button type="button" @click="onTabClick('videos')" class="relative rounded px-4 pb-2 capitalize text-secondary hover:text-primary whitespace-nowrap" :class="{'!text-action-tertiary after:absolute after:left-0 after:bottom-0 after:w-full after:border-b after:border-solid after:border-surface-brand-secondary': tabs.active === 'videos'}" data-testid="search-tabs-videos">
+                    
+    
+    <span class="inherit text-body-md font-bold ">videos</span>
+
+
+                </button>
+            
+                <button type="button" @click="onTabClick('channels')" class="relative rounded px-4 pb-2 capitalize text-secondary hover:text-primary whitespace-nowrap" :class="{'!text-action-tertiary after:absolute after:left-0 after:bottom-0 after:w-full after:border-b after:border-solid after:border-surface-brand-secondary': tabs.active === 'channels'}" data-testid="search-tabs-channels">
+                    
+    
+    <span class="inherit text-body-md font-bold ">channels</span>
+
+
+                </button>
+            
+                <button type="button" @click="onTabClick('creators')" class="relative rounded px-4 pb-2 capitalize text-secondary hover:text-primary whitespace-nowrap" :class="{'!text-action-tertiary after:absolute after:left-0 after:bottom-0 after:w-full after:border-b after:border-solid after:border-surface-brand-secondary': tabs.active === 'creators'}" data-testid="search-tabs-creators">
+                    
+    
+    <span class="inherit text-body-md font-bold ">creators</span>
+
+
+                </button>
+            
+                <button type="button" @click="onTabClick('pornstars')" class="relative rounded px-4 pb-2 capitalize text-secondary hover:text-primary whitespace-nowrap" :class="{'!text-action-tertiary after:absolute after:left-0 after:bottom-0 after:w-full after:border-b after:border-solid after:border-surface-brand-secondary': tabs.active === 'pornstars'}" data-testid="search-tabs-pornstars">
+                    
+    
+    <span class="inherit text-body-md font-bold ">pornstars</span>
+
+
+                </button>
+            
+        </div>
+        <div class="mt-4">
+        <template x-if="tabs.active === 'all'">
+            <div class="flex flex-col gap-4">
+    
+        <template x-if="tabs.active === 'videos' || tabs.active === 'all'">
+            
+    <div class="flex flex-col pr-2" data-testid="search-suggestions-videos-section">
+        <div class="mb-1 flex items-center justify-between gap-1">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">Videos</span>
+
+
+
+            
+        </div>
+        <div class="flex flex-col">
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong></span>
+
+
+            
+        </div>
+    </a>
+
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova+onlyfans/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong> Onlyfans</span>
+
+
+            
+        </div>
+    </a>
+
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova+anal/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong> Anal</span>
+
+
+            
+        </div>
+    </a>
+
+                
+            </div>
+    </div>
+
+        </template>
+    
+
+    
+        <template x-if="tabs.active === 'channels'">
+    
+        <span data-testid="search-suggestions-channels-section">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">No Results for "mia malkova"</span>
+
+
+
+        </span>
+    
+</template>
+    
+
+    
+        <template x-if="tabs.active === 'creators' || tabs.active === 'all'">
+            
+    <div class="flex flex-col pr-2" data-testid="search-suggestions-creators-section">
+        <div class="mb-1 flex items-center justify-between gap-1">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">Creators</span>
+
+
+
+            
+        </div>
+        <div class="flex flex-col">
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="creator" data-test-bp="true" href="/4cp3/creator/mia+malkova/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+            <div class="overflow-hidden rounded-sm">
+                <img :class="{ 'strong-blur': hideExplicitContent }" src="//spankbang.com/avatar/creators/203079.jpg?v=1744801433" alt="Mia Malkova" class="h-10 w-10 object-cover">
+            </div>
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong></span>
+
+
+            
+        </div>
+    </a>
+
+                
+            </div>
+    </div>
+
+        </template>
+    
+
+    
+        <template x-if="tabs.active === 'pornstars'">
+    
+        <span data-testid="search-suggestions-pornstars-section">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">No Results for "mia malkova"</span>
+
+
+
+        </span>
+    
+</template>
+    
+</div>
+        </template>
+
+        <template x-if="tabs.active !== 'all'">
+            <div class="flex flex-col gap-4">
+    
+        <template x-if="tabs.active === 'videos' || tabs.active === 'all'">
+            
+    <div class="flex flex-col pr-2" data-testid="search-suggestions-videos-section">
+        <div class="mb-1 flex items-center justify-between gap-1">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">Videos</span>
+
+
+
+            
+        </div>
+        <div class="flex flex-col">
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong></span>
+
+
+            
+        </div>
+    </a>
+
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova+onlyfans/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong> Onlyfans</span>
+
+
+            
+        </div>
+    </a>
+
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="keyword" data-test-bp="true" href="/s/mia+malkova+anal/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong> Anal</span>
+
+
+            
+        </div>
+    </a>
+
+                
+            </div>
+    </div>
+
+        </template>
+    
+
+    
+        <template x-if="tabs.active === 'channels'">
+    
+        <span data-testid="search-suggestions-channels-section">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">No Results for "mia malkova"</span>
+
+
+
+        </span>
+    
+</template>
+    
+
+    
+        <template x-if="tabs.active === 'creators' || tabs.active === 'all'">
+            
+    <div class="flex flex-col pr-2" data-testid="search-suggestions-creators-section">
+        <div class="mb-1 flex items-center justify-between gap-1">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">Creators</span>
+
+
+
+            
+        </div>
+        <div class="flex flex-col">
+                
+                    
+    
+    
+    <a @click="onSearchResultClick($el)" data-category="creator" data-test-bp="true" href="/4cp3/creator/mia+malkova/" class="section-content group flex items-center gap-2 truncate py-1" data-testid="search-suggestion-item">
+        
+            <div class="overflow-hidden rounded-sm">
+                <img :class="{ 'strong-blur': hideExplicitContent }" src="//spankbang.com/avatar/creators/203079.jpg?v=1744801433" alt="Mia Malkova" class="h-10 w-10 object-cover">
+            </div>
+        
+        <div class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary flex-1 truncate">
+            
+                
+    
+    <span class="text-secondary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary text-body-md  "><strong class="text-primary group-hover:text-action-tertiary group-data-[selected]:text-link-secondary">Mia Malkova</strong></span>
+
+
+            
+        </div>
+    </a>
+
+                
+            </div>
+    </div>
+
+        </template>
+    
+
+    
+        <template x-if="tabs.active === 'pornstars'">
+    
+        <span data-testid="search-suggestions-pornstars-section">
+            
+    
+    
+    <span class="text-primary text-body-lg font-bold ">No Results for "mia malkova"</span>
+
+
+
+        </span>
+    
+</template>
+    
+</div>
+        </template>
+    </div>
+        <script>
+            updateAdCdnUrls();
+        </script>
+    </div>
+
+
+        
+    
+</div></body></html>

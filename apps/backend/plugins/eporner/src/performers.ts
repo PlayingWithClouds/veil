@@ -67,15 +67,18 @@ export async function performerFind(url: string): Promise<ScrapeResult[]> {
   if (!slug) throw new Error(`eporner performer: no slug in ${url}`);
 
   const partial = await fetchPornstarByUrl(url);
+  return [{ type: "performer", performer: performerFromPage(url, partial ?? {}) }];
+}
 
-  const performer: Performer = {
+/** The performer record for a pornstar page's scraped fields, named from the slug when the page gave no name. */
+export function performerFromPage(url: string, partial: Partial<Performer>): Performer {
+  return {
     ...partial,
     type: "performer",
     external_id: externalId(url),
     source_url: url,
-    name: partial?.name ?? nameFromSlug(slug),
+    name: partial.name ?? nameFromSlug(slugFromUrl(url)),
   };
-  return [{ type: "performer", performer }];
 }
 
 // "riley-reid-abc12" → "Riley Reid" (drops eporner's trailing id suffix heuristically).

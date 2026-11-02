@@ -8,6 +8,7 @@ import { galleryList } from "./src/galleries.ts";
 import { resolve } from "./src/resolve.ts";
 import { enrich } from "./src/enrich.ts";
 import { suggest } from "./src/suggest.ts";
+import { identifyPerformer } from "./src/identify.ts";
 
 runPlugin({
   meta: {
@@ -22,6 +23,7 @@ runPlugin({
       "scene:list:page",
       "performer:find",
       "performer:list",
+      "performer:identify",
       "studio:find",
       "studio:list",
       "gallery:find",
@@ -41,4 +43,5 @@ runPlugin({
   resolve: (url) => resolve(url),
   enrich: (args) => enrich(args),
   suggest,
+  identifyPerformer,
 });
