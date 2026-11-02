@@ -169,6 +169,9 @@ func openStorageLocations(ctx context.Context, deviceService *devices.Service, b
 // settings.
 func registerJobs(runner *jobs.Runner, flow *pipeline.Pipeline, configured settings.Settings) {
 	runner.Register(jobs.KindScrape, jobLimits(configured, jobs.KindScrape), func(ctx context.Context, job *jobs.Job, progress func(float64)) error {
+		if pipeline.IsPerformerVideosJob(job) {
+			return flow.CollectPerformerVideos(ctx, job, progress)
+		}
 		if job.Subject == nil {
 			return fmt.Errorf("a fetch job needs a subject")
 		}
@@ -348,7 +351,7 @@ func main() {
 	registry, pluginStore := openPlugins(ctx, dataDir, runner, storeClient, settingsService)
 
 	lib := library.New(database)
-	flow := pipeline.New(lib, registry, runner, cacheClient)
+	flow := pipeline.New(lib, registry, runner, cacheClient, queue)
 
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.
 	streamCache := stream.NewCacheService(cacheClient, storeClient)

@@ -21,7 +21,12 @@ func (r *mutationResolver) Rate(ctx context.Context, subject schema.RecordRef, r
 
 // SetFavorite is the resolver for the setFavorite field.
 func (r *mutationResolver) SetFavorite(ctx context.Context, subject schema.RecordRef, favorite bool) (*schema.UserState, error) {
-	return r.user.SetFavorite(ctx, subject.Kind, subject.Id, favorite)
+	state, err := r.user.SetFavorite(ctx, subject.Kind, subject.Id, favorite)
+	if err != nil || !favorite || subject.Kind != schema.RecordKindPerformer {
+		return state, err
+	}
+	// A favourite's videos are collected from every page of their profiles.
+	return state, r.pipeline.QueuePerformerVideos(ctx, subject.Id, "")
 }
 
 // SetBlocked is the resolver for the setBlocked field.

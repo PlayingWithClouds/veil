@@ -67,6 +67,10 @@ func (p *Pipeline) identifyOn(ctx context.Context, plugin *plugins.Plugin, id st
 	}
 	if !attached {
 		log.Printf("identify %s on %s: %s is another performer's profile", args.Name, plugin.Meta.Name, profile.SourceURL)
+		return
+	}
+	if err := p.QueuePerformerVideos(ctx, id, plugin.Meta.Name); err != nil {
+		log.Printf("identify %s on %s: queue videos: %v", args.Name, plugin.Meta.Name, err)
 	}
 }
 

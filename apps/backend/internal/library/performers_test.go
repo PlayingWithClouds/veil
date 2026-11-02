@@ -6,6 +6,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
+	"github.com/playingwithclouds/veil/internal/user"
 )
 
 // TestCreditKeepsPerformerPage stores a credited performer's page on the
@@ -114,5 +115,35 @@ func TestAttachIdentifiedProfile(t *testing.T) {
 	attached, err = library.AttachPerformerProfile(ctx, other, "freeones", profile)
 	if err != nil || attached {
 		t.Errorf("profile of another performer: attached = %v, err = %v", attached, err)
+	}
+}
+
+// TestCreditPerformerFromTheirList credits a performer on a listed video
+// once, and reads a favourite as the user marked it.
+func TestCreditPerformerFromTheirList(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	ada, _ := library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Ada Lane", ExternalID: "ps-ada"})
+	ref, err := library.IngestListed(ctx, "site", plugins.DiscoveredItem{MediaType: plugins.MediaTypeScene, Title: "Pool day", ExternalID: "v1", SourceURL: "https://site.test/v1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := library.CreditPerformer(ctx, ref.Id, ada, "site", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	video, _ := library.Video(ctx, ref.Id)
+	if len(video.Performers) != 1 || video.Performers[0] != ada {
+		t.Errorf("performers = %v, want [%s]", video.Performers, ada)
+	}
+
+	favorite, err := library.IsFavorite(ctx, schema.RecordKindPerformer, ada)
+	if err != nil || favorite {
+		t.Fatalf("favourite before marking = %v, %v", favorite, err)
+	}
+	user.New(library.database, "device").SetFavorite(ctx, schema.RecordKindPerformer, ada, true)
+	if favorite, _ := library.IsFavorite(ctx, schema.RecordKindPerformer, ada); !favorite {
+		t.Error("favourite not read after marking")
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
@@ -33,11 +34,14 @@ type Pipeline struct {
 	identified sync.Map
 	// searches keeps each site's answer to a search page for searchFresh.
 	searches *cache.Client
+	// queue takes the slow work a page visit starts: listing a performer's videos.
+	queue *jobs.Queue
 }
 
-// New returns a pipeline that keeps search answers in searches.
-func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runner, searches *cache.Client) *Pipeline {
-	return &Pipeline{library: lib, registry: registry, runner: runner, searches: searches}
+// New returns a pipeline that keeps search answers in searches and queues
+// slow work on queue.
+func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runner, searches *cache.Client, queue *jobs.Queue) *Pipeline {
+	return &Pipeline{library: lib, registry: registry, runner: runner, searches: searches, queue: queue}
 }
 
 // Visit reads the page behind each of a record's sources that hasn't been
@@ -91,6 +95,12 @@ func (p *Pipeline) readSource(ctx context.Context, kind schema.RecordKind, sourc
 	// Media pages mark their source as they're stored; performer and studio pages don't.
 	if err := p.library.MarkFetched(ctx, source.Id); err != nil {
 		log.Printf("visit %s %s: mark read: %v", source.Plugin, source.Url, err)
+	}
+	if kind != schema.RecordKindPerformer {
+		return
+	}
+	if err := p.QueuePerformerVideos(ctx, source.SubjectId, source.Plugin); err != nil {
+		log.Printf("visit %s %s: queue videos: %v", source.Plugin, source.Url, err)
 	}
 }
 
