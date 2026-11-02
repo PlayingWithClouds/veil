@@ -46,10 +46,6 @@ Subsystem notes are in `.claude/rules/` and load with matching files. Read the r
 
 Do what was asked, at the intended scope. Don't change behaviour, public APIs, data shapes, validation or side effects unless asked. If the request looks wrong or there's a clearly better way, say so in a sentence, then do it as asked. Make routine calls yourself; ask only when readings lead to materially different work.
 
-## Working on your own
-
-When I say you can do something yourself, I'm not watching. Don't end a turn with a summary that announces the next step, an offer to continue, or a list of non-blocking decisions; put status notes and recommendations alongside the next action and keep going. Stop only when nothing can move without me. Risky or irreversible actions still need my confirmation.
-
 ## Code style
 
 Readability over cleverness. Surrounding code wins over these rules.
@@ -71,3 +67,4 @@ After writing a change, decide if it needs a test; put it beside the code (`*_te
 
 Edit with Read/Write/Edit, not `sed`, `awk` or Python.
 Don't start work immediately. I prefer discussing what we could do first otherwise you need to revert your edits.
+Keep track of your work using todos.
