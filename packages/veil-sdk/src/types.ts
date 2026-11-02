@@ -37,15 +37,35 @@ export type Capability =
   | "face:identify"
   // One thread of a porn identification forum (args.url): the post and its
   // comments, with the names, links and pictures they give.
-  | "post:find"
+  | "forum:find"
   // The threads of a porn identification forum whose text matches a query
   // (args.query), best first.
-  | "post:search";
+  | "forum:search"
+  // Audio, stories and creator-platform posts. Only served when meta.content
+  // names the kind ("audio", "stories", "posts"). "story:chapter" reads one
+  // chapter's text by URL (args.url) for chapters a story listed without text.
+  | "audio:find"
+  | "audio:list"
+  | "story:find"
+  | "story:list"
+  | "story:chapter"
+  | "post:find"
+  | "post:list"
+  // Records matching a text or picture (LookupArgs), each with evidence.
+  | "lookup"
+  // Turns the login view's values into a session (account:login) and says
+  // whether a session still works (account:check).
+  | "account:login"
+  | "account:check"
+  // Declarative views the clients render natively: "view:render" returns one,
+  // "view:submit" runs one of its actions.
+  | "view:render"
+  | "view:submit";
 
 // The domain is adult content: scenes (videos), galleries (image sets),
-// standalone images, the performers/studios/tags that describe them, and
-// collections (ordered sets of any of the above). A scene is the atomic unit;
-// episodic content is modeled as a collection.
+// standalone images, audio, stories, creator posts, the performers/studios/tags
+// that describe them, and collections (ordered sets of any of the above). A
+// scene is the atomic unit; episodic content is modeled as a collection.
 export type MediaType =
   | "scene"
   | "performer"
@@ -53,7 +73,10 @@ export type MediaType =
   | "tag"
   | "gallery"
   | "image"
-  | "collection";
+  | "collection"
+  | "audio"
+  | "story"
+  | "post";
 
 export interface PluginSettingField {
   key: string;
@@ -93,13 +116,29 @@ export interface PluginMeta {
    * scene lister, "galleries" for a gallery lister.
    */
   content?: ContentKind[];
+  /**
+   * What the plugin adds beyond its capabilities: views, feeds, automation
+   * triggers and actions, custom fields. Sources, lookups, streams, cams and
+   * login follow from capabilities.
+   */
+  contributions?: Contribution[];
+}
+
+/** One thing a plugin declares it adds. */
+export interface Contribution {
+  kind: "source" | "lookup" | "stream" | "cams" | "trigger" | "action" | "feed" | "field" | "login" | "view";
+  name: string;
+  title?: string;
+  /** video, gallery, audio, story, post */
+  media_kinds?: string[];
+  domains?: string[];
 }
 
 /**
  * A kind of content: studio/amateur/tube videos, recorded live cam shows,
- * Japanese adult video, photo sets.
+ * Japanese adult video, photo sets, erotic audio, stories, creator posts.
  */
-export type ContentKind = "videos" | "cam-shows" | "jav" | "galleries";
+export type ContentKind = "videos" | "cam-shows" | "jav" | "galleries" | "audio" | "stories" | "posts";
 
 // ---------------------------------------------------------------------------
 // Assets attached to a record.
@@ -202,6 +241,104 @@ export interface Scene {
    * order). Viewers often name the performer there; stored per scene and
    * replaced on every scrape.
    */
+  comments?: SceneComment[];
+  /** the best stream's frame size, when the page says */
+  width?: number;
+  height?: number;
+  /** set for VR videos */
+  vr?: VRFormat;
+  /** subtitle tracks and funscripts the site offers with the video */
+  subtitles?: SubtitleTrack[];
+  scripts?: MotionScript[];
+}
+
+/** How a VR video is projected and packed. */
+export interface VRFormat {
+  projection: "equirectangular180" | "equirectangular360" | "fisheye" | "cubemap";
+  stereo: "mono" | "sideBySide" | "topBottom";
+  field_of_view?: number;
+}
+
+/** A subtitle file a site offers. */
+export interface SubtitleTrack {
+  url: string;
+  /** BCP 47, e.g. "en" */
+  language: string;
+  format: "vtt" | "srt" | "ass";
+}
+
+/** A funscript a site offers; axis for multi-axis sets ("stroke", "twist"). */
+export interface MotionScript {
+  url: string;
+  axis?: string;
+}
+
+/** Erotic audio or ASMR; performers are the voices. */
+export interface Audio {
+  type: "audio";
+  external_id: string;
+  source_url: string;
+  title: string;
+  details?: string;
+  date?: string;
+  duration_seconds?: number;
+  studio?: StudioRef;
+  performers?: ScenePerformer[];
+  tags?: string[];
+  cover_path?: string;
+  markers?: SceneMarkerInput[];
+  downloads?: Download[];
+  /** transcripts */
+  subtitles?: SubtitleTrack[];
+  scripts?: MotionScript[];
+  comments?: SceneComment[];
+}
+
+/** Erotic fiction, read chapter by chapter. */
+export interface Story {
+  type: "story";
+  external_id: string;
+  source_url: string;
+  title: string;
+  details?: string;
+  date?: string;
+  studio?: StudioRef;
+  performers?: ScenePerformer[];
+  tags?: string[];
+  cover_path?: string;
+  word_count?: number;
+  /** false while the author is still adding chapters */
+  complete?: boolean;
+  /** in reading order; chapters without text are read via story:chapter */
+  chapters?: StoryChapter[];
+  comments?: SceneComment[];
+}
+
+/** One chapter of a story. */
+export interface StoryChapter {
+  title?: string;
+  url?: string;
+  text?: string;
+  word_count?: number;
+}
+
+/** A post on a creator platform: ordinary media credited to its creator. */
+export interface Post {
+  type: "post";
+  external_id: string;
+  source_url: string;
+  title?: string;
+  text?: string;
+  date?: string;
+  creator: ScenePerformer;
+  tags?: string[];
+  cover_path?: string;
+  /** the logged-in account can't see the post's media */
+  locked?: boolean;
+  price_cents?: number;
+  currency?: string;
+  /** the media in the post, each with its own source identity */
+  attachments?: ScrapeResult[];
   comments?: SceneComment[];
 }
 
@@ -341,7 +478,10 @@ export type ScrapeResult =
   | { type: "tag"; tag: Tag }
   | { type: "gallery"; gallery: Gallery }
   | { type: "image"; image: ImageContent }
-  | { type: "collection"; collection: Collection };
+  | { type: "collection"; collection: Collection }
+  | { type: "audio"; audio: Audio }
+  | { type: "story"; story: Story }
+  | { type: "post"; post: Post };
 
 export interface DiscoveredItem {
   /** scene/gallery title or performer/studio/tag name */
@@ -616,4 +756,122 @@ export interface ResolveResult {
   quality?: string;
   load_time_ms?: number;
   speed_bps?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Lookups, accounts and declarative views.
+
+/** Arguments of the lookup capability: a text, a picture, or both. */
+export interface LookupArgs {
+  text?: string;
+  image_base64?: string;
+  mime_type?: string;
+}
+
+/** Why a lookup match is there: a solved forum thread, a face match. */
+export interface LookupEvidence {
+  url?: string;
+  title?: string;
+  image_url?: string;
+  /** a short line, e.g. "accepted answer", "94% face match" */
+  detail?: string;
+}
+
+/** One record a lookup found, stored by the backend as a stub. */
+export interface LookupMatch {
+  item: DiscoveredItem;
+  /** 0..1 */
+  score?: number;
+  evidence?: LookupEvidence[];
+}
+
+/** Result of the lookup capability, best first. */
+export interface LookupResult {
+  matches: LookupMatch[];
+}
+
+/** The session of the plugin's account, from accountSession(). */
+export interface AccountArgs {
+  label?: string;
+  /** what account:login returned; opaque to the backend */
+  session: string;
+}
+
+/** Arguments of account:login: the login view's values by field key. */
+export interface LoginArgs {
+  values: Record<string, string>;
+}
+
+/** Result of account:login and account:check. */
+export interface AccountResult {
+  status: "ok" | "expired" | "needsLogin" | "failed";
+  label?: string;
+  /** the session to keep (account:login) */
+  session?: string;
+  /** ISO 8601 */
+  expires_at?: string;
+  error?: string;
+}
+
+/** Arguments of account:check. */
+export interface CheckArgs {
+  session: string;
+}
+
+/** Arguments of view:render: which view, with what input. */
+export interface ViewArgs {
+  view: string;
+  input?: unknown;
+}
+
+/** Arguments of view:submit: an action of a view with the values entered. */
+export interface SubmitArgs {
+  view: string;
+  action: string;
+  values?: Record<string, string>;
+  input?: unknown;
+}
+
+/** A declarative screen every client renders natively. */
+export interface View {
+  kind: "form" | "list" | "detail" | "login";
+  title: string;
+  body?: string;
+  fields?: ViewField[];
+  items?: ViewItem[];
+  actions?: ViewAction[];
+}
+
+/** One input of a form or login view. */
+export interface ViewField {
+  key: string;
+  label: string;
+  type: "text" | "password" | "number" | "boolean" | "choice" | "url";
+  value?: string;
+  options?: string[];
+  required?: boolean;
+  hint?: string;
+}
+
+/** One row of a list view or one fact of a detail view. */
+export interface ViewItem {
+  title: string;
+  subtitle?: string;
+  image_url?: string;
+  url?: string;
+  /** links the row to a record the backend stores */
+  item?: DiscoveredItem;
+}
+
+/** A button of a view; submitting it calls view:submit. */
+export interface ViewAction {
+  name: string;
+  label: string;
+  primary?: boolean;
+}
+
+/** Result of view:submit: the next view, or a message once done. */
+export interface SubmitResult {
+  view?: View;
+  message?: string;
 }

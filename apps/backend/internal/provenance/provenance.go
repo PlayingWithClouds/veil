@@ -1,5 +1,6 @@
 // Package provenance is the write path for records: every change to a
-// video, gallery, performer, studio or tag goes through Recorder, which
+// record (media, performer, studio, tag, group, collection, …) goes through
+// Recorder, which
 //   - keeps per-field ownership (FieldSource): a plugin only writes fields no
 //     other source owns, and never a field the user set (locked);
 //   - records each changed field as a Revision (before, after, who), so any
@@ -25,14 +26,24 @@ type recordType struct {
 	owned bool
 }
 
-// recordTypes lists the kinds the backend stores so far.
+// recordTypes lists every kind of record. Media, performers, studios and
+// groups are filled by plugins, so their fields have owners.
 var recordTypes = map[schema.RecordKind]recordType{
-	schema.RecordKindVideo:     {table: "Video", columns: db.ColumnKinds(schema.Video{}), owned: true},
-	schema.RecordKindGallery:   {table: "Gallery", columns: db.ColumnKinds(schema.Gallery{}), owned: true},
-	schema.RecordKindImage:     {table: "Image", columns: db.ColumnKinds(schema.Image{})},
-	schema.RecordKindPerformer: {table: "Performer", columns: db.ColumnKinds(schema.Performer{}), owned: true},
-	schema.RecordKindStudio:    {table: "Studio", columns: db.ColumnKinds(schema.Studio{}), owned: true},
-	schema.RecordKindTag:       {table: "Tag", columns: db.ColumnKinds(schema.Tag{})},
+	schema.RecordKindVideo:      {table: "Video", columns: db.ColumnKinds(schema.Video{}), owned: true},
+	schema.RecordKindGallery:    {table: "Gallery", columns: db.ColumnKinds(schema.Gallery{}), owned: true},
+	schema.RecordKindImage:      {table: "Image", columns: db.ColumnKinds(schema.Image{})},
+	schema.RecordKindAudio:      {table: "Audio", columns: db.ColumnKinds(schema.Audio{}), owned: true},
+	schema.RecordKindStory:      {table: "Story", columns: db.ColumnKinds(schema.Story{}), owned: true},
+	schema.RecordKindPost:       {table: "Post", columns: db.ColumnKinds(schema.Post{}), owned: true},
+	schema.RecordKindPerformer:  {table: "Performer", columns: db.ColumnKinds(schema.Performer{}), owned: true},
+	schema.RecordKindStudio:     {table: "Studio", columns: db.ColumnKinds(schema.Studio{}), owned: true},
+	schema.RecordKindCamModel:   {table: "CamModel", columns: db.ColumnKinds(schema.CamModel{})},
+	schema.RecordKindGroup:      {table: "Group", columns: db.ColumnKinds(schema.Group{}), owned: true},
+	schema.RecordKindTag:        {table: "Tag", columns: db.ColumnKinds(schema.Tag{})},
+	schema.RecordKindCategory:   {table: "Category", columns: db.ColumnKinds(schema.Category{})},
+	schema.RecordKindCollection: {table: "Collection", columns: db.ColumnKinds(schema.Collection{})},
+	schema.RecordKindSegment:    {table: "Segment", columns: db.ColumnKinds(schema.Segment{})},
+	schema.RecordKindClip:       {table: "Clip", columns: db.ColumnKinds(schema.Clip{})},
 }
 
 // bookkeepingColumns are never owned by a source; only deletedAt of them
@@ -45,13 +56,13 @@ var bookkeepingColumns = map[string]bool{
 	"nameKey":   true,
 }
 
-// Table returns the table a record kind is stored in, or "" for kinds the
-// backend doesn't store yet.
+// Table returns the table a record kind is stored in, or "" for an unknown
+// kind.
 func Table(kind schema.RecordKind) string {
 	return recordTypes[kind].table
 }
 
-// Kinds lists the record kinds the backend stores.
+// Kinds lists every record kind.
 func Kinds() []schema.RecordKind {
 	kinds := make([]schema.RecordKind, 0, len(recordTypes))
 	for kind := range recordTypes {

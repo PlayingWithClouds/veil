@@ -189,7 +189,7 @@ func (r *Registry) WithAnyCapability(caps ...Capability) []*Plugin {
 			continue
 		}
 		for _, cap := range caps {
-			if p.Meta.Has(cap) {
+			if p.Serves(cap) {
 				out = append(out, p)
 				break
 			}

@@ -27,7 +27,8 @@ func mediaSelect(kind schema.RecordKind) string {
 // "state". Lists of performers, studios, categories and sites match any of
 // them; included tags must all be there, excluded tags none. Blocked media,
 // and media crediting a blocked performer, studio or tag, never match.
-// Fields a kind doesn't have (duration and VR for galleries) don't filter.
+// Fields a kind doesn't have (duration outside videos and audio, VR outside
+// videos) don't filter.
 func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, db.Vars) {
 	builder := &conditionBuilder{vars: db.Vars{"mediaKind": string(kind)}}
 	builder.add(`"media"."deletedAt" IS NULL`)
@@ -38,8 +39,11 @@ func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, d
 	addCredits(builder, filter)
 	addDates(builder, filter)
 	addUserConditions(builder, filter)
-	if kind == schema.RecordKindVideo {
-		addVideoConditions(builder, filter)
+	if hasDuration(kind) {
+		addDurationConditions(builder, filter)
+	}
+	if kind == schema.RecordKindVideo && filter.Vr != nil {
+		builder.add(flagCondition(`"media"."vr" IS NOT NULL`, *filter.Vr))
 	}
 	for index, condition := range filter.Fields {
 		addFieldCondition(builder, index, condition)
@@ -130,16 +134,18 @@ func addUserConditions(builder *conditionBuilder, filter schema.Filter) {
 	}
 }
 
-// addVideoConditions filters by what only videos have.
-func addVideoConditions(builder *conditionBuilder, filter schema.Filter) {
+// hasDuration reports whether media of kind has a running time.
+func hasDuration(kind schema.RecordKind) bool {
+	return kind == schema.RecordKindVideo || kind == schema.RecordKindAudio
+}
+
+// addDurationConditions filters videos and audio by running time.
+func addDurationConditions(builder *conditionBuilder, filter schema.Filter) {
 	if filter.MinDurationSeconds != nil {
 		builder.bind(`"media"."durationSeconds" >= $minDuration`, "minDuration", *filter.MinDurationSeconds)
 	}
 	if filter.MaxDurationSeconds != nil {
 		builder.bind(`"media"."durationSeconds" <= $maxDuration`, "maxDuration", *filter.MaxDurationSeconds)
-	}
-	if filter.Vr != nil {
-		builder.add(flagCondition(`"media"."vr" IS NOT NULL`, *filter.Vr))
 	}
 }
 
@@ -197,7 +203,7 @@ func orderBy(kind schema.RecordKind, sort *schema.Sort) string {
 		return `RANDOM()`
 	}
 	column, known := sortColumns[sort.Field]
-	if sort.Field == schema.SortFieldDuration && kind == schema.RecordKindVideo {
+	if sort.Field == schema.SortFieldDuration && hasDuration(kind) {
 		column, known = `"media"."durationSeconds"`, true
 	}
 	if !known {

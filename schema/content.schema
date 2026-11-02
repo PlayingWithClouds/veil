@@ -137,8 +137,11 @@ model StoryChapter extends Entity {
 
   11 position: i32
   12 title: string?
+  /// Empty until read: chapters a story lists without their text are read
+  /// on demand from url.
   13 text: string
   14 wordCount: i32
+  15 url: string?
 }
 
 /// A post on a creator platform. It wraps ordinary media; the creator is a

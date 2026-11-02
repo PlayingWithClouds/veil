@@ -47,13 +47,45 @@ const (
 	// professional performers or cam models; videos from tube sites may be
 	// returned beside them, as links only.
 	CapabilityFaceIdentify Capability = "face:identify"
-	// CapabilityPostFind reads one thread of a porn identification forum
+	// CapabilityForumFind reads one thread of a porn identification forum
 	// (args.url): the post and its comments with the names, links and pictures
 	// they give.
-	CapabilityPostFind Capability = "post:find"
-	// CapabilityPostSearch lists the threads of a porn identification forum
+	CapabilityForumFind Capability = "forum:find"
+	// CapabilityForumSearch lists the threads of a porn identification forum
 	// whose text matches args.query, best first.
-	CapabilityPostSearch Capability = "post:search"
+	CapabilityForumSearch Capability = "forum:search"
+	// CapabilityLegacyForumFind and CapabilityLegacyForumSearch are the forum
+	// capabilities' names before creator posts took "post:"; plugins that
+	// don't carry posts are still read as forums under them.
+	CapabilityLegacyForumFind   Capability = "post:find"
+	CapabilityLegacyForumSearch Capability = "post:search"
+
+	// Media beyond videos and galleries: erotic audio, stories (with
+	// story:chapter reading one chapter's text by URL) and creator-platform
+	// posts. A plugin only serves them when meta.content names the kind.
+	CapabilityAudioFind    Capability = "audio:find"
+	CapabilityAudioList    Capability = "audio:list"
+	CapabilityStoryFind    Capability = "story:find"
+	CapabilityStoryList    Capability = "story:list"
+	CapabilityStoryChapter Capability = "story:chapter"
+	CapabilityPostFind     Capability = "post:find"
+	CapabilityPostList     Capability = "post:list"
+
+	// CapabilityLookup answers a text or picture (LookupArgs) with records and
+	// the evidence for each: who is this, which video is this.
+	CapabilityLookup Capability = "lookup"
+
+	// CapabilityAccountLogin turns the fields of the plugin's login form into a
+	// session for its site; CapabilityAccountCheck reports whether a session
+	// still works. Other capabilities receive the session (see AccountArgs).
+	CapabilityAccountLogin Capability = "account:login"
+	CapabilityAccountCheck Capability = "account:check"
+
+	// CapabilityViewRender returns one of the plugin's declarative views (a
+	// form, list or detail the clients render natively); CapabilityViewSubmit
+	// runs a view's action with the values entered.
+	CapabilityViewRender Capability = "view:render"
+	CapabilityViewSubmit Capability = "view:submit"
 )
 
 // Content entities a plugin can surface in search/browse feeds, in preference
@@ -175,7 +207,52 @@ const (
 	MediaTypeGallery    MediaType = "gallery"
 	MediaTypeImage      MediaType = "image"
 	MediaTypeCollection MediaType = "collection"
+	MediaTypeAudio      MediaType = "audio"
+	MediaTypeStory      MediaType = "story"
+	MediaTypePost       MediaType = "post"
 )
+
+// mediaContent is the meta.content kind a plugin must declare to serve the
+// media types that aren't videos or galleries.
+var mediaContent = map[MediaType]string{
+	MediaTypeAudio: ContentAudio,
+	MediaTypeStory: ContentStories,
+	MediaTypePost:  ContentPosts,
+}
+
+// Serves reports whether the plugin serves a capability: it declares it, and
+// for audio, stories and posts also carries that kind of content. A plugin
+// that declares post:find without carrying posts is a forum (the capability's
+// old meaning), not a creator platform.
+func (p *Plugin) Serves(capability Capability) bool {
+	if !p.Meta.Has(capability) {
+		return false
+	}
+	entity, _, _ := strings.Cut(string(capability), ":")
+	content, gated := mediaContent[MediaType(entity)]
+	if !gated {
+		return true
+	}
+	return slices.Contains(p.Meta.Content, content)
+}
+
+// ServesForum reports whether the plugin reads an identification forum
+// (forum:find), also under the capability names it had before.
+func (p *Plugin) ServesForum() bool {
+	if p.Meta.Has(CapabilityForumFind) || p.Meta.Has(CapabilityForumSearch) {
+		return true
+	}
+	legacy := p.Meta.Has(CapabilityLegacyForumFind) || p.Meta.Has(CapabilityLegacyForumSearch)
+	return legacy && !slices.Contains(p.Meta.Content, ContentPosts)
+}
+
+// forumCapability is the name the plugin knows a forum capability by.
+func (p *Plugin) forumCapability(current, legacy Capability) Capability {
+	if p.Meta.Has(current) {
+		return current
+	}
+	return legacy
+}
 
 // PluginSettingField describes one configurable value a plugin needs.
 // The value is injected into the plugin subprocess as an env var named by Key.
@@ -211,6 +288,22 @@ type PluginMeta struct {
 	// constants), so a search can be aimed at the sites that have what the user
 	// looks for. Empty means what its list capabilities suggest (ContentKinds).
 	Content []string `json:"content,omitempty"`
+	// Contributions are what the plugin adds beyond its capabilities: views,
+	// feeds, automation triggers and actions, custom fields. The backend
+	// derives the rest (sources, lookups, streams, cams, login) from
+	// Capabilities.
+	Contributions []Contribution `json:"contributions,omitempty"`
+}
+
+// Contribution is one thing a plugin declares it adds. Kind is one of
+// source, lookup, stream, cams, trigger, action, feed, field, login, view.
+type Contribution struct {
+	Kind  string `json:"kind"`
+	Name  string `json:"name"`
+	Title string `json:"title,omitempty"`
+	// MediaKinds are the media it concerns: video, gallery, audio, story, post.
+	MediaKinds []string `json:"media_kinds,omitempty"`
+	Domains    []string `json:"domains,omitempty"`
 }
 
 // Kinds of content a plugin declares in meta.content and a search may ask for.
@@ -223,6 +316,12 @@ const (
 	ContentJav = "jav"
 	// ContentGalleries is photo sets.
 	ContentGalleries = "galleries"
+	// ContentAudio is erotic audio and ASMR.
+	ContentAudio = "audio"
+	// ContentStories is erotic fiction.
+	ContentStories = "stories"
+	// ContentPosts is creator-platform posts behind a login.
+	ContentPosts = "posts"
 )
 
 // ResolveArgs is passed to a plugin's resolve capability.
@@ -296,6 +395,116 @@ type Scene struct {
 	// Comments are the comments under the video as the page shows them (first
 	// page, site order). Stored per scene and plugin, replaced on every scrape.
 	Comments []SceneComment `json:"comments,omitempty"`
+
+	// Width and Height are the best stream's frame size, when the page says.
+	Width  int `json:"width,omitempty"`
+	Height int `json:"height,omitempty"`
+	// VR is set for VR videos: how they're projected and packed.
+	VR *VRFormat `json:"vr,omitempty"`
+	// Subtitles and Scripts are the tracks the site offers with the video.
+	Subtitles []SubtitleTrack `json:"subtitles,omitempty"`
+	Scripts   []MotionScript  `json:"scripts,omitempty"`
+}
+
+// VRFormat is how a VR video is projected (equirectangular180,
+// equirectangular360, fisheye, cubemap) and packed (mono, sideBySide,
+// topBottom).
+type VRFormat struct {
+	Projection  string `json:"projection"`
+	Stereo      string `json:"stereo"`
+	FieldOfView int    `json:"field_of_view,omitempty"`
+}
+
+// SubtitleTrack is a subtitle file a site offers: BCP 47 language, format
+// vtt, srt or ass.
+type SubtitleTrack struct {
+	URL      string `json:"url"`
+	Language string `json:"language"`
+	Format   string `json:"format"`
+}
+
+// MotionScript is a funscript a site offers, optionally for one axis of a
+// multi-axis set ("stroke", "twist").
+type MotionScript struct {
+	URL  string `json:"url"`
+	Axis string `json:"axis,omitempty"`
+}
+
+// Audio is erotic audio or ASMR; performers are the voices.
+type Audio struct {
+	Type       MediaType          `json:"type"` // "audio"
+	ExternalID string             `json:"external_id"`
+	SourceURL  string             `json:"source_url"`
+	Title      string             `json:"title"`
+	Details    string             `json:"details,omitempty"`
+	Date       string             `json:"date,omitempty"`
+	Duration   int                `json:"duration_seconds,omitempty"`
+	Studio     *StudioRef         `json:"studio,omitempty"`
+	Performers []ScenePerformer   `json:"performers,omitempty"`
+	Tags       []string           `json:"tags,omitempty"`
+	CoverPath  string             `json:"cover_path,omitempty"`
+	Markers    []SceneMarkerInput `json:"markers,omitempty"`
+	Downloads  []Download         `json:"downloads,omitempty"`
+	// Subtitles carry transcripts.
+	Subtitles []SubtitleTrack `json:"subtitles,omitempty"`
+	Scripts   []MotionScript  `json:"scripts,omitempty"`
+	Comments  []SceneComment  `json:"comments,omitempty"`
+}
+
+// Story is erotic fiction, read chapter by chapter. Chapters without Text
+// are read on demand through story:chapter with their URL.
+type Story struct {
+	Type       MediaType        `json:"type"` // "story"
+	ExternalID string           `json:"external_id"`
+	SourceURL  string           `json:"source_url"`
+	Title      string           `json:"title"`
+	Details    string           `json:"details,omitempty"`
+	Date       string           `json:"date,omitempty"`
+	Studio     *StudioRef       `json:"studio,omitempty"`
+	Performers []ScenePerformer `json:"performers,omitempty"`
+	Tags       []string         `json:"tags,omitempty"`
+	CoverPath  string           `json:"cover_path,omitempty"`
+	WordCount  int              `json:"word_count,omitempty"`
+	// Complete is false while the author is still adding chapters.
+	Complete bool           `json:"complete,omitempty"`
+	Chapters []StoryChapter `json:"chapters,omitempty"`
+	Comments []SceneComment `json:"comments,omitempty"`
+}
+
+// StoryChapter is one chapter of a story, in reading order.
+type StoryChapter struct {
+	Title     string `json:"title,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Text      string `json:"text,omitempty"`
+	WordCount int    `json:"word_count,omitempty"`
+}
+
+// ChapterArgs is passed to story:chapter.
+type ChapterArgs struct {
+	URL string `json:"url"`
+}
+
+// Post is a post on a creator platform. It wraps ordinary media
+// (Attachments: scenes, galleries, audio, stories) and is credited to its
+// creator.
+type Post struct {
+	Type       MediaType      `json:"type"` // "post"
+	ExternalID string         `json:"external_id"`
+	SourceURL  string         `json:"source_url"`
+	Title      string         `json:"title,omitempty"`
+	Text       string         `json:"text,omitempty"`
+	Date       string         `json:"date,omitempty"`
+	Creator    ScenePerformer `json:"creator"`
+	Tags       []string       `json:"tags,omitempty"`
+	CoverPath  string         `json:"cover_path,omitempty"`
+	// Locked is true when the logged-in account can't see the post's media.
+	Locked     bool   `json:"locked,omitempty"`
+	PriceCents int64  `json:"price_cents,omitempty"`
+	Currency   string `json:"currency,omitempty"`
+	// Attachments are the media in the post, each a scrape result with its
+	// own source identity.
+	Attachments []ScrapeResult `json:"attachments,omitempty"`
+	Comments    []SceneComment `json:"comments,omitempty"`
 }
 
 // SceneComment is one comment under a video on its site.
@@ -457,6 +666,9 @@ type ScrapeResult struct {
 	Gallery    *Gallery      `json:"gallery,omitempty"`
 	Image      *ImageContent `json:"image,omitempty"`
 	Collection *Collection   `json:"collection,omitempty"`
+	Audio      *Audio        `json:"audio,omitempty"`
+	Story      *Story        `json:"story,omitempty"`
+	Post       *Post         `json:"post,omitempty"`
 }
 
 // DiscoveredItem is a minimal reference returned by the find/list capabilities.
@@ -744,4 +956,131 @@ type Download struct {
 	Format    string  `json:"format,omitempty"`
 	SizeBytes int64   `json:"size_bytes,omitempty"`
 	SpeedBps  float64 `json:"speed_bps,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Lookups, accounts and declarative views.
+
+// LookupArgs is passed to the lookup capability: a text, a picture, or both.
+type LookupArgs struct {
+	Text        string `json:"text,omitempty"`
+	ImageBase64 string `json:"image_base64,omitempty"`
+	MimeType    string `json:"mime_type,omitempty"`
+}
+
+// LookupMatch is one record a lookup found: a listing-style reference the
+// backend stores as a stub (Item.MediaType scene, gallery, performer, …),
+// how sure the plugin is (0..1) and why.
+type LookupMatch struct {
+	Item     DiscoveredItem   `json:"item"`
+	Score    float64          `json:"score,omitempty"`
+	Evidence []LookupEvidence `json:"evidence,omitempty"`
+}
+
+// LookupEvidence is why a match is there: a solved forum thread, a face
+// match. Detail is a short human line ("accepted answer", "94% face match").
+type LookupEvidence struct {
+	URL      string `json:"url,omitempty"`
+	Title    string `json:"title,omitempty"`
+	ImageURL string `json:"image_url,omitempty"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+// LookupResult is returned by the lookup capability, best first.
+type LookupResult struct {
+	Matches []LookupMatch `json:"matches"`
+}
+
+// AccountArgs carries the logged-in session to every capability of a plugin
+// with an account on this device, as JSON in the VEIL_ACCOUNT env var (SDK
+// accountSession()).
+type AccountArgs struct {
+	Label string `json:"label,omitempty"`
+	// Session is what account:login returned, opaque to the backend.
+	Session string `json:"session"`
+}
+
+// LoginArgs is passed to account:login: the values of the plugin's login
+// view, by field key.
+type LoginArgs struct {
+	Values map[string]string `json:"values"`
+}
+
+// AccountResult is returned by account:login and account:check. Status is
+// ok, expired, needsLogin or failed. A login returns the session to keep.
+type AccountResult struct {
+	Status    string `json:"status"`
+	Label     string `json:"label,omitempty"`
+	Session   string `json:"session,omitempty"`
+	ExpiresAt string `json:"expires_at,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+// CheckArgs is passed to account:check.
+type CheckArgs struct {
+	Session string `json:"session"`
+}
+
+// ViewArgs is passed to view:render: which view, with what input (the
+// record it's shown for, the previous view's values).
+type ViewArgs struct {
+	View  string          `json:"view"`
+	Input json.RawMessage `json:"input,omitempty"`
+}
+
+// SubmitArgs is passed to view:submit: an action of a view with the values
+// entered in its fields.
+type SubmitArgs struct {
+	View   string            `json:"view"`
+	Action string            `json:"action"`
+	Values map[string]string `json:"values,omitempty"`
+	Input  json.RawMessage   `json:"input,omitempty"`
+}
+
+// View is a declarative screen every client renders natively in its own
+// design system. Kind is form, list, detail or login.
+type View struct {
+	Kind    string       `json:"kind"`
+	Title   string       `json:"title"`
+	Body    string       `json:"body,omitempty"`
+	Fields  []ViewField  `json:"fields,omitempty"`
+	Items   []ViewItem   `json:"items,omitempty"`
+	Actions []ViewAction `json:"actions,omitempty"`
+}
+
+// ViewField is one input of a form or login view. Type is text, password,
+// number, boolean, choice or url.
+type ViewField struct {
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	Type     string   `json:"type"`
+	Value    string   `json:"value,omitempty"`
+	Options  []string `json:"options,omitempty"`
+	Required bool     `json:"required,omitempty"`
+	Hint     string   `json:"hint,omitempty"`
+}
+
+// ViewItem is one row of a list view or one fact of a detail view. Item,
+// when set, links the row to a record the backend stores.
+type ViewItem struct {
+	Title    string          `json:"title"`
+	Subtitle string          `json:"subtitle,omitempty"`
+	ImageURL string          `json:"image_url,omitempty"`
+	URL      string          `json:"url,omitempty"`
+	Item     *DiscoveredItem `json:"item,omitempty"`
+}
+
+// ViewAction is a button of a view; submitting it calls view:submit.
+type ViewAction struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+	// Primary marks the main action.
+	Primary bool `json:"primary,omitempty"`
+}
+
+// SubmitResult is returned by view:submit: the next view to show, or a
+// message once the action is done.
+type SubmitResult struct {
+	View    *View  `json:"view,omitempty"`
+	Message string `json:"message,omitempty"`
 }

@@ -282,11 +282,11 @@ func checkPostsLive(t *testing.T, posts []FacePostMatch) {
 // checkThreadLive reads a solved NameThatPorn thread whose accepted answer
 // links the video through the site's redirect.
 func checkThreadLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin) {
-	post, err := runner.FindPost(ctx, plugin, "https://namethatporn.com/post/913519-where-can-i-find-full-video-and-her-name.html")
+	post, err := runner.FindForumPost(ctx, plugin, "https://namethatporn.com/post/913519-where-can-i-find-full-video-and-her-name.html")
 	if err != nil {
-		t.Fatalf("post:find: %v", err)
+		t.Fatalf("forum:find: %v", err)
 	}
-	t.Logf("post:find → %q, %d comments", post.Title, len(post.Comments))
+	t.Logf("forum:find → %q, %d comments", post.Title, len(post.Comments))
 	for _, comment := range post.Comments {
 		if comment.Accepted && slices.Contains(comment.Links, "https://pornhub.com/view_video.php?viewkey=ph563f78988d71d") {
 			return
@@ -297,9 +297,9 @@ func checkThreadLive(t *testing.T, ctx context.Context, runner *Runner, plugin *
 
 // checkForumSearchLive searches NameThatPorn's threads for a well-known name.
 func checkForumSearchLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin) {
-	result, err := runner.SearchPosts(ctx, plugin, ForumSearchArgs{Query: "nicole aniston", Limit: 5})
+	result, err := runner.SearchForum(ctx, plugin, ForumSearchArgs{Query: "nicole aniston", Limit: 5})
 	if err != nil {
-		t.Fatalf("post:search: %v", err)
+		t.Fatalf("forum:search: %v", err)
 	}
 	t.Logf("post:search → %d threads", len(result.Posts))
 	if len(result.Posts) == 0 || result.Posts[0].Title == "" || result.Posts[0].URL == "" {

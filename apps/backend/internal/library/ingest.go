@@ -47,8 +47,20 @@ func (l *Library) ingestResult(ctx context.Context, plugin string, result *plugi
 	case result.Tag != nil:
 		id, err := l.upsertTag(ctx, plugin, result.Tag)
 		return schema.RecordRef{Kind: schema.RecordKindTag, Id: id}, err
+	case result.Audio != nil:
+		id, err := l.upsertAudio(ctx, plugin, result.Audio, true)
+		return schema.RecordRef{Kind: schema.RecordKindAudio, Id: id}, err
+	case result.Story != nil:
+		id, err := l.upsertStory(ctx, plugin, result.Story, true)
+		return schema.RecordRef{Kind: schema.RecordKindStory, Id: id}, err
+	case result.Post != nil:
+		id, err := l.upsertPost(ctx, plugin, result.Post, true)
+		return schema.RecordRef{Kind: schema.RecordKindPost, Id: id}, err
+	case result.Collection != nil:
+		id, err := l.upsertGroup(ctx, plugin, result.Collection)
+		return schema.RecordRef{Kind: schema.RecordKindGroup, Id: id}, err
 	}
-	// Standalone images and site collections come back with their models.
+	// Standalone images have no record of their own; they come with galleries.
 	return schema.RecordRef{}, nil
 }
 
@@ -72,6 +84,21 @@ func (l *Library) IngestListed(ctx context.Context, plugin string, item plugins.
 	case plugins.MediaTypeTag:
 		id, err := l.upsertTag(ctx, plugin, &plugins.Tag{Name: item.Title})
 		return schema.RecordRef{Kind: schema.RecordKindTag, Id: id}, err
+	case plugins.MediaTypeAudio:
+		id, err := l.upsertAudio(ctx, plugin, &plugins.Audio{
+			ExternalID: item.ExternalID, SourceURL: item.SourceURL, Title: item.Title, Date: item.Date,
+			Duration: item.DurationSeconds, CoverPath: item.PosterPath, Studio: item.Studio, Downloads: item.Downloads,
+		}, false)
+		return schema.RecordRef{Kind: schema.RecordKindAudio, Id: id}, err
+	case plugins.MediaTypeStory:
+		id, err := l.upsertStory(ctx, plugin, &plugins.Story{
+			ExternalID: item.ExternalID, SourceURL: item.SourceURL, Title: item.Title, Date: item.Date,
+			CoverPath: item.PosterPath, Studio: item.Studio,
+		}, false)
+		return schema.RecordRef{Kind: schema.RecordKindStory, Id: id}, err
+	case plugins.MediaTypePost:
+		id, err := l.upsertPost(ctx, plugin, postFromListing(item), false)
+		return schema.RecordRef{Kind: schema.RecordKindPost, Id: id}, err
 	}
 	return schema.RecordRef{}, fmt.Errorf("can't store a listed %q", item.MediaType)
 }
@@ -90,6 +117,16 @@ func sceneFromListing(item plugins.DiscoveredItem) *plugins.Scene {
 		Studio:        item.Studio,
 		Downloads:     item.Downloads,
 	}
+}
+
+// postFromListing turns a listing card into the post it stands for; a
+// creator platform's card names the creator as its channel (Studio).
+func postFromListing(item plugins.DiscoveredItem) *plugins.Post {
+	post := &plugins.Post{ExternalID: item.ExternalID, SourceURL: item.SourceURL, Title: item.Title, Date: item.Date, CoverPath: item.PosterPath}
+	if item.Studio != nil {
+		post.Creator = plugins.ScenePerformer{Name: item.Studio.Name, ExternalID: item.Studio.ExternalID, SourceURL: item.Studio.SourceURL}
+	}
+	return post
 }
 
 // galleryFromListing turns a listing card into the gallery it stands for.

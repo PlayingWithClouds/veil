@@ -490,6 +490,7 @@ export interface StoryChapter extends Entity {
   title?: string;
   text: string;
   wordCount: number;
+  url?: string;
 }
 
 export interface Post extends Media {

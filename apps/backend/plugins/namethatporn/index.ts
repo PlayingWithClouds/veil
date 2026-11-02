@@ -12,10 +12,10 @@ runPlugin({
       "Reverse image search over NameThatPorn.com's identification posts: the posts whose picture looks like yours, the pornstars their accepted answers name, each post's thread with its links, and a text search over the threads.",
     icon: "https://namethatporn.com/favicon.ico",
     version: packageJson.version,
-    capabilities: ["face:identify", "post:find", "post:search"],
+    capabilities: ["face:identify", "forum:find", "forum:search"],
     domains: ["namethatporn.com"],
   },
   identifyFace,
-  findPost,
-  searchPosts,
+  findForumPost: findPost,
+  searchForum: searchPosts,
 });

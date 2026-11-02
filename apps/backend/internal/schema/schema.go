@@ -678,11 +678,14 @@ type Story struct {
 
 type StoryChapter struct {
 	Entity
-	Story     string  `json:"story"`
-	Position  int32   `json:"position"`
-	Title     *string `json:"title,omitempty"`
+	Story    string  `json:"story"`
+	Position int32   `json:"position"`
+	Title    *string `json:"title,omitempty"`
+	// Empty until read: chapters a story lists without their text are read
+	// on demand from url.
 	Text      string  `json:"text"`
 	WordCount int32   `json:"wordCount"`
+	Url       *string `json:"url,omitempty"`
 }
 
 // A post on a creator platform. It wraps ordinary media; the creator is a

@@ -534,6 +534,7 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"title":     12,
 		"text":      13,
 		"wordCount": 14,
+		"url":       15,
 	},
 	"Stream": {
 		"id":          1,

@@ -18,6 +18,15 @@ import type {
   ForumPost,
   ForumSearchArgs,
   ForumSearchResult,
+  LookupArgs,
+  LookupResult,
+  StoryChapter,
+  AccountArgs,
+  AccountResult,
+  ViewArgs,
+  View,
+  SubmitArgs,
+  SubmitResult,
 } from "./types.ts";
 
 /** Handler for an "<entity>:list" capability. */
@@ -38,6 +47,12 @@ export interface PluginHandlers {
   performerList?: ListHandler;
   studioList?: ListHandler;
   tagList?: ListHandler;
+  /** Listings of audio, stories and creator posts (meta.content must name the kind). */
+  audioList?: ListHandler;
+  storyList?: ListHandler;
+  postList?: ListHandler;
+  /** Serves "story:chapter": one chapter's text by URL. */
+  readChapter?: (url: string) => Promise<StoryChapter>;
   enrich?: (args: EnrichArgs) => Promise<EnrichResult>;
   /** Serves the "stream:resolve" capability. */
   resolve?: (url: string) => Promise<ResolveResult>;
@@ -49,10 +64,32 @@ export interface PluginHandlers {
   camStream?: (args: CamStreamArgs) => Promise<ResolveResult>;
   /** Serves the "face:identify" capability: performers who look like the face in a picture. */
   identifyFace?: (args: FaceIdentifyArgs) => Promise<FaceIdentifyResult>;
-  /** Serves the "post:find" capability: one forum thread by URL. */
-  findPost?: (url: string) => Promise<ForumPost>;
-  /** Serves the "post:search" capability: forum threads matching a query. */
-  searchPosts?: (args: ForumSearchArgs) => Promise<ForumSearchResult>;
+  /** Serves the "forum:find" capability: one forum thread by URL. */
+  findForumPost?: (url: string) => Promise<ForumPost>;
+  /** Serves the "forum:search" capability: forum threads matching a query. */
+  searchForum?: (args: ForumSearchArgs) => Promise<ForumSearchResult>;
+  /** Serves "lookup": records matching a text or picture, with evidence. */
+  lookup?: (args: LookupArgs) => Promise<LookupResult>;
+  /** Serves "account:login": the login view's values to a session. */
+  login?: (values: Record<string, string>) => Promise<AccountResult>;
+  /** Serves "account:check": whether a session still works. */
+  checkAccount?: (session: string) => Promise<AccountResult>;
+  /** Serves "view:render": one of the plugin's declarative views. */
+  renderView?: (args: ViewArgs) => Promise<View>;
+  /** Serves "view:submit": runs a view's action. */
+  submitView?: (args: SubmitArgs) => Promise<SubmitResult>;
+}
+
+/**
+ * The session of the plugin's account on this device (what account:login
+ * returned), or undefined when the user hasn't logged in.
+ */
+export function accountSession(): AccountArgs | undefined {
+  const encoded = process.env.VEIL_ACCOUNT;
+  if (encoded === undefined || encoded === "") {
+    return undefined;
+  }
+  return JSON.parse(encoded) as AccountArgs;
 }
 
 interface Invocation {
@@ -81,9 +118,11 @@ function parseListArgs(args: Record<string, unknown> | undefined): ListArgs {
   return parsed;
 }
 
+const CONTENT_KINDS: readonly unknown[] = ["videos", "cam-shows", "jav", "galleries", "audio", "stories", "posts"];
+
 /** Whether a value names a known kind of content. */
 function isContentKind(value: unknown): value is ContentKind {
-  return value === "videos" || value === "cam-shows" || value === "jav" || value === "galleries";
+  return CONTENT_KINDS.includes(value);
 }
 
 /** Reads the cam:list arguments, dropping anything of the wrong type. */
@@ -104,6 +143,9 @@ function listHandlers(handlers: PluginHandlers): Record<string, ListHandler | un
     "performer:list": handlers.performerList,
     "studio:list": handlers.studioList,
     "tag:list": handlers.tagList,
+    "audio:list": handlers.audioList,
+    "story:list": handlers.storyList,
+    "post:list": handlers.postList,
   };
 }
 
@@ -113,7 +155,73 @@ const FIND_CAPABILITIES = new Set([
   "performer:find",
   "studio:find",
   "tag:find",
+  "audio:find",
+  "story:find",
 ]);
+
+/**
+ * Whether "post:find" means a creator post here: plugins carrying posts. A
+ * plugin that doesn't is an older forum plugin using the capability's former
+ * name for forum:find.
+ */
+function carriesPosts(handlers: PluginHandlers): boolean {
+  return handlers.meta.content?.includes("posts") === true;
+}
+
+/** Reads a required string argument or fails the invocation. */
+function requireString(input: Invocation, name: string): string {
+  const value = input.args?.[name];
+  if (typeof value !== "string" || value === "") fail(`args.${name} required for ${input.capability}`);
+  return value;
+}
+
+/** Reads an optional limit argument. */
+function optionalLimit(input: Invocation): number | undefined {
+  if (typeof input.args?.limit === "number") return input.args.limit;
+  return undefined;
+}
+
+/** Answers forum:find and forum:search (also under their former post: names). */
+async function runForum(handlers: PluginHandlers, input: Invocation): Promise<void> {
+  const capability = input.capability;
+  if (capability === "forum:find" || (capability === "post:find" && !carriesPosts(handlers))) {
+    if (!handlers.findForumPost) fail(`${capability} not implemented`);
+    respond<ForumPost>(await handlers.findForumPost(requireString(input, "url")));
+  }
+  if (capability === "forum:search" || (capability === "post:search" && !carriesPosts(handlers))) {
+    if (!handlers.searchForum) fail(`${capability} not implemented`);
+    respond<ForumSearchResult>(await handlers.searchForum({ query: requireString(input, "query"), limit: optionalLimit(input) }));
+  }
+}
+
+/** Answers lookup, story:chapter, account and view capabilities. */
+async function runExtras(handlers: PluginHandlers, input: Invocation): Promise<void> {
+  const args = input.args ?? {};
+  if (input.capability === "lookup") {
+    if (!handlers.lookup) fail("lookup not implemented");
+    respond<LookupResult>(await handlers.lookup(args as LookupArgs));
+  }
+  if (input.capability === "story:chapter") {
+    if (!handlers.readChapter) fail("story:chapter not implemented");
+    respond<StoryChapter>(await handlers.readChapter(requireString(input, "url")));
+  }
+  if (input.capability === "account:login") {
+    if (!handlers.login) fail("account:login not implemented");
+    respond<AccountResult>(await handlers.login((args.values ?? {}) as Record<string, string>));
+  }
+  if (input.capability === "account:check") {
+    if (!handlers.checkAccount) fail("account:check not implemented");
+    respond<AccountResult>(await handlers.checkAccount(requireString(input, "session")));
+  }
+  if (input.capability === "view:render") {
+    if (!handlers.renderView) fail("view:render not implemented");
+    respond<View>(await handlers.renderView(args as unknown as ViewArgs));
+  }
+  if (input.capability === "view:submit") {
+    if (!handlers.submitView) fail("view:submit not implemented");
+    respond<SubmitResult>(await handlers.submitView(args as unknown as SubmitArgs));
+  }
+}
 
 // Emit one ScrapeResult per NDJSON line (no {"result":...} wrapper).
 // Go reads lines until EOF.
@@ -159,7 +267,10 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       respond<ResolveResult>(await handlers.camStream({ username }));
     }
 
+    await runForum(handlers, input);
+    await runExtras(handlers, input);
     if (FIND_CAPABILITIES.has(input.capability)) return await runFind(handlers, input);
+    if (input.capability === "post:find") return await runFind(handlers, input);
     if (input.capability.endsWith(":list")) return await runList(handlers, input);
 
     if (input.capability === "enrich") {
@@ -190,22 +301,6 @@ export async function runPlugin(handlers: PluginHandlers): Promise<never> {
       let mimeType = "image/jpeg";
       if (typeof input.args?.mime_type === "string" && input.args.mime_type !== "") mimeType = input.args.mime_type;
       respond<FaceIdentifyResult>(await handlers.identifyFace({ image_base64: imageBase64, mime_type: mimeType }));
-    }
-
-    if (input.capability === "post:find") {
-      if (!handlers.findPost) fail("post:find not implemented");
-      const url = input.args?.url;
-      if (typeof url !== "string" || url === "") fail("args.url required for post:find");
-      respond<ForumPost>(await handlers.findPost(url));
-    }
-
-    if (input.capability === "post:search") {
-      if (!handlers.searchPosts) fail("post:search not implemented");
-      const query = input.args?.query;
-      if (typeof query !== "string" || query === "") fail("args.query required for post:search");
-      let limit: number | undefined;
-      if (typeof input.args?.limit === "number") limit = input.args.limit;
-      respond<ForumSearchResult>(await handlers.searchPosts({ query, limit }));
     }
 
     fail(`unsupported capability: ${input.capability}`);

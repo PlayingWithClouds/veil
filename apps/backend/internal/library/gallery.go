@@ -2,63 +2,31 @@ package library
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
-	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
 // upsertGallery stores a plugin gallery, like upsertVideo does a scene, and
 // replaces its images when the page listed them.
 func (l *Library) upsertGallery(ctx context.Context, plugin string, gallery *plugins.Gallery, fetched bool) (string, error) {
-	site, ok := identity(plugin, gallery.ExternalID, gallery.SourceURL)
-	if !ok {
-		return "", fmt.Errorf("%s returned a gallery without id or URL", plugin)
+	site, err := identityOf(schema.RecordKindGallery, plugin, gallery.ExternalID, gallery.SourceURL)
+	if err != nil {
+		return "", err
 	}
 	fields, err := l.galleryFields(ctx, plugin, gallery, fetched)
 	if err != nil {
 		return "", err
 	}
-	source, err := l.findSource(ctx, site)
-	if err != nil {
-		return "", err
-	}
-	var id, sourceID string
-	if source == nil {
-		id, sourceID, err = l.createGallery(ctx, site, fields, gallery)
-	} else {
-		id, sourceID = source.SubjectId, source.Id
-		_, err = l.recorder.Update(ctx, schema.RecordKindGallery, id, fields, provenance.Plugin(plugin, sourceID))
-	}
+	id, sourceID, err := l.upsertMedia(ctx, mediaWrite{
+		kind: schema.RecordKindGallery, plugin: plugin, site: site, fields: fields,
+		defaults: db.Vars{"imageCount": 0}, label: gallery.Title, image: assetOf(gallery.CoverPath),
+	})
 	if err != nil {
 		return "", err
 	}
 	return id, l.afterGalleryWrite(ctx, id, sourceID, gallery, fetched)
-}
-
-// createGallery inserts a new gallery and its first source, which owns the
-// fields it filled.
-func (l *Library) createGallery(ctx context.Context, site siteIdentity, fields db.Vars, gallery *plugins.Gallery) (string, string, error) {
-	filled := columnsOf(fields)
-	fields["status"] = string(schema.MediaStatusAvailable)
-	fillListDefaults(fields, "performers", "tags")
-	if _, hasTitle := fields["title"]; !hasTitle {
-		fields["title"] = site.URL
-	}
-	if _, hasCount := fields["imageCount"]; !hasCount {
-		fields["imageCount"] = 0
-	}
-	id, err := l.database.Insert(ctx, tableGallery, fields)
-	if err != nil {
-		return "", "", err
-	}
-	sourceID, err := l.addSource(ctx, schema.RecordKindGallery, id, site, gallery.Title, assetOf(gallery.CoverPath))
-	if err != nil {
-		return "", "", err
-	}
-	return id, sourceID, l.recorder.Claim(ctx, schema.RecordKindGallery, id, filled, provenance.Plugin(site.Plugin, sourceID))
 }
 
 // afterGalleryWrite marks the source fetched and replaces the images.

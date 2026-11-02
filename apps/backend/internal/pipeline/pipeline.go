@@ -78,7 +78,7 @@ func (p *Pipeline) finder(pluginName string, kind schema.RecordKind) (*plugins.P
 		return nil, "", false
 	}
 	plugin, found := p.registry.Get(pluginName)
-	if !found || !plugin.Meta.Has(plugins.FindCapability(entity)) {
+	if !found || !plugin.Serves(plugins.FindCapability(entity)) {
 		return nil, "", false
 	}
 	return plugin, entity, true
@@ -91,7 +91,7 @@ func (p *Pipeline) List(ctx context.Context, pluginName string, entity plugins.M
 	if !found || !p.registry.IsActive(pluginName) {
 		return nil, fmt.Errorf("plugin %q isn't active", pluginName)
 	}
-	if !plugin.Meta.Has(plugins.ListCapability(entity)) {
+	if !plugin.Serves(plugins.ListCapability(entity)) {
 		return nil, fmt.Errorf("%s can't list %ss", pluginName, entity)
 	}
 	result, err := p.runner.List(ctx, plugin, entity, plugins.ListArgs{Query: query, Limit: limit, Offset: offset})
@@ -178,6 +178,12 @@ func mediaTypeOf(kind schema.RecordKind) (plugins.MediaType, bool) {
 		return plugins.MediaTypePerformer, true
 	case schema.RecordKindStudio:
 		return plugins.MediaTypeStudio, true
+	case schema.RecordKindAudio:
+		return plugins.MediaTypeAudio, true
+	case schema.RecordKindStory:
+		return plugins.MediaTypeStory, true
+	case schema.RecordKindPost:
+		return plugins.MediaTypePost, true
 	}
 	return "", false
 }

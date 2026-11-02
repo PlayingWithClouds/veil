@@ -2,11 +2,9 @@ package library
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/plugins"
-	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -14,62 +12,33 @@ import (
 // identity seen the first time, else an update of the record it points at.
 // fetched marks the source's page as read (a find, not a listing card).
 func (l *Library) upsertVideo(ctx context.Context, plugin string, scene *plugins.Scene, fetched bool) (string, error) {
-	site, ok := identity(plugin, scene.ExternalID, scene.SourceURL)
-	if !ok {
-		return "", fmt.Errorf("%s returned a video without id or URL", plugin)
+	site, err := identityOf(schema.RecordKindVideo, plugin, scene.ExternalID, scene.SourceURL)
+	if err != nil {
+		return "", err
 	}
 	fields, err := l.videoFields(ctx, plugin, scene, fetched)
 	if err != nil {
 		return "", err
 	}
-	source, err := l.findSource(ctx, site)
-	if err != nil {
-		return "", err
-	}
-	var id, sourceID string
-	if source == nil {
-		id, sourceID, err = l.createVideo(ctx, site, fields, scene)
-	} else {
-		id, sourceID = source.SubjectId, source.Id
-		_, err = l.recorder.Update(ctx, schema.RecordKindVideo, id, fields, provenance.Plugin(plugin, sourceID))
-	}
+	id, sourceID, err := l.upsertMedia(ctx, mediaWrite{
+		kind: schema.RecordKindVideo, plugin: plugin, site: site, fields: fields,
+		label: scene.Title, image: assetOf(scene.PosterPath),
+	})
 	if err != nil {
 		return "", err
 	}
 	return id, l.afterVideoWrite(ctx, id, sourceID, scene, fetched)
 }
 
-// createVideo inserts a new video and its first source, which owns the
-// fields it filled.
-func (l *Library) createVideo(ctx context.Context, site siteIdentity, fields db.Vars, scene *plugins.Scene) (string, string, error) {
-	filled := columnsOf(fields)
-	fields["status"] = string(schema.MediaStatusAvailable)
-	fillListDefaults(fields, "performers", "tags")
-	if _, hasTitle := fields["title"]; !hasTitle {
-		fields["title"] = site.URL
-	}
-	id, err := l.database.Insert(ctx, tableVideo, fields)
-	if err != nil {
-		return "", "", err
-	}
-	sourceID, err := l.addSource(ctx, schema.RecordKindVideo, id, site, scene.Title, assetOf(scene.PosterPath))
-	if err != nil {
-		return "", "", err
-	}
-	return id, sourceID, l.recorder.Claim(ctx, schema.RecordKindVideo, id, filled, provenance.Plugin(site.Plugin, sourceID))
-}
-
-// afterVideoWrite marks the source fetched and replaces its streams.
+// afterVideoWrite marks the source fetched and replaces what the page lists
+// with the video: streams, segments, subtitles, scripts and comments.
 func (l *Library) afterVideoWrite(ctx context.Context, id, sourceID string, scene *plugins.Scene, fetched bool) error {
-	if fetched {
-		if err := l.markFetched(ctx, sourceID); err != nil {
-			return err
-		}
+	page := pageExtras{
+		kind: schema.RecordKindVideo, id: id, sourceID: sourceID, fetched: fetched,
+		downloads: scene.Downloads, markers: scene.Markers, subtitles: scene.Subtitles,
+		scripts: scene.Scripts, comments: scene.Comments,
 	}
-	if len(scene.Downloads) == 0 {
-		return nil
-	}
-	return l.replaceStreams(ctx, schema.RecordKindVideo, id, sourceID, scene.Downloads)
+	return l.storeExtras(ctx, page)
 }
 
 // videoFields are the columns a scene fills. A listing card (not fetched)
@@ -84,6 +53,10 @@ func (l *Library) videoFields(ctx context.Context, plugin string, scene *plugins
 	}
 	setAsset(fields, "cover", posterOf(scene))
 	setAsset(fields, "preview", scene.PreviewVideo)
+	setFrameSize(fields, scene.Width, scene.Height)
+	if scene.VR != nil {
+		fields["vr"] = vrFormat(*scene.VR)
+	}
 	if err := l.setStudio(ctx, fields, plugin, scene.Studio); err != nil {
 		return nil, err
 	}
@@ -92,6 +65,38 @@ func (l *Library) videoFields(ctx context.Context, plugin string, scene *plugins
 	}
 	return fields, l.setCredits(ctx, fields, performerNames(scene.Performers), scene.Tags)
 }
+
+// setFrameSize sets width and height when the page gave both.
+func setFrameSize(fields db.Vars, width, height int) {
+	if width <= 0 || height <= 0 {
+		return
+	}
+	fields["width"] = width
+	fields["height"] = height
+}
+
+// vrFormat maps a plugin's VR format to the schema's; unknown projections
+// and packings default to the most common VR video (180°, side by side).
+func vrFormat(format plugins.VRFormat) schema.VrFormat {
+	vr := schema.VrFormat{Projection: schema.VrProjectionEquirectangular180, Stereo: schema.VrStereoSideBySide}
+	if knownProjections[format.Projection] {
+		vr.Projection = schema.VrProjection(format.Projection)
+	}
+	if knownStereo[format.Stereo] {
+		vr.Stereo = schema.VrStereo(format.Stereo)
+	}
+	if format.FieldOfView > 0 {
+		fieldOfView := int32(format.FieldOfView)
+		vr.FieldOfView = &fieldOfView
+	}
+	return vr
+}
+
+// knownProjections and knownStereo are the schema's VR enum values.
+var (
+	knownProjections = map[string]bool{"equirectangular180": true, "equirectangular360": true, "fisheye": true, "cubemap": true}
+	knownStereo      = map[string]bool{"mono": true, "sideBySide": true, "topBottom": true}
+)
 
 // setStudio sets the studio column from a studio reference, when there is one.
 func (l *Library) setStudio(ctx context.Context, fields db.Vars, plugin string, reference *plugins.StudioRef) error {

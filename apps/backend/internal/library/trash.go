@@ -16,13 +16,27 @@ import (
 var TrashableKinds = []schema.RecordKind{
 	schema.RecordKindVideo,
 	schema.RecordKindGallery,
+	schema.RecordKindAudio,
+	schema.RecordKindStory,
+	schema.RecordKindPost,
 	schema.RecordKindPerformer,
 	schema.RecordKindStudio,
+	schema.RecordKindGroup,
 	schema.RecordKindTag,
+	schema.RecordKindCategory,
+	schema.RecordKindCollection,
+	schema.RecordKindSegment,
+	schema.RecordKindClip,
 }
 
 // mediaTables are the tables of every media kind, for clearing references.
 var mediaTables = []string{"Video", "Gallery", "Audio", "Story", "Post"}
+
+// namedKinds are the kinds labelled by a name rather than a title.
+var namedKinds = []schema.RecordKind{
+	schema.RecordKindPerformer, schema.RecordKindStudio, schema.RecordKindTag,
+	schema.RecordKindCategory, schema.RecordKindCollection,
+}
 
 // TrashedRecord is one record in the trash.
 type TrashedRecord struct {
@@ -64,7 +78,7 @@ func (l *Library) Trashed(ctx context.Context, kind schema.RecordKind, limit, of
 	vars := db.Vars{}
 	vars["limit"], vars["offset"] = pageBounds(limit, offset)
 	rows, err := l.database.Query(ctx,
-		`SELECT "id", `+labelColumn(kind)+` AS "label", "deletedAt" FROM `+db.Quote(tableFor(kind))+`
+		`SELECT "id", COALESCE(`+labelColumn(kind)+`, '') AS "label", "deletedAt" FROM `+db.Quote(tableFor(kind))+`
 		 WHERE "deletedAt" IS NOT NULL ORDER BY "deletedAt" DESC LIMIT $limit OFFSET $offset`, vars)
 	if err != nil {
 		return nil, err
@@ -78,10 +92,10 @@ func (l *Library) Trashed(ctx context.Context, kind schema.RecordKind, limit, of
 
 // labelColumn is the column that names a record of kind.
 func labelColumn(kind schema.RecordKind) string {
-	if kind == schema.RecordKindVideo || kind == schema.RecordKindGallery {
-		return `"title"`
+	if slices.Contains(namedKinds, kind) {
+		return `"name"`
 	}
-	return `"name"`
+	return `"title"`
 }
 
 // PurgeTrash removes for good every record trashed before cutoff, with what
@@ -124,17 +138,50 @@ func (l *Library) PurgeTrashed(ctx context.Context, kind schema.RecordKind, id s
 
 // Purge removes one record for good: its sources and streams, the user's
 // state, provenance and revisions, and every reference to it from other
-// records. The event log keeps its entries.
+// records. The event log keeps its entries; stored files stay on disk.
 func (l *Library) Purge(ctx context.Context, kind schema.RecordKind, id string) error {
 	return l.database.Tx(ctx, func(tx *db.DB) error {
-		if err := clearReferences(ctx, tx, kind, id); err != nil {
-			return err
-		}
-		if err := deleteDependents(ctx, tx, kind, id); err != nil {
-			return err
-		}
-		return tx.Delete(ctx, tableFor(kind), id)
+		return purgeIn(ctx, tx, kind, id)
 	})
+}
+
+// purgeIn purges one record inside an open transaction.
+func purgeIn(ctx context.Context, tx *db.DB, kind schema.RecordKind, id string) error {
+	if err := purgeCreatorPosts(ctx, tx, kind, id); err != nil {
+		return err
+	}
+	if err := clearReferences(ctx, tx, kind, id); err != nil {
+		return err
+	}
+	if err := deleteDependents(ctx, tx, kind, id); err != nil {
+		return err
+	}
+	return tx.Delete(ctx, tableFor(kind), id)
+}
+
+// purgeCreatorPosts purges a performer's posts first: a post can't exist
+// without its creator.
+func purgeCreatorPosts(ctx context.Context, tx *db.DB, kind schema.RecordKind, id string) error {
+	if kind != schema.RecordKindPerformer {
+		return nil
+	}
+	postIDs, err := tx.Strings(ctx, `SELECT "id" FROM "Post" WHERE "creator" = $id`, db.Vars{"id": id})
+	if err != nil {
+		return err
+	}
+	for _, postID := range postIDs {
+		if err := purgeIn(ctx, tx, schema.RecordKindPost, postID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// subjectTables are the tables whose rows exist for one record they name by
+// subjectKind and subjectId.
+var subjectTables = []string{
+	"Stream", "Revision", "UserState", "CollectionItem", "Segment", "Subtitle", "Script",
+	"Fingerprint", "Embedding", "MediaFile",
 }
 
 // deleteDependents deletes the rows that only exist for the record.
@@ -144,45 +191,77 @@ func deleteDependents(ctx context.Context, tx *db.DB, kind schema.RecordKind, id
 		`DELETE FROM "FieldSource" WHERE ("subjectKind" = $kind AND "subjectId" = $id)
 		   OR "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
 		`DELETE FROM "Comment" WHERE "source" IN (SELECT "id" FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id)`,
-		`DELETE FROM "Stream" WHERE "subjectKind" = $kind AND "subjectId" = $id`,
-		`DELETE FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id`,
-		`DELETE FROM "Revision" WHERE "subjectKind" = $kind AND "subjectId" = $id`,
-		`DELETE FROM "UserState" WHERE "subjectKind" = $kind AND "subjectId" = $id`,
-		`DELETE FROM "CollectionItem" WHERE "subjectKind" = $kind AND "subjectId" = $id`,
+		`DELETE FROM "Alike" WHERE "subjectKind" = $kind AND ("firstId" = $id OR "secondId" = $id)`,
 	}
-	if kind == schema.RecordKindGallery {
-		statements = append(statements, `DELETE FROM "Image" WHERE "gallery" = $id`)
+	for _, table := range subjectTables {
+		statements = append(statements, `DELETE FROM `+db.Quote(table)+` WHERE "subjectKind" = $kind AND "subjectId" = $id`)
 	}
-	if kind == schema.RecordKindVideo {
-		statements = append(statements, `DELETE FROM "GroupItem" WHERE "video" = $id`, `DELETE FROM "Clip" WHERE "video" = $id`)
-	}
+	statements = append(statements, `DELETE FROM "Source" WHERE "subjectKind" = $kind AND "subjectId" = $id`)
+	statements = append(statements, kindDependents[kind]...)
 	return execAll(ctx, tx, statements, vars)
+}
+
+// kindDependents are the rows only one kind of record has.
+var kindDependents = map[schema.RecordKind][]string{
+	schema.RecordKindGallery:    {`DELETE FROM "Image" WHERE "gallery" = $id`},
+	schema.RecordKindVideo:      {`DELETE FROM "GroupItem" WHERE "video" = $id`, `DELETE FROM "Clip" WHERE "video" = $id`},
+	schema.RecordKindStory:      {`DELETE FROM "StoryChapter" WHERE "story" = $id`},
+	schema.RecordKindGroup:      {`DELETE FROM "GroupItem" WHERE "group" = $id`},
+	schema.RecordKindCollection: {`DELETE FROM "CollectionItem" WHERE "collection" = $id`},
 }
 
 // clearReferences removes the record's id from the records that point at it.
 func clearReferences(ctx context.Context, tx *db.DB, kind schema.RecordKind, id string) error {
+	vars := db.Vars{"id": id, "kind": kind}
+	statements := []string{removeFromAttachments}
 	switch kind {
 	case schema.RecordKindVideo:
-		return execAll(ctx, tx, []string{`UPDATE "Gallery" SET "video" = NULL WHERE "video" = $id`}, db.Vars{"id": id})
+		statements = append(statements, `UPDATE "Gallery" SET "video" = NULL WHERE "video" = $id`)
 	case schema.RecordKindGallery:
-		return execAll(ctx, tx, []string{`UPDATE "Video" SET "gallery" = NULL WHERE "gallery" = $id`}, db.Vars{"id": id})
+		statements = append(statements, `UPDATE "Video" SET "gallery" = NULL WHERE "gallery" = $id`)
 	case schema.RecordKindStudio:
-		statements := []string{`UPDATE "Studio" SET "parent" = NULL WHERE "parent" = $id`, `UPDATE "Group" SET "studio" = NULL WHERE "studio" = $id`}
-		for _, table := range mediaTables {
-			statements = append(statements, `UPDATE `+db.Quote(table)+` SET "studio" = NULL WHERE "studio" = $id`)
-		}
-		return execAll(ctx, tx, statements, db.Vars{"id": id})
+		statements = append(statements, studioReferences()...)
 	case schema.RecordKindPerformer:
-		statements := []string{`UPDATE "CamModel" SET "performer" = NULL WHERE "performer" = $id`}
-		statements = append(statements, removeFromLists(mediaTables, "performers")...)
-		return execAll(ctx, tx, statements, db.Vars{"id": id})
+		statements = append(statements, performerReferences()...)
 	case schema.RecordKindTag:
-		statements := []string{`UPDATE "Segment" SET "tag" = NULL WHERE "tag" = $id`}
-		statements = append(statements, removeFromLists(append([]string{"Performer", "Studio"}, mediaTables...), "tags")...)
-		statements = append(statements, removeFromLists([]string{"Category"}, "matchTags")...)
-		return execAll(ctx, tx, statements, db.Vars{"id": id})
+		statements = append(statements, tagReferences()...)
+	case schema.RecordKindCategory:
+		statements = append(statements, `UPDATE "Category" SET "parent" = NULL WHERE "parent" = $id`)
+	case schema.RecordKindCamModel:
+		statements = append(statements, `UPDATE "Video" SET "recordedFrom" = NULL WHERE "recordedFrom" = $id`)
 	}
-	return nil
+	return execAll(ctx, tx, statements, vars)
+}
+
+// removeFromAttachments drops the record from the posts it's attached to.
+const removeFromAttachments = `UPDATE "Post" SET "attachments" =
+	(SELECT json_group_array(json(value)) FROM json_each("attachments")
+	 WHERE NOT (json_extract(value, '$.kind') = $kind AND json_extract(value, '$.id') = $id))
+	WHERE EXISTS (SELECT 1 FROM json_each("attachments")
+	 WHERE json_extract(value, '$.kind') = $kind AND json_extract(value, '$.id') = $id)`
+
+// studioReferences clear a studio from every record that names it.
+func studioReferences() []string {
+	statements := []string{`UPDATE "Studio" SET "parent" = NULL WHERE "parent" = $id`, `UPDATE "Group" SET "studio" = NULL WHERE "studio" = $id`}
+	for _, table := range mediaTables {
+		statements = append(statements, `UPDATE `+db.Quote(table)+` SET "studio" = NULL WHERE "studio" = $id`)
+	}
+	return statements
+}
+
+// performerReferences clear a performer from credits, cam rooms, segments
+// and comment mentions.
+func performerReferences() []string {
+	statements := []string{`UPDATE "CamModel" SET "performer" = NULL WHERE "performer" = $id`}
+	statements = append(statements, removeFromLists(append([]string{"Segment"}, mediaTables...), "performers")...)
+	return append(statements, removeFromLists([]string{"Comment"}, "mentions")...)
+}
+
+// tagReferences clear a tag from every tag list and category.
+func tagReferences() []string {
+	statements := []string{`UPDATE "Segment" SET "tag" = NULL WHERE "tag" = $id`}
+	statements = append(statements, removeFromLists(append([]string{"Performer", "Studio"}, mediaTables...), "tags")...)
+	return append(statements, removeFromLists([]string{"Category"}, "matchTags")...)
 }
 
 // removeFromLists builds the statements that drop $id from a JSON id list

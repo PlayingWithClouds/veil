@@ -14,6 +14,15 @@ type PluginSettingsProvider interface {
 	PluginEnv(pluginName string) []string
 }
 
+// AccountProvider supplies the session of the plugin's account on this
+// device, or nil when it has none.
+type AccountProvider interface {
+	AccountSession(pluginName string) *AccountArgs
+}
+
+// accountEnvVar is the env var a plugin finds its session in.
+const accountEnvVar = "VEIL_ACCOUNT"
+
 // executor runs one plugin invocation in some JS runtime: the JSON request is
 // the plugin's stdin, and whatever the plugin writes to stdout comes back.
 type executor interface {
@@ -31,6 +40,7 @@ type Runner struct {
 	executor         executor
 	envVars          []string // global env vars passed to every plugin invocation
 	settingsProvider PluginSettingsProvider
+	accountProvider  AccountProvider
 }
 
 // NewRunner runs plugins as Bun subprocesses, straight from their TypeScript source.
@@ -56,6 +66,27 @@ func (r *Runner) SetEnv(vars []string) {
 // SetSettingsProvider wires in the per-plugin settings source.
 func (r *Runner) SetSettingsProvider(p PluginSettingsProvider) {
 	r.settingsProvider = p
+}
+
+// SetAccountProvider wires in the source of plugin account sessions.
+func (r *Runner) SetAccountProvider(provider AccountProvider) {
+	r.accountProvider = provider
+}
+
+// accountEnv is the env var carrying the plugin's session, if it has one.
+func (r *Runner) accountEnv(pluginName string) []string {
+	if r.accountProvider == nil {
+		return nil
+	}
+	session := r.accountProvider.AccountSession(pluginName)
+	if session == nil {
+		return nil
+	}
+	encoded, err := json.Marshal(session)
+	if err != nil {
+		return nil
+	}
+	return []string{accountEnvVar + "=" + string(encoded)}
 }
 
 type invocation struct {
@@ -113,6 +144,7 @@ func (r *Runner) execute(ctx context.Context, p *Plugin, call invocation, onLine
 	if r.settingsProvider != nil {
 		env = append(env, r.settingsProvider.PluginEnv(p.Meta.Name)...)
 	}
+	env = append(env, r.accountEnv(p.Meta.Name)...)
 	return r.executor.run(ctx, p, payload, env, onLine)
 }
 
@@ -142,7 +174,7 @@ func (r *Runner) List(ctx context.Context, p *Plugin, entity MediaType, args Lis
 // once. Calls to onItems never overlap. Returns the full result.
 func (r *Runner) ListStream(ctx context.Context, p *Plugin, entity MediaType, args ListArgs, onItems func([]DiscoveredItem)) (*ItemsResult, error) {
 	capability := ListCapability(entity)
-	if !p.Meta.Has(capability) {
+	if !p.Serves(capability) {
 		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, capability)
 	}
 	stream := newItemStream(onItems)
@@ -160,7 +192,7 @@ func (r *Runner) ListStream(ctx context.Context, p *Plugin, entity MediaType, ar
 }
 
 func (r *Runner) items(ctx context.Context, p *Plugin, cap Capability, args any) (*ItemsResult, error) {
-	if !p.Meta.Has(cap) {
+	if !p.Serves(cap) {
 		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, cap)
 	}
 	raw, err := r.invokeStreaming(ctx, p, cap, args, nil)
@@ -199,12 +231,14 @@ func (r *Runner) IdentifyFace(ctx context.Context, p *Plugin, args FaceIdentifyA
 	return &result, json.Unmarshal(raw, &result)
 }
 
-// FindPost invokes "post:find" — one forum thread by URL, its comments in site order.
-func (r *Runner) FindPost(ctx context.Context, p *Plugin, url string) (*ForumPost, error) {
-	if !p.Meta.Has(CapabilityPostFind) {
-		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityPostFind)
+// FindForumPost invokes "forum:find" — one forum thread by URL, its comments
+// in site order.
+func (r *Runner) FindForumPost(ctx context.Context, p *Plugin, url string) (*ForumPost, error) {
+	if !p.ServesForum() {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityForumFind)
 	}
-	raw, err := r.invoke(ctx, p, CapabilityPostFind, map[string]string{"url": url})
+	capability := p.forumCapability(CapabilityForumFind, CapabilityLegacyForumFind)
+	raw, err := r.invoke(ctx, p, capability, map[string]string{"url": url})
 	if err != nil {
 		return nil, err
 	}
@@ -212,12 +246,14 @@ func (r *Runner) FindPost(ctx context.Context, p *Plugin, url string) (*ForumPos
 	return &result, json.Unmarshal(raw, &result)
 }
 
-// SearchPosts invokes "post:search" — forum threads matching a query, best first.
-func (r *Runner) SearchPosts(ctx context.Context, p *Plugin, args ForumSearchArgs) (*ForumSearchResult, error) {
-	if !p.Meta.Has(CapabilityPostSearch) {
-		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityPostSearch)
+// SearchForum invokes "forum:search" — forum threads matching a query, best
+// first.
+func (r *Runner) SearchForum(ctx context.Context, p *Plugin, args ForumSearchArgs) (*ForumSearchResult, error) {
+	if !p.ServesForum() {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, CapabilityForumSearch)
 	}
-	raw, err := r.invoke(ctx, p, CapabilityPostSearch, args)
+	capability := p.forumCapability(CapabilityForumSearch, CapabilityLegacyForumSearch)
+	raw, err := r.invoke(ctx, p, capability, args)
 	if err != nil {
 		return nil, err
 	}
@@ -225,12 +261,55 @@ func (r *Runner) SearchPosts(ctx context.Context, p *Plugin, args ForumSearchArg
 	return &result, json.Unmarshal(raw, &result)
 }
 
+// call invokes a capability the plugin must serve and decodes its result.
+func call[T any](ctx context.Context, r *Runner, p *Plugin, capability Capability, args any) (*T, error) {
+	if !p.Serves(capability) {
+		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, capability)
+	}
+	raw, err := r.invoke(ctx, p, capability, args)
+	if err != nil {
+		return nil, err
+	}
+	var result T
+	return &result, json.Unmarshal(raw, &result)
+}
+
+// Lookup invokes "lookup" — records matching a text or picture, best first.
+func (r *Runner) Lookup(ctx context.Context, p *Plugin, args LookupArgs) (*LookupResult, error) {
+	return call[LookupResult](ctx, r, p, CapabilityLookup, args)
+}
+
+// StoryChapter invokes "story:chapter" — one chapter's text by URL.
+func (r *Runner) StoryChapter(ctx context.Context, p *Plugin, url string) (*StoryChapter, error) {
+	return call[StoryChapter](ctx, r, p, CapabilityStoryChapter, ChapterArgs{URL: url})
+}
+
+// Login invokes "account:login" with the login view's values.
+func (r *Runner) Login(ctx context.Context, p *Plugin, values map[string]string) (*AccountResult, error) {
+	return call[AccountResult](ctx, r, p, CapabilityAccountLogin, LoginArgs{Values: values})
+}
+
+// CheckAccount invokes "account:check" — whether a session still works.
+func (r *Runner) CheckAccount(ctx context.Context, p *Plugin, session string) (*AccountResult, error) {
+	return call[AccountResult](ctx, r, p, CapabilityAccountCheck, CheckArgs{Session: session})
+}
+
+// RenderView invokes "view:render" — one of the plugin's declarative views.
+func (r *Runner) RenderView(ctx context.Context, p *Plugin, args ViewArgs) (*View, error) {
+	return call[View](ctx, r, p, CapabilityViewRender, args)
+}
+
+// SubmitView invokes "view:submit" — runs a view's action.
+func (r *Runner) SubmitView(ctx context.Context, p *Plugin, args SubmitArgs) (*SubmitResult, error) {
+	return call[SubmitResult](ctx, r, p, CapabilityViewSubmit, args)
+}
+
 // Find invokes "<entity>:find" — one full record by URL — and reads the NDJSON
 // stream. Plugins emit one ScrapeResult per line: root entity first, then
 // related standalone entities (performers, studio, tags, collection).
 func (r *Runner) Find(ctx context.Context, p *Plugin, entity MediaType, url string) ([]*ScrapeResult, error) {
 	cap := FindCapability(entity)
-	if !p.Meta.Has(cap) {
+	if !p.Serves(cap) {
 		return nil, fmt.Errorf("plugin %q does not support %s", p.Meta.Name, cap)
 	}
 
