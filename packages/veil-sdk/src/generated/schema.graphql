@@ -930,6 +930,12 @@ type Performer {
   userState: UserState!
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
+  fetching: PerformerFetching!
+}
+
+type PerformerFetching {
+  reading: Boolean!
+  listing: [String!]!
 }
 
 type PerformerAttributes {

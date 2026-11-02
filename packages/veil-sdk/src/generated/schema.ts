@@ -789,7 +789,14 @@ export interface Performer {
     userState: UserState
     fieldSources: FieldSource[]
     revisions: Revision[]
+    fetching: PerformerFetching
     __typename: 'Performer'
+}
+
+export interface PerformerFetching {
+    reading: Scalars['Boolean']
+    listing: Scalars['String'][]
+    __typename: 'PerformerFetching'
 }
 
 export interface PerformerAttributes {
@@ -2100,6 +2107,14 @@ export interface PerformerGenqlSelection{
     userState?: UserStateGenqlSelection
     fieldSources?: FieldSourceGenqlSelection
     revisions?: (RevisionGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    fetching?: PerformerFetchingGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface PerformerFetchingGenqlSelection{
+    reading?: boolean | number
+    listing?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3029,6 +3044,14 @@ export interface SavedFilterGenqlSelection{
     export const isPerformer = (obj?: { __typename?: any } | null): obj is Performer => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPerformer"')
       return Performer_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const PerformerFetching_possibleTypes: string[] = ['PerformerFetching']
+    export const isPerformerFetching = (obj?: { __typename?: any } | null): obj is PerformerFetching => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isPerformerFetching"')
+      return PerformerFetching_possibleTypes.includes(obj.__typename)
     }
     
 

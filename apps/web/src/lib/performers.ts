@@ -75,6 +75,22 @@ export async function editPerformer(
 	return data.editPerformer ?? null;
 }
 
+/** What's being fetched about a performer now, and how many videos they have so far. */
+export interface PerformerFetching {
+	reading: boolean;
+	listing: string[];
+	videoCount: number;
+}
+
+/** Asks what's being fetched about a performer now. */
+export async function fetchPerformerFetching(id: string): Promise<PerformerFetching | null> {
+	const data = await gqlClient.query({
+		performer: { __args: { id }, videoCount: true, fetching: { reading: true, listing: true } }
+	});
+	if (!data.performer) return null;
+	return { ...data.performer.fetching, videoCount: data.performer.videoCount };
+}
+
 /** The values a text attribute has across the library's performers, most common first. */
 export async function fetchAttributeValues(attribute: keyof PerformerAttributes): Promise<string[]> {
 	const data = await gqlClient.query({ performerAttributeValues: { __args: { attribute } } });

@@ -306,6 +306,17 @@ type Performer {
   userState: UserState!
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
+  # What's being fetched about them right now.
+  fetching: PerformerFetching!
+}
+
+# What's being fetched about a performer right now.
+type PerformerFetching {
+  # Their profiles are being read and the sites asked about them (after
+  # they were made a favourite).
+  reading: Boolean!
+  # Plugins whose list of their videos is queued or running.
+  listing: [String!]!
 }
 
 type PerformerAttributes {

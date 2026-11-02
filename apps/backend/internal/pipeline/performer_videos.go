@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"slices"
 
 	"github.com/playingwithclouds/veil/internal/jobs"
 	"github.com/playingwithclouds/veil/internal/plugins"
@@ -17,6 +18,9 @@ const (
 	// performerVideosMaxPages bounds a favourite's crawl, for a site that
 	// never runs out.
 	performerVideosMaxPages = 100
+	// activeJobsLimit bounds the queued and running scrape jobs looked through
+	// for a performer's.
+	activeJobsLimit = 1000
 	// payloadListURL and payloadAllPages are a performer-videos job's payload.
 	payloadListURL  = "listUrl"
 	payloadAllPages = "allPages"
@@ -55,7 +59,9 @@ func (p *Pipeline) QueuePerformerVideos(ctx context.Context, performerID, onlyPl
 // identification finds too (a favourite's profiles are listed in full). It
 // runs in the background, since the sites take a while; failures are logged.
 func (p *Pipeline) CollectFavorite(id string) {
+	p.reading.Store(id, true)
 	go func() {
+		defer p.reading.Delete(id)
 		ctx := context.Background()
 		if err := p.Refresh(ctx, schema.RecordKindPerformer, id); err != nil {
 			log.Printf("favourite %s: read profiles: %v", id, err)
@@ -68,6 +74,34 @@ func (p *Pipeline) CollectFavorite(id string) {
 			log.Printf("favourite %s: queue videos: %v", id, err)
 		}
 	}()
+}
+
+// PerformerFetching says what's being fetched about a performer now:
+// whether their profiles are being read and the sites asked about them
+// (after favouriting), and which sites' video lists are queued or running.
+func (p *Pipeline) PerformerFetching(ctx context.Context, id string) (bool, []string, error) {
+	_, reading := p.reading.Load(id)
+	if p.queue == nil {
+		return reading, []string{}, nil
+	}
+	active, err := p.queue.List(ctx, jobs.Query{
+		Statuses: []schema.JobStatus{jobs.StatusQueued, jobs.StatusRunning},
+		Kinds:    []schema.JobKind{jobs.KindScrape},
+		Limit:    activeJobsLimit,
+	})
+	if err != nil {
+		return reading, nil, err
+	}
+	listing := []string{}
+	for _, job := range active {
+		if job.Subject == nil || job.Subject.Id != id || !IsPerformerVideosJob(&job) {
+			continue
+		}
+		if !slices.Contains(listing, job.PluginName) {
+			listing = append(listing, job.PluginName)
+		}
+	}
+	return reading, listing, nil
 }
 
 // queuePerformerSource queues listing one profile's videos, when its plugin can list pages.

@@ -36,6 +36,8 @@ type Pipeline struct {
 	searches *cache.Client
 	// queue takes the slow work a page visit starts: listing a performer's videos.
 	queue *jobs.Queue
+	// reading holds the performers whose profiles CollectFavorite is reading.
+	reading sync.Map
 }
 
 // New returns a pipeline that keeps search answers in searches and queues

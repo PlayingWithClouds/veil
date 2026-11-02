@@ -642,6 +642,7 @@ type ComplexityRoot struct {
 		Attributes   func(childComplexity int) int
 		CreatedAt    func(childComplexity int) int
 		Details      func(childComplexity int) int
+		Fetching     func(childComplexity int) int
 		FieldSources func(childComplexity int) int
 		GalleryCount func(childComplexity int) int
 		Id           func(childComplexity int) int
@@ -672,6 +673,11 @@ type ComplexityRoot struct {
 		Piercings    func(childComplexity int) int
 		Tattoos      func(childComplexity int) int
 		WeightKg     func(childComplexity int) int
+	}
+
+	PerformerFetching struct {
+		Listing func(childComplexity int) int
+		Reading func(childComplexity int) int
 	}
 
 	Playable struct {
@@ -1434,6 +1440,7 @@ type PerformerResolver interface {
 	UserState(ctx context.Context, obj *schema.Performer) (*schema.UserState, error)
 	FieldSources(ctx context.Context, obj *schema.Performer) ([]*schema.FieldSource, error)
 	Revisions(ctx context.Context, obj *schema.Performer, limit *int, offset *int) ([]*schema.Revision, error)
+	Fetching(ctx context.Context, obj *schema.Performer) (*model.PerformerFetching, error)
 }
 type PluginResolver interface {
 	Contributions(ctx context.Context, obj *model.Plugin) ([]*model.PluginContribution, error)
@@ -4855,6 +4862,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Performer.Details(childComplexity), true
+	case "Performer.fetching":
+		if e.ComplexityRoot.Performer.Fetching == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Performer.Fetching(childComplexity), true
 	case "Performer.fieldSources":
 		if e.ComplexityRoot.Performer.FieldSources == nil {
 			break
@@ -5023,6 +5036,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PerformerAttributes.WeightKg(childComplexity), true
+
+	case "PerformerFetching.listing":
+		if e.ComplexityRoot.PerformerFetching.Listing == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PerformerFetching.Listing(childComplexity), true
+	case "PerformerFetching.reading":
+		if e.ComplexityRoot.PerformerFetching.Reading == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PerformerFetching.Reading(childComplexity), true
 
 	case "Playable.mimeType":
 		if e.ComplexityRoot.Playable.MimeType == nil {
@@ -8947,6 +8973,17 @@ type Performer {
   userState: UserState!
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
+  # What's being fetched about them right now.
+  fetching: PerformerFetching!
+}
+
+# What's being fetched about a performer right now.
+type PerformerFetching {
+  # Their profiles are being read and the sites asked about them (after
+  # they were made a favourite).
+  reading: Boolean!
+  # Plugins whose list of their videos is queued or running.
+  listing: [String!]!
 }
 
 type PerformerAttributes {
@@ -10840,6 +10877,8 @@ func (ec *executionContext) childFields_Performer(ctx context.Context, field gra
 		return ec.fieldContext_Performer_fieldSources(ctx, field)
 	case "revisions":
 		return ec.fieldContext_Performer_revisions(ctx, field)
+	case "fetching":
+		return ec.fieldContext_Performer_fetching(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Performer", field.Name)
 }
@@ -10878,6 +10917,16 @@ func (ec *executionContext) childFields_PerformerAttributes(ctx context.Context,
 		return ec.fieldContext_PerformerAttributes_careerEnd(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PerformerAttributes", field.Name)
+}
+
+func (ec *executionContext) childFields_PerformerFetching(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "reading":
+		return ec.fieldContext_PerformerFetching_reading(ctx, field)
+	case "listing":
+		return ec.fieldContext_PerformerFetching_listing(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PerformerFetching", field.Name)
 }
 
 func (ec *executionContext) childFields_Playable(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -29418,6 +29467,38 @@ func (ec *executionContext) fieldContext_Performer_revisions(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Performer_fetching(ctx context.Context, field graphql.CollectedField, obj *schema.Performer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Performer_fetching(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Performer().Fetching(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PerformerFetching) graphql.Marshaler {
+			return ec.marshalNPerformerFetching2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerFetching(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Performer_fetching(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Performer",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PerformerFetching(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PerformerAttributes_gender(ctx context.Context, field graphql.CollectedField, obj *schema.PerformerAttributes) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -29761,6 +29842,52 @@ func (ec *executionContext) _PerformerAttributes_careerEnd(ctx context.Context, 
 }
 func (ec *executionContext) fieldContext_PerformerAttributes_careerEnd(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PerformerAttributes", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _PerformerFetching_reading(ctx context.Context, field graphql.CollectedField, obj *model.PerformerFetching) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PerformerFetching_reading(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reading, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PerformerFetching_reading(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PerformerFetching", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _PerformerFetching_listing(ctx context.Context, field graphql.CollectedField, obj *model.PerformerFetching) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PerformerFetching_listing(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Listing, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PerformerFetching_listing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PerformerFetching", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Playable_url(ctx context.Context, field graphql.CollectedField, obj *model.Playable) (ret graphql.Marshaler) {
@@ -49986,6 +50113,42 @@ func (ec *executionContext) _Performer(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "fetching":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Performer_fetching(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -50050,6 +50213,50 @@ func (ec *executionContext) _PerformerAttributes(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._PerformerAttributes_careerStart(ctx, field, obj)
 		case "careerEnd":
 			out.Values[i] = ec._PerformerAttributes_careerEnd(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var performerFetchingImplementors = []string{"PerformerFetching"}
+
+func (ec *executionContext) _PerformerFetching(ctx context.Context, sel ast.SelectionSet, obj *model.PerformerFetching) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, performerFetchingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PerformerFetching")
+		case "reading":
+			out.Values[i] = ec._PerformerFetching_reading(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "listing":
+			out.Values[i] = ec._PerformerFetching_listing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -58506,6 +58713,20 @@ func (ec *executionContext) marshalNPerformerAttributes2githubᚗcomᚋplayingwi
 func (ec *executionContext) unmarshalNPerformerEdit2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerEdit(ctx context.Context, v any) (model.PerformerEdit, error) {
 	res, err := ec.unmarshalInputPerformerEdit(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPerformerFetching2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerFetching(ctx context.Context, sel ast.SelectionSet, v model.PerformerFetching) graphql.Marshaler {
+	return ec._PerformerFetching(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPerformerFetching2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerFetching(ctx context.Context, sel ast.SelectionSet, v *model.PerformerFetching) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PerformerFetching(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPlatform2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPlatform(ctx context.Context, v any) (schema.Platform, error) {

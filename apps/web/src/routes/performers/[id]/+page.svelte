@@ -34,6 +34,8 @@
 		fetchPerformer,
 		readPerformer,
 		fetchPerformerDuplicates,
+		fetchPerformerFetching,
+		type PerformerFetching,
 		unlockPerformerField,
 		type PerformerAttributes,
 		type PerformerDetail
@@ -82,6 +84,14 @@
 	let merging = $state(false);
 	let mergeWith = $state<MemberRow | null>(null);
 	let menuAnchor = $state<HTMLElement | null>(null);
+	let fetching = $state<PerformerFetching | null>(null);
+	// Bumped to reload the videos as more come in.
+	let mediaKey = $state(0);
+	// Counts watches started, so a watch for an earlier page or favourite stops.
+	let watchGeneration = 0;
+
+	// How often the page asks what's being fetched while something is.
+	const WATCH_INTERVAL_MS = 3000;
 
 	let id = $derived(page.params.id ?? '');
 	let facts = $derived(
@@ -122,6 +132,8 @@
 			if (updated && updated.id === id) {
 				performer = updated;
 				void loadDuplicates(performerId);
+				// Reading profiles queues listing their videos.
+				void watchFetching(performerId);
 			}
 		} finally {
 			reading = false;
@@ -148,6 +160,38 @@
 		const favorite = !performer.userState.favorite;
 		performer.userState.favorite = favorite;
 		await setFavorite('performer', performer.id, favorite);
+		if (favorite) void watchFetching(performer.id);
+	}
+
+	/**
+	 * Shows what's being fetched about the performer until it's done,
+	 * reloading their videos whenever more have come in.
+	 */
+	async function watchFetching(performerId: string) {
+		const generation = ++watchGeneration;
+		let lastCount = performer?.videoCount ?? 0;
+		for (;;) {
+			const status = await fetchPerformerFetching(performerId);
+			if (generation !== watchGeneration || performerId !== id) return;
+			fetching = status;
+			if (!status) return;
+			if (status.videoCount !== lastCount) {
+				lastCount = status.videoCount;
+				mediaKey++;
+			}
+			if (!status.reading && status.listing.length === 0) {
+				fetching = null;
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, WATCH_INTERVAL_MS));
+		}
+	}
+
+	/** "xVideos, EPorner and 2 more": the sites still listing videos. */
+	function listingSites(plugins: string[]): string {
+		const names = plugins.map((plugin) => siteDisplayName(plugin, $sites));
+		if (names.length <= 3) return names.join(', ');
+		return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
 	}
 
 	/** The ⋮ menu: not interested, block. */
@@ -282,6 +326,17 @@
 					</div>
 				</div>
 
+				{#if fetching}
+					<p class="text-base-content/60 flex items-center gap-2 text-sm" aria-live="polite">
+						<span class="loading loading-spinner loading-xs"></span>
+						{#if fetching.reading}
+							Reading their profiles and asking every site about them…
+						{:else}
+							Collecting videos from {listingSites(fetching.listing)} · {fetching.videoCount} so far
+						{/if}
+					</p>
+				{/if}
+
 				{#if performer.userState.blocked}
 					<div class="bg-base-200 flex items-center gap-3 rounded-lg px-3 py-2 text-sm">
 						<ProhibitIcon size={16} class="text-error" />
@@ -391,10 +446,12 @@
 			</section>
 		{/if}
 
-		<RecordMedia
-			filter={{ performerId: performer.id }}
-			allVideosHref={`/?${new URLSearchParams({ performer: performer.id })}`}
-		/>
+		{#key mediaKey}
+			<RecordMedia
+				filter={{ performerId: performer.id }}
+				allVideosHref={`/?${new URLSearchParams({ performer: performer.id })}`}
+			/>
+		{/key}
 
 		{#if editing}
 			<PerformerEditor

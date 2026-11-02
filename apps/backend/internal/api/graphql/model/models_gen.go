@@ -163,6 +163,11 @@ type PerformerEdit struct {
 	ImageURL   *string                     `json:"imageUrl,omitempty"`
 }
 
+type PerformerFetching struct {
+	Reading bool     `json:"reading"`
+	Listing []string `json:"listing"`
+}
+
 type Playable struct {
 	URL      string  `json:"url"`
 	MimeType string  `json:"mimeType"`

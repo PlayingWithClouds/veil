@@ -230,6 +230,15 @@ func (r *performerResolver) Revisions(ctx context.Context, obj *schema.Performer
 	return r.revisionsOf(ctx, schema.RecordKindPerformer, obj.Id, limit, offset)
 }
 
+// Fetching is the resolver for the fetching field.
+func (r *performerResolver) Fetching(ctx context.Context, obj *schema.Performer) (*model.PerformerFetching, error) {
+	reading, listing, err := r.pipeline.PerformerFetching(ctx, obj.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &model.PerformerFetching{Reading: reading, Listing: listing}, nil
+}
+
 // Videos is the resolver for the videos field.
 func (r *queryResolver) Videos(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Video, error) {
 	videos, err := r.library.Videos(ctx, mediaQuery(filter, limit, offset))
