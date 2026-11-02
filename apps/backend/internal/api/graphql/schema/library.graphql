@@ -236,6 +236,9 @@ type Video {
   status: MediaStatus!
   studio: Studio
   performers: [Performer!]!
+  # Performers who may be in it but aren't credited, and why (e.g. their
+  # name is in the title). Suggestions only.
+  suggestedPerformers: [PerformerSuggestion!]!
   tags: [Tag!]!
   durationSeconds: Float
   width: Int
@@ -319,6 +322,13 @@ type Performer {
   revisions(limit: Int, offset: Int): [Revision!]!
   # What's being fetched about them right now.
   fetching: PerformerFetching!
+}
+
+# A performer who may be in a video.
+type PerformerSuggestion {
+  performer: Performer!
+  # Why: "Named in the title", …
+  reason: String!
 }
 
 # A performer something is being fetched about right now.

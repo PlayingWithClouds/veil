@@ -689,6 +689,11 @@ type ComplexityRoot struct {
 		Reading func(childComplexity int) int
 	}
 
+	PerformerSuggestion struct {
+		Performer func(childComplexity int) int
+		Reason    func(childComplexity int) int
+	}
+
 	Playable struct {
 		MimeType func(childComplexity int) int
 		Quality  func(childComplexity int) int
@@ -1158,42 +1163,43 @@ type ComplexityRoot struct {
 	}
 
 	Video struct {
-		Categories      func(childComplexity int) int
-		Clips           func(childComplexity int) int
-		Comments        func(childComplexity int) int
-		Cover           func(childComplexity int) int
-		CreatedAt       func(childComplexity int) int
-		Date            func(childComplexity int) int
-		Details         func(childComplexity int) int
-		DurationSeconds func(childComplexity int) int
-		FieldSources    func(childComplexity int) int
-		Files           func(childComplexity int) int
-		Fingerprints    func(childComplexity int) int
-		Gallery         func(childComplexity int) int
-		Groups          func(childComplexity int) int
-		Height          func(childComplexity int) int
-		Id              func(childComplexity int) int
-		OCount          func(childComplexity int) int
-		Performers      func(childComplexity int) int
-		Preview         func(childComplexity int) int
-		PreviewFrames   func(childComplexity int) int
-		RecordedFrom    func(childComplexity int) int
-		Related         func(childComplexity int, limit *int) int
-		Revisions       func(childComplexity int, limit *int, offset *int) int
-		Scripts         func(childComplexity int) int
-		Segments        func(childComplexity int) int
-		Sources         func(childComplexity int) int
-		Status          func(childComplexity int) int
-		Streams         func(childComplexity int) int
-		Studio          func(childComplexity int) int
-		Subtitles       func(childComplexity int) int
-		Tags            func(childComplexity int) int
-		Title           func(childComplexity int) int
-		Trickplay       func(childComplexity int) int
-		UpdatedAt       func(childComplexity int) int
-		UserState       func(childComplexity int) int
-		Vr              func(childComplexity int) int
-		Width           func(childComplexity int) int
+		Categories          func(childComplexity int) int
+		Clips               func(childComplexity int) int
+		Comments            func(childComplexity int) int
+		Cover               func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		Date                func(childComplexity int) int
+		Details             func(childComplexity int) int
+		DurationSeconds     func(childComplexity int) int
+		FieldSources        func(childComplexity int) int
+		Files               func(childComplexity int) int
+		Fingerprints        func(childComplexity int) int
+		Gallery             func(childComplexity int) int
+		Groups              func(childComplexity int) int
+		Height              func(childComplexity int) int
+		Id                  func(childComplexity int) int
+		OCount              func(childComplexity int) int
+		Performers          func(childComplexity int) int
+		Preview             func(childComplexity int) int
+		PreviewFrames       func(childComplexity int) int
+		RecordedFrom        func(childComplexity int) int
+		Related             func(childComplexity int, limit *int) int
+		Revisions           func(childComplexity int, limit *int, offset *int) int
+		Scripts             func(childComplexity int) int
+		Segments            func(childComplexity int) int
+		Sources             func(childComplexity int) int
+		Status              func(childComplexity int) int
+		Streams             func(childComplexity int) int
+		Studio              func(childComplexity int) int
+		Subtitles           func(childComplexity int) int
+		SuggestedPerformers func(childComplexity int) int
+		Tags                func(childComplexity int) int
+		Title               func(childComplexity int) int
+		Trickplay           func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+		UserState           func(childComplexity int) int
+		Vr                  func(childComplexity int) int
+		Width               func(childComplexity int) int
 	}
 
 	VrFormat struct {
@@ -1624,6 +1630,7 @@ type UserStateResolver interface {
 type VideoResolver interface {
 	Studio(ctx context.Context, obj *schema.Video) (*schema.Studio, error)
 	Performers(ctx context.Context, obj *schema.Video) ([]*schema.Performer, error)
+	SuggestedPerformers(ctx context.Context, obj *schema.Video) ([]*model.PerformerSuggestion, error)
 	Tags(ctx context.Context, obj *schema.Video) ([]*schema.Tag, error)
 
 	Gallery(ctx context.Context, obj *schema.Video) (*schema.Gallery, error)
@@ -5112,6 +5119,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PerformerFetching.Reading(childComplexity), true
 
+	case "PerformerSuggestion.performer":
+		if e.ComplexityRoot.PerformerSuggestion.Performer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PerformerSuggestion.Performer(childComplexity), true
+	case "PerformerSuggestion.reason":
+		if e.ComplexityRoot.PerformerSuggestion.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PerformerSuggestion.Reason(childComplexity), true
+
 	case "Playable.mimeType":
 		if e.ComplexityRoot.Playable.MimeType == nil {
 			break
@@ -7788,6 +7808,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Video.Subtitles(childComplexity), true
+	case "Video.suggestedPerformers":
+		if e.ComplexityRoot.Video.SuggestedPerformers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Video.SuggestedPerformers(childComplexity), true
 	case "Video.tags":
 		if e.ComplexityRoot.Video.Tags == nil {
 			break
@@ -8980,6 +9006,9 @@ type Video {
   status: MediaStatus!
   studio: Studio
   performers: [Performer!]!
+  # Performers who may be in it but aren't credited, and why (e.g. their
+  # name is in the title). Suggestions only.
+  suggestedPerformers: [PerformerSuggestion!]!
   tags: [Tag!]!
   durationSeconds: Float
   width: Int
@@ -9063,6 +9092,13 @@ type Performer {
   revisions(limit: Int, offset: Int): [Revision!]!
   # What's being fetched about them right now.
   fetching: PerformerFetching!
+}
+
+# A performer who may be in a video.
+type PerformerSuggestion {
+  performer: Performer!
+  # Why: "Named in the title", …
+  reason: String!
 }
 
 # A performer something is being fetched about right now.
@@ -11038,6 +11074,16 @@ func (ec *executionContext) childFields_PerformerFetching(ctx context.Context, f
 	return nil, fmt.Errorf("no field named %q was found under type PerformerFetching", field.Name)
 }
 
+func (ec *executionContext) childFields_PerformerSuggestion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "performer":
+		return ec.fieldContext_PerformerSuggestion_performer(ctx, field)
+	case "reason":
+		return ec.fieldContext_PerformerSuggestion_reason(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PerformerSuggestion", field.Name)
+}
+
 func (ec *executionContext) childFields_Playable(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "url":
@@ -11796,6 +11842,8 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 		return ec.fieldContext_Video_studio(ctx, field)
 	case "performers":
 		return ec.fieldContext_Video_performers(ctx, field)
+	case "suggestedPerformers":
+		return ec.fieldContext_Video_suggestedPerformers(ctx, field)
 	case "tags":
 		return ec.fieldContext_Video_tags(ctx, field)
 	case "durationSeconds":
@@ -30234,6 +30282,61 @@ func (ec *executionContext) fieldContext_PerformerFetching_listing(_ context.Con
 	return graphql.NewScalarFieldContext("PerformerFetching", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _PerformerSuggestion_performer(ctx context.Context, field graphql.CollectedField, obj *model.PerformerSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PerformerSuggestion_performer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Performer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PerformerSuggestion_performer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PerformerSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PerformerSuggestion_reason(ctx context.Context, field graphql.CollectedField, obj *model.PerformerSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PerformerSuggestion_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PerformerSuggestion_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PerformerSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Playable_url(ctx context.Context, field graphql.CollectedField, obj *model.Playable) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40734,6 +40837,38 @@ func (ec *executionContext) fieldContext_Video_performers(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Video_suggestedPerformers(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Video_suggestedPerformers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Video().SuggestedPerformers(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PerformerSuggestion) graphql.Marshaler {
+			return ec.marshalNPerformerSuggestion2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerSuggestionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Video_suggestedPerformers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PerformerSuggestion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Video_tags(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50746,6 +50881,50 @@ func (ec *executionContext) _PerformerFetching(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var performerSuggestionImplementors = []string{"PerformerSuggestion"}
+
+func (ec *executionContext) _PerformerSuggestion(ctx context.Context, sel ast.SelectionSet, obj *model.PerformerSuggestion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, performerSuggestionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PerformerSuggestion")
+		case "performer":
+			out.Values[i] = ec._PerformerSuggestion_performer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._PerformerSuggestion_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var playableImplementors = []string{"Playable"}
 
 func (ec *executionContext) _Playable(ctx context.Context, sel ast.SelectionSet, obj *model.Playable) graphql.Marshaler {
@@ -56455,6 +56634,42 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "suggestedPerformers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_suggestedPerformers(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "tags":
 			field := field
 
@@ -59246,6 +59461,32 @@ func (ec *executionContext) marshalNPerformerFetching2ᚖgithubᚗcomᚋplayingw
 		return graphql.Null
 	}
 	return ec._PerformerFetching(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPerformerSuggestion2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerSuggestionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PerformerSuggestion) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPerformerSuggestion2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerSuggestion(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPerformerSuggestion2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPerformerSuggestion(ctx context.Context, sel ast.SelectionSet, v *model.PerformerSuggestion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PerformerSuggestion(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPlatform2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPlatform(ctx context.Context, v any) (schema.Platform, error) {

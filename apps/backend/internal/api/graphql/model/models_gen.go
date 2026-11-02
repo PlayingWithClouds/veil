@@ -174,6 +174,11 @@ type PerformerFetching struct {
 	Listing []string `json:"listing"`
 }
 
+type PerformerSuggestion struct {
+	Performer *schema.Performer `json:"performer"`
+	Reason    string            `json:"reason"`
+}
+
 type Playable struct {
 	URL      string  `json:"url"`
 	MimeType string  `json:"mimeType"`

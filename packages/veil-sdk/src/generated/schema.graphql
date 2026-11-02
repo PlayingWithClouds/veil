@@ -477,6 +477,7 @@ type Video {
   status: MediaStatus!
   studio: Studio
   performers: [Performer!]!
+  suggestedPerformers: [PerformerSuggestion!]!
   tags: [Tag!]!
   durationSeconds: Float
   width: Int
@@ -936,6 +937,11 @@ type Performer {
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
   fetching: PerformerFetching!
+}
+
+type PerformerSuggestion {
+  performer: Performer!
+  reason: String!
 }
 
 type Collecting {

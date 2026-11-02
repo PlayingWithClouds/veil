@@ -431,6 +431,7 @@ export interface Video {
     status: MediaStatus
     studio: (Studio | null)
     performers: Performer[]
+    suggestedPerformers: PerformerSuggestion[]
     tags: Tag[]
     durationSeconds: (Scalars['Float'] | null)
     width: (Scalars['Int'] | null)
@@ -796,6 +797,12 @@ export interface Performer {
     revisions: Revision[]
     fetching: PerformerFetching
     __typename: 'Performer'
+}
+
+export interface PerformerSuggestion {
+    performer: Performer
+    reason: Scalars['String']
+    __typename: 'PerformerSuggestion'
 }
 
 export interface Collecting {
@@ -1723,6 +1730,7 @@ export interface VideoGenqlSelection{
     status?: boolean | number
     studio?: StudioGenqlSelection
     performers?: PerformerGenqlSelection
+    suggestedPerformers?: PerformerSuggestionGenqlSelection
     tags?: TagGenqlSelection
     durationSeconds?: boolean | number
     width?: boolean | number
@@ -2125,6 +2133,13 @@ export interface PerformerGenqlSelection{
     fieldSources?: FieldSourceGenqlSelection
     revisions?: (RevisionGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     fetching?: PerformerFetchingGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface PerformerSuggestionGenqlSelection{
+    performer?: PerformerGenqlSelection
+    reason?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3069,6 +3084,14 @@ export interface SavedFilterGenqlSelection{
     export const isPerformer = (obj?: { __typename?: any } | null): obj is Performer => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPerformer"')
       return Performer_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const PerformerSuggestion_possibleTypes: string[] = ['PerformerSuggestion']
+    export const isPerformerSuggestion = (obj?: { __typename?: any } | null): obj is PerformerSuggestion => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isPerformerSuggestion"')
+      return PerformerSuggestion_possibleTypes.includes(obj.__typename)
     }
     
 

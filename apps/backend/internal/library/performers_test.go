@@ -148,6 +148,27 @@ func TestCreditPerformerFromTheirList(t *testing.T) {
 	}
 }
 
+// TestSuggestedFromTitle suggests a known performer the title names, not
+// one already credited or named by a single word.
+func TestSuggestedFromTitle(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	emily, _ := library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Emily Cutie", ExternalID: "e"})
+	ada, _ := library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Ada Lane", ExternalID: "a"})
+	library.upsertPerformer(ctx, "site", &plugins.Performer{Name: "Model", ExternalID: "m"})
+	video := &schema.Video{}
+	video.Title = "Tushy Model Emily Cutie's shoot with Ada Lane"
+	video.Performers = []string{ada}
+
+	suggestions, err := library.SuggestedPerformers(ctx, video)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(suggestions) != 1 || suggestions[0].Performer.Id != emily || suggestions[0].Reason != SuggestionNamedInTitle {
+		t.Errorf("suggestions = %+v, want only Emily Cutie", suggestions)
+	}
+}
+
 // TestPerformerAttributeValues lists a text attribute's values, most common
 // first, and refuses an attribute that isn't text.
 func TestPerformerAttributeValues(t *testing.T) {

@@ -25,6 +25,12 @@ type finderEntry struct {
 	words []string
 }
 
+// TextWords splits free text into words as Key spells them, a possessive 's
+// dropped, the way Find reads it.
+func TextWords(text string) []string {
+	return strings.Fields(Key(possessive.ReplaceAllString(text, "")))
+}
+
 // NewFinder returns a Finder that knows no names.
 func NewFinder() *Finder {
 	return &Finder{byFirstWord: map[string][]finderEntry{}}
@@ -45,7 +51,7 @@ func (f *Finder) Add(id, name string) {
 // wins, and matches never overlap ("Cassie Del Isla" is one performer, not
 // also "Del Isla"). A possessive 's after a name does not hide it.
 func (f *Finder) Find(text string) []string {
-	words := strings.Fields(Key(possessive.ReplaceAllString(text, "")))
+	words := TextWords(text)
 	found := []string{}
 	seen := map[string]bool{}
 	for position := 0; position < len(words); {

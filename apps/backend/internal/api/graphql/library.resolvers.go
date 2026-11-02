@@ -450,6 +450,19 @@ func (r *videoResolver) Performers(ctx context.Context, obj *schema.Video) ([]*s
 	return pointers(performers), err
 }
 
+// SuggestedPerformers is the resolver for the suggestedPerformers field.
+func (r *videoResolver) SuggestedPerformers(ctx context.Context, obj *schema.Video) ([]*model.PerformerSuggestion, error) {
+	suggestions, err := r.library.SuggestedPerformers(ctx, obj)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.PerformerSuggestion, len(suggestions))
+	for index := range suggestions {
+		result[index] = &model.PerformerSuggestion{Performer: &suggestions[index].Performer, Reason: suggestions[index].Reason}
+	}
+	return result, nil
+}
+
 // Tags is the resolver for the tags field.
 func (r *videoResolver) Tags(ctx context.Context, obj *schema.Video) ([]*schema.Tag, error) {
 	tags, err := r.library.TagsByID(ctx, obj.Tags)
