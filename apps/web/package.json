@@ -50,6 +50,7 @@
 		"dayjs": "^1.11.23",
 		"graphql-ws": "^6.0.8",
 		"hls.js": "^1.6.16",
+		"onnxruntime-web": "^1.31.1",
 		"phosphor-svelte": "^3.1.0"
 	}
 }
