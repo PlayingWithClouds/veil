@@ -25,8 +25,9 @@ func (r *mutationResolver) SetFavorite(ctx context.Context, subject schema.Recor
 	if err != nil || !favorite || subject.Kind != schema.RecordKindPerformer {
 		return state, err
 	}
-	// A favourite's videos are collected from every page of their profiles.
-	return state, r.pipeline.QueuePerformerVideos(ctx, subject.Id, "")
+	// A favourite gets everything: every profile read and found, every video listed.
+	r.pipeline.CollectFavorite(subject.Id)
+	return state, nil
 }
 
 // SetBlocked is the resolver for the setBlocked field.

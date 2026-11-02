@@ -49,6 +49,27 @@ func (p *Pipeline) QueuePerformerVideos(ctx context.Context, performerID, onlyPl
 	return nil
 }
 
+// CollectFavorite fetches everything about a performer just made a
+// favourite: it reads each of their profiles again, asks every site to
+// identify them, and lists every page of videos on each profile, the ones
+// identification finds too (a favourite's profiles are listed in full). It
+// runs in the background, since the sites take a while; failures are logged.
+func (p *Pipeline) CollectFavorite(id string) {
+	go func() {
+		ctx := context.Background()
+		if err := p.Refresh(ctx, schema.RecordKindPerformer, id); err != nil {
+			log.Printf("favourite %s: read profiles: %v", id, err)
+		}
+		if err := p.IdentifyPerformer(ctx, id, true); err != nil {
+			log.Printf("favourite %s: identify: %v", id, err)
+		}
+		// Profiles that failed to read above still get listed.
+		if err := p.QueuePerformerVideos(ctx, id, ""); err != nil {
+			log.Printf("favourite %s: queue videos: %v", id, err)
+		}
+	}()
+}
+
 // queuePerformerSource queues listing one profile's videos, when its plugin can list pages.
 func (p *Pipeline) queuePerformerSource(ctx context.Context, performerID string, source schema.Source, allPages bool) error {
 	if _, ok := p.pageLister(source.Plugin); !ok {
