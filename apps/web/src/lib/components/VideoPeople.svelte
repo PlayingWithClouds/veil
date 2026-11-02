@@ -21,7 +21,7 @@
 	import { showUndo } from '$lib/stores/undoToast';
 	import { cacheUrl } from '$lib/img';
 	import { performerUrl } from '$lib/routes';
-	import { faceTracking, type VideoFaceGuesses } from '$lib/faces';
+	import { faceTracking, type FaceTracking, type VideoFaceGuesses } from '$lib/faces';
 
 	/** A performer as a suggestion shows them. */
 	interface SuggestedPerformer {
@@ -45,6 +45,15 @@
 
 	let { video, faces = null, onchange }: Props = $props();
 
+	// What the face scan says it's doing, by phase.
+	const FACE_PHASES: Record<FaceTracking['phase'], string> = {
+		pictures: 'Learning the performers’ faces',
+		stills: 'Looking for faces in the stills',
+		waiting: 'Waiting for the video to pause',
+		frames: 'Looking for faces in the video',
+		saving: 'Saving the faces'
+	};
+
 	let adding = $state(false);
 	let busy = $state(false);
 	// Suggestions the user waved away on this visit.
@@ -63,7 +72,10 @@
 		const all: Suggestion[] = [...shown.suggestedPerformers];
 		for (const guess of found?.guesses ?? []) {
 			if (guess.credited || credited.has(guess.performer.id)) continue;
-			all.push({ performer: guess.performer, reason: `Face match ${Math.round(guess.similarity * 100)}%` });
+			all.push({
+				performer: guess.performer,
+				reason: `Face match ${Math.round(guess.similarity * 100)}%`
+			});
 		}
 		return all.filter(
 			(suggestion, index) =>
@@ -104,9 +116,16 @@
 </script>
 
 {#snippet portrait(member: SuggestedPerformer)}
-	<span class="bg-base-200 flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-xl">
+	<span
+		class="bg-base-200 flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-xl"
+	>
 		{#if member.image}
-			<img src={cacheUrl(member.image.uri)} alt="" loading="lazy" class="h-full w-full object-cover" />
+			<img
+				src={cacheUrl(member.image.uri)}
+				alt=""
+				loading="lazy"
+				class="h-full w-full object-cover"
+			/>
 		{:else}
 			<UserIcon size={28} class="opacity-20" />
 		{/if}
@@ -145,7 +164,12 @@
 				</a>
 				<span class="text-base-content/50 -mt-1 text-xs">Suggested · {suggestion.reason}</span>
 				<span class="flex gap-1">
-					<button type="button" class="btn btn-xs flex-1" disabled={busy} onclick={() => add(suggestion.performer)}>
+					<button
+						type="button"
+						class="btn btn-xs flex-1"
+						disabled={busy}
+						onclick={() => add(suggestion.performer)}
+					>
 						Add
 					</button>
 					<button
@@ -175,7 +199,10 @@
 			title="Add a performer"
 			placeholder="Find a performer by name…"
 			search={(text) => fetchPerformers(text, 24)}
-			suggested={suggestions.map((suggestion) => ({ record: suggestion.performer, reason: suggestion.reason }))}
+			suggested={suggestions.map((suggestion) => ({
+				record: suggestion.performer,
+				reason: suggestion.reason
+			}))}
 			taken={video.performers.map((performer) => performer.id)}
 			onpick={add}
 			onclose={() => (adding = false)}
@@ -183,8 +210,12 @@
 	{/if}
 	{#if $faceTracking && $faceTracking.subject.kind === 'video' && $faceTracking.subject.id === video.id}
 		<span class="text-base-content/50 flex items-center gap-2 text-xs">
-			<span class="loading loading-spinner loading-xs"></span>
-			Looking for faces… {Math.round($faceTracking.progress * 100)}%
+			{#if $faceTracking.phase === 'waiting'}
+				Looking through the video for faces once it's paused
+			{:else}
+				<span class="loading loading-spinner loading-xs"></span>
+				{FACE_PHASES[$faceTracking.phase]}… {Math.round($faceTracking.progress * 100)}%
+			{/if}
 		</span>
 	{/if}
 </section>

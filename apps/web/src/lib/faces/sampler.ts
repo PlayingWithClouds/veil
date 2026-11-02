@@ -31,7 +31,9 @@ export class VideoSampler {
 		element.muted = true;
 		element.playsInline = true;
 		element.crossOrigin = 'anonymous';
-		element.preload = 'auto';
+		// Only what each seek needs: reading ahead would download stretches
+		// between the sampled frames.
+		element.preload = 'metadata';
 		const sampler = new VideoSampler(element);
 		try {
 			await sampler.attach(url, mimeType);
@@ -62,7 +64,8 @@ export class VideoSampler {
 			return;
 		}
 		const { default: HlsClass } = await import('hls.js');
-		const hls = new HlsClass({ maxBufferLength: 4, maxMaxBufferLength: 8, autoStartLoad: true });
+		// One segment around each seek is all a frame needs.
+		const hls = new HlsClass({ maxBufferLength: 1, maxMaxBufferLength: 2, autoStartLoad: true });
 		hls.on(HlsClass.Events.MANIFEST_PARSED, () => {
 			hls.currentLevel = samplingHeightIndex(hls.levels.map((level) => level.height));
 		});

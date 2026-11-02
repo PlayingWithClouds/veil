@@ -1,9 +1,12 @@
 /**
  * Background face tracking. Opening a video scans it once per face model:
- * the credited performers' unscanned pictures first, then 25 evenly spaced
- * frames for faces. The frames also make the video's perceptual hash and,
- * when it has none, its trickplay sheet. Work runs in idle time, one record
- * at a time (a newer request cancels the older), models in a worker.
+ * the credited performers' unscanned pictures first, then the video's
+ * stills (cover and the sites' preview frames, plain image fetches). Only
+ * when those show too few faces does it seek through 25 evenly spaced
+ * frames of the stream, and only while nothing on the page plays. Those
+ * frames also make the video's perceptual hash and, when it has none, its
+ * trickplay sheet. One record at a time (a newer request cancels the
+ * older), models in a worker.
  */
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
@@ -32,13 +35,22 @@ const START_DELAY_MS = 4000;
 /** At most this many pictures of one performer are scanned. */
 const MAX_PICTURES = 4;
 
+/** Stills showing a face that make seeking through the stream unnecessary. */
+const ENOUGH_STILLS_WITH_FACES = 3;
+
+/** How often seeking checks whether the page's playback has stopped. */
+const PLAYBACK_POLL_MS = 2000;
+
 /** How a tracking request ended. */
 export type TrackOutcome = 'scanned' | 'skipped' | 'cancelled' | 'failed';
 
-/** What tracking is doing now, for a quiet progress hint. */
+/**
+ * What tracking is doing now, for a quiet progress hint. `waiting` means the
+ * stream's frames wait for playback to pause.
+ */
 export interface FaceTracking {
 	subject: { kind: 'video' | 'performer'; id: string };
-	phase: 'pictures' | 'frames' | 'saving';
+	phase: 'pictures' | 'stills' | 'waiting' | 'frames' | 'saving';
 	// 0..1 through the phase.
 	progress: number;
 }
@@ -107,7 +119,10 @@ async function settle(job: Promise<TrackOutcome>): Promise<TrackOutcome> {
 	}
 }
 
-/** Scans a video's credited performers' pictures, then its frames unless done before. */
+/**
+ * Scans a video's credited performers' pictures, then (unless done before)
+ * its stills, and its stream's frames when the stills show too few faces.
+ */
 async function scanVideo(videoId: string, signal: AbortSignal): Promise<TrackOutcome> {
 	await delay(START_DELAY_MS, signal);
 	const video = await api.fetchScanVideo(videoId);
@@ -119,13 +134,24 @@ async function scanVideo(videoId: string, signal: AbortSignal): Promise<TrackOut
 		await api.learnFaces(videoId, FACE_MODEL);
 		return 'skipped';
 	}
+	const stills = await scanStills(video, signal);
+	if (stills.withFaces >= ENOUGH_STILLS_WITH_FACES) {
+		await api.recordFaceScan({
+			kind: 'video',
+			id: video.id,
+			model: FACE_MODEL,
+			frames: stills.read,
+			faces: stills.faces
+		});
+		return 'scanned';
+	}
 	const stream = pickStream(video.streams);
 	if (!stream) return 'failed';
 	const playable = await play(stream.url);
 	if (!playable) return 'failed';
 	const sampler = await VideoSampler.open(playable.url, playable.mimeType, signal);
 	try {
-		await scanFrames(video, sampler, signal);
+		await scanFrames(video, sampler, stills, signal);
 	} finally {
 		sampler.close();
 	}
@@ -135,8 +161,68 @@ async function scanVideo(videoId: string, signal: AbortSignal): Promise<TrackOut
 /** A video as scanning reads it. */
 type ScanVideo = NonNullable<Awaited<ReturnType<typeof api.fetchScanVideo>>>;
 
-/** Samples the frames, finds their faces, and records the scan, hash and sheet. */
-async function scanFrames(video: ScanVideo, sampler: VideoSampler, signal: AbortSignal) {
+/** What the stills gave: how many could be read, how many show a face, their faces. */
+interface StillsScan {
+	read: number;
+	withFaces: number;
+	faces: ScannedFace[];
+}
+
+/** A still to scan and roughly when in the video it is (null: unknown). */
+interface Still {
+	uri: string;
+	atSeconds: number | null;
+}
+
+/**
+ * Scans the video's cover and preview frames, all fetched at once. Preview
+ * frames get their rough time (sites space them evenly), so faces of one
+ * still are never taken for one person.
+ */
+async function scanStills(video: ScanVideo, signal: AbortSignal): Promise<StillsScan> {
+	const stills = stillsOf(video);
+	const loads = stills.map((still) => loadPicture(still.uri, signal));
+	const scan: StillsScan = { read: 0, withFaces: 0, faces: [] };
+	for (const [index, still] of stills.entries()) {
+		faceTracking.set({
+			subject: { kind: 'video', id: video.id },
+			phase: 'stills',
+			progress: index / stills.length
+		});
+		const frame = await loads[index];
+		if (!frame) continue;
+		scan.read++;
+		const faces = await facesOf(frame, still.atSeconds);
+		if (faces.length > 0) scan.withFaces++;
+		scan.faces.push(...faces);
+	}
+	return scan;
+}
+
+/** The video's cover, then its preview frames placed evenly over its length. */
+function stillsOf(video: ScanVideo): Still[] {
+	const stills: Still[] = [];
+	if (video.cover) stills.push({ uri: video.cover.uri, atSeconds: null });
+	const previews = video.previewFrames ?? [];
+	const duration = video.durationSeconds ?? 0;
+	for (const [index, preview] of previews.entries()) {
+		let atSeconds: number | null = null;
+		if (duration > 0) atSeconds = Math.round((duration * (index + 1)) / (previews.length + 1));
+		stills.push({ uri: preview.uri, atSeconds });
+	}
+	return stills;
+}
+
+/**
+ * Samples the stream's frames while nothing plays, finds their faces, and
+ * records them with the stills' as one scan, plus the hash and sheet.
+ */
+async function scanFrames(
+	video: ScanVideo,
+	sampler: VideoSampler,
+	stills: StillsScan,
+	signal: AbortSignal
+) {
 	let duration = sampler.duration;
 	if (duration <= 0) duration = video.durationSeconds ?? 0;
 	if (duration <= 0) throw new Error('The video has no length to sample');
@@ -144,9 +230,10 @@ async function scanFrames(video: ScanVideo, sampler: VideoSampler, signal: Abort
 	const sheet = new TrickplayCanvas(
 		sheetLayout(times.length, sampler.size.width, sampler.size.height)
 	);
-	const faces: ScannedFace[] = [];
+	const faces: ScannedFace[] = [...stills.faces];
 	let frames = 0;
 	for (const [index, seconds] of times.entries()) {
+		await quietPlayback(video.id, index / times.length, signal);
 		await idle(signal);
 		const frame = await sampleFrame(sampler, seconds, signal, (source) =>
 			sheet.draw(index, source)
@@ -164,7 +251,32 @@ async function scanFrames(video: ScanVideo, sampler: VideoSampler, signal: Abort
 		throw new Error(`Only ${frames} of ${times.length} frames could be read`);
 	faceTracking.set({ subject: { kind: 'video', id: video.id }, phase: 'saving', progress: 0 });
 	if (frames === times.length) await saveSheet(video, sheet, duration, times.length);
-	await api.recordFaceScan({ kind: 'video', id: video.id, model: FACE_MODEL, frames, faces });
+	await api.recordFaceScan({
+		kind: 'video',
+		id: video.id,
+		model: FACE_MODEL,
+		frames: frames + stills.read,
+		faces
+	});
+}
+
+/**
+ * Waits until no video on the page plays (paused or ended), so seeking
+ * never takes bandwidth from what's being watched. The sampler's own
+ * element isn't in the page.
+ */
+async function quietPlayback(videoId: string, progress: number, signal: AbortSignal) {
+	while (isPlaying()) {
+		faceTracking.set({ subject: { kind: 'video', id: videoId }, phase: 'waiting', progress });
+		await delay(PLAYBACK_POLL_MS, signal);
+	}
+}
+
+/** Whether any video in the page is playing. */
+function isPlaying(): boolean {
+	return [...document.querySelectorAll('video')].some(
+		(element) => !element.paused && !element.ended
+	);
 }
 
 /**

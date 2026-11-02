@@ -7,10 +7,15 @@ import type { FieldsSelection, VideoFaces } from '@playingwithclouds/veil-sdk/ge
 import { gqlClient } from '$lib/veil';
 import type { ScannedFace } from './plan';
 
-/** What scanning a video needs: its length, credits, streams, and what it has already. */
+/**
+ * What scanning a video needs: its length, stills, credits, streams, and
+ * what it has already.
+ */
 const SCAN_VIDEO = {
 	id: true,
 	durationSeconds: true,
+	cover: { uri: true },
+	previewFrames: { uri: true },
 	performers: { id: true },
 	trickplay: { intervalSeconds: true },
 	streams: { url: true, mimeType: true, quality: true },
