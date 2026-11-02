@@ -119,6 +119,11 @@
 		}
 	}
 
+	/** Closes on a click beside the box (the dialog itself fills the screen). */
+	function closeOnBackdrop(event: MouseEvent) {
+		if (event.target === event.currentTarget) onclose();
+	}
+
 	/** Focuses the search field once it's in the page. */
 	function focus(input: HTMLInputElement) {
 		input.focus();
@@ -131,8 +136,6 @@
 		type="button"
 		class="hover:bg-base-200 flex flex-col gap-1.5 rounded-xl p-1.5 text-left disabled:opacity-50"
 		class:bg-base-200={index === highlighted}
-		class:ring-2={index === highlighted}
-		class:ring-primary={index === highlighted}
 		disabled={added}
 		onmouseenter={() => (highlighted = index)}
 		onclick={() => pick(record)}
@@ -173,7 +176,7 @@
 	</button>
 {/snippet}
 
-<dialog use:showModal class="modal" {onclose} aria-label={title}>
+<dialog use:showModal class="modal" {onclose} onclick={closeOnBackdrop} aria-label={title}>
 	<div class="modal-box flex max-h-[85vh] !max-w-3xl flex-col gap-4">
 		<h2 class="text-lg font-semibold">{title}</h2>
 		<label class="input flex w-full items-center gap-2">
@@ -213,5 +216,4 @@
 			<button type="button" class="btn btn-ghost" onclick={onclose}>Cancel</button>
 		</div>
 	</div>
-	<form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
 </dialog>

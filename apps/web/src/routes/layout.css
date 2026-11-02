@@ -1116,8 +1116,23 @@
 	.input::placeholder {
 		color: var(--text-faint);
 	}
-	.input:focus {
+	.input:focus,
+	.input:focus-within {
 		border-color: var(--border-strong);
+	}
+	/* Text fields count as focus-visible on every click; their border shows
+	 * focus, so they skip the ring. */
+	input:not([type='checkbox'], [type='radio'], [type='range']):focus-visible,
+	textarea:focus-visible,
+	select:focus-visible {
+		box-shadow: none;
+	}
+	/* A field inside an .input wrapper (with an icon) has no box of its own. */
+	.input input {
+		height: 100%;
+		background: transparent;
+		border: none;
+		outline: none;
 	}
 	.input-bordered {
 		border-color: var(--border);
