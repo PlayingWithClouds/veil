@@ -44,6 +44,23 @@ func (s *Service) MarkAllRead(ctx context.Context) error {
 	return err
 }
 
+// Clear takes the notifications with ids out of the inbox.
+func (s *Service) Clear(ctx context.Context, ids []string) error {
+	_, err := s.database.Exec(ctx,
+		`UPDATE "Notification" SET "deletedAt" = $now, "updatedAt" = $now
+		 WHERE "deletedAt" IS NULL AND "id" IN (SELECT value FROM json_each($ids))`,
+		db.Vars{"ids": ids, "now": db.Now()})
+	return err
+}
+
+// ClearAll empties the inbox.
+func (s *Service) ClearAll(ctx context.Context) error {
+	_, err := s.database.Exec(ctx,
+		`UPDATE "Notification" SET "deletedAt" = $now, "updatedAt" = $now WHERE "deletedAt" IS NULL`,
+		db.Vars{"now": db.Now()})
+	return err
+}
+
 // UnreadCount counts the unread notifications.
 func (s *Service) UnreadCount(ctx context.Context) (int, error) {
 	return s.database.Int(ctx, `SELECT COUNT(*) FROM "Notification" WHERE "read" = 0 AND "deletedAt" IS NULL`, nil)

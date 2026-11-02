@@ -224,6 +224,12 @@ type ComplexityRoot struct {
 		Video        func(childComplexity int) int
 	}
 
+	Collecting struct {
+		Listing   func(childComplexity int) int
+		Performer func(childComplexity int) int
+		Reading   func(childComplexity int) int
+	}
+
 	Collection struct {
 		Cover     func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
@@ -515,9 +521,11 @@ type ComplexityRoot struct {
 		Browse                    func(childComplexity int, plugin string, kind model.ListKind, query *string, limit *int, offset *int) int
 		CancelJob                 func(childComplexity int, id string) int
 		CheckAccount              func(childComplexity int, id string) int
+		ClearAllNotifications     func(childComplexity int) int
 		ClearCollection           func(childComplexity int, collectionID string) int
 		ClearEvents               func(childComplexity int, kinds []schema.EventKind) int
 		ClearFinishedJobs         func(childComplexity int) int
+		ClearNotifications        func(childComplexity int, ids []string) int
 		CreateAPIToken            func(childComplexity int, name string, scopes []string, expiresAt *string) int
 		CreateAutomation          func(childComplexity int, input model.AutomationInput) int
 		CreateCategory            func(childComplexity int, input model.CategoryInput) int
@@ -603,6 +611,7 @@ type ComplexityRoot struct {
 		SubmitPluginView          func(childComplexity int, plugin string, view string, action string, values interface{}, input interface{}) int
 		TrashFile                 func(childComplexity int, id string) int
 		TrashRecord               func(childComplexity int, subject schema.RecordRef) int
+		UnassignPerformer         func(childComplexity int, videoID string, performerID string) int
 		UndoAutomationRun         func(childComplexity int, id string) int
 		Unfollow                  func(childComplexity int, id string) int
 		UninstallPlugin           func(childComplexity int, name string) int
@@ -817,6 +826,7 @@ type ComplexityRoot struct {
 		Category                 func(childComplexity int, id *string, slug *string) int
 		Clip                     func(childComplexity int, id string) int
 		Clips                    func(childComplexity int, videoID *string, limit *int, offset *int) int
+		Collecting               func(childComplexity int) int
 		Collection               func(childComplexity int, id string) int
 		Collections              func(childComplexity int) int
 		CollectionsWith          func(childComplexity int, subject schema.RecordRef) int
@@ -1320,6 +1330,8 @@ type MutationResolver interface {
 	RunFollow(ctx context.Context, id string) (*jobs.Job, error)
 	MarkNotificationsRead(ctx context.Context, ids []string) (bool, error)
 	MarkAllNotificationsRead(ctx context.Context) (bool, error)
+	ClearNotifications(ctx context.Context, ids []string) (bool, error)
+	ClearAllNotifications(ctx context.Context) (bool, error)
 	CreateNotificationChannel(ctx context.Context, kind schema.ChannelKind, name string, config interface{}, enabled *bool) (*schema.NotificationChannel, error)
 	UpdateNotificationChannel(ctx context.Context, id string, name *string, config interface{}, enabled *bool) (*schema.NotificationChannel, error)
 	DeleteNotificationChannel(ctx context.Context, id string) (bool, error)
@@ -1368,6 +1380,7 @@ type MutationResolver interface {
 	FetchVideo(ctx context.Context, id string) (*schema.Video, error)
 	FetchGallery(ctx context.Context, id string) (*schema.Gallery, error)
 	FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error)
+	UnassignPerformer(ctx context.Context, videoID string, performerID string) (*schema.Performer, error)
 	Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error)
 	Search(ctx context.Context, kind model.ListKind, query string, limit *int) (*model.Listed, error)
 	EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error)
@@ -1508,6 +1521,7 @@ type QueryResolver interface {
 	Performers(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Performer, error)
 	Performer(ctx context.Context, id string) (*schema.Performer, error)
 	PerformerDuplicates(ctx context.Context, id string) ([]*schema.Performer, error)
+	Collecting(ctx context.Context) ([]*model.Collecting, error)
 	PerformerAttributeValues(ctx context.Context, attribute string, limit *int) ([]string, error)
 	Studios(ctx context.Context, text *string, limit *int, offset *int) ([]*schema.Studio, error)
 	Studio(ctx context.Context, id string) (*schema.Studio, error)
@@ -2304,6 +2318,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Clip.Video(childComplexity), true
+
+	case "Collecting.listing":
+		if e.ComplexityRoot.Collecting.Listing == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Collecting.Listing(childComplexity), true
+	case "Collecting.performer":
+		if e.ComplexityRoot.Collecting.Performer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Collecting.Performer(childComplexity), true
+	case "Collecting.reading":
+		if e.ComplexityRoot.Collecting.Reading == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Collecting.Reading(childComplexity), true
 
 	case "Collection.cover":
 		if e.ComplexityRoot.Collection.Cover == nil {
@@ -3671,6 +3704,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CheckAccount(childComplexity, args["id"].(string)), true
+	case "Mutation.clearAllNotifications":
+		if e.ComplexityRoot.Mutation.ClearAllNotifications == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Mutation.ClearAllNotifications(childComplexity), true
 	case "Mutation.clearCollection":
 		if e.ComplexityRoot.Mutation.ClearCollection == nil {
 			break
@@ -3699,6 +3738,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ClearFinishedJobs(childComplexity), true
+	case "Mutation.clearNotifications":
+		if e.ComplexityRoot.Mutation.ClearNotifications == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_clearNotifications_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ClearNotifications(childComplexity, args["ids"].([]string)), true
 	case "Mutation.createApiToken":
 		if e.ComplexityRoot.Mutation.CreateAPIToken == nil {
 			break
@@ -4624,6 +4674,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TrashRecord(childComplexity, args["subject"].(schema.RecordRef)), true
+	case "Mutation.unassignPerformer":
+		if e.ComplexityRoot.Mutation.UnassignPerformer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unassignPerformer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UnassignPerformer(childComplexity, args["videoId"].(string), args["performerId"].(string)), true
 	case "Mutation.undoAutomationRun":
 		if e.ComplexityRoot.Mutation.UndoAutomationRun == nil {
 			break
@@ -5742,6 +5803,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Clips(childComplexity, args["videoId"].(*string), args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.collecting":
+		if e.ComplexityRoot.Query.Collecting == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Collecting(childComplexity), true
 	case "Query.collection":
 		if e.ComplexityRoot.Query.Collection == nil {
 			break
@@ -7974,6 +8041,9 @@ extend type Mutation {
   runFollow(id: ID!): Job!
   markNotificationsRead(ids: [ID!]!): Boolean!
   markAllNotificationsRead: Boolean!
+  # Takes notifications out of the inbox; they stay until cleared.
+  clearNotifications(ids: [ID!]!): Boolean!
+  clearAllNotifications: Boolean!
   # config: ntfy {server?, topic, token?, detail?}, webhook {url, headers?,
   # detail?}. Without detail: true, outside channels get neutral wording.
   createNotificationChannel(kind: ChannelKind!, name: String!, config: JSON, enabled: Boolean): NotificationChannel!
@@ -8685,6 +8755,8 @@ extend type Query {
   performer(id: ID!): Performer
   # Performers that are probably the same person: a name or alias in common.
   performerDuplicates(id: ID!): [Performer!]!
+  # Every performer something is being fetched about right now.
+  collecting: [Collecting!]!
   # The values a text attribute of PerformerAttributes ("hairColor") has
   # across the library's performers, most common first (default 50).
   performerAttributeValues(attribute: String!, limit: Int): [String!]!
@@ -8705,6 +8777,12 @@ extend type Mutation {
   # performers for its profile of them (each site at most weekly). refresh
   # reads every page and asks every site again.
   fetchPerformer(id: ID!, refresh: Boolean): Performer
+  # Takes a performer off a video they aren't in (locked, so the sites can't
+  # put them back). When one of their site profiles credited them, that
+  # profile is someone else's of the same name: it moves to a new performer,
+  # returned, with the videos only it credited, and what it filled in is
+  # read again from their other profiles. Null when no profile moved.
+  unassignPerformer(videoId: ID!, performerId: ID!): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results, sites
@@ -8975,6 +9053,15 @@ type Performer {
   revisions(limit: Int, offset: Int): [Revision!]!
   # What's being fetched about them right now.
   fetching: PerformerFetching!
+}
+
+# A performer something is being fetched about right now.
+type Collecting {
+  performer: Performer!
+  # Their profiles are being read and the sites asked about them.
+  reading: Boolean!
+  # Plugins whose list of their videos is queued or running.
+  listing: [String!]!
 }
 
 # What's being fetched about a performer right now.
@@ -10249,6 +10336,18 @@ func (ec *executionContext) childFields_Clip(ctx context.Context, field graphql.
 		return ec.fieldContext_Clip_file(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Clip", field.Name)
+}
+
+func (ec *executionContext) childFields_Collecting(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "performer":
+		return ec.fieldContext_Collecting_performer(ctx, field)
+	case "reading":
+		return ec.fieldContext_Collecting_reading(ctx, field)
+	case "listing":
+		return ec.fieldContext_Collecting_listing(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Collecting", field.Name)
 }
 
 func (ec *executionContext) childFields_Collection(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -12349,6 +12448,20 @@ func (ec *executionContext) field_Mutation_clearEvents_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_clearNotifications_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["ids"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createApiToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14036,6 +14149,28 @@ func (ec *executionContext) field_Mutation_trashRecord_args(ctx context.Context,
 		return nil, err
 	}
 	args["subject"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unassignPerformer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "videoId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["videoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "performerId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["performerId"] = arg1
 	return args, nil
 }
 
@@ -18818,6 +18953,84 @@ func (ec *executionContext) fieldContext_Clip_file(_ context.Context, field grap
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Collecting_performer(ctx context.Context, field graphql.CollectedField, obj *model.Collecting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Collecting_performer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Performer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Collecting_performer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Collecting",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Collecting_reading(ctx context.Context, field graphql.CollectedField, obj *model.Collecting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Collecting_reading(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reading, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Collecting_reading(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Collecting", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Collecting_listing(ctx context.Context, field graphql.CollectedField, obj *model.Collecting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Collecting_listing(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Listing, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Collecting_listing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Collecting", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Collection_id(ctx context.Context, field graphql.CollectedField, obj *schema.Collection) (ret graphql.Marshaler) {
@@ -24094,6 +24307,73 @@ func (ec *executionContext) fieldContext_Mutation_markAllNotificationsRead(_ con
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Mutation_clearNotifications(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_clearNotifications(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ClearNotifications(ctx, fc.Args["ids"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_clearNotifications(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_clearNotifications_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_clearAllNotifications(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_clearAllNotifications(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Mutation().ClearAllNotifications(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_clearAllNotifications(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Mutation_createNotificationChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26218,6 +26498,50 @@ func (ec *executionContext) fieldContext_Mutation_fetchPerformer(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_fetchPerformer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unassignPerformer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_unassignPerformer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UnassignPerformer(ctx, fc.Args["videoId"].(string), fc.Args["performerId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {
+			return ec.marshalOPerformer2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformer(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_unassignPerformer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unassignPerformer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -33876,6 +34200,38 @@ func (ec *executionContext) fieldContext_Query_performerDuplicates(ctx context.C
 	if fc.Args, err = ec.field_Query_performerDuplicates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_collecting(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_collecting(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Collecting(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Collecting) graphql.Marshaler {
+			return ec.marshalNCollecting2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCollectingᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_collecting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Collecting(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -46046,6 +46402,55 @@ func (ec *executionContext) _Clip(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var collectingImplementors = []string{"Collecting"}
+
+func (ec *executionContext) _Collecting(ctx context.Context, sel ast.SelectionSet, obj *model.Collecting) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, collectingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Collecting")
+		case "performer":
+			out.Values[i] = ec._Collecting_performer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reading":
+			out.Values[i] = ec._Collecting_reading(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "listing":
+			out.Values[i] = ec._Collecting_listing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var collectionImplementors = []string{"Collection", "Record"}
 
 func (ec *executionContext) _Collection(ctx context.Context, sel ast.SelectionSet, obj *schema.Collection) graphql.Marshaler {
@@ -48919,6 +49324,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "clearNotifications":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearNotifications(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clearAllNotifications":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearAllNotifications(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createNotificationChannel":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createNotificationChannel(ctx, field)
@@ -49239,6 +49658,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "fetchPerformer":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_fetchPerformer(ctx, field)
+			})
+		case "unassignPerformer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unassignPerformer(ctx, field)
 			})
 		case "browse":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -52352,6 +52775,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_performerDuplicates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "collecting":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_collecting(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -57461,6 +57906,32 @@ func (ec *executionContext) marshalNClip2ᚖgithubᚗcomᚋplayingwithcloudsᚋv
 func (ec *executionContext) unmarshalNClipInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐClipInput(ctx context.Context, v any) (model.ClipInput, error) {
 	res, err := ec.unmarshalInputClipInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCollecting2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCollectingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Collecting) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCollecting2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCollecting(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCollecting2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCollecting(ctx context.Context, sel ast.SelectionSet, v *model.Collecting) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Collecting(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCollection2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCollection(ctx context.Context, sel ast.SelectionSet, v schema.Collection) graphql.Marshaler {

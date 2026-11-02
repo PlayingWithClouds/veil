@@ -11,20 +11,20 @@ import (
 )
 
 // CreditPerformer adds a performer to a video's credits as the plugin whose
-// list of the performer's videos showed it, from that list's source. A
-// credit already there stays; credits the user set or another site owns
-// aren't touched (provenance).
-func (l *Library) CreditPerformer(ctx context.Context, videoID, performerID, plugin, sourceID string) error {
+// list of the performer's videos showed it, from that list's source, and
+// reports whether it did. A credit already there stays; credits the user set
+// or another site owns aren't touched (provenance).
+func (l *Library) CreditPerformer(ctx context.Context, videoID, performerID, plugin, sourceID string) (bool, error) {
 	video, err := l.Video(ctx, videoID)
 	if err != nil || video == nil {
-		return err
+		return false, err
 	}
 	if slices.Contains(video.Performers, performerID) {
-		return nil
+		return false, nil
 	}
 	performers := append(slices.Clone(video.Performers), performerID)
-	_, err = l.recorder.Update(ctx, schema.RecordKindVideo, videoID, db.Vars{"performers": performers}, provenance.Plugin(plugin, sourceID))
-	return err
+	changed, err := l.recorder.Update(ctx, schema.RecordKindVideo, videoID, db.Vars{"performers": performers}, provenance.Plugin(plugin, sourceID))
+	return len(changed) > 0, err
 }
 
 // textAttributes are the performer attributes held as text, the ones

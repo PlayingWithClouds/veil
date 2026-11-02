@@ -18,6 +18,8 @@ extend type Query {
   performer(id: ID!): Performer
   # Performers that are probably the same person: a name or alias in common.
   performerDuplicates(id: ID!): [Performer!]!
+  # Every performer something is being fetched about right now.
+  collecting: [Collecting!]!
   # The values a text attribute of PerformerAttributes ("hairColor") has
   # across the library's performers, most common first (default 50).
   performerAttributeValues(attribute: String!, limit: Int): [String!]!
@@ -38,6 +40,12 @@ extend type Mutation {
   # performers for its profile of them (each site at most weekly). refresh
   # reads every page and asks every site again.
   fetchPerformer(id: ID!, refresh: Boolean): Performer
+  # Takes a performer off a video they aren't in (locked, so the sites can't
+  # put them back). When one of their site profiles credited them, that
+  # profile is someone else's of the same name: it moves to a new performer,
+  # returned, with the videos only it credited, and what it filled in is
+  # read again from their other profiles. Null when no profile moved.
+  unassignPerformer(videoId: ID!, performerId: ID!): Performer
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   # Searches every plugin that lists this kind and stores the results, sites
@@ -308,6 +316,15 @@ type Performer {
   revisions(limit: Int, offset: Int): [Revision!]!
   # What's being fetched about them right now.
   fetching: PerformerFetching!
+}
+
+# A performer something is being fetched about right now.
+type Collecting {
+  performer: Performer!
+  # Their profiles are being read and the sites asked about them.
+  reading: Boolean!
+  # Plugins whose list of their videos is queued or running.
+  listing: [String!]!
 }
 
 # What's being fetched about a performer right now.

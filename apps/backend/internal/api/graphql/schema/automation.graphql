@@ -39,6 +39,9 @@ extend type Mutation {
   runFollow(id: ID!): Job!
   markNotificationsRead(ids: [ID!]!): Boolean!
   markAllNotificationsRead: Boolean!
+  # Takes notifications out of the inbox; they stay until cleared.
+  clearNotifications(ids: [ID!]!): Boolean!
+  clearAllNotifications: Boolean!
   # config: ntfy {server?, topic, token?, detail?}, webhook {url, headers?,
   # detail?}. Without detail: true, outside channels get neutral wording.
   createNotificationChannel(kind: ChannelKind!, name: String!, config: JSON, enabled: Boolean): NotificationChannel!

@@ -129,7 +129,7 @@ func TestCreditPerformerFromTheirList(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if err := library.CreditPerformer(ctx, ref.Id, ada, "site", ""); err != nil {
+		if _, err := library.CreditPerformer(ctx, ref.Id, ada, "site", ""); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -49,6 +49,7 @@ type Query {
   performers(text: String, limit: Int, offset: Int): [Performer!]!
   performer(id: ID!): Performer
   performerDuplicates(id: ID!): [Performer!]!
+  collecting: [Collecting!]!
   performerAttributeValues(attribute: String!, limit: Int): [String!]!
   studios(text: String, limit: Int, offset: Int): [Studio!]!
   studio(id: ID!): Studio
@@ -102,6 +103,8 @@ type Mutation {
   runFollow(id: ID!): Job!
   markNotificationsRead(ids: [ID!]!): Boolean!
   markAllNotificationsRead: Boolean!
+  clearNotifications(ids: [ID!]!): Boolean!
+  clearAllNotifications: Boolean!
   createNotificationChannel(kind: ChannelKind!, name: String!, config: JSON, enabled: Boolean): NotificationChannel!
   updateNotificationChannel(id: ID!, name: String, config: JSON, enabled: Boolean): NotificationChannel!
   deleteNotificationChannel(id: ID!): Boolean!
@@ -150,6 +153,7 @@ type Mutation {
   fetchVideo(id: ID!): Video
   fetchGallery(id: ID!): Gallery
   fetchPerformer(id: ID!, refresh: Boolean): Performer
+  unassignPerformer(videoId: ID!, performerId: ID!): Performer
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
   search(kind: ListKind!, query: String!, limit: Int): Listed!
   editVideo(id: ID!, edit: MediaEdit!): Video
@@ -931,6 +935,12 @@ type Performer {
   fieldSources: [FieldSource!]!
   revisions(limit: Int, offset: Int): [Revision!]!
   fetching: PerformerFetching!
+}
+
+type Collecting {
+  performer: Performer!
+  reading: Boolean!
+  listing: [String!]!
 }
 
 type PerformerFetching {

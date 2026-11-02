@@ -78,6 +78,16 @@ func (r *mutationResolver) MarkAllNotificationsRead(ctx context.Context) (bool, 
 	return ok(r.notify.MarkAllRead(ctx))
 }
 
+// ClearNotifications is the resolver for the clearNotifications field.
+func (r *mutationResolver) ClearNotifications(ctx context.Context, ids []string) (bool, error) {
+	return true, r.notify.Clear(ctx, ids)
+}
+
+// ClearAllNotifications is the resolver for the clearAllNotifications field.
+func (r *mutationResolver) ClearAllNotifications(ctx context.Context) (bool, error) {
+	return true, r.notify.ClearAll(ctx)
+}
+
 // CreateNotificationChannel is the resolver for the createNotificationChannel field.
 func (r *mutationResolver) CreateNotificationChannel(ctx context.Context, kind schema.ChannelKind, name string, config interface{}, enabled *bool) (*schema.NotificationChannel, error) {
 	channel := notify.NewChannel{Kind: kind, Name: name, Enabled: enabled == nil || *enabled}

@@ -56,6 +56,12 @@ type ClipInput struct {
 	CoverURI     *string  `json:"coverUri,omitempty"`
 }
 
+type Collecting struct {
+	Performer *schema.Performer `json:"performer"`
+	Reading   bool              `json:"reading"`
+	Listing   []string          `json:"listing"`
+}
+
 type CreatedAPIToken struct {
 	Token    string           `json:"token"`
 	APIToken *schema.ApiToken `json:"apiToken"`

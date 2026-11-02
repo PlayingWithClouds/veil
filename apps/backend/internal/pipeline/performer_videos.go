@@ -60,9 +60,12 @@ func (p *Pipeline) QueuePerformerVideos(ctx context.Context, performerID, onlyPl
 // runs in the background, since the sites take a while; failures are logged.
 func (p *Pipeline) CollectFavorite(id string) {
 	p.reading.Store(id, true)
+	p.collections.LoadOrStore(id, &collection{})
 	go func() {
-		defer p.reading.Delete(id)
 		ctx := context.Background()
+		// Done reading: with nothing to list, the collection is over now.
+		defer p.finishCollection(ctx, id, "")
+		defer p.reading.Delete(id)
 		if err := p.Refresh(ctx, schema.RecordKindPerformer, id); err != nil {
 			log.Printf("favourite %s: read profiles: %v", id, err)
 		}
@@ -81,22 +84,12 @@ func (p *Pipeline) CollectFavorite(id string) {
 // (after favouriting), and which sites' video lists are queued or running.
 func (p *Pipeline) PerformerFetching(ctx context.Context, id string) (bool, []string, error) {
 	_, reading := p.reading.Load(id)
-	if p.queue == nil {
-		return reading, []string{}, nil
-	}
-	active, err := p.queue.List(ctx, jobs.Query{
-		Statuses: []schema.JobStatus{jobs.StatusQueued, jobs.StatusRunning},
-		Kinds:    []schema.JobKind{jobs.KindScrape},
-		Limit:    activeJobsLimit,
-	})
+	active, err := p.activeListings(ctx, id, "")
 	if err != nil {
 		return reading, nil, err
 	}
 	listing := []string{}
 	for _, job := range active {
-		if job.Subject == nil || job.Subject.Id != id || !IsPerformerVideosJob(&job) {
-			continue
-		}
 		if !slices.Contains(listing, job.PluginName) {
 			listing = append(listing, job.PluginName)
 		}
@@ -147,6 +140,8 @@ func (p *Pipeline) CollectPerformerVideos(ctx context.Context, job *jobs.Job, pr
 	if allPages {
 		pages = performerVideosMaxPages
 	}
+	// The last listing of a favourite's collection ends it, failed or not.
+	defer p.finishCollection(context.WithoutCancel(ctx), job.Subject.Id, job.ID)
 	seen := map[string]bool{}
 	for page := range pages {
 		added, err := p.collectPage(ctx, plugin, job.Subject.Id, sourceID, listURL, page, seen)
@@ -169,17 +164,22 @@ func (p *Pipeline) collectPage(ctx context.Context, plugin *plugins.Plugin, perf
 	if err != nil {
 		return 0, err
 	}
-	added := 0
+	added, credited := 0, 0
 	for _, ref := range p.storeListed(ctx, plugin.Meta.Name, result.Items) {
 		if ref.Kind != schema.RecordKindVideo || seen[ref.Id] {
 			continue
 		}
 		seen[ref.Id] = true
 		added++
-		if err := p.library.CreditPerformer(ctx, ref.Id, performerID, plugin.Meta.Name, sourceID); err != nil {
+		newCredit, err := p.library.CreditPerformer(ctx, ref.Id, performerID, plugin.Meta.Name, sourceID)
+		if err != nil {
 			log.Printf("credit %s on %s: %v", performerID, ref.Id, err)
 		}
+		if newCredit {
+			credited++
+		}
 	}
+	p.tally(performerID, plugin.Meta.Name, credited)
 	return added, nil
 }
 

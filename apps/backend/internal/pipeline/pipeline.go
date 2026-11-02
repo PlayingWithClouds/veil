@@ -38,6 +38,10 @@ type Pipeline struct {
 	queue *jobs.Queue
 	// reading holds the performers whose profiles CollectFavorite is reading.
 	reading sync.Map
+	// collections tallies each favourite's collection until it's done (id → *collection).
+	collections sync.Map
+	// notifier hears when a favourite's collection is done; nil in tests.
+	notifier Notifier
 }
 
 // New returns a pipeline that keeps search answers in searches and queues

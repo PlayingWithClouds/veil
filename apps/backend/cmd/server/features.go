@@ -82,6 +82,7 @@ func openFeatures(ctx context.Context, base core) *features {
 		accounts:   openAccounts(base),
 	}
 	base.runner.SetAccountProvider(built.accounts)
+	base.pipeline.SetNotifier(built.notify)
 	built.automations = automations.New(automations.Options{Library: base.library, Queue: base.queue, Notifier: built.notify, Searcher: base.pipeline})
 	built.follows = follows.New(follows.Options{
 		Library: base.library, Queue: base.queue, Discoverer: base.pipeline, Notifier: built.notify,

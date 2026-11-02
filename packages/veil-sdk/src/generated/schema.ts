@@ -63,6 +63,7 @@ export interface Query {
     performers: Performer[]
     performer: (Performer | null)
     performerDuplicates: Performer[]
+    collecting: Collecting[]
     performerAttributeValues: Scalars['String'][]
     studios: Studio[]
     studio: (Studio | null)
@@ -117,6 +118,8 @@ export interface Mutation {
     runFollow: Job
     markNotificationsRead: Scalars['Boolean']
     markAllNotificationsRead: Scalars['Boolean']
+    clearNotifications: Scalars['Boolean']
+    clearAllNotifications: Scalars['Boolean']
     createNotificationChannel: NotificationChannel
     updateNotificationChannel: NotificationChannel
     deleteNotificationChannel: Scalars['Boolean']
@@ -165,6 +168,7 @@ export interface Mutation {
     fetchVideo: (Video | null)
     fetchGallery: (Gallery | null)
     fetchPerformer: (Performer | null)
+    unassignPerformer: (Performer | null)
     browse: Listed
     search: Listed
     editVideo: (Video | null)
@@ -793,6 +797,13 @@ export interface Performer {
     __typename: 'Performer'
 }
 
+export interface Collecting {
+    performer: Performer
+    reading: Scalars['Boolean']
+    listing: Scalars['String'][]
+    __typename: 'Collecting'
+}
+
 export interface PerformerFetching {
     reading: Scalars['Boolean']
     listing: Scalars['String'][]
@@ -1321,6 +1332,7 @@ export interface QueryGenqlSelection{
     performers?: (PerformerGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     performer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
     performerDuplicates?: (PerformerGenqlSelection & { __args: {id: Scalars['ID']} })
+    collecting?: CollectingGenqlSelection
     performerAttributeValues?: { __args: {attribute: Scalars['String'], limit?: (Scalars['Int'] | null)} }
     studios?: (StudioGenqlSelection & { __args?: {text?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     studio?: (StudioGenqlSelection & { __args: {id: Scalars['ID']} })
@@ -1376,6 +1388,8 @@ export interface MutationGenqlSelection{
     runFollow?: (JobGenqlSelection & { __args: {id: Scalars['ID']} })
     markNotificationsRead?: { __args: {ids: Scalars['ID'][]} }
     markAllNotificationsRead?: boolean | number
+    clearNotifications?: { __args: {ids: Scalars['ID'][]} }
+    clearAllNotifications?: boolean | number
     createNotificationChannel?: (NotificationChannelGenqlSelection & { __args: {kind: ChannelKind, name: Scalars['String'], config?: (Scalars['JSON'] | null), enabled?: (Scalars['Boolean'] | null)} })
     updateNotificationChannel?: (NotificationChannelGenqlSelection & { __args: {id: Scalars['ID'], name?: (Scalars['String'] | null), config?: (Scalars['JSON'] | null), enabled?: (Scalars['Boolean'] | null)} })
     deleteNotificationChannel?: { __args: {id: Scalars['ID']} }
@@ -1424,6 +1438,7 @@ export interface MutationGenqlSelection{
     fetchVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID']} })
     fetchGallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
     fetchPerformer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID'], refresh?: (Scalars['Boolean'] | null)} })
+    unassignPerformer?: (PerformerGenqlSelection & { __args: {videoId: Scalars['ID'], performerId: Scalars['ID']} })
     browse?: (ListedGenqlSelection & { __args: {plugin: Scalars['String'], kind: ListKind, query?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     search?: (ListedGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     editVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID'], edit: MediaEdit} })
@@ -2108,6 +2123,14 @@ export interface PerformerGenqlSelection{
     fieldSources?: FieldSourceGenqlSelection
     revisions?: (RevisionGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     fetching?: PerformerFetchingGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CollectingGenqlSelection{
+    performer?: PerformerGenqlSelection
+    reading?: boolean | number
+    listing?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3044,6 +3067,14 @@ export interface SavedFilterGenqlSelection{
     export const isPerformer = (obj?: { __typename?: any } | null): obj is Performer => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPerformer"')
       return Performer_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const Collecting_possibleTypes: string[] = ['Collecting']
+    export const isCollecting = (obj?: { __typename?: any } | null): obj is Collecting => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCollecting"')
+      return Collecting_possibleTypes.includes(obj.__typename)
     }
     
 

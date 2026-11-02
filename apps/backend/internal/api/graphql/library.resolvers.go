@@ -117,6 +117,15 @@ func (r *mutationResolver) FetchPerformer(ctx context.Context, id string, refres
 	return r.library.Performer(ctx, id)
 }
 
+// UnassignPerformer is the resolver for the unassignPerformer field.
+func (r *mutationResolver) UnassignPerformer(ctx context.Context, videoID string, performerID string) (*schema.Performer, error) {
+	otherID, err := r.pipeline.Unassign(ctx, videoID, performerID)
+	if err != nil || otherID == "" {
+		return nil, err
+	}
+	return r.library.Performer(ctx, otherID)
+}
+
 // Browse is the resolver for the browse field.
 func (r *mutationResolver) Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error) {
 	refs, err := r.pipeline.List(ctx, plugin, listEntity(kind), text(query), number(limit), number(offset))
@@ -295,6 +304,26 @@ func (r *queryResolver) Performer(ctx context.Context, id string) (*schema.Perfo
 func (r *queryResolver) PerformerDuplicates(ctx context.Context, id string) ([]*schema.Performer, error) {
 	duplicates, err := r.library.PerformerDuplicates(ctx, id)
 	return pointers(duplicates), err
+}
+
+// Collecting is the resolver for the collecting field.
+func (r *queryResolver) Collecting(ctx context.Context) ([]*model.Collecting, error) {
+	collecting, err := r.pipeline.Collecting(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := []*model.Collecting{}
+	for _, current := range collecting {
+		performer, err := r.library.Performer(ctx, current.PerformerID)
+		if err != nil {
+			return nil, err
+		}
+		if performer == nil {
+			continue
+		}
+		result = append(result, &model.Collecting{Performer: performer, Reading: current.Reading, Listing: current.Listing})
+	}
+	return result, nil
 }
 
 // PerformerAttributeValues is the resolver for the performerAttributeValues field.
