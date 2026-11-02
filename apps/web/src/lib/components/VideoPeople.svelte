@@ -9,7 +9,7 @@
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import UserIcon from 'phosphor-svelte/lib/UserIcon';
-	import RecordPicker from '$lib/components/RecordPicker.svelte';
+	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import {
 		fetchPerformers,
 		fetchVideoDetail,
@@ -65,12 +65,10 @@
 			if (guess.credited || credited.has(guess.performer.id)) continue;
 			all.push({ performer: guess.performer, reason: `Face match ${Math.round(guess.similarity * 100)}%` });
 		}
-		const seen = new Set<string>();
-		return all.filter((suggestion) => {
-			if (seen.has(suggestion.performer.id)) return false;
-			seen.add(suggestion.performer.id);
-			return true;
-		});
+		return all.filter(
+			(suggestion, index) =>
+				all.findIndex((other) => other.performer.id === suggestion.performer.id) === index
+		);
 	}
 
 	/** Credits a performer on the video. */
@@ -162,24 +160,27 @@
 			</div>
 		{/each}
 
-		{#if adding}
-			<RecordPicker
-				placeholder="Find a performer…"
-				search={(text) => fetchPerformers(text, 8)}
-				onpick={add}
-				onclose={() => (adding = false)}
-			/>
-		{:else}
-			<button
-				type="button"
-				class="bg-base-200 hover:bg-base-300 text-base-content/60 flex aspect-[3/4] w-28 flex-col items-center justify-center gap-1 rounded-xl text-xs"
-				onclick={() => (adding = true)}
-			>
-				<PlusIcon size={20} />
-				Add performer
-			</button>
-		{/if}
+		<button
+			type="button"
+			class="bg-base-200 hover:bg-base-300 text-base-content/60 flex aspect-[3/4] w-28 flex-col items-center justify-center gap-1 rounded-xl text-xs"
+			onclick={() => (adding = true)}
+		>
+			<PlusIcon size={20} />
+			Add performer
+		</button>
 	</div>
+	{#if adding}
+		<RecordPickerDialog
+			kind="performer"
+			title="Add a performer"
+			placeholder="Find a performer by name…"
+			search={(text) => fetchPerformers(text, 24)}
+			suggested={suggestions.map((suggestion) => ({ record: suggestion.performer, reason: suggestion.reason }))}
+			taken={video.performers.map((performer) => performer.id)}
+			onpick={add}
+			onclose={() => (adding = false)}
+		/>
+	{/if}
 	{#if $faceTracking && $faceTracking.subject.kind === 'video' && $faceTracking.subject.id === video.id}
 		<span class="text-base-content/50 flex items-center gap-2 text-xs">
 			<span class="loading loading-spinner loading-xs"></span>

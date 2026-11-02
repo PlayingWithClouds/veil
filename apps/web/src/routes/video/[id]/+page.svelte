@@ -21,7 +21,7 @@
 	import VideoPeople from '$lib/components/VideoPeople.svelte';
 	import VideoComments from '$lib/components/VideoComments.svelte';
 	import ActsBar from '$lib/components/ActsBar.svelte';
-	import RecordPicker from '$lib/components/RecordPicker.svelte';
+	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import { formatClock } from '$lib/time';
 	import {
 		fetchRelatedVideos,
@@ -29,7 +29,6 @@
 		openVideo,
 		play,
 		setVideoStudio,
-		type MemberRow,
 		type StreamRow,
 		type VideoCardRow,
 		type VideoDetail
@@ -160,11 +159,11 @@
 		player?.seekTo(seconds);
 	}
 
-	/** Sets the studio as the user's. */
-	async function pickStudio(studio: MemberRow) {
+	/** Sets the studio as the user's; null removes it. */
+	async function pickStudio(studioId: string | null) {
 		changingStudio = false;
 		if (!video) return;
-		const saved = await setVideoStudio(video.id, studio.id);
+		const saved = await setVideoStudio(video.id, studioId);
 		if (saved) video = saved;
 	}
 </script>
@@ -229,14 +228,7 @@
 				<div class="flex flex-col gap-2">
 					<h1 class="text-2xl leading-tight font-bold tracking-tight">{video.title}</h1>
 					<div class="text-base-content/60 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-						{#if changingStudio}
-							<RecordPicker
-								placeholder="Find a studio…"
-								search={(text) => fetchStudios(text, 8)}
-								onpick={pickStudio}
-								onclose={() => (changingStudio = false)}
-							/>
-						{:else if video.studio}
+						{#if video.studio}
 							<a
 								href={studioUrl(video.studio.id)}
 								class="text-base-content flex items-center gap-2 font-semibold hover:underline"
@@ -247,15 +239,26 @@
 								{video.studio.name}
 							</a>
 						{/if}
-						{#if !changingStudio}
-							<button
-								type="button"
-								class="hover:text-base-content flex items-center gap-1 text-xs"
-								onclick={() => (changingStudio = true)}
-							>
-								<PencilSimpleIcon size={12} />
-								{video.studio ? 'Change studio' : 'Set studio'}
-							</button>
+						<button
+							type="button"
+							class="hover:text-base-content flex items-center gap-1 text-xs"
+							onclick={() => (changingStudio = true)}
+						>
+							<PencilSimpleIcon size={12} />
+							{video.studio ? 'Change studio' : 'Set studio'}
+						</button>
+						{#if changingStudio}
+							<RecordPickerDialog
+								kind="studio"
+								title={video.studio ? 'Change the studio' : 'Set the studio'}
+								placeholder="Find a studio…"
+								search={(text) => fetchStudios(text, 24)}
+								taken={video.studio ? [video.studio.id] : []}
+								clearLabel={video.studio ? 'Remove the studio' : undefined}
+								onclear={() => void pickStudio(null)}
+								onpick={(studio) => void pickStudio(studio.id)}
+								onclose={() => (changingStudio = false)}
+							/>
 						{/if}
 						{#if video.date}<span>{video.date}</span>{/if}
 						{#if durationLabel}<span>{durationLabel}</span>{/if}
