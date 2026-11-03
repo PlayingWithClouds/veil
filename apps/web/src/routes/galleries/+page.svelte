@@ -1,11 +1,13 @@
 <!--
-	Galleries: recently viewed, favourites, newest releases, performers and
-	the most common tags, then an endless feed (recommended, then the rest of
-	the library); a top bar search asks the gallery sites.
+	Galleries: the top recommended galleries in a spotlight, recently viewed,
+	favourites, newest releases, performers and the most common tags, then the
+	rest of an endless feed (recommended, then the rest of the library); a top
+	bar search asks the gallery sites.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import GalleryCard from '$lib/components/GalleryCard.svelte';
+	import GallerySpotlight from '$lib/components/GallerySpotlight.svelte';
 	import MediaOverview from '$lib/components/MediaOverview.svelte';
 	import SiteMediaList from '$lib/components/SiteMediaList.svelte';
 	import {
@@ -27,9 +29,16 @@
 	pick={(batch) => batch.listed.galleries}
 	cardWidth={CARD_WIDTH}
 	feed={() => galleryFeed()}
-	feedTitle="For you"
+	feedTitle="More for you"
 	feedSurface="galleries"
 >
+	{#snippet spotlight(picks)}
+		<GallerySpotlight
+			galleries={picks}
+			surface="galleries"
+			onopen={(gallery) => goto(galleryUrl(gallery.id))}
+		/>
+	{/snippet}
 	{#snippet card(gallery, shown)}
 		<GalleryCard {gallery} {shown} onclick={() => goto(galleryUrl(gallery.id))} />
 	{/snippet}

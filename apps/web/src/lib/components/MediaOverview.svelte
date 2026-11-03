@@ -97,7 +97,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-10">
+<div class="flex flex-col gap-8">
 	<Shelf title={continueTitle} items={started} key={(item) => item.id} {itemWidth}>
 		{#snippet card(item)}
 			{#if continueCard}

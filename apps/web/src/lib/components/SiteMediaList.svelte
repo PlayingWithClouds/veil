@@ -2,10 +2,12 @@
 	A page of one media kind beyond videos (galleries, audio, stories). With a
 	search from the top bar (?q=), what the sites that list the kind answer,
 	as they answer. With a tag (?tag=), the library's media carrying it.
-	Otherwise the overview's rows, then an endless feed: the page's own
+	Otherwise the feed's first items in a spotlight (when the page has one),
+	the overview's rows, then the rest of an endless feed: the page's own
 	(galleries: recommended, then the rest), else everything most recently
 	added first, continued by new pages from the sites once the library is
-	through. "Browse a site" stores a page of one site's catalog.
+	through. Cards rise in; placeholders stand in while the first load
+	runs. "Browse a site" stores a page of one site's catalog.
 -->
 <script lang="ts" generics="Item extends { id: string }">
 	import { untrack, type Snippet } from 'svelte';
@@ -25,6 +27,13 @@
 	import { listerNames } from '$lib/stores/sites';
 
 	const PAGE_SIZE = 40;
+	// Feed items in the spotlight, when the page has one.
+	const SPOTLIGHT_COUNT = 5;
+	// Placeholder cards while the first page loads.
+	const SKELETON_COUNT = 12;
+	// Cards of one page rise in this far apart, up to RISE_MAX_DELAY_MS.
+	const RISE_STEP_MS = 25;
+	const RISE_MAX_DELAY_MS = 450;
 
 	interface Props {
 		title: string;
@@ -35,8 +44,11 @@
 		load: (limit: number, offset: number, listing: MediaListing) => Promise<Item[]>;
 		// The items of this kind in one site's search answer.
 		pick: (batch: SearchBatchRow) => Item[];
-		// Smallest card width in px.
+		// Smallest card width in px, and the cards' picture shape ("3 / 4").
 		cardWidth: number;
+		cardAspect?: string;
+		// The feed's first items, drawn above the overview's rows.
+		spotlight?: Snippet<[Item[]]>;
 		// A card, with where it's shown when that's logged (the feed, a search).
 		card: Snippet<[Item, Shown | null]>;
 		// Rows shown above everything when there's no search or tag.
@@ -58,6 +70,8 @@
 		load,
 		pick,
 		cardWidth,
+		cardAspect = '3 / 4',
+		spotlight,
 		card,
 		overview,
 		feed,
@@ -90,6 +104,12 @@
 	let tagId = $derived(page.url.searchParams.get('tag') ?? '');
 	let kindSites = $derived(listers($sites, kind));
 	let showOverview = $derived(query === '' && tagId === '');
+	// How many of the feed's first items the spotlight takes from the grid.
+	let spotlightTaken = $derived.by(() => {
+		if (!showOverview || !spotlight) return 0;
+		return Math.min(SPOTLIGHT_COUNT, items.length);
+	});
+	let gridItems = $derived(items.slice(spotlightTaken));
 
 	$effect(() => {
 		const searchText = query;
@@ -171,6 +191,11 @@
 		return null;
 	}
 
+	/** How long a card waits before rising in, so a page of cards cascades. */
+	function riseDelay(position: number): string {
+		return `${Math.min((position % PAGE_SIZE) * RISE_STEP_MS, RISE_MAX_DELAY_MS)}ms`;
+	}
+
 	/** Asks the sites with more results for their next page. */
 	function searchNextPage() {
 		const remaining = [...searchSites].filter((site) => !drySites.has(site));
@@ -241,11 +266,7 @@
 	<PageHeader {title}>
 		{#snippet actions()}
 			{#if kindSites.length > 0}
-				<select
-					bind:value={browsePlugin}
-					class="bg-base-200 h-9 rounded-lg px-2 text-sm"
-					aria-label="Site to browse"
-				>
+				<select bind:value={browsePlugin} class="chip pr-2" aria-label="Site to browse">
 					<option value="">Browse a site…</option>
 					{#each kindSites as site (site.name)}
 						<option value={site.name}>{site.displayName ?? site.name}</option>
@@ -253,7 +274,7 @@
 				</select>
 				<button
 					type="button"
-					class="bg-primary text-primary-content h-9 rounded-lg px-3 text-sm font-medium disabled:opacity-50"
+					class="bg-primary text-primary-content h-8 rounded-full px-4 text-sm font-semibold transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-50"
 					disabled={!browsePlugin || browsing}
 					onclick={browseSite}
 				>
@@ -268,18 +289,17 @@
 			<span class="text-base-content/70 text-sm">
 				{#if query !== ''}
 					Searching the sites for <span class="text-base-content font-medium">“{query}”</span>
-					{#if loading && searchPageNumber === 0 && sitesAsked > 0}
-						· {sitesAnswered} of {sitesAsked} answered
-					{/if}
 				{:else}
 					Tagged <span class="text-base-content font-medium">{tagLabel(tagName ?? '…')}</span>
 				{/if}
 			</span>
-			<button
-				type="button"
-				class="bg-base-200 hover:bg-base-300 flex h-7 items-center gap-1 rounded-full px-3 text-xs"
-				onclick={() => goto(page.url.pathname)}
-			>
+			{#if query !== '' && loading && searchPageNumber === 0 && sitesAsked > 0}
+				<span class="chip pointer-events-none">
+					<span class="loading loading-spinner loading-xs"></span>
+					{sitesAnswered} of {sitesAsked} answered
+				</span>
+			{/if}
+			<button type="button" class="chip" onclick={() => goto(page.url.pathname)}>
 				<XIcon size={12} /> Clear
 			</button>
 		</div>
@@ -289,20 +309,38 @@
 		<p class="text-error text-sm">{error}</p>
 	{/if}
 
+	{#if spotlight && spotlightTaken > 0}
+		<div class="rise-in">
+			{@render spotlight(items.slice(0, spotlightTaken))}
+		</div>
+	{/if}
+
 	{#if showOverview && overview}
 		{@render overview()}
 	{/if}
 
 	<section class="flex flex-col gap-4">
-		{#if showOverview && items.length > 0}
+		{#if showOverview && gridItems.length > 0}
 			<h2 class="text-lg font-semibold">{feedTitle}</h2>
 		{/if}
 		<div
 			class="grid gap-x-4 gap-y-6"
 			style:grid-template-columns="repeat(auto-fill, minmax({cardWidth}px, 1fr))"
 		>
-			{#each items as item, position (item.id)}
-				{@render card(item, shownAt(position))}
+			{#each gridItems as item, position (item.id)}
+				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
+					{@render card(item, shownAt(spotlightTaken + position))}
+				</div>
+			{:else}
+				{#if loading && items.length === 0}
+					{#each { length: SKELETON_COUNT }, position (position)}
+						<div class="flex flex-col gap-2" aria-hidden="true">
+							<div class="skeleton w-full rounded-xl" style:aspect-ratio={cardAspect}></div>
+							<div class="skeleton h-3.5 w-3/4 rounded"></div>
+							<div class="skeleton h-3 w-1/3 rounded"></div>
+						</div>
+					{/each}
+				{/if}
 			{/each}
 		</div>
 	</section>
