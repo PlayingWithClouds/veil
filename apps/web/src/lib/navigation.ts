@@ -25,20 +25,26 @@ export interface NavLink {
 	href: string;
 	// Match the route exactly rather than by prefix.
 	exact?: boolean;
+	// The sidebar section it's listed under.
+	group: NavGroup;
 }
 
-/** The top-level pages, in menu order. */
+/** The sidebar's sections, in order. */
+export const NAV_GROUPS = ['Watch', 'Library', 'You'] as const;
+export type NavGroup = (typeof NAV_GROUPS)[number];
+
+/** The top-level pages, in menu order (the phone tab bar's too). */
 export const navLinks: NavLink[] = [
-	{ label: 'Home', icon: HouseIcon, href: '/', exact: true },
-	{ label: 'Cams', icon: VideoCameraIcon, href: camsUrl() },
-	{ label: 'Galleries', icon: ImagesIcon, href: galleriesUrl() },
-	{ label: 'Categories', icon: SquaresFourIcon, href: categoriesUrl() },
-	{ label: 'Audio', icon: HeadphonesIcon, href: audiosUrl() },
-	{ label: 'Stories', icon: BookOpenTextIcon, href: storiesUrl() },
-	{ label: 'Performers', icon: UsersIcon, href: '/performers' },
-	{ label: 'Studios', icon: FilmSlateIcon, href: '/studios' },
-	{ label: 'Taste', icon: HeartIcon, href: '/taste' },
-	{ label: 'Plugins', icon: PlugsIcon, href: pluginsUrl() }
+	{ label: 'Home', icon: HouseIcon, href: '/', exact: true, group: 'Watch' },
+	{ label: 'Cams', icon: VideoCameraIcon, href: camsUrl(), group: 'Watch' },
+	{ label: 'Galleries', icon: ImagesIcon, href: galleriesUrl(), group: 'Watch' },
+	{ label: 'Categories', icon: SquaresFourIcon, href: categoriesUrl(), group: 'Library' },
+	{ label: 'Audio', icon: HeadphonesIcon, href: audiosUrl(), group: 'Watch' },
+	{ label: 'Stories', icon: BookOpenTextIcon, href: storiesUrl(), group: 'Watch' },
+	{ label: 'Performers', icon: UsersIcon, href: '/performers', group: 'Library' },
+	{ label: 'Studios', icon: FilmSlateIcon, href: '/studios', group: 'Library' },
+	{ label: 'Taste', icon: HeartIcon, href: '/taste', group: 'You' },
+	{ label: 'Plugins', icon: PlugsIcon, href: pluginsUrl(), group: 'You' }
 ];
 
 /** Where the top bar's search goes and what it says it searches. */

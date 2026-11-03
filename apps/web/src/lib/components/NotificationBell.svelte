@@ -104,7 +104,7 @@
 	<button
 		type="button"
 		aria-label="Notifications"
-		class="hover:bg-base-content/8 relative flex h-10 w-10 items-center justify-center rounded-full"
+		class="glass-round hover:bg-base-content/15 relative flex h-10 w-10 items-center justify-center rounded-full transition-colors"
 		onclick={toggle}
 	>
 		{#if collecting.length > 0}
@@ -157,7 +157,11 @@
 			<div class="flex items-center justify-between px-4 pt-3 pb-2">
 				<h2 class="text-sm font-semibold">Notifications</h2>
 				{#if notifications.length > 0}
-					<button type="button" class="text-base-content/60 hover:text-base-content text-xs" onclick={clearAll}>
+					<button
+						type="button"
+						class="text-base-content/60 hover:text-base-content text-xs"
+						onclick={clearAll}
+					>
 						Clear all
 					</button>
 				{/if}

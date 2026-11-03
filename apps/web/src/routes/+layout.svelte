@@ -56,7 +56,7 @@
 <svelte:window onkeydown={onWindowKeydown} />
 
 <div
-	class="app-shell bg-base-100 flex h-dvh flex-col overflow-hidden"
+	class="app-shell bg-base-100 relative flex h-dvh flex-col overflow-hidden"
 	class:chrome-hidden={$chromeHidden}
 >
 	<TopBar />
@@ -72,6 +72,9 @@
 				<!-- Room for the floating top bar. A spacer, not padding: sticky
 				     offsets count from inside the scroll container's padding. -->
 				<div class="shrink-0" style:height="var(--compact-header-height)" aria-hidden="true"></div>
+			{:else}
+				<!-- Room for the see-through desktop top bar the page scrolls under. -->
+				<div class="shrink-0" style:height="var(--desktop-header-height)" aria-hidden="true"></div>
 			{/if}
 			{@render children()}
 		</main>
@@ -83,8 +86,9 @@
 </div>
 
 <style>
+	/* Sticky rows stick under the desktop top bar, which floats over the page. */
 	.app-shell {
-		--chrome-offset: 0px;
+		--chrome-offset: var(--desktop-header-height, 0px);
 		transition: --chrome-offset 280ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 

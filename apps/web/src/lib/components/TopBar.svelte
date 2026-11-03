@@ -1,7 +1,8 @@
 <!--
 	Global top bar: logo on the left, the search (with "Who is this?") in the
 	middle with the library filter's chip row under it (HeaderFilters),
-	notifications on the right. A search opens home with ?q=, which
+	notifications on the right. On desktop it floats see-through and blurred
+	over the page, which scrolls under it. A search opens home with ?q=, which
 	asks every site and stores what they return; on audio and story pages
 	it opens their overview with ?q= instead, asking their sites. Phones get
 	a slim bar floating over the page that slides away while scrolling down
@@ -41,6 +42,17 @@
 		);
 	});
 
+	// The desktop bar floats over the page too: the page and sidebar start below
+	// it, and sticky rows stick under it.
+	let desktopHeaderHeight = $state(0);
+	$effect(() => {
+		if (desktopHeaderHeight === 0) return;
+		document.documentElement.style.setProperty(
+			'--desktop-header-height',
+			`${desktopHeaderHeight}px`
+		);
+	});
+
 	/** Opens the scope's page (home, audio, stories) searching its sites for the typed query. */
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -56,7 +68,7 @@
 {#snippet searchBox()}
 	<form
 		onsubmit={submit}
-		class="bg-base-content/8 flex h-10 min-w-0 flex-1 items-center rounded-full"
+		class="search-box flex h-10 min-w-0 flex-1 items-center rounded-full"
 		role="search"
 	>
 		<MagnifyingGlassIcon size={18} class="text-base-content/50 ml-3.5 shrink-0" />
@@ -97,12 +109,18 @@
 		</div>
 	</header>
 {:else}
-	<header class="flex shrink-0 items-start gap-4 px-4 py-3">
+	<header
+		bind:clientHeight={desktopHeaderHeight}
+		class="desktop-header absolute inset-x-0 top-0 z-30 flex items-start gap-4 px-4 py-3"
+	>
 		<div class="flex h-11 w-56 shrink-0 items-center pl-2">
 			<a href="/" class="flex items-center gap-2">
 				<span class="text-primary"><FilmReelIcon size={30} weight="fill" /></span>
 				<span class="text-2xl font-bold tracking-tight">Veil</span>
-				<span class="text-error -mt-4 text-[11px] font-bold">18+</span>
+				<span
+					class="border-base-content/20 text-base-content/50 -mt-3 rounded border px-1 text-[10px] leading-4 font-semibold"
+					>18+</span
+				>
 			</a>
 		</div>
 		<div class="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-2.5">
@@ -120,6 +138,32 @@
 {/if}
 
 <style>
+	/* See-through, so the page (and its glow) shows through as it scrolls under. */
+	.desktop-header {
+		background-color: color-mix(in oklab, var(--color-base-100) 70%, transparent);
+		backdrop-filter: blur(20px) saturate(1.6);
+		border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 6%, transparent);
+	}
+
+	.search-box {
+		border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+		background-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+		transition:
+			border-color 150ms,
+			box-shadow 150ms,
+			background-color 150ms;
+	}
+
+	.search-box:hover {
+		border-color: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+	}
+
+	.search-box:focus-within {
+		border-color: color-mix(in oklab, var(--color-base-content) 32%, transparent);
+		background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+		box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-base-content) 7%, transparent);
+	}
+
 	.compact-header {
 		background-color: var(--color-base-100);
 		transition: translate 280ms cubic-bezier(0.22, 1, 0.36, 1);
