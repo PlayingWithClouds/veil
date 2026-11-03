@@ -1,8 +1,9 @@
 <!--
-	Home without a search: the top recommendation featured, then Continue
-	watching, Live now, For you (three rows of six), Continue reading, the
-	newest stories and audio, the user's performers and the sites. Recommendations follow the library filter; while one is set,
-	only the featured video and For you show. Videos being watched are never
+	Home without a search: the top recommendations in a spotlight, then
+	Continue watching, Live now, more For you (three rows of six), Continue
+	reading, the newest stories and audio, the user's performers and the
+	sites. Recommendations follow the library filter; while one is set, only
+	the spotlight and For you show. Videos being watched are never
 	recommended here: they have their own row. Each row loads on its own and
 	stays hidden while empty.
 -->
@@ -10,19 +11,13 @@
 	import { goto } from '$app/navigation';
 	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 	import Shelf from '$lib/components/Shelf.svelte';
-	import FeaturedVideo from '$lib/components/FeaturedVideo.svelte';
+	import VideoSpotlight from '$lib/components/VideoSpotlight.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import CamCard from '$lib/components/CamCard.svelte';
 	import RecordingCard from '$lib/components/RecordingCard.svelte';
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import SiteIcon from '$lib/components/scene/SiteIcon.svelte';
-	import {
-		openVideo,
-		fetchPerformers,
-		type VideoCardRow,
-		type VideoDetail,
-		type MemberRow
-	} from '$lib/library';
+	import { fetchPerformers, type VideoCardRow, type MemberRow } from '$lib/library';
 	import {
 		fetchContinueWatching,
 		fetchRecommendedVideos,
@@ -73,8 +68,12 @@
 	const STORY_WIDTH = 150;
 	const AUDIO_WIDTH = 180;
 	const SITE_WIDTH = 150;
-	// For you fills three rows of six under the featured video.
+	// Picks in the spotlight; For you fills three rows of six after them.
+	const SPOTLIGHT_COUNT = 5;
 	const FOR_YOU_COUNT = 18;
+	// Cards of For you rise in this far apart, up to RISE_MAX_DELAY_MS.
+	const RISE_STEP_MS = 30;
+	const RISE_MAX_DELAY_MS = 450;
 	// Asked for beyond what's shown, to make up for videos being watched.
 	const RECOMMENDATION_SLACK = 20;
 
@@ -84,7 +83,6 @@
 
 	let continueWatching = $state<VideoCardRow[]>([]);
 	let recommended = $state<RecommendedVideo[]>([]);
-	let featuredDetail = $state<VideoDetail | null>(null);
 	let liveCams = $state<CamRow[]>([]);
 	let recordings = $state<ActiveRecordingRow[]>([]);
 	let performers = $state<MemberRow[]>([]);
@@ -98,8 +96,8 @@
 		const watching = new Set(continueWatching.map((video) => video.id));
 		return recommended.filter((item) => !watching.has(item.video.id));
 	});
-	let featured = $derived(freshPicks[0] ?? null);
-	let forYou = $derived(freshPicks.slice(1, FOR_YOU_COUNT + 1));
+	let spotlight = $derived(freshPicks.slice(0, SPOTLIGHT_COUNT));
+	let forYou = $derived(freshPicks.slice(SPOTLIGHT_COUNT, SPOTLIGHT_COUNT + FOR_YOU_COUNT));
 	let live = $derived<LiveItem[]>([
 		...recordings.map((recording) => ({ recording })),
 		...liveCams.map((cam) => ({ cam }))
@@ -118,20 +116,16 @@
 
 	$effect(() => {
 		const current: FilterInput = JSON.parse(filterKey);
-		load(fetchRecommendedVideos(FOR_YOU_COUNT + 1 + RECOMMENDATION_SLACK, current), (found) => {
+		const wanted = SPOTLIGHT_COUNT + FOR_YOU_COUNT + RECOMMENDATION_SLACK;
+		load(fetchRecommendedVideos(wanted, current), (found) => {
 			recommended = found;
 		});
 	});
 
-	// Reads the featured video's page up front, so its credits, tags and description show.
-	$effect(() => {
-		const id = featured?.video.id;
-		featuredDetail = null;
-		if (!id) return;
-		load(openVideo(id), (found) => {
-			if (found?.id === id) featuredDetail = found;
-		});
-	});
+	/** How long a For you card waits before rising in, so the grid cascades. */
+	function riseDelay(position: number): string {
+		return `${Math.min(position * RISE_STEP_MS, RISE_MAX_DELAY_MS)}ms`;
+	}
 
 	/** The user's favourite performers, else the library's first ones. */
 	async function loadPerformers(): Promise<MemberRow[]> {
@@ -164,15 +158,11 @@
 	}
 </script>
 
-<div class="flex flex-col gap-10">
-	{#if featured}
-		<FeaturedVideo
-			video={featured.video}
-			detail={featuredDetail}
-			reason={featured.reason}
-			shown={{ surface: 'home', position: 0 }}
-			onopen={() => openPage(featured.video)}
-		/>
+<div class="flex flex-col gap-8">
+	{#if spotlight.length > 0}
+		<div class="rise-in">
+			<VideoSpotlight picks={spotlight} surface="home" onopen={openPage} />
+		</div>
 	{/if}
 
 	{#if !filtered}
@@ -191,7 +181,14 @@
 			{/snippet}
 		</Shelf>
 
-		<Shelf title="Live now" items={live} key={liveKey} itemWidth={LIVE_WIDTH} href={camsUrl()}>
+		<Shelf
+			title="Live now"
+			subtitle="cam rooms"
+			items={live}
+			key={liveKey}
+			itemWidth={LIVE_WIDTH}
+			href={camsUrl()}
+		>
 			{#snippet card(item)}
 				{#if item.recording}
 					<RecordingCard recording={item.recording} onclick={() => openRecording(item.recording)} />
@@ -204,18 +201,23 @@
 
 	{#if forYou.length > 0}
 		<section class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold">For you</h2>
+			<h2 class="flex items-baseline gap-2 text-lg font-semibold">
+				More for you
+				<span class="text-base-content/45 text-sm font-normal">from what you watch</span>
+			</h2>
 			<!-- The engine's own picks, so their surface is "home": the one it learns from.
-			     Positions continue after the featured video's 0. -->
+			     Positions continue after the spotlight's. -->
 			<div
 				class="grid grid-cols-6 gap-x-4 gap-y-8 max-xl:grid-cols-4 max-lg:grid-cols-3 max-md:grid-cols-1"
 			>
 				{#each forYou as item, index (item.video.id)}
-					<SceneCard
-						video={item.video}
-						shown={{ surface: 'home', position: index + 1 }}
-						onclick={() => openPage(item.video)}
-					/>
+					<div class="rise-in" style:--rise-delay={riseDelay(index)}>
+						<SceneCard
+							video={item.video}
+							shown={{ surface: 'home', position: SPOTLIGHT_COUNT + index }}
+							onclick={() => openPage(item.video)}
+						/>
+					</div>
 				{/each}
 			</div>
 		</section>
@@ -273,7 +275,7 @@
 			{#snippet card(site)}
 				<a
 					href="/?{new URLSearchParams({ site: site.name })}"
-					class="bg-base-200 hover:bg-base-300 flex flex-col items-center gap-3 rounded-xl px-3 py-5 transition-colors"
+					class="flex flex-col items-center gap-3 rounded-2xl bg-white/[0.04] px-3 py-5 ring-1 ring-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/[0.08] hover:ring-white/15"
 				>
 					<SiteIcon iconUrl={site.iconUrl} class="h-12 w-12 rounded-lg" />
 					<span class="w-full truncate text-center text-sm font-medium">

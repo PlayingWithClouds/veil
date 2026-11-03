@@ -54,14 +54,7 @@
 </script>
 
 {#snippet chipLink(href: string, label: string, active: boolean)}
-	<a
-		{href}
-		data-sveltekit-noscroll
-		class="shrink-0 rounded-full px-3 py-1 text-sm whitespace-nowrap hover:brightness-125"
-		class:bg-base-200={!active}
-		class:bg-base-content={active}
-		class:text-base-100={active}
-	>
+	<a {href} data-sveltekit-noscroll class="chip" class:chip-on={active}>
 		{label}
 	</a>
 {/snippet}
@@ -71,10 +64,8 @@
 		type="button"
 		onclick={ontogglepanel}
 		aria-expanded={panelOpen}
-		class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm hover:brightness-125"
-		class:bg-base-200={!panelOpen}
-		class:bg-base-content={panelOpen}
-		class:text-base-100={panelOpen}
+		class="chip"
+		class:chip-on={panelOpen}
 	>
 		<FunnelSimpleIcon size={16} />
 		Filters
@@ -87,11 +78,9 @@
 		<a
 			href={toggledListParam(url, chip.param, chip.id)}
 			data-sveltekit-noscroll
-			class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm whitespace-nowrap"
-			class:bg-base-content={!chip.excluded}
-			class:text-base-100={!chip.excluded}
-			class:bg-error={chip.excluded}
-			class:text-error-content={chip.excluded}
+			class="chip"
+			class:chip-on={!chip.excluded}
+			class:chip-excluded={chip.excluded}
 			aria-label="Remove {chip.label}"
 		>
 			{#if chip.excluded}
@@ -121,10 +110,7 @@
 	{/each}
 
 	{#each recentSearches as text (text)}
-		<a
-			href="/?q={encodeURIComponent(text)}"
-			class="bg-base-200 hover:bg-base-300 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm whitespace-nowrap"
-		>
+		<a href="/?q={encodeURIComponent(text)}" class="chip">
 			<MagnifyingGlassIcon size={14} class="opacity-60" />
 			{text}
 		</a>

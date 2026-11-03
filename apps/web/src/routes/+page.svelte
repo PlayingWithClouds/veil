@@ -1,5 +1,5 @@
 <!--
-	Home. Without a search: the featured video and rows (HomeRows) above the
+	Home. Without a search: the spotlight and rows (HomeRows) above the
 	library's videos, endless: unfiltered, new pages from the video sites
 	follow once the library is through. The filter under the search box
 	(HeaderFilters; on phones above the rows) narrows recommendations and grid
@@ -31,6 +31,11 @@
 	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 
 	const PAGE_SIZE = 40;
+	// Placeholder cards while the first videos load.
+	const SKELETON_COUNT = 12;
+	// Cards of one page rise in this far apart, up to RISE_MAX_DELAY_MS.
+	const RISE_STEP_MS = 30;
+	const RISE_MAX_DELAY_MS = 450;
 
 	let videos = $state<VideoCardRow[]>([]);
 	let loading = $state(false);
@@ -64,6 +69,11 @@
 	$effect(() => {
 		void loadFirst(query, JSON.parse(filterKey), savedId);
 	});
+
+	/** How long a card waits before rising in, so a page of cards cascades. */
+	function riseDelay(position: number): string {
+		return `${Math.min((position % PAGE_SIZE) * RISE_STEP_MS, RISE_MAX_DELAY_MS)}ms`;
+	}
 
 	/**
 	 * The grid's feed: the saved filter's videos, else the URL filter's; with
@@ -136,11 +146,7 @@
 {#snippet browsePicker()}
 	{#if videoSites.length > 0}
 		<div class="flex items-center gap-2">
-			<select
-				bind:value={browsePlugin}
-				class="bg-base-200 h-9 rounded-lg px-2 text-sm"
-				aria-label="Site to browse"
-			>
+			<select bind:value={browsePlugin} class="chip pr-2" aria-label="Site to browse">
 				<option value="">Browse a site…</option>
 				{#each videoSites as site (site.name)}
 					<option value={site.name}>{site.displayName ?? site.name}</option>
@@ -148,7 +154,7 @@
 			</select>
 			<button
 				type="button"
-				class="bg-primary text-primary-content h-9 rounded-lg px-3 text-sm font-medium disabled:opacity-50"
+				class="bg-primary text-primary-content h-8 rounded-full px-4 text-sm font-semibold transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-50"
 				disabled={!browsePlugin || browsing}
 				onclick={browseSite}
 			>
@@ -195,17 +201,27 @@
 			class="-mt-2 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 max-md:grid-cols-1"
 		>
 			{#each videos as video, position (video.id)}
-				<SceneCard
-					{video}
-					shown={{ surface: 'library', position }}
-					onclick={() => goto(videoUrl(video.id))}
-				/>
+				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
+					<SceneCard
+						{video}
+						shown={{ surface: 'library', position }}
+						onclick={() => goto(videoUrl(video.id))}
+					/>
+				</div>
+			{:else}
+				{#if loading}
+					{#each { length: SKELETON_COUNT }, position (position)}
+						<div class="flex flex-col gap-2" aria-hidden="true">
+							<div class="skeleton aspect-video w-full rounded-xl"></div>
+							<div class="skeleton h-3.5 w-3/4 rounded"></div>
+							<div class="skeleton h-3 w-1/3 rounded"></div>
+						</div>
+					{/each}
+				{/if}
 			{/each}
 		</div>
 
-		{#if loading && videos.length === 0}
-			<p class="text-base-content/50 text-sm">Loading…</p>
-		{:else if !loading && videos.length === 0}
+		{#if !loading && videos.length === 0}
 			<p class="text-base-content/50 text-sm">
 				{#if filtered}
 					Nothing matches this filter.

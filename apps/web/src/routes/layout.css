@@ -1419,6 +1419,14 @@
 	color: var(--color-primary-content);
 }
 
+/* A chip that excludes what it names (a "not" filter). */
+.chip-excluded,
+.chip-excluded:hover {
+	border-color: color-mix(in oklab, var(--color-error) 45%, transparent);
+	background-color: var(--ctx-red-soft);
+	color: var(--color-error);
+}
+
 /* A row of exclusive choices; .segmented-thumb slides under the chosen one. */
 .segmented {
 	position: relative;
