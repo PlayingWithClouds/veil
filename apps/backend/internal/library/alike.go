@@ -73,6 +73,67 @@ func (l *Library) recordIfAlike(ctx context.Context, video *schema.Video, target
 	return err
 }
 
+// PruneAlike deletes the undismissed video pairs that alike.SameScene no
+// longer finds alike, so videos an older, looser matcher hid show again, and
+// returns how many it deleted. Dismissed pairs stay: they keep the user's word.
+func (l *Library) PruneAlike(ctx context.Context) (int, error) {
+	pairs, err := db.QueryAs[schema.Alike](ctx, l.database,
+		`SELECT * FROM "Alike" WHERE "subjectKind" = $kind AND "dismissed" = 0 AND "deletedAt" IS NULL`,
+		db.Vars{"kind": schema.RecordKindVideo})
+	if err != nil {
+		return 0, err
+	}
+	candidates := map[string]alike.Candidate{}
+	stale := []string{}
+	for _, pair := range pairs {
+		same, err := l.stillAlike(ctx, candidates, pair)
+		if err != nil {
+			return 0, err
+		}
+		if !same {
+			stale = append(stale, pair.Id)
+		}
+	}
+	if len(stale) == 0 {
+		return 0, nil
+	}
+	deleted, err := l.database.Exec(ctx, `DELETE FROM "Alike" WHERE "id" IN (SELECT value FROM json_each($ids))`, db.Vars{"ids": stale})
+	return int(deleted), err
+}
+
+// stillAlike reports whether a pair's two videos still match alike.SameScene.
+// A pair whose video is gone counts as alike: it hides nothing. candidates
+// caches each video's description across pairs.
+func (l *Library) stillAlike(ctx context.Context, candidates map[string]alike.Candidate, pair schema.Alike) (bool, error) {
+	first, found, err := l.cachedCandidate(ctx, candidates, pair.FirstId)
+	if err != nil || !found {
+		return true, err
+	}
+	second, found, err := l.cachedCandidate(ctx, candidates, pair.SecondId)
+	if err != nil || !found {
+		return true, err
+	}
+	return alike.SameScene(first, second), nil
+}
+
+// cachedCandidate describes a stored video for the matchers, from candidates
+// when it was described before; found is false when there's no such video.
+func (l *Library) cachedCandidate(ctx context.Context, candidates map[string]alike.Candidate, videoID string) (alike.Candidate, bool, error) {
+	if candidate, cached := candidates[videoID]; cached {
+		return candidate, true, nil
+	}
+	video, err := l.Video(ctx, videoID)
+	if err != nil || video == nil {
+		return alike.Candidate{}, false, err
+	}
+	candidate, err := l.alikeCandidate(ctx, video)
+	if err != nil {
+		return alike.Candidate{}, false, err
+	}
+	candidates[videoID] = candidate
+	return candidate, true, nil
+}
+
 // alikeCandidate describes a video for the alike matchers.
 func (l *Library) alikeCandidate(ctx context.Context, video *schema.Video) (alike.Candidate, error) {
 	performers, err := l.PerformersByID(ctx, video.Performers)

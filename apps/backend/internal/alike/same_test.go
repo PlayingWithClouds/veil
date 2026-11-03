@@ -9,7 +9,9 @@ func TestSameScene(t *testing.T) {
 		second Candidate
 		want   bool
 	}{
-		{"same performers and runtime", Candidate{Performers: []string{"Ana Lee"}, Title: "x", DurationSeconds: 1200}, Candidate{Performers: []string{"ana  lee"}, Title: "y", DurationSeconds: 1210}, true},
+		{"same performers and runtime, different titles", Candidate{Performers: []string{"Ana Lee"}, Title: "x", DurationSeconds: 1200}, Candidate{Performers: []string{"ana  lee"}, Title: "y", DurationSeconds: 1210}, false},
+		{"one performer's videos of one length", Candidate{Performers: []string{"Lady Dee"}, Title: "Czech babe Lady Dee takes her shorts off in the pool", DurationSeconds: 300}, Candidate{Performers: []string{"Lady Dee"}, Title: "Lady Dee masturbating", DurationSeconds: 301}, false},
+		{"same performers and title", Candidate{Performers: []string{"Ana Lee"}, Title: "Ana Lee poolside fun", DurationSeconds: 1200}, Candidate{Performers: []string{"ana  lee"}, Title: "Ana Lee Poolside Fun", DurationSeconds: 1210}, true},
 		{"same title and runtime without performers", Candidate{Title: "Pool Party Fun", DurationSeconds: 900}, Candidate{Title: "pool party fun!", DurationSeconds: 905}, true},
 		{"runtime far apart", Candidate{Performers: []string{"Ana Lee"}, DurationSeconds: 1200}, Candidate{Performers: []string{"Ana Lee"}, DurationSeconds: 600}, false},
 		{"runtime unknown", Candidate{Performers: []string{"Ana Lee"}}, Candidate{Performers: []string{"Ana Lee"}, DurationSeconds: 600}, false},

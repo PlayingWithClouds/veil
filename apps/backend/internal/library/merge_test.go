@@ -138,6 +138,43 @@ func TestAlikeCopiesHideAndMerge(t *testing.T) {
 	assertVideos(t, library, "after merging", schema.Filter{}, first.Id)
 }
 
+// TestPruneAlike stores a pair an older matcher made from one cast and runtime
+// alone, and a true copy: pruning deletes only the first, so both its videos
+// show again.
+func TestPruneAlike(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	first, err := library.IngestFound(ctx, "site", foundScene())
+	if err != nil {
+		t.Fatal(err)
+	}
+	copyPage := foundScene()
+	copyPage[0].Scene.ExternalID = "other-1"
+	copyPage[0].Scene.Title = "Pool day HD"
+	if _, err := library.IngestFound(ctx, "other", copyPage); err != nil {
+		t.Fatal(err)
+	}
+	otherScene := foundScene()
+	otherScene[0].Scene.ExternalID = "v2"
+	otherScene[0].Scene.Title = "Garden picnic in the rain"
+	other, err := library.IngestFound(ctx, "site", otherScene)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := library.DB().Insert(ctx, "Alike", db.Vars{"subjectKind": "video", "firstId": first.Id, "secondId": other.Id, "score": 1, "dismissed": false}); err != nil {
+		t.Fatal(err)
+	}
+	pruned, err := library.PruneAlike(ctx)
+	if err != nil || pruned != 1 {
+		t.Fatalf("pruned = %d, err %v, want the cast-only pair", pruned, err)
+	}
+	pairs, _ := library.Alikes(ctx, schema.RecordKindVideo, 10, 0)
+	if len(pairs) != 1 || pairs[0].SecondId == other.Id {
+		t.Errorf("pairs = %+v, want only the true copy", pairs)
+	}
+	assertVideos(t, library, "after pruning", schema.Filter{}, other.Id, first.Id)
+}
+
 // TestUnprovenAlikeStaysApart refuses to merge a pair with no fingerprint
 // the strict matcher can't confirm.
 func TestUnprovenAlikeStaysApart(t *testing.T) {

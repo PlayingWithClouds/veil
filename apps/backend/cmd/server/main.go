@@ -244,6 +244,19 @@ func purgeExpired(ctx context.Context, services maintained, retentionDays int) {
 	}
 }
 
+// pruneAlike drops the duplicate pairs the matcher no longer agrees with, so
+// a stricter matcher brings back the videos a looser one hid.
+func pruneAlike(ctx context.Context, lib *library.Library) {
+	pruned, err := lib.PruneAlike(ctx)
+	if err != nil {
+		log.Printf("alike: prune: %v", err)
+		return
+	}
+	if pruned > 0 {
+		log.Printf("alike: pruned %d pairs that aren't the same scene", pruned)
+	}
+}
+
 // absolutePath makes a path absolute, keeping it as given when that fails.
 func absolutePath(path string) string {
 	absolute, err := filepath.Abs(path)
@@ -354,6 +367,7 @@ func main() {
 	if err := lib.SeedDefaultCategories(ctx); err != nil {
 		log.Printf("default categories: %v", err)
 	}
+	go pruneAlike(ctx, lib)
 	flow := pipeline.New(lib, registry, runner, cacheClient, queue)
 
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.

@@ -29,10 +29,11 @@ const (
 // SameScene reports whether two stored scenes are the same video on different
 // sites. Unlike Score, which hunts for the full-length copy of a teaser, this is
 // symmetric and strict, because a wrong merge hides a scene: both runtimes must
-// be known and nearly equal, and then either the credited performers or the
-// title tokens must agree. Titles that carry different numbers ("Part 14" and
-// "Part 15") are different videos, and so are copies with different casts.
-// Copies with the same runtime to the second need only a loose title agreement.
+// be known and nearly equal, and then the title tokens must agree. A shared
+// cast proves nothing (a performer has many videos of one length), but titles
+// that carry different numbers ("Part 14" and "Part 15") are different videos,
+// and so are copies with different casts. Copies with the same runtime to the
+// second need only a loose title agreement.
 func SameScene(first, second Candidate) bool {
 	return sameScene(first, second, true)
 }
@@ -53,9 +54,6 @@ func sameScene(first, second Candidate, allowLoose bool) bool {
 	firstTokens, secondTokens := titleTokens(first.Title), titleTokens(second.Title)
 	if conflictingNumbers(firstTokens, secondTokens) {
 		return false
-	}
-	if jaccard(nameSet(first.Performers), nameSet(second.Performers)) == 1 {
-		return true
 	}
 	if castsConflict(first, second) {
 		return false
