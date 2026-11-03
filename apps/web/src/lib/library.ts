@@ -63,7 +63,9 @@ export const GALLERY_CARD = {
 	imageCount: true,
 	cover: { uri: true },
 	studio: NAMED,
-	sources: { url: true }
+	performers: NAMED,
+	sources: { url: true },
+	userState: { favorite: true, rating: true }
 } as const;
 
 /** A performer or studio as a card shows it. */
