@@ -24,6 +24,7 @@ func (l *Library) upsertStory(ctx context.Context, plugin string, story *plugins
 	id, sourceID, err := l.upsertMedia(ctx, mediaWrite{
 		kind: schema.RecordKindStory, plugin: plugin, site: site, fields: fields,
 		defaults: db.Vars{"chapterCount": 0, "complete": false}, label: story.Title, image: assetOf(story.CoverPath),
+		listedCredits: l.listedCredits(plugin, story.Performers, fetched),
 	})
 	if err != nil {
 		return "", err

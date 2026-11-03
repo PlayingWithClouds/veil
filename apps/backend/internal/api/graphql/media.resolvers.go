@@ -151,6 +151,25 @@ func (r *queryResolver) MediaCount(ctx context.Context, filter *schema.Filter) (
 	return r.library.CountAllMedia(ctx, filterOrEmpty(filter))
 }
 
+// MediaTagCounts is the resolver for the mediaTagCounts field.
+func (r *queryResolver) MediaTagCounts(ctx context.Context, kind schema.MediaKind, filter *schema.Filter, limit *int) ([]*model.TagCount, error) {
+	counts, err := r.library.MediaTagCounts(ctx, kind, filterOrEmpty(filter), number(limit))
+	if err != nil {
+		return nil, err
+	}
+	return tagCounts(counts), nil
+}
+
+// CreditedPerformers is the resolver for the creditedPerformers field.
+func (r *queryResolver) CreditedPerformers(ctx context.Context, kind schema.MediaKind, limit *int) ([]*schema.Performer, error) {
+	size := number(limit)
+	if size <= 0 {
+		size = defaultCreditedLimit
+	}
+	performers, err := r.library.CreditedPerformers(ctx, kind, size)
+	return pointers(performers), err
+}
+
 // Audios is the resolver for the audios field.
 func (r *queryResolver) Audios(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Audio, error) {
 	audios, err := r.library.Audios(ctx, mediaQuery(filter, limit, offset))

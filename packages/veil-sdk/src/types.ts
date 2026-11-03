@@ -551,7 +551,9 @@ export interface DiscoveredItem {
   count?: number;
   /**
    * channel/uploader when the listing card names it (scenes), so search
-   * results carry their channel before the page is visited
+   * results carry their channel before the page is visited; on audio and
+   * story cards the voice or author, credited as a performer while the
+   * record credits nobody
    */
   studio?: StudioRef;
   /**

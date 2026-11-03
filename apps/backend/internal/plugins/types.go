@@ -744,7 +744,9 @@ type DiscoveredItem struct {
 	// Count is the number of items behind this entry (tag/performer listings).
 	Count int `json:"count,omitempty"`
 	// Studio is the channel/uploader when the listing card names it (scenes),
-	// so search results carry their channel before the page is visited.
+	// so search results carry their channel before the page is visited. On
+	// audio and story cards it's the voice or author, credited as a performer
+	// while the record credits nobody.
 	Studio *StudioRef `json:"studio,omitempty"`
 	// Downloads are playback sources known at discovery time. When a plugin can
 	// derive a source deterministically from the listing (e.g. a fixed embed URL),

@@ -910,6 +910,7 @@ type ComplexityRoot struct {
 		Collections              func(childComplexity int) int
 		CollectionsWith          func(childComplexity int, subject schema.RecordRef) int
 		Contributions            func(childComplexity int, kind *string) int
+		CreditedPerformers       func(childComplexity int, kind schema.MediaKind, limit *int) int
 		CurrentDevice            func(childComplexity int) int
 		Devices                  func(childComplexity int) int
 		Downloads                func(childComplexity int) int
@@ -935,6 +936,7 @@ type ComplexityRoot struct {
 		Limits                   func(childComplexity int) int
 		Media                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
 		MediaCount               func(childComplexity int, filter *schema.Filter) int
+		MediaTagCounts           func(childComplexity int, kind schema.MediaKind, filter *schema.Filter, limit *int) int
 		Merges                   func(childComplexity int, kind schema.RecordKind, keptID string) int
 		Nearest                  func(childComplexity int, kind schema.EmbeddingKind, model string, vector []float64, kinds []schema.RecordKind, limit *int) int
 		NewSince                 func(childComplexity int, followID string, since *string, limit *int) int
@@ -1647,6 +1649,8 @@ type QueryResolver interface {
 	Tag(ctx context.Context, id string) (*schema.Tag, error)
 	Media(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]model.Record, error)
 	MediaCount(ctx context.Context, filter *schema.Filter) (int, error)
+	MediaTagCounts(ctx context.Context, kind schema.MediaKind, filter *schema.Filter, limit *int) ([]*model.TagCount, error)
+	CreditedPerformers(ctx context.Context, kind schema.MediaKind, limit *int) ([]*schema.Performer, error)
 	Audios(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Audio, error)
 	AudioCount(ctx context.Context, filter *schema.Filter) (int, error)
 	Audio(ctx context.Context, id string) (*schema.Audio, error)
@@ -6292,6 +6296,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Contributions(childComplexity, args["kind"].(*string)), true
+	case "Query.creditedPerformers":
+		if e.ComplexityRoot.Query.CreditedPerformers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_creditedPerformers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CreditedPerformers(childComplexity, args["kind"].(schema.MediaKind), args["limit"].(*int)), true
 	case "Query.currentDevice":
 		if e.ComplexityRoot.Query.CurrentDevice == nil {
 			break
@@ -6533,6 +6548,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MediaCount(childComplexity, args["filter"].(*schema.Filter)), true
+	case "Query.mediaTagCounts":
+		if e.ComplexityRoot.Query.MediaTagCounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_mediaTagCounts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MediaTagCounts(childComplexity, args["kind"].(schema.MediaKind), args["filter"].(*schema.Filter), args["limit"].(*int)), true
 	case "Query.merges":
 		if e.ComplexityRoot.Query.Merges == nil {
 			break
@@ -9906,6 +9932,12 @@ extend type Query {
   # merged in the filter's order.
   media(filter: FilterInput, limit: Int, offset: Int): [Record!]!
   mediaCount(filter: FilterInput): Int!
+  # The tags most common among the media of a kind matching filter, most
+  # common first; tags the filter already requires are left out.
+  mediaTagCounts(kind: MediaKind!, filter: FilterInput, limit: Int): [TagCount!]!
+  # Performers credited on media of a kind (the voices of audio, the authors
+  # of stories): favourites first, then the most credited (default 20).
+  creditedPerformers(kind: MediaKind!, limit: Int): [Performer!]!
   audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
   audioCount(filter: FilterInput): Int!
   audio(id: ID!): Audio
@@ -15902,6 +15934,28 @@ func (ec *executionContext) field_Query_contributions_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_creditedPerformers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (schema.MediaKind, error) {
+			return ec.unmarshalNMediaKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMediaKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_eventCount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16241,6 +16295,36 @@ func (ec *executionContext) field_Query_mediaCount_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["filter"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_mediaTagCounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (schema.MediaKind, error) {
+			return ec.unmarshalNMediaKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMediaKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "filter",
+		func(ctx context.Context, v any) (*schema.Filter, error) {
+			return ec.unmarshalOFilterInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg2
 	return args, nil
 }
 
@@ -37296,6 +37380,94 @@ func (ec *executionContext) fieldContext_Query_mediaCount(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_mediaTagCounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_mediaTagCounts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MediaTagCounts(ctx, fc.Args["kind"].(schema.MediaKind), fc.Args["filter"].(*schema.Filter), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TagCount) graphql.Marshaler {
+			return ec.marshalNTagCount2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCountᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_mediaTagCounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TagCount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_mediaTagCounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_creditedPerformers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_creditedPerformers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CreditedPerformers(ctx, fc.Args["kind"].(schema.MediaKind), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Performer) graphql.Marshaler {
+			return ec.marshalNPerformer2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐPerformerᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_creditedPerformers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Performer(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_creditedPerformers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_audios(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56912,6 +57084,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_mediaCount(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mediaTagCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mediaTagCounts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "creditedPerformers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_creditedPerformers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

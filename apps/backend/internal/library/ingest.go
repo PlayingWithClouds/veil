@@ -87,13 +87,13 @@ func (l *Library) IngestListed(ctx context.Context, plugin string, item plugins.
 	case plugins.MediaTypeAudio:
 		id, err := l.upsertAudio(ctx, plugin, &plugins.Audio{
 			ExternalID: item.ExternalID, SourceURL: item.SourceURL, Title: item.Title, Date: item.Date,
-			Duration: item.DurationSeconds, CoverPath: item.PosterPath, Studio: item.Studio, Downloads: item.Downloads,
+			Duration: item.DurationSeconds, CoverPath: item.PosterPath, Performers: uploaderOf(item), Downloads: item.Downloads,
 		}, false)
 		return schema.RecordRef{Kind: schema.RecordKindAudio, Id: id}, err
 	case plugins.MediaTypeStory:
 		id, err := l.upsertStory(ctx, plugin, &plugins.Story{
 			ExternalID: item.ExternalID, SourceURL: item.SourceURL, Title: item.Title, Date: item.Date,
-			CoverPath: item.PosterPath, Studio: item.Studio,
+			CoverPath: item.PosterPath, Performers: uploaderOf(item),
 		}, false)
 		return schema.RecordRef{Kind: schema.RecordKindStory, Id: id}, err
 	case plugins.MediaTypePost:
@@ -127,6 +127,16 @@ func postFromListing(item plugins.DiscoveredItem) *plugins.Post {
 		post.Creator = plugins.ScenePerformer{Name: item.Studio.Name, ExternalID: item.Studio.ExternalID, SourceURL: item.Studio.SourceURL}
 	}
 	return post
+}
+
+// uploaderOf is who an audio or story card names as its channel (Studio):
+// on those sites the uploader is the voice or the author, so credited as
+// a performer, like a creator post's creator.
+func uploaderOf(item plugins.DiscoveredItem) []plugins.ScenePerformer {
+	if item.Studio == nil || item.Studio.Name == "" {
+		return nil
+	}
+	return []plugins.ScenePerformer{{Name: item.Studio.Name, ExternalID: item.Studio.ExternalID, SourceURL: item.Studio.SourceURL}}
 }
 
 // galleryFromListing turns a listing card into the gallery it stands for.

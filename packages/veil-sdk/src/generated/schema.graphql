@@ -62,6 +62,8 @@ type Query {
   tag(id: ID!): Tag
   media(filter: FilterInput, limit: Int, offset: Int): [Record!]!
   mediaCount(filter: FilterInput): Int!
+  mediaTagCounts(kind: MediaKind!, filter: FilterInput, limit: Int): [TagCount!]!
+  creditedPerformers(kind: MediaKind!, limit: Int): [Performer!]!
   audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
   audioCount(filter: FilterInput): Int!
   audio(id: ID!): Audio

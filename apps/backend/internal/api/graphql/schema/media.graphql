@@ -6,6 +6,12 @@ extend type Query {
   # merged in the filter's order.
   media(filter: FilterInput, limit: Int, offset: Int): [Record!]!
   mediaCount(filter: FilterInput): Int!
+  # The tags most common among the media of a kind matching filter, most
+  # common first; tags the filter already requires are left out.
+  mediaTagCounts(kind: MediaKind!, filter: FilterInput, limit: Int): [TagCount!]!
+  # Performers credited on media of a kind (the voices of audio, the authors
+  # of stories): favourites first, then the most credited (default 20).
+  creditedPerformers(kind: MediaKind!, limit: Int): [Performer!]!
   audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
   audioCount(filter: FilterInput): Int!
   audio(id: ID!): Audio

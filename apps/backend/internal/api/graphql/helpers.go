@@ -55,6 +55,9 @@ func number(value *int) int {
 	return *value
 }
 
+// defaultCreditedLimit is how many credited performers a row shows unless asked otherwise.
+const defaultCreditedLimit = 20
+
 // defaultSimilarLimit is how many similar records a page shows unless asked otherwise.
 const defaultSimilarLimit = 12
 

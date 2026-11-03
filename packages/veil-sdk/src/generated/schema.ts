@@ -76,6 +76,8 @@ export interface Query {
     tag: (Tag | null)
     media: Record[]
     mediaCount: Scalars['Int']
+    mediaTagCounts: TagCount[]
+    creditedPerformers: Performer[]
     audios: Audio[]
     audioCount: Scalars['Int']
     audio: (Audio | null)
@@ -1459,6 +1461,8 @@ export interface QueryGenqlSelection{
     tag?: (TagGenqlSelection & { __args: {id: Scalars['ID']} })
     media?: (RecordGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     mediaCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
+    mediaTagCounts?: (TagCountGenqlSelection & { __args: {kind: MediaKind, filter?: (FilterInput | null), limit?: (Scalars['Int'] | null)} })
+    creditedPerformers?: (PerformerGenqlSelection & { __args: {kind: MediaKind, limit?: (Scalars['Int'] | null)} })
     audios?: (AudioGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     audioCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
     audio?: (AudioGenqlSelection & { __args: {id: Scalars['ID']} })

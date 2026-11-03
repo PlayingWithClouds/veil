@@ -22,6 +22,7 @@ func (l *Library) upsertAudio(ctx context.Context, plugin string, audio *plugins
 	id, sourceID, err := l.upsertMedia(ctx, mediaWrite{
 		kind: schema.RecordKindAudio, plugin: plugin, site: site, fields: fields,
 		label: audio.Title, image: assetOf(audio.CoverPath),
+		listedCredits: l.listedCredits(plugin, audio.Performers, fetched),
 	})
 	if err != nil {
 		return "", err
