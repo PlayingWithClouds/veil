@@ -33,7 +33,12 @@
 	}
 </script>
 
-<div class="flex items-center" role="group" aria-label="Rating" onpointerleave={() => (hovered = null)}>
+<div
+	class="flex items-center"
+	role="group"
+	aria-label="Rating"
+	onpointerleave={() => (hovered = null)}
+>
 	{#each STARS as stars (stars)}
 		<button
 			type="button"

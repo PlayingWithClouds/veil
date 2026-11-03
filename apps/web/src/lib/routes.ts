@@ -89,9 +89,17 @@ export function groupUrl(id: string): string {
 	return `/groups/${encodeURIComponent(id)}`;
 }
 
-/** One category's page. */
-export function categoryUrl(id: string): string {
-	return `/categories/${encodeURIComponent(id)}`;
+/** The categories page, counting one kind of media (videos when omitted). */
+export function categoriesUrl(kind?: string): string {
+	if (!kind || kind === 'video') return '/categories';
+	return `/categories?${new URLSearchParams({ kind })}`;
+}
+
+/** One category's page, showing one kind of media (videos when omitted). */
+export function categoryUrl(id: string, kind?: string): string {
+	const path = `/categories/${encodeURIComponent(id)}`;
+	if (!kind || kind === 'video') return path;
+	return `${path}?${new URLSearchParams({ kind })}`;
 }
 
 /** One collection's page. */

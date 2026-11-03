@@ -33,7 +33,13 @@
 		onclose: () => void;
 	}
 
-	let { images, index = $bindable(), alt = '', playing = $bindable(false), onclose }: Props = $props();
+	let {
+		images,
+		index = $bindable(),
+		alt = '',
+		playing = $bindable(false),
+		onclose
+	}: Props = $props();
 
 	const SLIDE_MS = 4000;
 	const PRELOAD_AHEAD = 3;
@@ -80,7 +86,11 @@
 	/** Keeps the shown photo's thumbnail in view. */
 	async function scrollThumbnailIntoView(shown: number) {
 		await tick();
-		strip?.children[shown]?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+		strip?.children[shown]?.scrollIntoView({
+			block: 'nearest',
+			inline: 'center',
+			behavior: 'smooth'
+		});
 	}
 
 	/** Steps with the arrow keys, plays or pauses with space, closes with Escape. */
@@ -144,7 +154,10 @@
 			disabled={atEnd && !playing}
 			onclick={() => (playing = !playing)}
 		>
-			{#if playing}<PauseIcon size={18} weight="fill" />{:else}<PlayIcon size={18} weight="fill" />{/if}
+			{#if playing}<PauseIcon size={18} weight="fill" />{:else}<PlayIcon
+					size={18}
+					weight="fill"
+				/>{/if}
 		</button>
 		{#if current}
 			<a
@@ -234,7 +247,12 @@
 					aria-current={position === index}
 					onclick={() => show(position)}
 				>
-					<img src={image.thumbnail ?? image.src} alt="" loading="lazy" class="h-full w-full object-cover" />
+					<img
+						src={image.thumbnail ?? image.src}
+						alt=""
+						loading="lazy"
+						class="h-full w-full object-cover"
+					/>
 				</button>
 			{/each}
 		</div>

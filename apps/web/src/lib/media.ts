@@ -109,6 +109,8 @@ export type GroupCardRow = FieldsSelection<Group, typeof GROUP_CARD>;
 export interface MediaListing {
 	// Only the media carrying this tag.
 	tagId?: string;
+	// Only the media in this category (or its subcategories).
+	categoryId?: string;
 	// Newest release first, instead of the most recently added.
 	byRelease?: boolean;
 }
@@ -117,6 +119,7 @@ export interface MediaListing {
 export function listingFilter(listing: MediaListing): FilterInput {
 	const filter: FilterInput = {};
 	if (listing.tagId) filter.includeTagIds = [listing.tagId];
+	if (listing.categoryId) filter.categoryIds = [listing.categoryId];
 	if (listing.byRelease) filter.sort = { field: 'date', descending: true };
 	return filter;
 }

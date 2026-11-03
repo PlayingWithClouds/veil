@@ -31,7 +31,10 @@ function nounOf(kind: RecordKind): string {
 }
 
 /** Favourite, not interested, the blocks and "Open on the site"; onfavorite gets the new value. */
-export function recordActions(record: MenuRecord, onfavorite: (favorite: boolean) => void): SheetAction[] {
+export function recordActions(
+	record: MenuRecord,
+	onfavorite: (favorite: boolean) => void
+): SheetAction[] {
 	const noun = nounOf(record.kind);
 	const actions: SheetAction[] = [
 		{
@@ -39,7 +42,11 @@ export function recordActions(record: MenuRecord, onfavorite: (favorite: boolean
 			icon: HeartIcon,
 			run: () => void toggleFavorite(record, onfavorite)
 		},
-		{ label: 'Not interested', icon: EyeSlashIcon, run: () => notInterested(record.kind, record.id, noun) },
+		{
+			label: 'Not interested',
+			icon: EyeSlashIcon,
+			run: () => notInterested(record.kind, record.id, noun)
+		},
 		{
 			label: `Block this ${noun.toLowerCase()}`,
 			icon: ProhibitIcon,
@@ -76,7 +83,10 @@ export function recordActions(record: MenuRecord, onfavorite: (favorite: boolean
 }
 
 /** Flips the record's favourite mark. */
-async function toggleFavorite(record: MenuRecord, onfavorite: (favorite: boolean) => void): Promise<void> {
+async function toggleFavorite(
+	record: MenuRecord,
+	onfavorite: (favorite: boolean) => void
+): Promise<void> {
 	const favorite = !record.favorite;
 	await setFavorite(record.kind, record.id, favorite);
 	onfavorite(favorite);

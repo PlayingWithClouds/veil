@@ -7,7 +7,8 @@ import UsersIcon from 'phosphor-svelte/lib/UsersIcon';
 import FilmSlateIcon from 'phosphor-svelte/lib/FilmSlateIcon';
 import PlugsIcon from 'phosphor-svelte/lib/PlugsIcon';
 import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
-import { audiosUrl, galleriesUrl, pluginsUrl, storiesUrl } from '$lib/routes';
+import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFourIcon';
+import { audiosUrl, categoriesUrl, galleriesUrl, pluginsUrl, storiesUrl } from '$lib/routes';
 
 /** One top-level destination, in the sidebar and the phone tab bar. */
 export interface NavLink {
@@ -22,6 +23,7 @@ export interface NavLink {
 export const navLinks: NavLink[] = [
 	{ label: 'Home', icon: HouseIcon, href: '/', exact: true },
 	{ label: 'Galleries', icon: ImagesIcon, href: galleriesUrl() },
+	{ label: 'Categories', icon: SquaresFourIcon, href: categoriesUrl() },
 	{ label: 'Audio', icon: HeadphonesIcon, href: audiosUrl() },
 	{ label: 'Stories', icon: BookOpenTextIcon, href: storiesUrl() },
 	{ label: 'Performers', icon: UsersIcon, href: '/performers' },

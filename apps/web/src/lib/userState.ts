@@ -43,7 +43,11 @@ export async function setFavorite(kind: RecordKind, id: string, favorite: boolea
 }
 
 /** Rates a record from 0 to 10; null clears the rating. */
-export async function setRating(kind: RecordKind, id: string, rating: number | null): Promise<void> {
+export async function setRating(
+	kind: RecordKind,
+	id: string,
+	rating: number | null
+): Promise<void> {
 	await gqlClient.mutation({
 		rate: { __args: { subject: { kind, id }, rating }, rating: true }
 	});

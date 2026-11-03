@@ -59,10 +59,13 @@ test('after the library the sites take turns until each runs dry or fails', asyn
 		two: items('t1', 'a'),
 		broken: []
 	};
-	const sites = siteSource(() => ['one', 'two', 'broken'], async (plugin, limit, offset) => {
-		if (plugin === 'broken') throw new Error('login needed');
-		return catalogs[plugin].slice(offset, offset + limit);
-	});
+	const sites = siteSource(
+		() => ['one', 'two', 'broken'],
+		async (plugin, limit, offset) => {
+			if (plugin === 'broken') throw new Error('login needed');
+			return catalogs[plugin].slice(offset, offset + limit);
+		}
+	);
 	const feed = endlessFeed({ rest: restOver(items('a')), sites }, []);
 	expect(await drain(feed, 2)).toEqual(['a', 'o1', 'o2', 't1', 'o3']);
 });

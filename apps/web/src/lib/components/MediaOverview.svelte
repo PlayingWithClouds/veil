@@ -1,7 +1,8 @@
 <!--
 	The rows at the top of the galleries, audio and stories pages: what you
 	stopped partway (or viewed last), your favourites when the page has them,
-	the newest releases, the performers, voices or authors (favourites first),
+	the fullest categories, the newest releases, the performers, voices or
+	authors (favourites first),
 	then a row for each of the most common tags with "See all". Each row loads
 	on its own and stays hidden while empty.
 -->
@@ -9,6 +10,7 @@
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import Shelf from '$lib/components/Shelf.svelte';
+	import CategoryShelf from '$lib/components/CategoryShelf.svelte';
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import { tagLabel } from '$lib/components/TagChips.svelte';
 	import {
@@ -111,6 +113,8 @@
 			{@render mediaCard(item)}
 		{/snippet}
 	</Shelf>
+
+	<CategoryShelf {kind} />
 
 	<Shelf title="Newest releases" items={newest} key={(item) => item.id} {itemWidth}>
 		{#snippet card(item)}

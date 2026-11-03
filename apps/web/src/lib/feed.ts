@@ -79,7 +79,9 @@ function rankedSource<Item>(
 }
 
 /** An offset-paged list as a source: through once a page comes back empty. */
-function offsetSource<Item>(list: (limit: number, offset: number) => Promise<Item[]>): Source<Item> {
+function offsetSource<Item>(
+	list: (limit: number, offset: number) => Promise<Item[]>
+): Source<Item> {
 	let offset = 0;
 	return async (limit) => {
 		const page = await list(limit, offset);
