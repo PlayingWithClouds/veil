@@ -64,7 +64,7 @@ export interface PluginPackage {
 }
 
 /** What a plugin can list into the library. */
-export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG';
+export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG' | 'AUDIO' | 'STORY';
 
 /** A setting or login field as the plugins page shows it. */
 const SETTING_FIELD = {

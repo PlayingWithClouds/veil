@@ -78,7 +78,7 @@ export const MEMBER = {
 /** One site a record was found on. */
 export const SOURCE = { plugin: true, url: true, fetchedAt: true } as const;
 
-const STREAM = {
+export const STREAM = {
 	id: true,
 	url: true,
 	mimeType: true,
@@ -136,7 +136,10 @@ const LISTED = {
 	videos: VIDEO_CARD,
 	galleries: GALLERY_CARD,
 	performers: MEMBER,
-	studios: MEMBER
+	studios: MEMBER,
+	// Counted only: their pages load their own cards.
+	audios: { id: true },
+	stories: { id: true }
 } as const;
 
 /** A named reference: a performer, studio or tag. */

@@ -14,7 +14,8 @@
 		uninstallPlugin,
 		type InstalledPlugin
 	} from '$lib/plugins';
-	import { browse } from '$lib/library';
+	import { browse, type Listed } from '$lib/library';
+	import { audiosUrl, storiesUrl } from '$lib/routes';
 
 	interface Props {
 		plugin: InstalledPlugin;
@@ -24,6 +25,16 @@
 	}
 
 	let { plugin, opened = false, onchanged }: Props = $props();
+
+	type BrowseKind = 'VIDEO' | 'GALLERY' | 'AUDIO' | 'STORY';
+
+	// Where a browsed kind lands in the answer, and the page that shows it.
+	const BROWSE_TARGETS: Record<BrowseKind, { listed: keyof Listed; page: string }> = {
+		VIDEO: { listed: 'videos', page: '/' },
+		GALLERY: { listed: 'galleries', page: '/galleries' },
+		AUDIO: { listed: 'audios', page: audiosUrl() },
+		STORY: { listed: 'stories', page: storiesUrl() }
+	};
 
 	let open = $state(false);
 	let row = $state<HTMLLIElement>();
@@ -39,6 +50,8 @@
 
 	let canBrowseVideos = $derived(plugin.capabilities.includes('scene:list'));
 	let canBrowseGalleries = $derived(plugin.capabilities.includes('gallery:list'));
+	let canBrowseAudio = $derived(plugin.capabilities.includes('audio:list'));
+	let canBrowseStories = $derived(plugin.capabilities.includes('story:list'));
 	// The site has a login, and this device has none that works.
 	let needsLogin = $derived(plugin.login !== null && plugin.account?.status !== 'ok');
 
@@ -63,14 +76,14 @@
 	}
 
 	/** Stores a page of the plugin's catalog and opens where it shows. */
-	async function browseCatalog(kind: 'VIDEO' | 'GALLERY') {
+	async function browseCatalog(kind: BrowseKind) {
 		busy = true;
 		message = null;
 		try {
 			const listed = await browse(plugin.name, kind);
-			const count = kind === 'VIDEO' ? listed.videos.length : listed.galleries.length;
-			message = `Stored ${count}.`;
-			goto(kind === 'VIDEO' ? '/' : '/galleries');
+			const target = BROWSE_TARGETS[kind];
+			message = `Stored ${listed[target.listed].length}.`;
+			goto(target.page);
 		} catch (failure) {
 			message = String(failure);
 		} finally {
@@ -141,6 +154,26 @@
 						onclick={() => browseCatalog('GALLERY')}
 					>
 						Browse galleries
+					</button>
+				{/if}
+				{#if canBrowseAudio}
+					<button
+						type="button"
+						class="bg-base-300 rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
+						disabled={busy || !plugin.enabled}
+						onclick={() => browseCatalog('AUDIO')}
+					>
+						Browse audio
+					</button>
+				{/if}
+				{#if canBrowseStories}
+					<button
+						type="button"
+						class="bg-base-300 rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
+						disabled={busy || !plugin.enabled}
+						onclick={() => browseCatalog('STORY')}
+					>
+						Browse stories
 					</button>
 				{/if}
 				{#if !plugin.localBuild}

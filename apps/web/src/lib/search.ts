@@ -9,6 +9,7 @@ import {
 } from '@playingwithclouds/veil-sdk/generated';
 import { getWsClient, gqlClient } from '$lib/veil';
 import { VIDEO_CARD } from '$lib/library';
+import { AUDIO_CARD, STORY_CARD } from '$lib/media';
 
 // How long the sites' preference scores are reused before they're asked again.
 const PREFERENCE_TTL_MS = 10 * 60 * 1000;
@@ -21,7 +22,8 @@ let preferenceCache: { at: number; scores: Promise<Map<string, number>> } | null
  * site alike.
  */
 export function sitePreferences(): Promise<Map<string, number>> {
-	if (preferenceCache && Date.now() - preferenceCache.at < PREFERENCE_TTL_MS) return preferenceCache.scores;
+	if (preferenceCache && Date.now() - preferenceCache.at < PREFERENCE_TTL_MS)
+		return preferenceCache.scores;
 	const scores = gqlClient
 		.query({ sitePreferences: { plugin: true, score: true } })
 		.then((result) => new Map(result.sitePreferences.map((site) => [site.plugin, site.score])))
@@ -38,7 +40,7 @@ const SEARCH_BATCH = {
 	final: true,
 	exhausted: true,
 	returned: true,
-	listed: { videos: VIDEO_CARD }
+	listed: { videos: VIDEO_CARD, audios: AUDIO_CARD, stories: STORY_CARD }
 } as const;
 
 export type SearchBatchRow = FieldsSelection<SearchBatch, typeof SEARCH_BATCH>;

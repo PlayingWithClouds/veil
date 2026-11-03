@@ -1375,3 +1375,90 @@
 		transition: none;
 	}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+ * STORY READER — its own page colours, picked in the reader's
+ * settings (lib/stores/readerSettings.ts), independent of the app's.
+ * ═══════════════════════════════════════════════════════════════ */
+
+[data-reader-theme='dark'] {
+	--reader-bg: #121214;
+	--reader-surface: #1c1c1f;
+	--reader-text: #dcdcde;
+	--reader-muted: #8b8b93;
+	--reader-line: rgba(255, 255, 255, 0.1);
+	--reader-accent: #a78bfa;
+}
+[data-reader-theme='black'] {
+	--reader-bg: #000000;
+	--reader-surface: #111113;
+	--reader-text: #c4c4c8;
+	--reader-muted: #6f6f78;
+	--reader-line: rgba(255, 255, 255, 0.09);
+	--reader-accent: #a78bfa;
+}
+[data-reader-theme='sepia'] {
+	--reader-bg: #f4ecd8;
+	--reader-surface: #e9dfc6;
+	--reader-text: #433422;
+	--reader-muted: #8a7558;
+	--reader-line: rgba(67, 52, 34, 0.15);
+	--reader-accent: #9a5b2c;
+}
+[data-reader-theme='light'] {
+	--reader-bg: #fbfbfa;
+	--reader-surface: #efefed;
+	--reader-text: #1f1f22;
+	--reader-muted: #6b6b73;
+	--reader-line: rgba(0, 0, 0, 0.1);
+	--reader-accent: #6d4fd8;
+}
+
+.reader {
+	background-color: var(--reader-bg);
+	color: var(--reader-text);
+	color-scheme: dark;
+	transition:
+		background-color 200ms,
+		color 200ms;
+}
+[data-reader-theme='sepia'].reader,
+[data-reader-theme='light'].reader {
+	color-scheme: light;
+}
+
+/* The chapter's text: hyphenated, with spaced paragraphs. */
+.reader-text p {
+	margin-bottom: 1em;
+	white-space: pre-line;
+	hyphens: auto;
+	text-wrap: pretty;
+	transition: opacity 250ms;
+}
+
+/* Concentration mode: only the paragraph being read stands out. */
+.reader-text.concentrating p {
+	opacity: 0.28;
+}
+.reader-text.concentrating p.reading {
+	opacity: 1;
+}
+
+/* Toolbars slide away in concentration mode until called back. */
+.reader-chrome {
+	transition:
+		opacity 250ms,
+		translate 250ms;
+}
+.reader-chrome.concealed {
+	opacity: 0;
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.reader,
+	.reader-text p,
+	.reader-chrome {
+		transition: none;
+	}
+}

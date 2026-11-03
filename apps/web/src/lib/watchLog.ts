@@ -1,4 +1,4 @@
-// Logs one playback session of a library video for the recommendation engine
+// Logs one playback session of a library video or audio for the recommendation engine
 // and the resume point: progress every PROGRESS_EVERY_SECONDS of playing, a
 // heatSpan per stretch that actually played (closed by a pause, seek, the end
 // or leaving), and finish at the end.
@@ -10,9 +10,13 @@ const MIN_SPAN_SECONDS = 1;
 // A larger jump between two time updates is a seek, not playing time.
 const MAX_TICK_SECONDS = 2;
 
-/** Starts logging video's playback of the library video videoId. Returns the stop. */
-export function trackWatch(video: HTMLVideoElement, videoId: string): () => void {
-	const subject = { kind: 'video', id: videoId } as const;
+/** Starts logging video's playback of the library video (or audio, by kind) videoId. Returns the stop. */
+export function trackWatch(
+	video: HTMLMediaElement,
+	videoId: string,
+	kind: 'video' | 'audio' = 'video'
+): () => void {
+	const subject = { kind, id: videoId } as const;
 	const sessionId = crypto.randomUUID();
 	let spanStart: number | null = null;
 	let lastPosition = video.currentTime;

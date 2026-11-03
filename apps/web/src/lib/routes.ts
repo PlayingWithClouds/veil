@@ -52,9 +52,26 @@ export function audioUrl(id: string): string {
 	return `/audio/${encodeURIComponent(id)}`;
 }
 
+/** The audio in the library. */
+export function audiosUrl(): string {
+	return '/audio';
+}
+
 /** One story's page. */
 export function storyUrl(id: string): string {
 	return `/stories/${encodeURIComponent(id)}`;
+}
+
+/** The stories in the library. */
+export function storiesUrl(): string {
+	return '/stories';
+}
+
+/** The reader at a story's chapter (by position), else where reading stopped. */
+export function storyReaderUrl(id: string, position?: number): string {
+	const base = `${storyUrl(id)}/read`;
+	if (position === undefined) return base;
+	return `${base}?${new URLSearchParams({ chapter: String(position) })}`;
 }
 
 /** One creator post's page. */

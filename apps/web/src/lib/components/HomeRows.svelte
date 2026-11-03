@@ -1,7 +1,7 @@
 <!--
 	Home without a search: the top recommendation featured, then Continue
-	watching, Live now, For you (three rows of six), the user's performers and
-	the sites. Recommendations follow the library filter; while one is set,
+	watching, Live now, For you (three rows of six), Continue reading, the
+	newest stories and audio, the user's performers and the sites. Recommendations follow the library filter; while one is set,
 	only the featured video and For you show. Videos being watched are never
 	recommended here: they have their own row. Each row loads on its own and
 	stays hidden while empty.
@@ -35,9 +35,26 @@
 		type CamRow,
 		type ActiveRecordingRow
 	} from '$lib/cams';
+	import AudioCard from '$lib/components/AudioCard.svelte';
+	import StoryCard from '$lib/components/StoryCard.svelte';
+	import {
+		fetchAudios,
+		fetchContinueReading,
+		fetchStories,
+		type AudioCardRow,
+		type StoryCardRow
+	} from '$lib/media';
 	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
-	import { videoUrl, camUrl } from '$lib/routes';
+	import {
+		videoUrl,
+		camUrl,
+		audioUrl,
+		audiosUrl,
+		storiesUrl,
+		storyReaderUrl,
+		storyUrl
+	} from '$lib/routes';
 
 	interface Props {
 		// The library filter from the URL; recommendations follow it.
@@ -52,6 +69,8 @@
 	const VIDEO_WIDTH = 280;
 	const LIVE_WIDTH = 220;
 	const PERFORMER_WIDTH = 140;
+	const STORY_WIDTH = 150;
+	const AUDIO_WIDTH = 180;
 	const SITE_WIDTH = 150;
 	// For you fills three rows of six under the featured video.
 	const FOR_YOU_COUNT = 18;
@@ -68,6 +87,9 @@
 	let liveCams = $state<CamRow[]>([]);
 	let recordings = $state<ActiveRecordingRow[]>([]);
 	let performers = $state<MemberRow[]>([]);
+	let continueReading = $state<StoryCardRow[]>([]);
+	let stories = $state<StoryCardRow[]>([]);
+	let audios = $state<AudioCardRow[]>([]);
 
 	// Serialised so recommendations reload only when the filter itself changes.
 	let filterKey = $derived(JSON.stringify(filter));
@@ -88,6 +110,9 @@
 		load(fetchLiveCams(), (found) => (liveCams = found));
 		load(fetchActiveRecordings(), (found) => (recordings = found));
 		load(loadPerformers(), (found) => (performers = found));
+		load(fetchContinueReading(), (found) => (continueReading = found));
+		load(fetchStories(), (found) => (stories = found));
+		load(fetchAudios(), (found) => (audios = found));
 	});
 
 	$effect(() => {
@@ -196,6 +221,41 @@
 	{/if}
 
 	{#if !filtered}
+		<Shelf
+			title="Continue reading"
+			items={continueReading}
+			key={(story) => story.id}
+			itemWidth={STORY_WIDTH}
+		>
+			{#snippet card(story)}
+				<StoryCard {story} onclick={() => goto(storyReaderUrl(story.id))} />
+			{/snippet}
+		</Shelf>
+
+		<Shelf
+			title="Stories"
+			items={stories}
+			key={(story) => story.id}
+			itemWidth={STORY_WIDTH}
+			href={storiesUrl()}
+		>
+			{#snippet card(story)}
+				<StoryCard {story} onclick={() => goto(storyUrl(story.id))} />
+			{/snippet}
+		</Shelf>
+
+		<Shelf
+			title="Audio"
+			items={audios}
+			key={(audio) => audio.id}
+			itemWidth={AUDIO_WIDTH}
+			href={audiosUrl()}
+		>
+			{#snippet card(audio)}
+				<AudioCard {audio} onclick={() => goto(audioUrl(audio.id))} />
+			{/snippet}
+		</Shelf>
+
 		<Shelf
 			title="Your performers"
 			items={performers}
