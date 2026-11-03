@@ -88,23 +88,23 @@
 	<div
 		use:portal
 		bind:this={menu}
-		class="z-modal border-base-content/10 bg-base-200 fixed flex flex-col rounded-xl border p-1.5 shadow-xl"
+		class="menu-panel z-modal fixed flex flex-col gap-0.5 p-1.5"
 		style:top="{position.top}px"
 		style:left="{position.left}px"
 		style:width="{MENU_WIDTH}px"
 		role="menu"
 		aria-label={title}
-		transition:fade={{ duration: 120 }}
+		out:fade={{ duration: 100 }}
 	>
 		{#each actions as action (action.label)}
 			<button
 				type="button"
 				role="menuitem"
-				class="hover:bg-base-300 flex h-9 shrink-0 items-center gap-3 rounded-lg px-2.5 text-left text-sm"
-				class:text-error={action.destructive}
+				class="menu-item shrink-0"
+				class:menu-item-danger={action.destructive}
 				onclick={() => choose(action)}
 			>
-				<action.icon size={18} />
+				<action.icon size={18} class="opacity-80" />
 				<span class="truncate">{action.label}</span>
 			</button>
 		{/each}

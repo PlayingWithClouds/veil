@@ -132,17 +132,17 @@
 			onclick={() => (open = false)}
 		></button>
 		<div
-			class="bg-base-200 z-overlay absolute top-12 right-0 flex max-h-[70vh] w-96 flex-col overflow-hidden rounded-2xl shadow-xl ring-1 ring-white/10"
+			class="menu-panel z-overlay absolute top-12 right-0 flex max-h-[70vh] w-96 flex-col overflow-hidden p-1.5"
 		>
 			{#if collecting.length > 0}
 				<div class="border-base-content/10 flex flex-col border-b py-2">
-					<h2 class="px-4 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">
+					<h2 class="px-3 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">
 						Collecting
 					</h2>
 					{#each collecting as row (row.performer.id)}
 						<a
 							href={performerUrl(row.performer.id)}
-							class="hover:bg-base-300 flex items-center gap-3 px-4 py-2"
+							class="flex items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-white/8"
 							onclick={() => (open = false)}
 						>
 							<span class="loading loading-spinner loading-xs shrink-0"></span>
@@ -154,7 +154,7 @@
 					{/each}
 				</div>
 			{/if}
-			<div class="flex items-center justify-between px-4 pt-3 pb-2">
+			<div class="flex items-center justify-between px-3 pt-2 pb-2">
 				<h2 class="text-sm font-semibold">Notifications</h2>
 				{#if notifications.length > 0}
 					<button
@@ -169,7 +169,9 @@
 			<div class="flex flex-col overflow-y-auto pb-2">
 				{#each notifications as notification (notification.id)}
 					{@const href = hrefOf(notification)}
-					<div class="group hover:bg-base-300 flex items-start gap-2 px-4 py-2">
+					<div
+						class="group flex items-start gap-2 rounded-xl px-3 py-2 transition-colors hover:bg-white/8"
+					>
 						<a
 							href={href ?? undefined}
 							class="flex min-w-0 flex-1 flex-col gap-0.5"
@@ -198,7 +200,7 @@
 						</button>
 					</div>
 				{:else}
-					<p class="text-base-content/50 px-4 py-3 text-sm">Nothing here.</p>
+					<p class="text-base-content/50 px-3 py-3 text-sm">Nothing here.</p>
 				{/each}
 			</div>
 		</div>

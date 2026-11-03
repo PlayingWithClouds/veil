@@ -165,7 +165,8 @@
 	popover="manual"
 	role="listbox"
 	aria-label={label}
-	class="border-base-content/10 bg-base-200 m-0 overflow-y-auto rounded-xl border p-1 shadow-xl"
+	class="menu-panel m-0 overflow-y-auto p-1"
+	style:transform-origin="top left"
 	style:position="fixed"
 	style:inset="auto"
 	style:top="{position.top}px"
@@ -178,8 +179,8 @@
 			id="{listId}-{index}"
 			role="option"
 			aria-selected={option === value}
-			class="flex h-8 cursor-pointer items-center rounded-lg px-2.5 text-sm"
-			class:bg-base-300={index === highlighted}
+			class="menu-item cursor-pointer"
+			class:menu-item-highlighted={index === highlighted}
 			class:font-medium={option === value}
 			onmousedown={(event) => {
 				// Picks on press, so the input keeps focus; keys are handled on the input.
