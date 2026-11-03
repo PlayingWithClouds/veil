@@ -11,7 +11,7 @@ paths:
 - Internal links go through `src/lib/routes.ts` (`sceneUrl`, `performerUrl`, `tagUrl`, …).
 - Streams play through `/api/stream/` (CORS `*`); images through `/api/img` (`cacheUrl`).
 - Any list of scenes logs impressions (`use:impression`, `recordClicked`, `resetShownImpressions` on replace; see recommendations rules).
-- New UI follows `src/routes/layout.css` tokens and patterns. TV/D-pad focus: `src/lib/tv.css`, `FocusGrid`, `FocusList`.
+- New UI follows `src/routes/layout.css` tokens and patterns. Drop-downs use `.menu-panel`/`.menu-item`; filters `.chip`/`Segmented`. One glow lights the app shell (`AmbientGlow`): pages light it with `showAmbientGlow()` (`lib/ambientGlow.svelte.ts`), never draw their own. TV/D-pad focus: `src/lib/tv.css`, `FocusGrid`, `FocusList`.
 
 ## Cams
 
