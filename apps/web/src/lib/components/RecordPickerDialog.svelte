@@ -159,6 +159,13 @@
 		if (event.target === event.currentTarget) onclose();
 	}
 
+	/** A steady colour per name, for the initial of a record without a picture. */
+	function hueOf(name: string): number {
+		let hash = 0;
+		for (const character of name) hash = (hash * 31 + character.charCodeAt(0)) % 360;
+		return hash;
+	}
+
 	/** Focuses the search field once it's in the page. */
 	function focus(input: HTMLInputElement) {
 		input.focus();
@@ -169,17 +176,18 @@
 	{@const added = taken.includes(record.id)}
 	<button
 		type="button"
-		class="hover:bg-base-200 flex flex-col gap-1.5 rounded-xl p-1.5 text-left disabled:opacity-50"
-		class:bg-base-200={index === highlighted}
+		class="picker-card flex flex-col items-center gap-2 rounded-2xl px-2 pt-3 pb-2.5 text-center disabled:opacity-45"
+		class:picker-card-on={index === highlighted}
 		disabled={added}
 		onmouseenter={() => (highlighted = index)}
 		onclick={() => pick(record)}
 	>
 		<span
-			class={[
-				'bg-base-300 relative flex w-full items-center justify-center overflow-hidden rounded-lg',
-				{ 'aspect-[3/4]': kind === 'performer', 'aspect-square': kind === 'studio' }
-			]}
+			class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden text-xl font-semibold text-black/75"
+			class:rounded-full={kind === 'performer'}
+			class:rounded-xl={kind === 'studio'}
+			class:bg-white={kind === 'studio' && record.image !== null}
+			style:background-color={record.image ? null : `hsl(${hueOf(record.name)} 50% 68%)`}
 		>
 			{#if record.image}
 				<img
@@ -189,94 +197,151 @@
 					class="h-full w-full"
 					class:object-cover={kind === 'performer'}
 					class:object-contain={kind === 'studio'}
-					class:p-3={kind === 'studio'}
+					class:p-2={kind === 'studio'}
 				/>
-			{:else if kind === 'performer'}
-				<UserIcon size={28} class="opacity-20" />
 			{:else}
-				<BuildingsIcon size={28} class="opacity-20" />
+				{record.name.trim().charAt(0).toUpperCase()}
 			{/if}
-			{#if added}
-				<span
-					class="bg-base-100/80 absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 py-1 text-xs"
-				>
-					<CheckIcon size={12} /> Added
+		</span>
+		{#if added}
+			<span
+				class="bg-success absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full text-black"
+				title="Added already"
+			>
+				<CheckIcon size={12} weight="bold" />
+			</span>
+		{/if}
+		<span class="flex w-full min-w-0 flex-col">
+			<span class="truncate text-sm font-medium">{record.name}</span>
+			{#if reason}
+				<span class="text-info truncate text-xs">{reason}</span>
+			{:else if record.videoCount !== undefined}
+				<span class="text-base-content/45 text-xs tabular-nums">
+					{record.videoCount}
+					{record.videoCount === 1 ? 'video' : 'videos'}
 				</span>
 			{/if}
 		</span>
-		<span class="line-clamp-1 text-sm font-medium">{record.name}</span>
-		{#if reason}
-			<span class="text-primary -mt-1 line-clamp-1 text-xs">{reason}</span>
-		{:else if record.videoCount !== undefined}
-			<span class="text-base-content/50 -mt-1 text-xs">{record.videoCount} videos</span>
-		{/if}
 	</button>
 {/snippet}
 
-<dialog use:showModal class="modal" {onclose} onclick={closeOnBackdrop} aria-label={title}>
-	<div class="modal-box flex max-h-[85vh] !max-w-3xl flex-col gap-4">
-		<h2 class="text-lg font-semibold">{title}</h2>
-		<label class="input flex w-full items-center gap-2">
-			<MagnifyingGlassIcon size={16} class="opacity-50" />
-			<input use:focus class="grow" {placeholder} bind:value={text} onkeydown={onKeydown} />
+<dialog
+	use:showModal
+	class="modal picker-backdrop"
+	{onclose}
+	onclick={closeOnBackdrop}
+	aria-label={title}
+>
+	<div class="menu-panel flex max-h-[80vh] w-[min(42rem,calc(100vw-2rem))] flex-col gap-4 p-5">
+		<div class="flex items-center justify-between gap-3">
+			<h2 class="text-lg font-semibold">{title}</h2>
+			{#if kind === 'performer'}
+				<UserIcon size={18} class="opacity-40" />
+			{:else}
+				<BuildingsIcon size={18} class="opacity-40" />
+			{/if}
+		</div>
+		<label class="picker-search flex h-12 w-full items-center gap-3 rounded-2xl px-4">
+			<MagnifyingGlassIcon size={18} class="shrink-0 opacity-50" />
+			<input
+				use:focus
+				class="h-full min-w-0 grow bg-transparent text-[15px] outline-none"
+				{placeholder}
+				bind:value={text}
+				onkeydown={onKeydown}
+			/>
 			{#if searching}<span class="loading loading-spinner loading-xs"></span>{/if}
 		</label>
 
 		<div class="-mx-1 min-h-48 overflow-y-auto px-1">
 			{#if shownSuggestions.length > 0}
-				<h3 class="text-base-content/60 mb-2 text-xs font-semibold tracking-wide uppercase">
+				<h3 class="text-base-content/45 mb-2 px-1 text-xs font-semibold tracking-wider uppercase">
 					Suggested
 				</h3>
-				<div class="mb-4 grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2">
+				<div class="mb-4 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-1.5">
 					{#each shownSuggestions as suggestion, index (suggestion.record.id)}
 						{@render card(suggestion.record, index, suggestion.reason)}
 					{/each}
 				</div>
 				{#if shownResults.length > 0}
-					<h3 class="text-base-content/60 mb-2 text-xs font-semibold tracking-wide uppercase">
+					<h3 class="text-base-content/45 mb-2 px-1 text-xs font-semibold tracking-wider uppercase">
 						In the library
 					</h3>
 				{/if}
 			{/if}
-			<div class="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2">
+			<div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-1.5">
 				{#each shownResults as result, index (result.id)}
 					{@render card(result, shownSuggestions.length + index, null)}
 				{/each}
 				{#if creatable}
 					<button
 						type="button"
-						class="hover:bg-base-200 flex flex-col gap-1.5 rounded-xl p-1.5 text-left"
-						class:bg-base-200={highlighted === pickable.length}
+						class="picker-card flex flex-col items-center gap-2 rounded-2xl px-2 pt-3 pb-2.5 text-center"
+						class:picker-card-on={highlighted === pickable.length}
 						onmouseenter={() => (highlighted = pickable.length)}
 						onclick={create}
 					>
 						<span
-							class={[
-								'border-base-content/30 text-base-content/60 flex w-full items-center justify-center rounded-lg border-2 border-dashed',
-								{ 'aspect-[3/4]': kind === 'performer', 'aspect-square': kind === 'studio' }
-							]}
+							class="text-base-content/60 flex h-16 w-16 items-center justify-center border-2 border-dashed border-white/25"
+							class:rounded-full={kind === 'performer'}
+							class:rounded-xl={kind === 'studio'}
 						>
-							<PlusIcon size={28} />
+							<PlusIcon size={24} />
 						</span>
-						<span class="line-clamp-1 text-sm font-medium">{typed}</span>
-						<span class="text-primary -mt-1 text-xs">New {kind}</span>
+						<span class="flex w-full min-w-0 flex-col">
+							<span class="truncate text-sm font-medium">{typed}</span>
+							<span class="text-info text-xs">New {kind}</span>
+						</span>
 					</button>
 				{/if}
 			</div>
 			{#if !searching && !creatable && pickable.length === 0}
-				<p class="text-base-content/50 py-8 text-center text-sm">
+				<p class="text-base-content/50 py-10 text-center text-sm">
 					{#if typed === ''}Nothing in the library yet.{:else}No {kind} called “{typed}”.{/if}
 				</p>
 			{/if}
 		</div>
 
-		<div class="modal-action mt-0">
+		<div class="flex items-center justify-end gap-2 border-t border-white/5 pt-4">
 			{#if clearLabel && onclear}
-				<button type="button" class="btn btn-ghost text-error mr-auto" onclick={onclear}
-					>{clearLabel}</button
-				>
+				<button type="button" class="chip chip-excluded mr-auto" onclick={onclear}>
+					{clearLabel}
+				</button>
 			{/if}
-			<button type="button" class="btn btn-ghost" onclick={onclose}>Cancel</button>
+			<span class="text-base-content/35 mr-auto text-xs max-md:hidden">
+				↑↓ to move · Enter to pick
+			</span>
+			<button type="button" class="chip" onclick={onclose}>Cancel</button>
 		</div>
 	</div>
 </dialog>
+
+<style>
+	.picker-backdrop::backdrop {
+		background-color: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(6px);
+	}
+
+	.picker-search {
+		border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+		background-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+		transition:
+			border-color 150ms,
+			box-shadow 150ms;
+	}
+	.picker-search:focus-within {
+		border-color: color-mix(in oklab, var(--color-base-content) 28%, transparent);
+		box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-base-content) 6%, transparent);
+	}
+
+	.picker-card {
+		position: relative;
+		transition:
+			background-color 120ms,
+			box-shadow 120ms;
+	}
+	.picker-card-on {
+		background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+		box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-base-content) 14%, transparent);
+	}
+</style>
