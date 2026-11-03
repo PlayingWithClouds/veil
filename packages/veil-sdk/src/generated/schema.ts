@@ -809,7 +809,7 @@ export interface Revision {
 
 export type Actor = 'user' | 'plugin' | 'automation' | 'system'
 
-export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG'
+export type ListKind = 'VIDEO' | 'GALLERY' | 'PERFORMER' | 'STUDIO' | 'TAG' | 'AUDIO' | 'STORY'
 
 export interface TagCount {
     tag: Tag
@@ -823,6 +823,8 @@ export interface Listed {
     performers: Performer[]
     studios: Studio[]
     tags: Tag[]
+    audios: Audio[]
+    stories: Story[]
     __typename: 'Listed'
 }
 
@@ -2270,6 +2272,8 @@ export interface ListedGenqlSelection{
     performers?: PerformerGenqlSelection
     studios?: StudioGenqlSelection
     tags?: TagGenqlSelection
+    audios?: AudioGenqlSelection
+    stories?: StoryGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3802,7 +3806,9 @@ export const enumListKind = {
    GALLERY: 'GALLERY' as const,
    PERFORMER: 'PERFORMER' as const,
    STUDIO: 'STUDIO' as const,
-   TAG: 'TAG' as const
+   TAG: 'TAG' as const,
+   AUDIO: 'AUDIO' as const,
+   STORY: 'STORY' as const
 }
 
 export const enumVrProjection = {

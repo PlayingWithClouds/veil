@@ -340,6 +340,10 @@ func listEntity(kind model.ListKind) plugins.MediaType {
 		return plugins.MediaTypeStudio
 	case model.ListKindTag:
 		return plugins.MediaTypeTag
+	case model.ListKindAudio:
+		return plugins.MediaTypeAudio
+	case model.ListKindStory:
+		return plugins.MediaTypeStory
 	}
 	return plugins.MediaTypeScene
 }
@@ -360,7 +364,7 @@ func pageEntity(plugin *plugins.Plugin) (plugins.MediaType, bool) {
 func (r *Resolver) listed(ctx context.Context, refs []schema.RecordRef) (*model.Listed, error) {
 	result := &model.Listed{
 		Videos: []*schema.Video{}, Galleries: []*schema.Gallery{}, Performers: []*schema.Performer{},
-		Studios: []*schema.Studio{}, Tags: []*schema.Tag{},
+		Studios: []*schema.Studio{}, Tags: []*schema.Tag{}, Audios: []*schema.Audio{}, Stories: []*schema.Story{},
 	}
 	for _, ref := range refs {
 		if err := r.addListed(ctx, result, ref); err != nil {
@@ -407,6 +411,10 @@ func (r *Resolver) addListed(ctx context.Context, result *model.Listed, ref sche
 		return appendLoaded(&result.Studios, r.library.Studio, ctx, ref.Id)
 	case schema.RecordKindTag:
 		return appendLoaded(&result.Tags, r.library.Tag, ctx, ref.Id)
+	case schema.RecordKindAudio:
+		return appendLoaded(&result.Audios, r.library.Audio, ctx, ref.Id)
+	case schema.RecordKindStory:
+		return appendLoaded(&result.Stories, r.library.Story, ctx, ref.Id)
 	}
 	return nil
 }

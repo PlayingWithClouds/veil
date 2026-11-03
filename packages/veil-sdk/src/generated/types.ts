@@ -4199,6 +4199,12 @@ export default {
             "tags": [
                 101
             ],
+            "audios": [
+                77
+            ],
+            "stories": [
+                106
+            ],
             "__typename": [
                 1
             ]

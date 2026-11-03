@@ -522,8 +522,10 @@ type ComplexityRoot struct {
 	}
 
 	Listed struct {
+		Audios     func(childComplexity int) int
 		Galleries  func(childComplexity int) int
 		Performers func(childComplexity int) int
+		Stories    func(childComplexity int) int
 		Studios    func(childComplexity int) int
 		Tags       func(childComplexity int) int
 		Videos     func(childComplexity int) int
@@ -3693,6 +3695,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.LimitStatus.Used(childComplexity), true
 
+	case "Listed.audios":
+		if e.ComplexityRoot.Listed.Audios == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Listed.Audios(childComplexity), true
 	case "Listed.galleries":
 		if e.ComplexityRoot.Listed.Galleries == nil {
 			break
@@ -3705,6 +3713,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Listed.Performers(childComplexity), true
+	case "Listed.stories":
+		if e.ComplexityRoot.Listed.Stories == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Listed.Stories(childComplexity), true
 	case "Listed.studios":
 		if e.ComplexityRoot.Listed.Studios == nil {
 			break
@@ -9632,20 +9646,24 @@ enum ListKind {
   PERFORMER
   STUDIO
   TAG
+  AUDIO
+  STORY
 }
 
-# What a browse or search stored, by kind.
 type TagCount {
   tag: Tag!
   count: Int!
 }
 
+# What a browse or search stored, by kind.
 type Listed {
   videos: [Video!]!
   galleries: [Gallery!]!
   performers: [Performer!]!
   studios: [Studio!]!
   tags: [Tag!]!
+  audios: [Audio!]!
+  stories: [Story!]!
 }
 
 # A picture or clip: a stored blob or a remote URL.
@@ -11688,6 +11706,10 @@ func (ec *executionContext) childFields_Listed(ctx context.Context, field graphq
 		return ec.fieldContext_Listed_studios(ctx, field)
 	case "tags":
 		return ec.fieldContext_Listed_tags(ctx, field)
+	case "audios":
+		return ec.fieldContext_Listed_audios(ctx, field)
+	case "stories":
+		return ec.fieldContext_Listed_stories(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Listed", field.Name)
 }
@@ -25282,6 +25304,70 @@ func (ec *executionContext) fieldContext_Listed_tags(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Tag(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Listed_audios(ctx context.Context, field graphql.CollectedField, obj *model.Listed) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Listed_audios(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Audios, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Audio) graphql.Marshaler {
+			return ec.marshalNAudio2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAudioᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Listed_audios(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Listed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Audio(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Listed_stories(ctx context.Context, field graphql.CollectedField, obj *model.Listed) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Listed_stories(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stories, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Story) graphql.Marshaler {
+			return ec.marshalNStory2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐStoryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Listed_stories(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Listed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Story(ctx, field)
 		},
 	}
 	return fc, nil
@@ -52356,6 +52442,16 @@ func (ec *executionContext) _Listed(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "tags":
 			out.Values[i] = ec._Listed_tags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "audios":
+			out.Values[i] = ec._Listed_audios(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stories":
+			out.Values[i] = ec._Listed_stories(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

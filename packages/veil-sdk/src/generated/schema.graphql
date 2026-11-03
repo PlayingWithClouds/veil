@@ -961,6 +961,8 @@ enum ListKind {
   PERFORMER
   STUDIO
   TAG
+  AUDIO
+  STORY
 }
 
 type TagCount {
@@ -974,6 +976,8 @@ type Listed {
   performers: [Performer!]!
   studios: [Studio!]!
   tags: [Tag!]!
+  audios: [Audio!]!
+  stories: [Story!]!
 }
 
 type Asset {

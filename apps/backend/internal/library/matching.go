@@ -3,10 +3,16 @@ package library
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/playingwithclouds/veil/internal/schema"
 )
+
+// searchedMedia are the kinds a search lists that a filter narrows.
+var searchedMedia = []schema.RecordKind{
+	schema.RecordKindVideo, schema.RecordKindGallery, schema.RecordKindAudio, schema.RecordKindStory,
+}
 
 // Matching keeps the referenced media that filter matches (and that aren't
 // trashed or blocked), in their order. Other kinds of records pass through.
@@ -33,7 +39,7 @@ func (l *Library) Matching(ctx context.Context, refs []schema.RecordRef, filter 
 // matchKind marks the ids of one kind that filter matches; a kind the
 // filter doesn't apply to is marked whole.
 func (l *Library) matchKind(ctx context.Context, kind schema.RecordKind, ids []string, filter schema.Filter, matched map[schema.RecordRef]bool) error {
-	if kind != schema.RecordKindVideo && kind != schema.RecordKindGallery {
+	if !slices.Contains(searchedMedia, kind) {
 		for _, id := range ids {
 			matched[schema.RecordRef{Kind: kind, Id: id}] = true
 		}

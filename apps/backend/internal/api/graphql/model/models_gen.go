@@ -179,6 +179,8 @@ type Listed struct {
 	Performers []*schema.Performer `json:"performers"`
 	Studios    []*schema.Studio    `json:"studios"`
 	Tags       []*schema.Tag       `json:"tags"`
+	Audios     []*schema.Audio     `json:"audios"`
+	Stories    []*schema.Story     `json:"stories"`
 }
 
 type LookupInput struct {
@@ -428,6 +430,8 @@ const (
 	ListKindPerformer ListKind = "PERFORMER"
 	ListKindStudio    ListKind = "STUDIO"
 	ListKindTag       ListKind = "TAG"
+	ListKindAudio     ListKind = "AUDIO"
+	ListKindStory     ListKind = "STORY"
 )
 
 var AllListKind = []ListKind{
@@ -436,11 +440,13 @@ var AllListKind = []ListKind{
 	ListKindPerformer,
 	ListKindStudio,
 	ListKindTag,
+	ListKindAudio,
+	ListKindStory,
 }
 
 func (e ListKind) IsValid() bool {
 	switch e {
-	case ListKindVideo, ListKindGallery, ListKindPerformer, ListKindStudio, ListKindTag:
+	case ListKindVideo, ListKindGallery, ListKindPerformer, ListKindStudio, ListKindTag, ListKindAudio, ListKindStory:
 		return true
 	}
 	return false

@@ -202,20 +202,24 @@ enum ListKind {
   PERFORMER
   STUDIO
   TAG
+  AUDIO
+  STORY
 }
 
-# What a browse or search stored, by kind.
 type TagCount {
   tag: Tag!
   count: Int!
 }
 
+# What a browse or search stored, by kind.
 type Listed {
   videos: [Video!]!
   galleries: [Gallery!]!
   performers: [Performer!]!
   studios: [Studio!]!
   tags: [Tag!]!
+  audios: [Audio!]!
+  stories: [Story!]!
 }
 
 # A picture or clip: a stored blob or a remote URL.
