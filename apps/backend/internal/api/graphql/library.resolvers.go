@@ -11,6 +11,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/library"
+	"github.com/playingwithclouds/veil/internal/pipeline"
 	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
@@ -428,12 +429,13 @@ func (r *studioResolver) Revisions(ctx context.Context, obj *schema.Studio, limi
 }
 
 // SearchResults is the resolver for the searchResults field.
-func (r *subscriptionResolver) SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) (<-chan *model.SearchBatch, error) {
+func (r *subscriptionResolver) SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter, content *string) (<-chan *model.SearchBatch, error) {
 	pageLimit := number(limit)
 	if pageLimit <= 0 {
 		pageLimit = defaultSearchLimit
 	}
-	batches, sites := r.pipeline.SearchStream(ctx, listEntity(kind), query, number(page), pageLimit, plugins, filter)
+	search := pipeline.SearchPage{Query: query, Page: number(page), Limit: pageLimit, Content: text(content)}
+	batches, sites := r.pipeline.SearchStream(ctx, listEntity(kind), search, plugins, filter)
 	return r.searchBatchStream(ctx, batches, sites), nil
 }
 

@@ -246,7 +246,7 @@ type Scraped {
 
 type Subscription {
   notificationAdded: Notification!
-  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput): SearchBatch!
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput, content: String): SearchBatch!
 }
 
 type Follow {

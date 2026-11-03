@@ -163,7 +163,7 @@
 		sitesAnswered = 0;
 		newThisPage = new Map();
 		returnedThisPage = new Map();
-		const running = searchPage('VIDEO', searchText, pageNumber, plugins, activeFilter, receive);
+		const running = searchPage('VIDEO', searchText, pageNumber, plugins, activeFilter, null, receive);
 		current = running;
 		try {
 			await running.done;

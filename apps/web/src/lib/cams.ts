@@ -8,8 +8,9 @@ import type {
 } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { backendUrl } from '$lib/server';
-import { VIDEO_CARD, type VideoCardRow } from '$lib/library';
+import { VIDEO_CARD, fetchVideosMatching, type VideoCardRow } from '$lib/library';
 import type { SitePlugin } from '$lib/plugins';
+import { searchPage, type SearchPage } from '$lib/search';
 
 /** A cam room as a card shows it; live is null while the room is offline. */
 const CAM_CARD = {
@@ -136,6 +137,50 @@ export async function fetchCamRecordings(id: string): Promise<VideoCardRow[]> {
 		camModel: { __args: { id }, recordings: VIDEO_CARD }
 	});
 	return data.camModel?.recordings ?? [];
+}
+
+/**
+ * The library's videos of a room: its recordings, then videos credited to
+ * its performer or naming its username (cam show archives title them so).
+ */
+export async function fetchRoomVideos(room: CamRow, limit = 60): Promise<VideoCardRow[]> {
+	const requests = [
+		fetchCamRecordings(room.id),
+		fetchVideosMatching({ text: room.username }, limit)
+	];
+	if (room.performer) {
+		requests.push(fetchVideosMatching({ performerIds: [room.performer.id] }, limit));
+	}
+	const lists = await Promise.all(requests);
+	return uniqueVideos(lists.flat());
+}
+
+/** The videos without repeats, first place kept. */
+export function uniqueVideos(videos: VideoCardRow[]): VideoCardRow[] {
+	const seen = new Set<string>();
+	return videos.filter((video) => {
+		if (seen.has(video.id)) return false;
+		seen.add(video.id);
+		return true;
+	});
+}
+
+/**
+ * Searches every site of recorded cam shows for the room's username, calling
+ * onvideos with the videos each site finds as it answers (they're stored in
+ * the library), and onsites with how many sites were asked and answered.
+ */
+export function findRoomShows(
+	room: CamRow,
+	onvideos: (videos: VideoCardRow[]) => void,
+	onsites: (asked: number, answered: number) => void
+): SearchPage {
+	let answered = 0;
+	return searchPage('VIDEO', room.username, 0, null, null, 'cam-shows', (batch) => {
+		if (batch.listed.videos.length > 0) onvideos(batch.listed.videos);
+		if (batch.final) answered += 1;
+		onsites(batch.sites, answered);
+	});
 }
 
 /** One room's shows of the last eight weeks, newest first. */

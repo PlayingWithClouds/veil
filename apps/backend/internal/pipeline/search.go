@@ -34,22 +34,32 @@ type SearchBatch struct {
 	Returned int
 }
 
+// SearchPage is one page of a search: limit items per site, page 0 first.
+type SearchPage struct {
+	Query string
+	Page  int
+	Limit int
+	// Content, when set, asks only the sites carrying that kind of content
+	// (plugins.Content*), and a plugin carrying several only its sites of it.
+	Content string
+}
+
 // storedAnswer is a site's answer to a search page as the cache keeps it.
 type storedAnswer struct {
 	Refs      []schema.RecordRef `json:"refs"`
 	Exhausted bool               `json:"exhausted"`
 }
 
-// SearchStream asks every active plugin that lists entity for one page of
-// query (limit items per site, page 0 first) and sends each site's answer on
-// the returned channel as it comes, in batches when the site streams them. A
-// site that answered the same page within searchFresh isn't asked; its
-// stored answer is sent instead. Only pluginNames are asked when it's set.
-// A filter, when given, narrows what's sent (the stored answers stay whole)
-// and its sites narrow who's asked. The channel closes once every site
-// answered, failed or timed out.
-func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, query string, page, limit int, pluginNames []string, filter *schema.Filter) (<-chan SearchBatch, int) {
-	searchers := p.searchers(entity, pluginNames)
+// SearchStream asks every active plugin that lists entity (and carries the
+// page's content, when it names one) for one page of a search and sends each
+// site's answer on the returned channel as it comes, in batches when the site
+// streams them. A site that answered the same page within searchFresh isn't
+// asked; its stored answer is sent instead. Only pluginNames are asked when
+// it's set. A filter, when given, narrows what's sent (the stored answers
+// stay whole) and its sites narrow who's asked. The channel closes once every
+// site answered, failed or timed out.
+func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, search SearchPage, pluginNames []string, filter *schema.Filter) (<-chan SearchBatch, int) {
+	searchers := p.searchers(entity, pluginNames, search.Content)
 	if filter != nil && len(filter.Sources) > 0 {
 		searchers = slices.DeleteFunc(searchers, func(plugin *plugins.Plugin) bool {
 			return !slices.Contains(filter.Sources, plugin.Meta.Name)
@@ -59,7 +69,7 @@ func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, q
 	var group sync.WaitGroup
 	for _, plugin := range searchers {
 		group.Go(func() {
-			p.searchPage(ctx, plugin, entity, query, page, limit, answers)
+			p.searchPage(ctx, plugin, entity, search, answers)
 		})
 	}
 	go func() {
@@ -93,7 +103,7 @@ func (p *Pipeline) filtered(ctx context.Context, answers <-chan SearchBatch, fil
 // Search asks every active plugin that lists entity for the first page of
 // query, like SearchStream, and returns the results sites taking turns.
 func (p *Pipeline) Search(ctx context.Context, entity plugins.MediaType, query string, limit int) []schema.RecordRef {
-	batches, _ := p.SearchStream(ctx, entity, query, 0, limit, nil, nil)
+	batches, _ := p.SearchStream(ctx, entity, SearchPage{Query: query, Limit: limit}, nil, nil)
 	bySite := map[string][]schema.RecordRef{}
 	order := []string{}
 	for batch := range batches {
@@ -109,14 +119,15 @@ func (p *Pipeline) Search(ctx context.Context, entity plugins.MediaType, query s
 	return interleave(lists)
 }
 
-// searchers returns the active plugins that list entity, only the named ones when names is set.
-func (p *Pipeline) searchers(entity plugins.MediaType, names []string) []*plugins.Plugin {
+// searchers returns the active plugins that list entity, only the named ones
+// when names is set and only those carrying content when it's set.
+func (p *Pipeline) searchers(entity plugins.MediaType, names []string, content string) []*plugins.Plugin {
 	all := p.registry.WithCapability(plugins.ListCapability(entity))
-	if len(names) == 0 {
-		return all
-	}
 	return slices.DeleteFunc(all, func(plugin *plugins.Plugin) bool {
-		return !slices.Contains(names, plugin.Meta.Name)
+		if len(names) > 0 && !slices.Contains(names, plugin.Meta.Name) {
+			return true
+		}
+		return content != "" && !plugin.Carries(content)
 	})
 }
 
@@ -124,9 +135,9 @@ func (p *Pipeline) searchers(entity plugins.MediaType, names []string) []*plugin
 // it's fresh, else the site's, batch by batch, which it then stores. A site
 // that fails sends an empty final batch and stores nothing, so it's asked
 // again next time.
-func (p *Pipeline) searchPage(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, query string, page, limit int, batches chan<- SearchBatch) {
+func (p *Pipeline) searchPage(ctx context.Context, plugin *plugins.Plugin, entity plugins.MediaType, search SearchPage, batches chan<- SearchBatch) {
 	name := plugin.Meta.Name
-	key := searchKey(entity, name, query, page, limit)
+	key := searchKey(entity, name, search)
 	if answer, ok := p.storedSearch(ctx, key); ok {
 		send(ctx, batches, SearchBatch{Plugin: name, Refs: answer.Refs, Stored: true, Final: true, Exhausted: answer.Exhausted})
 		return
@@ -134,17 +145,18 @@ func (p *Pipeline) searchPage(ctx context.Context, plugin *plugins.Plugin, entit
 	searchContext, cancel := context.WithTimeout(ctx, searchTimeout)
 	defer cancel()
 	answer := storedAnswer{Refs: []schema.RecordRef{}}
-	result, err := p.runner.ListStream(searchContext, plugin, entity, plugins.ListArgs{Query: query, Limit: limit, Offset: page * limit}, func(items []plugins.DiscoveredItem) {
+	args := plugins.ListArgs{Query: search.Query, Limit: search.Limit, Offset: search.Page * search.Limit, Content: search.Content}
+	result, err := p.runner.ListStream(searchContext, plugin, entity, args, func(items []plugins.DiscoveredItem) {
 		refs := p.storeListed(ctx, name, items)
 		answer.Refs = append(answer.Refs, refs...)
 		send(ctx, batches, SearchBatch{Plugin: name, Refs: refs})
 	})
 	if err != nil {
-		log.Printf("search %s %q page %d: %v", name, query, page, err)
+		log.Printf("search %s %q page %d: %v", name, search.Query, search.Page, err)
 		send(ctx, batches, SearchBatch{Plugin: name, Final: true})
 		return
 	}
-	answer.Exhausted = len(result.Items) < limit
+	answer.Exhausted = len(result.Items) < search.Limit
 	send(ctx, batches, SearchBatch{Plugin: name, Final: true, Exhausted: answer.Exhausted})
 	p.storeSearch(ctx, key, answer)
 }
@@ -189,8 +201,13 @@ func (p *Pipeline) storeSearch(ctx context.Context, key string, answer storedAns
 }
 
 // searchKey names a site's answer to a search page; queries differing only
-// in case or spacing share it.
-func searchKey(entity plugins.MediaType, pluginName, query string, page, limit int) string {
-	folded := strings.Join(strings.Fields(strings.ToLower(query)), " ")
-	return fmt.Sprintf("search|%s|%s|%d|%d|%s", entity, pluginName, page, limit, folded)
+// in case or spacing share it. A content kind asks a plugin carrying several
+// for less, so it's part of the name.
+func searchKey(entity plugins.MediaType, pluginName string, search SearchPage) string {
+	folded := strings.Join(strings.Fields(strings.ToLower(search.Query)), " ")
+	key := fmt.Sprintf("search|%s|%s|%d|%d|%s", entity, pluginName, search.Page, search.Limit, folded)
+	if search.Content == "" {
+		return key
+	}
+	return key + "|" + search.Content
 }

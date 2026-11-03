@@ -1185,7 +1185,7 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		NotificationAdded func(childComplexity int) int
-		SearchResults     func(childComplexity int, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) int
+		SearchResults     func(childComplexity int, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter, content *string) int
 	}
 
 	Subtitle struct {
@@ -1750,7 +1750,7 @@ type StudioResolver interface {
 }
 type SubscriptionResolver interface {
 	NotificationAdded(ctx context.Context) (<-chan *schema.Notification, error)
-	SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter) (<-chan *model.SearchBatch, error)
+	SearchResults(ctx context.Context, kind model.ListKind, query string, page *int, limit *int, plugins []string, filter *schema.Filter, content *string) (<-chan *model.SearchBatch, error)
 }
 type TagResolver interface {
 	VideoCount(ctx context.Context, obj *schema.Tag) (int, error)
@@ -7957,7 +7957,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Subscription.SearchResults(childComplexity, args["kind"].(model.ListKind), args["query"].(string), args["page"].(*int), args["limit"].(*int), args["plugins"].([]string), args["filter"].(*schema.Filter)), true
+		return e.ComplexityRoot.Subscription.SearchResults(childComplexity, args["kind"].(model.ListKind), args["query"].(string), args["page"].(*int), args["limit"].(*int), args["plugins"].([]string), args["filter"].(*schema.Filter), args["content"].(*string)), true
 
 	case "Subtitle.asset":
 		if e.ComplexityRoot.Subtitle.Asset == nil {
@@ -9718,8 +9718,10 @@ extend type Subscription {
   # across every site that lists this kind, or only the named plugins: each
   # site's results as they come, then the subscription completes. A site that
   # answered the same page within 6 hours isn't asked; its answer then is sent.
-  # filter narrows the results sent (and its sites who's asked).
-  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput): SearchBatch!
+  # filter narrows the results sent (and its sites who's asked). content
+  # ("cam-shows", "jav", …) asks only the sites carrying that kind, and a
+  # plugin carrying several only its sites of it.
+  searchResults(kind: ListKind!, query: String!, page: Int, limit: Int, plugins: [String!], filter: FilterInput, content: String): SearchBatch!
 }
 
 # Part of one site's answer to a search page.
@@ -17575,6 +17577,14 @@ func (ec *executionContext) field_Subscription_searchResults_args(ctx context.Co
 		return nil, err
 	}
 	args["filter"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "content",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["content"] = arg6
 	return args, nil
 }
 
@@ -42809,7 +42819,7 @@ func (ec *executionContext) _Subscription_searchResults(ctx context.Context, fie
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().SearchResults(ctx, fc.Args["kind"].(model.ListKind), fc.Args["query"].(string), fc.Args["page"].(*int), fc.Args["limit"].(*int), fc.Args["plugins"].([]string), fc.Args["filter"].(*schema.Filter))
+			return ec.Resolvers.Subscription().SearchResults(ctx, fc.Args["kind"].(model.ListKind), fc.Args["query"].(string), fc.Args["page"].(*int), fc.Args["limit"].(*int), fc.Args["plugins"].([]string), fc.Args["filter"].(*schema.Filter), fc.Args["content"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.SearchBatch) graphql.Marshaler {

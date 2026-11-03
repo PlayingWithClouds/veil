@@ -1674,7 +1674,7 @@ export interface ScrapedGenqlSelection{
 
 export interface SubscriptionGenqlSelection{
     notificationAdded?: NotificationGenqlSelection
-    searchResults?: (SearchBatchGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], page?: (Scalars['Int'] | null), limit?: (Scalars['Int'] | null), plugins?: (Scalars['String'][] | null), filter?: (FilterInput | null)} })
+    searchResults?: (SearchBatchGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], page?: (Scalars['Int'] | null), limit?: (Scalars['Int'] | null), plugins?: (Scalars['String'][] | null), filter?: (FilterInput | null), content?: (Scalars['String'] | null)} })
     __typename?: boolean | number
     __scalar?: boolean | number
 }

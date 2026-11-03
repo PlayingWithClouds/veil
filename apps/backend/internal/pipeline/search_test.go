@@ -24,16 +24,19 @@ func TestSearchMemory(t *testing.T) {
 	flow := &Pipeline{searches: cache.New(ctx, database)}
 
 	answer := storedAnswer{Refs: []schema.RecordRef{{Kind: schema.RecordKindVideo, Id: "v1"}}, Exhausted: true}
-	flow.storeSearch(ctx, searchKey(plugins.MediaTypeScene, "site", "Mia  Malkova", 0, 20), answer)
+	flow.storeSearch(ctx, searchKey(plugins.MediaTypeScene, "site", SearchPage{Query: "Mia  Malkova", Limit: 20}), answer)
 
-	stored, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", " mia malkova", 0, 20))
+	stored, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", SearchPage{Query: " mia malkova", Limit: 20}))
 	if !ok || len(stored.Refs) != 1 || stored.Refs[0].Id != "v1" || !stored.Exhausted {
 		t.Errorf("stored answer = %+v, %v", stored, ok)
 	}
-	if _, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", "mia malkova", 1, 20)); ok {
+	if _, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", SearchPage{Query: "mia malkova", Page: 1, Limit: 20})); ok {
 		t.Error("another page found the first page's answer")
 	}
-	if _, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", "mia", 0, 20)); ok {
+	if _, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", SearchPage{Query: "mia", Limit: 20})); ok {
 		t.Error("another query found the answer")
+	}
+	if _, ok := flow.storedSearch(ctx, searchKey(plugins.MediaTypeScene, "site", SearchPage{Query: "mia malkova", Limit: 20, Content: plugins.ContentCamShows})); ok {
+		t.Error("a search of one content kind found the answer of all")
 	}
 }

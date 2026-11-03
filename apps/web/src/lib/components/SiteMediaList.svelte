@@ -188,7 +188,7 @@
 		sitesAsked = 0;
 		sitesAnswered = 0;
 		const started = generation;
-		const current = searchPage(kind, searchText, searchPageNumber, plugins, null, (batch) => {
+		const current = searchPage(kind, searchText, searchPageNumber, plugins, null, null, (batch) => {
 			if (started === generation) receive(batch);
 		});
 		running = current;

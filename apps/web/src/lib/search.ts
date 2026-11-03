@@ -52,9 +52,10 @@ export interface SearchPage {
 }
 
 /**
- * Asks the sites for one page of a search (only plugins, when given), calling
- * onBatch with each part of a site's answer as it arrives; filter narrows
- * the results to those it matches.
+ * Asks the sites for one page of a search (only plugins, when given, and
+ * only the sites carrying content, such as "cam-shows"), calling onBatch with
+ * each part of a site's answer as it arrives; filter narrows the results to
+ * those it matches.
  */
 export function searchPage(
 	kind: ListKind,
@@ -62,12 +63,13 @@ export function searchPage(
 	page: number,
 	plugins: string[] | null,
 	filter: FilterInput | null,
+	content: string | null,
 	onBatch: (batch: SearchBatchRow) => void
 ): SearchPage {
 	const client = getWsClient();
 	if (!client) return { done: Promise.resolve(), cancel: () => {} };
 	const operation = generateSubscriptionOp({
-		searchResults: { __args: { kind, query, page, plugins, filter }, ...SEARCH_BATCH }
+		searchResults: { __args: { kind, query, page, plugins, filter, content }, ...SEARCH_BATCH }
 	});
 	let cancel = () => {};
 	// A cancelled page settles too, so nothing waits on it forever.
