@@ -1,9 +1,12 @@
 <!--
-	One performer: picture, facts, links, tags, and their videos and galleries.
+	One performer: a profile header (picture lighting the shared glow, name,
+	counts, actions), facts as tiles, about, tags, their profiles and links,
+	and their videos and galleries.
 	Opening the page reads their pages on the sites they came from (bio,
 	picture, attributes) and asks the other sites to identify them, adding the
 	profiles they're sure of; the result shows when it's in. Refresh reads and
-	asks everything again. Edit changes any detail (those stay as set; each can be handed
+	asks everything again, or only the sites picked from its drop-down. Edit
+	changes any detail (those stay as set; each can be handed
 	back to the sites). "Could be the same person" lists performers sharing a
 	name or alias: Merge folds one in at once (Undo in the toast), ⇄ compares
 	first, the last card finds anyone else. "Merged in" lists merges that can
@@ -16,11 +19,9 @@
 	import { goto } from '$app/navigation';
 	import dayjs from 'dayjs';
 	import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOutIcon';
-	import ArrowClockwiseIcon from 'phosphor-svelte/lib/ArrowClockwiseIcon';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
 	import ArrowsLeftRightIcon from 'phosphor-svelte/lib/ArrowsLeftRightIcon';
-	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import DotsThreeVerticalIcon from 'phosphor-svelte/lib/DotsThreeVerticalIcon';
@@ -61,7 +62,9 @@
 		type PerformerAttributes,
 		type PerformerDetail
 	} from '$lib/performers';
-	import { siteDisplayName } from '$lib/plugins';
+	import { siteDisplayName, type SitePlugin } from '$lib/plugins';
+	import RefreshSitesMenu, { type RefreshSite } from '$lib/components/RefreshSitesMenu.svelte';
+	import { showAmbientGlow } from '$lib/ambientGlow.svelte';
 	import { capitalize } from '$lib/performerPresets';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
@@ -144,6 +147,10 @@
 	let lockedFields = $derived(
 		(performer?.fieldSources ?? []).filter((source) => source.locked).map((source) => source.field)
 	);
+	let refreshSites = $derived(refreshSitesOf(performer, $sites));
+	let picture = $derived(cacheUrl(performer?.image?.uri));
+
+	showAmbientGlow(() => picture);
 
 	$effect(() => {
 		void load(id);
@@ -202,11 +209,14 @@
 		if (learned > 0) await loadFaceMatches(performerId);
 	}
 
-	/** Reads the performer's site pages (all of them with refresh) and shows the result. */
-	async function read(performerId: string, refresh: boolean) {
+	/**
+	 * Reads the performer's site pages (all of them with refresh, or only
+	 * plugins') and shows the result.
+	 */
+	async function read(performerId: string, refresh: boolean, plugins: string[] = []) {
 		reading = true;
 		try {
-			const updated = await readPerformer(performerId, refresh);
+			const updated = await readPerformer(performerId, refresh, plugins);
 			if (updated && updated.id === id) {
 				performer = updated;
 				void loadDuplicates(performerId);
@@ -413,184 +423,230 @@
 		if (!fetchedAt) return 'not read yet';
 		return `read ${dayjs(fetchedAt).fromNow()}`;
 	}
+
+	/**
+	 * The sites a refresh can ask: those with a profile of theirs (read
+	 * again), then the enabled ones that look performers up.
+	 */
+	function refreshSitesOf(current: PerformerDetail | null, installed: SitePlugin[]): RefreshSite[] {
+		if (!current) return [];
+		const choices: RefreshSite[] = [];
+		for (const source of current.sources) {
+			if (choices.some((choice) => choice.name === source.plugin)) continue;
+			const plugin = installed.find((candidate) => candidate.name === source.plugin);
+			choices.push({
+				name: source.plugin,
+				label: siteDisplayName(source.plugin, installed),
+				iconUrl: plugin?.iconUrl ?? null,
+				detail: `Profile ${readLabel(source.fetchedAt)}`
+			});
+		}
+		for (const plugin of installed) {
+			const identifies = plugin.capabilities.includes('performer:identify');
+			if (!identifies || !plugin.enabled || !plugin.available) continue;
+			if (choices.some((choice) => choice.name === plugin.name)) continue;
+			choices.push({
+				name: plugin.name,
+				label: siteDisplayName(plugin.name, installed),
+				iconUrl: plugin.iconUrl,
+				detail: 'Looks them up'
+			});
+		}
+		return choices;
+	}
+
+	/** A steady colour per name, for the initial of a performer without a picture. */
+	function hueOf(name: string): number {
+		let hash = 0;
+		for (const character of name) hash = (hash * 31 + character.charCodeAt(0)) % 360;
+		return hash;
+	}
+
+	/** Refreshes from the given sites, or every site when none. */
+	function refreshFrom(plugins: string[]) {
+		if (!performer) return;
+		void read(performer.id, true, plugins);
+	}
 </script>
 
 <svelte:head><title>{performer?.name ?? 'Performer'} · Veil</title></svelte:head>
 
-<div class="flex flex-col gap-6 pt-2">
+<div class="flex flex-col gap-8 pt-2">
 	{#if performer}
-		<div class="flex gap-5 max-md:flex-col">
+		<header class="flex gap-7 max-md:flex-col max-md:items-center max-md:text-center">
 			<button
 				type="button"
-				class="bg-base-200 group relative flex aspect-[2/3] w-48 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+				class="group relative flex aspect-[3/4] w-52 shrink-0 items-center justify-center overflow-hidden rounded-3xl shadow-2xl ring-1 shadow-black/50 ring-white/10"
+				style:background-color={picture ? null : `hsl(${hueOf(performer.name)} 45% 62%)`}
 				aria-label="Change the picture"
 				onclick={() => (choosingPicture = true)}
 			>
-				{#if performer.image}
+				{#if picture}
 					<img
-						src={cacheUrl(performer.image.uri)}
+						src={picture}
 						alt={performer.name}
-						class="h-full w-full object-cover"
+						class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
 					/>
 				{:else}
-					<UserIcon size={48} class="opacity-15" />
+					<span class="text-7xl font-bold text-black/60">
+						{performer.name.trim().charAt(0).toUpperCase()}
+					</span>
 				{/if}
 				<span
-					class="bg-base-300/80 absolute inset-x-0 bottom-0 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+					class="glass-pill absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100"
 				>
 					Change picture
 				</span>
 			</button>
-			<div class="flex min-w-0 flex-1 flex-col gap-3">
-				<div class="flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<h1 class="text-2xl font-bold tracking-tight">{performer.name}</h1>
-						{#if performer.aliases.length > 0}
-							<p class="text-base-content/50 text-sm">Also: {performer.aliases.join(', ')}</p>
+
+			<div class="flex min-w-0 flex-1 flex-col justify-end gap-4">
+				<div class="flex flex-col gap-1">
+					<h1 class="text-4xl font-bold tracking-tight">{performer.name}</h1>
+					{#if performer.aliases.length > 0}
+						<p class="text-base-content/50 text-sm">Also known as {performer.aliases.join(', ')}</p>
+					{/if}
+					<p class="text-base-content/60 mt-1 text-sm">
+						{performer.videoCount}
+						{performer.videoCount === 1 ? 'video' : 'videos'}
+						{#if performer.galleryCount > 0}
+							· {performer.galleryCount}
+							{performer.galleryCount === 1 ? 'gallery' : 'galleries'}
 						{/if}
-					</div>
-					<div class="flex gap-2">
-						<button
-							type="button"
-							class="btn btn-sm"
-							aria-pressed={performer.userState.favorite}
-							title="Favourites get every video from their sites"
-							onclick={toggleFavorite}
-						>
-							<HeartIcon
-								size={16}
-								weight={performer.userState.favorite ? 'fill' : 'regular'}
-								class={performer.userState.favorite ? 'text-error' : ''}
-							/>
-							{performer.userState.favorite ? 'Favourite' : 'Add to favourites'}
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm btn-square"
-							aria-label="More"
-							onclick={(event) => (menuAnchor = event.currentTarget)}
-						>
-							<DotsThreeVerticalIcon size={18} weight="bold" />
-						</button>
-						<button type="button" class="btn btn-sm" onclick={() => (editing = true)}>
-							<PencilSimpleIcon size={16} /> Edit
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm"
-							disabled={reading}
-							onclick={() => performer && read(performer.id, true)}
-						>
-							<ArrowClockwiseIcon size={16} class={reading ? 'animate-spin' : ''} />
-							{reading ? 'Reading sites…' : 'Refresh from sites'}
-						</button>
-					</div>
+					</p>
+				</div>
+
+				<div class="flex flex-wrap gap-2 max-md:justify-center">
+					<button
+						type="button"
+						class="glass-pill flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-transform hover:scale-[1.03] active:scale-95"
+						aria-pressed={performer.userState.favorite}
+						title="Favourites get every video from their sites"
+						onclick={toggleFavorite}
+					>
+						<span class="flex" class:text-error={performer.userState.favorite}>
+							<HeartIcon size={18} weight={performer.userState.favorite ? 'fill' : 'regular'} />
+						</span>
+						{performer.userState.favorite ? 'Favourite' : 'Add to favourites'}
+					</button>
+					<button
+						type="button"
+						class="glass-pill flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-transform hover:scale-[1.03] active:scale-95"
+						onclick={() => (editing = true)}
+					>
+						<PencilSimpleIcon size={16} /> Edit
+					</button>
+					<RefreshSitesMenu sites={refreshSites} busy={reading} onrefresh={refreshFrom} />
+					<button
+						type="button"
+						class="glass-round flex h-10 w-10 items-center justify-center rounded-full"
+						aria-label="More"
+						onclick={(event) => (menuAnchor = event.currentTarget)}
+					>
+						<DotsThreeVerticalIcon size={20} weight="bold" />
+					</button>
 				</div>
 
 				{#if fetching}
-					<p class="text-base-content/60 flex items-center gap-2 text-sm" aria-live="polite">
+					<span class="chip pointer-events-none self-start" aria-live="polite">
 						<span class="loading loading-spinner loading-xs"></span>
 						{#if fetching.reading}
 							Reading their profiles and asking every site about them…
 						{:else}
 							Collecting videos from {listingSites(fetching.listing)} · {fetching.videoCount} so far
 						{/if}
-					</p>
+					</span>
 				{/if}
 
 				{#if performer.userState.blocked}
-					<div class="bg-base-200 flex items-center gap-3 rounded-lg px-3 py-2 text-sm">
+					<div
+						class="flex items-center gap-3 rounded-2xl bg-[var(--ctx-red-soft)] px-4 py-2.5 text-sm ring-1 ring-red-400/25"
+					>
 						<ProhibitIcon size={16} class="text-error" />
-						<span class="flex-1"
-							>Blocked: {performer.name} and their videos are hidden everywhere.</span
-						>
-						<button type="button" class="btn btn-xs" onclick={() => setBlock(false)}>Unblock</button
-						>
-					</div>
-				{/if}
-
-				{#if lockedFields.length > 0}
-					<div class="flex flex-wrap items-center gap-1.5 text-xs">
-						<span class="text-base-content/50">Set by you, sites leave alone:</span>
-						{#each lockedFields as field (field)}
-							<button
-								type="button"
-								class="bg-base-200 hover:bg-base-300 flex items-center gap-1 rounded-full px-2 py-0.5"
-								title="Let the sites update {FIELD_LABELS[field] ?? field} again"
-								onclick={() => unlock(field)}
-							>
-								{FIELD_LABELS[field] ?? field}
-								<XIcon size={11} />
-							</button>
-						{/each}
-					</div>
-				{/if}
-
-				{#if facts.length > 0}
-					<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-						{#each facts as fact (fact.label)}
-							<dt class="text-base-content/50">{fact.label}</dt>
-							<dd>{fact.value}</dd>
-						{/each}
-					</dl>
-				{/if}
-				{#if performer.details}
-					<p class="text-base-content/80 max-w-3xl text-sm whitespace-pre-line">
-						{performer.details}
-					</p>
-				{/if}
-				<TagChips tags={performer.tags} />
-				{#if performer.links.length > 0}
-					<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-						<!-- Keyed by place: older records can list a link twice. -->
-						{#each performer.links as link, position (position)}
-							<a
-								href={link}
-								target="_blank"
-								rel="noreferrer"
-								class="text-base-content/70 hover:text-base-content flex items-center gap-1"
-							>
-								<ArrowSquareOutIcon size={13} />
-								{new URL(link).hostname.replace(/^www\./, '')}
-							</a>
-						{/each}
+						<span class="flex-1">
+							Blocked: {performer.name} and their videos are hidden everywhere.
+						</span>
+						<button type="button" class="chip chip-sm" onclick={() => setBlock(false)}>
+							Unblock
+						</button>
 					</div>
 				{/if}
 			</div>
-		</div>
+		</header>
 
-		{#if performer.sources.length > 0}
-			<section class="flex flex-col gap-2">
-				<h2 class="text-base font-semibold">On the sites</h2>
+		{#if facts.length > 0}
+			<dl class="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+				{#each facts as fact (fact.label)}
+					<div
+						class="flex flex-col gap-0.5 rounded-2xl bg-white/[0.04] px-4 py-3 ring-1 ring-white/5"
+					>
+						<dt class="text-base-content/45 text-xs">{fact.label}</dt>
+						<dd class="truncate text-sm font-medium" title={fact.value}>{fact.value}</dd>
+					</div>
+				{/each}
+			</dl>
+		{/if}
+
+		{#if performer.details}
+			<p class="text-base-content/80 max-w-3xl text-[15px] leading-relaxed whitespace-pre-line">
+				{performer.details}
+			</p>
+		{/if}
+
+		<TagChips tags={performer.tags} />
+
+		{#if performer.sources.length > 0 || performer.links.length > 0}
+			<section class="flex flex-col gap-3">
+				<h2 class="text-base-content/45 text-xs font-semibold tracking-wider uppercase">
+					On the sites
+				</h2>
 				<div class="flex flex-wrap gap-2">
 					<!-- Keyed by place: two sites, or two ids on one site, can share a URL. -->
 					{#each performer.sources as source, position (position)}
-						<a
-							href={source.url}
-							target="_blank"
-							rel="noreferrer"
-							class="bg-base-200 hover:bg-base-300 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
-						>
-							<ArrowSquareOutIcon size={14} />
-							<span class="font-medium">{siteDisplayName(source.plugin, $sites)}</span>
-							<span class="text-base-content/50 text-xs">{readLabel(source.fetchedAt)}</span>
+						<a href={source.url} target="_blank" rel="noreferrer" class="chip">
+							{siteDisplayName(source.plugin, $sites)}
+							<span class="text-xs opacity-50">{readLabel(source.fetchedAt)}</span>
+							<ArrowSquareOutIcon size={12} class="opacity-60" />
+						</a>
+					{/each}
+					<!-- Keyed by place: older records can list a link twice. -->
+					{#each performer.links as link, position (position)}
+						<a href={link} target="_blank" rel="noreferrer" class="chip">
+							{new URL(link).hostname.replace(/^www\./, '')}
+							<ArrowSquareOutIcon size={12} class="opacity-60" />
 						</a>
 					{/each}
 				</div>
 			</section>
 		{/if}
 
+		{#if lockedFields.length > 0}
+			<div class="flex flex-wrap items-center gap-2 text-xs">
+				<span class="text-base-content/45">Set by you, the sites leave these alone:</span>
+				{#each lockedFields as field (field)}
+					<button
+						type="button"
+						class="chip chip-sm"
+						title="Let the sites update {FIELD_LABELS[field] ?? field} again"
+						onclick={() => unlock(field)}
+					>
+						{FIELD_LABELS[field] ?? field}
+						<XIcon size={11} />
+					</button>
+				{/each}
+			</div>
+		{/if}
+
 		{#if merges.length > 0}
-			<section class="flex flex-col gap-2">
+			<section class="flex flex-col gap-3">
 				<h2 class="text-lg font-semibold">Merged in</h2>
 				<div class="flex flex-wrap gap-2">
 					{#each merges as merge (merge.id)}
-						<span class="bg-base-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm">
+						<span class="chip">
 							<span class="font-medium">{merge.mergedName ?? 'A performer'}</span>
-							<span class="text-base-content/50 text-xs">{dayjs(merge.createdAt).fromNow()}</span>
+							<span class="text-xs opacity-50">{dayjs(merge.createdAt).fromNow()}</span>
 							<button
 								type="button"
-								class="text-primary text-xs"
+								class="text-info text-xs font-semibold"
 								onclick={() => void unmerge(merge.id, null)}
 							>
 								Undo
@@ -615,29 +671,29 @@
 						<span class="flex gap-1">
 							<button
 								type="button"
-								class="btn btn-sm flex-1"
+								class="chip chip-sm flex-1 justify-center"
 								onclick={() => void mergeNow(duplicate)}
 							>
-								<UsersThreeIcon size={16} /> Merge
+								<UsersThreeIcon size={14} /> Merge
 							</button>
 							<button
 								type="button"
-								class="btn btn-ghost btn-sm btn-square"
+								class="chip chip-sm px-2"
 								aria-label="Compare before merging"
 								title="Compare before merging"
 								onclick={() => startMerge(duplicate)}
 							>
-								<ArrowsLeftRightIcon size={16} />
+								<ArrowsLeftRightIcon size={14} />
 							</button>
 						</span>
 					</div>
 				{:else}
 					<button
 						type="button"
-						class="bg-base-200 hover:bg-base-300 text-base-content/60 flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded-xl text-sm"
+						class="text-base-content/60 hover:text-base-content flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 text-sm transition-colors hover:border-white/35 hover:bg-white/5"
 						onclick={() => startMerge(null)}
 					>
-						<UsersThreeIcon size={28} />
+						<UsersThreeIcon size={22} />
 						Someone else…
 					</button>
 				{/if}
@@ -662,19 +718,19 @@
 						<span class="flex gap-1">
 							<button
 								type="button"
-								class="btn btn-sm flex-1"
+								class="chip chip-sm flex-1 justify-center"
 								onclick={() => void creditFaceMatch(match)}
 							>
 								Add {performer?.name}
 							</button>
 							<button
 								type="button"
-								class="btn btn-ghost btn-sm btn-square"
+								class="chip chip-sm px-2"
 								aria-label="Not {performer?.name}"
 								title="Not {performer?.name}"
 								onclick={() => (dismissedMatches = [...dismissedMatches, match.video.id])}
 							>
-								<XIcon size={16} />
+								<XIcon size={14} />
 							</button>
 						</span>
 					</div>

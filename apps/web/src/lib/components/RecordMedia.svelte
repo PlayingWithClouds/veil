@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import FunnelSimpleIcon from 'phosphor-svelte/lib/FunnelSimpleIcon';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import GalleryCard from '$lib/components/GalleryCard.svelte';
 	import Shelf from '$lib/components/Shelf.svelte';
@@ -84,19 +85,21 @@
 
 {#if videos.length > 0}
 	<section class="flex flex-col gap-3">
-		<div class="flex items-baseline justify-between">
+		<div class="flex items-center justify-between gap-3">
 			<h2 class="text-lg font-semibold">Videos</h2>
-			<a href={allVideosHref} class="text-primary text-sm">Filter and sort</a>
+			<a href={allVideosHref} class="chip chip-sm">
+				<FunnelSimpleIcon size={14} /> Filter and sort
+			</a>
 		</div>
-		<div
-			class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-6 max-md:grid-cols-1"
-		>
-			{#each videos as video (video.id)}
-				<SceneCard
-					{video}
-					actions={videoActions?.(video, () => remove(video)) ?? []}
-					onclick={() => goto(videoUrl(video.id))}
-				/>
+		<div class="card-grid">
+			{#each videos as video, position (video.id)}
+				<div class="rise-in" style:--rise-delay="{Math.min((position % PAGE_SIZE) * 25, 400)}ms">
+					<SceneCard
+						{video}
+						actions={videoActions?.(video, () => remove(video)) ?? []}
+						onclick={() => goto(videoUrl(video.id))}
+					/>
+				</div>
 			{/each}
 		</div>
 		<ScrollSentinel onvisible={() => loadMore()} {loading} done={exhausted} />
