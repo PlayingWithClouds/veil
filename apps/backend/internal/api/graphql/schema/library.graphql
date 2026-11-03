@@ -38,8 +38,9 @@ extend type Mutation {
   # Same for a performer: reads their pages on the sites they came from
   # (bio, picture, attributes), then asks every site that can identify
   # performers for its profile of them (each site at most weekly). refresh
-  # reads every page and asks every site again.
-  fetchPerformer(id: ID!, refresh: Boolean): Performer
+  # reads every page and asks every site again; plugins narrows that to
+  # those sites (their profile pages, and asking them to identify).
+  fetchPerformer(id: ID!, refresh: Boolean, plugins: [String!]): Performer
   # Takes a performer off a video they aren't in (locked, so the sites can't
   # put them back). When one of their site profiles credited them, that
   # profile is someone else's of the same name: it moves to a new performer,

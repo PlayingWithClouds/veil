@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"slices"
 	"sync"
 	"time"
 
@@ -55,18 +56,25 @@ func New(lib *library.Library, registry *plugins.Registry, runner *plugins.Runne
 // can't read pages are skipped; a failing page is logged, not returned, so
 // one broken site doesn't hide the others.
 func (p *Pipeline) Visit(ctx context.Context, kind schema.RecordKind, id string) error {
-	return p.visit(ctx, kind, id, false)
+	return p.visit(ctx, kind, id, false, nil)
 }
 
 // Refresh reads the page behind every one of a record's sources again, read
 // before or not, like Visit otherwise.
 func (p *Pipeline) Refresh(ctx context.Context, kind schema.RecordKind, id string) error {
-	return p.visit(ctx, kind, id, true)
+	return p.visit(ctx, kind, id, true, nil)
+}
+
+// RefreshFrom is Refresh for the sources of the given plugins only; none
+// given means every source.
+func (p *Pipeline) RefreshFrom(ctx context.Context, kind schema.RecordKind, id string, only []string) error {
+	return p.visit(ctx, kind, id, true, only)
 }
 
 // visit reads a record's unread sources, or all of them when again is set,
-// one visit per record at a time.
-func (p *Pipeline) visit(ctx context.Context, kind schema.RecordKind, id string, again bool) error {
+// leaving out the sources of plugins not in only (when only names any), one
+// visit per record at a time.
+func (p *Pipeline) visit(ctx context.Context, kind schema.RecordKind, id string, again bool, only []string) error {
 	lock, _ := p.visiting.LoadOrStore(id, &sync.Mutex{})
 	lock.(*sync.Mutex).Lock()
 	defer lock.(*sync.Mutex).Unlock()
@@ -78,9 +86,21 @@ func (p *Pipeline) visit(ctx context.Context, kind schema.RecordKind, id string,
 		if source.FetchedAt != nil && !again {
 			continue
 		}
+		if !pluginWanted(only, source.Plugin) {
+			continue
+		}
 		p.readSource(ctx, kind, source)
 	}
 	return nil
+}
+
+// pluginWanted reports whether a plugin is among only; an empty only wants
+// every plugin.
+func pluginWanted(only []string, plugin string) bool {
+	if len(only) == 0 {
+		return true
+	}
+	return slices.Contains(only, plugin)
 }
 
 // readSource fetches and stores one source's page.

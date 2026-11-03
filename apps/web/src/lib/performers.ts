@@ -55,11 +55,16 @@ export async function fetchPerformer(id: string): Promise<PerformerDetail | null
 
 /**
  * Reads the performer's pages on the sites they came from (the unread ones,
- * or all of them with refresh) and returns them as stored after.
+ * or all of them with refresh) and returns them as stored after. A refresh
+ * with plugins reads and asks only those sites.
  */
-export async function readPerformer(id: string, refresh = false): Promise<PerformerDetail | null> {
+export async function readPerformer(
+	id: string,
+	refresh = false,
+	plugins: string[] = []
+): Promise<PerformerDetail | null> {
 	const data = await gqlClient.mutation({
-		fetchPerformer: { __args: { id, refresh }, ...PERFORMER_DETAIL }
+		fetchPerformer: { __args: { id, refresh, plugins }, ...PERFORMER_DETAIL }
 	});
 	return data.fetchPerformer ?? null;
 }
@@ -80,7 +85,10 @@ export async function editPerformer(
  * profiles credited them, that profile was someone else's and moved to a new
  * performer, which is returned, with the videos only it credited.
  */
-export async function unassignPerformer(videoId: string, performerId: string): Promise<MemberRow | null> {
+export async function unassignPerformer(
+	videoId: string,
+	performerId: string
+): Promise<MemberRow | null> {
 	const data = await gqlClient.mutation({
 		unassignPerformer: { __args: { videoId, performerId }, ...MEMBER }
 	});
@@ -104,18 +112,23 @@ export async function fetchPerformerFetching(id: string): Promise<PerformerFetch
 }
 
 /** The values a text attribute has across the library's performers, most common first. */
-export async function fetchAttributeValues(attribute: keyof PerformerAttributes): Promise<string[]> {
+export async function fetchAttributeValues(
+	attribute: keyof PerformerAttributes
+): Promise<string[]> {
 	const data = await gqlClient.query({ performerAttributeValues: { __args: { attribute } } });
 	return data.performerAttributeValues;
 }
 
 /** Uploads a picture to the backend and returns the asset URI to save as one. */
 export async function uploadPicture(file: File): Promise<string> {
-	const response = await fetch(`${apiBase()}/api/upload?${new URLSearchParams({ name: file.name })}`, {
-		method: 'POST',
-		headers: { 'Content-Type': file.type },
-		body: file
-	});
+	const response = await fetch(
+		`${apiBase()}/api/upload?${new URLSearchParams({ name: file.name })}`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': file.type },
+			body: file
+		}
+	);
 	if (!response.ok) throw new Error(`Upload failed: ${await response.text()}`);
 	const uploaded: { uri: string } = await response.json();
 	return uploaded.uri;

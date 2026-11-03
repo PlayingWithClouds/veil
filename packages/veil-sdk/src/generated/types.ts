@@ -1782,6 +1782,10 @@ export default {
                     ],
                     "refresh": [
                         4
+                    ],
+                    "plugins": [
+                        1,
+                        "[String!]"
                     ]
                 }
             ],

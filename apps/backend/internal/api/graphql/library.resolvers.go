@@ -102,17 +102,17 @@ func (r *mutationResolver) FetchGallery(ctx context.Context, id string) (*schema
 }
 
 // FetchPerformer is the resolver for the fetchPerformer field.
-func (r *mutationResolver) FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error) {
+func (r *mutationResolver) FetchPerformer(ctx context.Context, id string, refresh *bool, plugins []string) (*schema.Performer, error) {
 	again := refresh != nil && *refresh
-	visit := r.pipeline.Visit
 	if again {
-		visit = r.pipeline.Refresh
-	}
-	if err := visit(ctx, schema.RecordKindPerformer, id); err != nil {
+		if err := r.pipeline.RefreshFrom(ctx, schema.RecordKindPerformer, id, plugins); err != nil {
+			return nil, err
+		}
+	} else if err := r.pipeline.Visit(ctx, schema.RecordKindPerformer, id); err != nil {
 		return nil, err
 	}
 	// After the known pages, which may add a birthdate that sharpens the match.
-	if err := r.pipeline.IdentifyPerformer(ctx, id, again); err != nil {
+	if err := r.pipeline.IdentifyPerformer(ctx, id, again, plugins); err != nil {
 		return nil, err
 	}
 	return r.library.Performer(ctx, id)

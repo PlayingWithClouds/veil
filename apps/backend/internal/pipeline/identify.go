@@ -23,9 +23,10 @@ const (
 // this one on its site, by what the library knows about them (name, aliases,
 // birthdate, known profiles). Sites the performer already has a profile on
 // are skipped, and so are sites asked within identifyInterval unless again is
-// set. Each profile a site is sure of becomes a source of the performer and
-// fills their details. Sites are asked at once; failures are logged.
-func (p *Pipeline) IdentifyPerformer(ctx context.Context, id string, again bool) error {
+// set; when only names plugins, the others are too. Each profile a site is
+// sure of becomes a source of the performer and fills their details. Sites
+// are asked at once; failures are logged.
+func (p *Pipeline) IdentifyPerformer(ctx context.Context, id string, again bool, only []string) error {
 	performer, err := p.library.Performer(ctx, id)
 	if err != nil || performer == nil {
 		return err
@@ -39,6 +40,9 @@ func (p *Pipeline) IdentifyPerformer(ctx context.Context, id string, again bool)
 	var group sync.WaitGroup
 	for _, plugin := range p.registry.WithCapability(plugins.CapabilityPerformerIdentify) {
 		if known[plugin.Meta.Name] || (!again && p.askedRecently(plugin.Meta.Name, id)) {
+			continue
+		}
+		if !pluginWanted(only, plugin.Meta.Name) {
 			continue
 		}
 		group.Go(func() { p.identifyOn(ctx, plugin, id, args) })

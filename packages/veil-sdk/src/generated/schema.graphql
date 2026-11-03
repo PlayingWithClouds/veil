@@ -169,7 +169,7 @@ type Mutation {
   removeEmbedding(id: ID!): Boolean!
   fetchVideo(id: ID!): Video
   fetchGallery(id: ID!): Gallery
-  fetchPerformer(id: ID!, refresh: Boolean): Performer
+  fetchPerformer(id: ID!, refresh: Boolean, plugins: [String!]): Performer
   unassignPerformer(videoId: ID!, performerId: ID!): Performer
   createPerformer(name: String!): Performer!
   createStudio(name: String!): Studio!

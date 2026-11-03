@@ -1593,7 +1593,7 @@ export interface MutationGenqlSelection{
     removeEmbedding?: { __args: {id: Scalars['ID']} }
     fetchVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID']} })
     fetchGallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID']} })
-    fetchPerformer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID'], refresh?: (Scalars['Boolean'] | null)} })
+    fetchPerformer?: (PerformerGenqlSelection & { __args: {id: Scalars['ID'], refresh?: (Scalars['Boolean'] | null), plugins?: (Scalars['String'][] | null)} })
     unassignPerformer?: (PerformerGenqlSelection & { __args: {videoId: Scalars['ID'], performerId: Scalars['ID']} })
     createPerformer?: (PerformerGenqlSelection & { __args: {name: Scalars['String']} })
     createStudio?: (StudioGenqlSelection & { __args: {name: Scalars['String']} })

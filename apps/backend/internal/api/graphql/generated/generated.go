@@ -634,7 +634,7 @@ type ComplexityRoot struct {
 		EmptyTrash                func(childComplexity int) int
 		FetchGallery              func(childComplexity int, id string) int
 		FetchMedia                func(childComplexity int, subject schema.RecordRef) int
-		FetchPerformer            func(childComplexity int, id string, refresh *bool) int
+		FetchPerformer            func(childComplexity int, id string, refresh *bool, plugins []string) int
 		FetchVideo                func(childComplexity int, id string) int
 		FingerprintFile           func(childComplexity int, fileID string) int
 		FollowRecord              func(childComplexity int, subject schema.RecordRef, intervalHours *int, notify *bool) int
@@ -1513,7 +1513,7 @@ type MutationResolver interface {
 	RemoveEmbedding(ctx context.Context, id string) (bool, error)
 	FetchVideo(ctx context.Context, id string) (*schema.Video, error)
 	FetchGallery(ctx context.Context, id string) (*schema.Gallery, error)
-	FetchPerformer(ctx context.Context, id string, refresh *bool) (*schema.Performer, error)
+	FetchPerformer(ctx context.Context, id string, refresh *bool, plugins []string) (*schema.Performer, error)
 	UnassignPerformer(ctx context.Context, videoID string, performerID string) (*schema.Performer, error)
 	CreatePerformer(ctx context.Context, name string) (*schema.Performer, error)
 	CreateStudio(ctx context.Context, name string) (*schema.Studio, error)
@@ -4526,7 +4526,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.FetchPerformer(childComplexity, args["id"].(string), args["refresh"].(*bool)), true
+		return e.ComplexityRoot.Mutation.FetchPerformer(childComplexity, args["id"].(string), args["refresh"].(*bool), args["plugins"].([]string)), true
 	case "Mutation.fetchVideo":
 		if e.ComplexityRoot.Mutation.FetchVideo == nil {
 			break
@@ -9709,8 +9709,9 @@ extend type Mutation {
   # Same for a performer: reads their pages on the sites they came from
   # (bio, picture, attributes), then asks every site that can identify
   # performers for its profile of them (each site at most weekly). refresh
-  # reads every page and asks every site again.
-  fetchPerformer(id: ID!, refresh: Boolean): Performer
+  # reads every page and asks every site again; plugins narrows that to
+  # those sites (their profile pages, and asking them to identify).
+  fetchPerformer(id: ID!, refresh: Boolean, plugins: [String!]): Performer
   # Takes a performer off a video they aren't in (locked, so the sites can't
   # put them back). When one of their site profiles credited them, that
   # profile is someone else's of the same name: it moves to a new performer,
@@ -14296,6 +14297,14 @@ func (ec *executionContext) field_Mutation_fetchPerformer_args(ctx context.Conte
 		return nil, err
 	}
 	args["refresh"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "plugins",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["plugins"] = arg2
 	return args, nil
 }
 
@@ -29355,7 +29364,7 @@ func (ec *executionContext) _Mutation_fetchPerformer(ctx context.Context, field 
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().FetchPerformer(ctx, fc.Args["id"].(string), fc.Args["refresh"].(*bool))
+			return ec.Resolvers.Mutation().FetchPerformer(ctx, fc.Args["id"].(string), fc.Args["refresh"].(*bool), fc.Args["plugins"].([]string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *schema.Performer) graphql.Marshaler {

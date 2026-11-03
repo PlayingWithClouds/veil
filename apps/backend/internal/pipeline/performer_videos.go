@@ -69,7 +69,7 @@ func (p *Pipeline) CollectFavorite(id string) {
 		if err := p.Refresh(ctx, schema.RecordKindPerformer, id); err != nil {
 			log.Printf("favourite %s: read profiles: %v", id, err)
 		}
-		if err := p.IdentifyPerformer(ctx, id, true); err != nil {
+		if err := p.IdentifyPerformer(ctx, id, true, nil); err != nil {
 			log.Printf("favourite %s: identify: %v", id, err)
 		}
 		// Profiles that failed to read above still get listed.
