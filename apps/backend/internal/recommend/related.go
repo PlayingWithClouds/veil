@@ -160,7 +160,7 @@ func likelyCompanion(target, candidate *mediaFeatures) bool {
 // addSharedCredits adds the newest items sharing the target's performers,
 // its studio, or its rare tags.
 func (e *Engine) addSharedCredits(ctx context.Context, target *mediaFeatures, rarity *tagRarity, set relatedSet) error {
-	byPerformer, err := e.entityItems(ctx, "performers", target.performers, itemsPerEntity, false)
+	byPerformer, err := e.entityItems(ctx, rankedKinds, "performers", target.performers, itemsPerEntity, false)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (e *Engine) addSharedStudio(ctx context.Context, target *mediaFeatures, set
 	if target.studio == "" {
 		return nil
 	}
-	byStudio, err := e.entityItems(ctx, "studio", []string{target.studio}, itemsPerEntity, false)
+	byStudio, err := e.entityItems(ctx, rankedKinds, "studio", []string{target.studio}, itemsPerEntity, false)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (e *Engine) addSharedStudio(ctx context.Context, target *mediaFeatures, set
 // addSharedTags adds the newest items carrying the target's rare tags.
 func (e *Engine) addSharedTags(ctx context.Context, target *mediaFeatures, rarity *tagRarity, set relatedSet) error {
 	tags := rareTags(target.tags, rarity)
-	byTag, err := e.entityItems(ctx, "tags", tags, itemsPerEntity, false)
+	byTag, err := e.entityItems(ctx, rankedKinds, "tags", tags, itemsPerEntity, false)
 	if err != nil {
 		return err
 	}

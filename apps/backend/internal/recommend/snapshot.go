@@ -10,7 +10,9 @@ import (
 // snapshot is everything one ranking pass reads about the user, taken once so
 // every candidate is scored against the same state.
 type snapshot struct {
-	now       time.Time
+	now time.Time
+	// kinds is what the ranking proposes: videos, galleries or both.
+	kinds     []schema.RecordKind
 	taste     *profile
 	collected *signals
 	// features describes the signalled items (the seeds among them).
@@ -47,8 +49,9 @@ func (e *Engine) profileAt(ctx context.Context, now time.Time) (*profile, *signa
 	return buildProfile(collected, inputs, now), collected, features, nil
 }
 
-// takeSnapshot reads the profile and the per-item state ranking needs.
-func (e *Engine) takeSnapshot(ctx context.Context) (*snapshot, error) {
+// takeSnapshot reads the profile and the per-item state a ranking of kinds
+// needs.
+func (e *Engine) takeSnapshot(ctx context.Context, kinds []schema.RecordKind) (*snapshot, error) {
 	now := e.now()
 	taste, collected, features, err := e.profileAt(ctx, now)
 	if err != nil {
@@ -62,5 +65,5 @@ func (e *Engine) takeSnapshot(ctx context.Context) (*snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &snapshot{now: now, taste: taste, collected: collected, features: features, watched: watched, policy: policy}, nil
+	return &snapshot{now: now, kinds: kinds, taste: taste, collected: collected, features: features, watched: watched, policy: policy}, nil
 }

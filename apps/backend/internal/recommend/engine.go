@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -37,8 +38,10 @@ type Engine struct {
 	// stats caches the library-wide aggregates (tag rarity, performer looks).
 	stats statsCache
 
-	mutex   sync.Mutex
-	ranking *ranking
+	mutex sync.Mutex
+	// rankings holds one ranking per set of kinds (rankingKey): the mixed
+	// feed of Home and the galleries-only feed of the gallery pages.
+	rankings map[string]*ranking
 }
 
 // ranking is one full ranking pass: the feed order.
@@ -49,22 +52,31 @@ type ranking struct {
 
 // New returns an engine over the database.
 func New(database *db.DB) *Engine {
-	return &Engine{database: database, now: time.Now, random: rand.New(rand.NewSource(time.Now().UnixNano()))}
+	return &Engine{database: database, now: time.Now, random: rand.New(rand.NewSource(time.Now().UnixNano())), rankings: map[string]*ranking{}}
 }
 
+// rankedKinds is what a ranking proposes when the filter names no kind.
+var rankedKinds = []schema.RecordKind{schema.RecordKindVideo, schema.RecordKindGallery}
+
 // Recommendations returns one page of the ranked feed of videos and
-// galleries. The first page re-ranks once the ranking is older than
-// firstPageTTL (a reload shows the same feed); later pages read the same
-// ranking while it is younger than rankingTTL, so pages neither overlap nor
-// skip as impressions shift the scores. Items blocked or trashed since the
-// ranking was built are left out, and so are those filter doesn't match;
-// pages count over what the filter leaves.
+// galleries, or of the ones filter.Kinds names: a feed of one kind is ranked
+// on its own, so its candidates aren't crowded out by the other's. The first
+// page re-ranks once the ranking is older than firstPageTTL (a reload shows
+// the same feed); later pages read the same ranking while it is younger than
+// rankingTTL, so pages neither overlap nor skip as impressions shift the
+// scores. Items blocked or trashed since the ranking was built are left out,
+// and so are those filter doesn't match; pages count over what the filter
+// leaves.
 func (e *Engine) Recommendations(ctx context.Context, filter schema.Filter, limit, offset int) ([]schema.Match, error) {
+	kinds := rankingKinds(filter)
+	if len(kinds) == 0 {
+		return []schema.Match{}, nil
+	}
 	maxAge := rankingTTL
 	if offset == 0 {
 		maxAge = firstPageTTL
 	}
-	current, err := e.currentRanking(ctx, maxAge)
+	current, err := e.currentRanking(ctx, kinds, maxAge)
 	if err != nil {
 		return nil, err
 	}
@@ -79,26 +91,52 @@ func (e *Engine) Recommendations(ctx context.Context, filter schema.Filter, limi
 	return recommendationMatches(page), nil
 }
 
-// currentRanking returns the memoized ranking, rebuilding it when it is older
-// than maxAge.
-func (e *Engine) currentRanking(ctx context.Context, maxAge time.Duration) (*ranking, error) {
+// rankingKinds is the ranked kinds filter asks for, in rankedKinds order:
+// all of them when it names none, none when it names only kinds that aren't
+// ranked.
+func rankingKinds(filter schema.Filter) []schema.RecordKind {
+	if len(filter.Kinds) == 0 {
+		return rankedKinds
+	}
+	kinds := []schema.RecordKind{}
+	for _, kind := range rankedKinds {
+		if slices.Contains(filter.Kinds, schema.MediaKind(kind)) {
+			kinds = append(kinds, kind)
+		}
+	}
+	return kinds
+}
+
+// rankingKey names the ranking of a set of kinds.
+func rankingKey(kinds []schema.RecordKind) string {
+	names := make([]string, 0, len(kinds))
+	for _, kind := range kinds {
+		names = append(names, string(kind))
+	}
+	return strings.Join(names, ",")
+}
+
+// currentRanking returns the memoized ranking of kinds, rebuilding it when it
+// is older than maxAge.
+func (e *Engine) currentRanking(ctx context.Context, kinds []schema.RecordKind, maxAge time.Duration) (*ranking, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	if e.ranking != nil && e.now().Sub(e.ranking.builtAt) < maxAge {
-		return e.ranking, nil
+	key := rankingKey(kinds)
+	if memoized := e.rankings[key]; memoized != nil && e.now().Sub(memoized.builtAt) < maxAge {
+		return memoized, nil
 	}
-	built, err := e.buildRanking(ctx)
+	built, err := e.buildRanking(ctx, kinds)
 	if err != nil {
 		return nil, err
 	}
-	e.ranking = built
+	e.rankings[key] = built
 	return built, nil
 }
 
-// buildRanking runs the full pipeline: snapshot, candidates, scoring,
-// duplicates, reasons, re-ranking.
-func (e *Engine) buildRanking(ctx context.Context) (*ranking, error) {
-	state, err := e.takeSnapshot(ctx)
+// buildRanking runs the full pipeline over items of kinds: snapshot,
+// candidates, scoring, duplicates, reasons, re-ranking.
+func (e *Engine) buildRanking(ctx context.Context, kinds []schema.RecordKind) (*ranking, error) {
+	state, err := e.takeSnapshot(ctx, kinds)
 	if err != nil {
 		return nil, err
 	}

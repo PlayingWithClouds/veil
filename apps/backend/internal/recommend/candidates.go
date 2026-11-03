@@ -3,6 +3,7 @@ package recommend
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -94,7 +95,9 @@ func (pool *candidatePool) list() []*candidate {
 // candidateGenerator proposes candidates from one source.
 type candidateGenerator func(ctx context.Context, state *snapshot) ([]candidate, error)
 
-// generateCandidates runs every source and pools the results.
+// generateCandidates runs every source and pools the results of the
+// snapshot's kinds; a source may still propose others (a gallery seed's
+// video).
 func (e *Engine) generateCandidates(ctx context.Context, state *snapshot) (*candidatePool, error) {
 	generators := []candidateGenerator{
 		e.relatedCandidates,
@@ -113,7 +116,9 @@ func (e *Engine) generateCandidates(ctx context.Context, state *snapshot) (*cand
 			return nil, err
 		}
 		for _, proposed := range found {
-			pool.add(proposed)
+			if slices.Contains(state.kinds, proposed.item.Kind) {
+				pool.add(proposed)
+			}
 		}
 	}
 	return pool, nil
@@ -152,10 +157,10 @@ const entityItemsQuery = `SELECT "id", "entity", "createdAt" FROM (
 ) WHERE "position" <= $limit`
 
 // entityItems lists, per performer, tag or studio id (column "performers",
-// "tags" or "studio"), its newest videos and galleries, at most perEntity;
-// random picks a random sample instead of the newest. Credits aren't
-// indexed, so this is one scan per media table.
-func (e *Engine) entityItems(ctx context.Context, column string, entityIDs []string, perEntity int, random bool) (map[string][]schema.RecordRef, error) {
+// "tags" or "studio"), its newest items of kinds, at most perEntity; random
+// picks a random sample instead of the newest. Credits aren't indexed, so
+// this is one scan per media table.
+func (e *Engine) entityItems(ctx context.Context, kinds []schema.RecordKind, column string, entityIDs []string, perEntity int, random bool) (map[string][]schema.RecordRef, error) {
 	if len(entityIDs) == 0 {
 		return map[string][]schema.RecordRef{}, nil
 	}
@@ -164,7 +169,7 @@ func (e *Engine) entityItems(ctx context.Context, column string, entityIDs []str
 		order = `RANDOM()`
 	}
 	found := map[string][]datedRef{}
-	for _, kind := range []schema.RecordKind{schema.RecordKindVideo, schema.RecordKindGallery} {
+	for _, kind := range kinds {
 		query := fmt.Sprintf(entityItemsQuery, db.Quote(tableOf(kind)), entityColumns[column].join, entityColumns[column].value, order)
 		rows, err := e.database.Query(ctx, query, db.Vars{"entities": entityIDs, "limit": perEntity})
 		if err != nil {
@@ -210,15 +215,15 @@ func (e *Engine) relatedCandidates(ctx context.Context, state *snapshot) ([]cand
 		return nil, nil
 	}
 	performers, studios, tags := seedEntities(state)
-	byPerformer, err := e.entityItems(ctx, "performers", setKeys(performers), itemsPerSeedEntity, false)
+	byPerformer, err := e.entityItems(ctx, state.kinds, "performers", setKeys(performers), itemsPerSeedEntity, false)
 	if err != nil {
 		return nil, err
 	}
-	byStudio, err := e.entityItems(ctx, "studio", setKeys(studios), itemsPerSeedEntity, false)
+	byStudio, err := e.entityItems(ctx, state.kinds, "studio", setKeys(studios), itemsPerSeedEntity, false)
 	if err != nil {
 		return nil, err
 	}
-	byTag, err := e.entityItems(ctx, "tags", setKeys(tags), itemsPerSeedEntity, false)
+	byTag, err := e.entityItems(ctx, state.kinds, "tags", setKeys(tags), itemsPerSeedEntity, false)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +331,7 @@ func (e *Engine) affinityCandidates(ctx context.Context, state *snapshot) ([]can
 	out := []candidate{}
 	for _, dimension := range dimensions {
 		top := topEntities(dimension.affinities, dimension.limit)
-		itemsByEntity, err := e.entityItems(ctx, dimension.column, top, itemsPerEntity, false)
+		itemsByEntity, err := e.entityItems(ctx, state.kinds, dimension.column, top, itemsPerEntity, false)
 		if err != nil {
 			return nil, err
 		}
@@ -349,7 +354,7 @@ func (e *Engine) lookalikeCandidates(ctx context.Context, state *snapshot) ([]ca
 	for _, performer := range performers {
 		performerIDs = append(performerIDs, performer.performerID)
 	}
-	itemsByPerformer, err := e.entityItems(ctx, "performers", performerIDs, attributeItemsPerPerformer, false)
+	itemsByPerformer, err := e.entityItems(ctx, state.kinds, "performers", performerIDs, attributeItemsPerPerformer, false)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +371,7 @@ func (e *Engine) lookalikeCandidates(ctx context.Context, state *snapshot) ([]ca
 // adjacentTagCandidates proposes a random sample of items from tags adjacent
 // to the top tags: the exploration share that widens the profile.
 func (e *Engine) adjacentTagCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
-	itemsByTag, err := e.entityItems(ctx, "tags", state.taste.adjacentTags, itemsPerAdjacentTag, true)
+	itemsByTag, err := e.entityItems(ctx, state.kinds, "tags", state.taste.adjacentTags, itemsPerAdjacentTag, true)
 	if err != nil {
 		return nil, err
 	}
@@ -378,16 +383,22 @@ func (e *Engine) adjacentTagCandidates(ctx context.Context, state *snapshot) ([]
 	return out, nil
 }
 
-// mediaUnion lists videos and galleries together as (kind, id, title,
+// mediaUnion lists the items of kinds together as (kind, id, title,
 // createdAt), trashed ones left out.
-const mediaUnion = `SELECT 'video' AS "kind", "id", "title", "createdAt" FROM "Video" WHERE "deletedAt" IS NULL
-	UNION ALL SELECT 'gallery', "id", "title", "createdAt" FROM "Gallery" WHERE "deletedAt" IS NULL`
+func mediaUnion(kinds []schema.RecordKind) string {
+	selects := make([]string, 0, len(kinds))
+	for _, kind := range kinds {
+		selects = append(selects, fmt.Sprintf(`SELECT '%s' AS "kind", "id", "title", "createdAt" FROM %s WHERE "deletedAt" IS NULL`,
+			kind, db.Quote(tableOf(kind))))
+	}
+	return strings.Join(selects, " UNION ALL ")
+}
 
-// unionRefs lists the videos and galleries matching condition (on mediaUnion's
-// columns) in order, at most $limit.
-func (e *Engine) unionRefs(ctx context.Context, condition, order string, vars db.Vars) ([]schema.RecordRef, error) {
+// unionRefs lists the items of the snapshot's kinds matching condition (on
+// mediaUnion's columns) in order, at most $limit.
+func (e *Engine) unionRefs(ctx context.Context, state *snapshot, condition, order string, vars db.Vars) ([]schema.RecordRef, error) {
 	rows, err := e.database.Query(ctx,
-		`SELECT "kind", "id" FROM (`+mediaUnion+`) WHERE `+condition+` ORDER BY `+order+` LIMIT $limit`, vars)
+		`SELECT "kind", "id" FROM (`+mediaUnion(state.kinds)+`) WHERE `+condition+` ORDER BY `+order+` LIMIT $limit`, vars)
 	if err != nil {
 		return nil, fmt.Errorf("candidate query: %w", err)
 	}
@@ -404,7 +415,7 @@ func (e *Engine) randomCandidates(ctx context.Context, state *snapshot) ([]candi
 	if state.taste.empty() {
 		return nil, nil
 	}
-	refs, err := e.unionRefs(ctx, `1`, `RANDOM()`, db.Vars{"limit": randomCandidateLimit})
+	refs, err := e.unionRefs(ctx, state, `1`, `RANDOM()`, db.Vars{"limit": randomCandidateLimit})
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +431,7 @@ func (e *Engine) searchCandidates(ctx context.Context, state *snapshot) ([]candi
 	}
 	out := []candidate{}
 	for _, text := range texts {
-		refs, err := e.unionRefs(ctx, `"title" LIKE $pattern`, `"createdAt" DESC`,
+		refs, err := e.unionRefs(ctx, state, `"title" LIKE $pattern`, `"createdAt" DESC`,
 			db.Vars{"pattern": "%" + text + "%", "limit": itemsPerSearch})
 		if err != nil {
 			return nil, err
@@ -453,7 +464,7 @@ func (e *Engine) recentSearches(ctx context.Context, now time.Time) ([]string, e
 // newestCandidates proposes the most recently stored items: the cold-start
 // fallback and the feed's tail.
 func (e *Engine) newestCandidates(ctx context.Context, state *snapshot) ([]candidate, error) {
-	refs, err := e.unionRefs(ctx, `1`, `"createdAt" DESC`, db.Vars{"limit": newestCandidateLimit})
+	refs, err := e.unionRefs(ctx, state, `1`, `"createdAt" DESC`, db.Vars{"limit": newestCandidateLimit})
 	if err != nil {
 		return nil, err
 	}

@@ -309,3 +309,52 @@ func TestRecommendationsFollowFilter(t *testing.T) {
 		t.Errorf("matches = %+v, want only %s", matches, long)
 	}
 }
+
+// TestGalleryFeedRanksGalleriesOnly ranks the galleries on their own when the
+// filter asks for them: more videos than the newest source takes don't
+// crowd them out, and a gallery's linked video stays out.
+func TestGalleryFeedRanksGalleriesOnly(t *testing.T) {
+	f := newFixture(t)
+	linked := f.video(mediaRow{title: "Linked video"})
+	galleries := map[string]bool{}
+	for index := 0; index < 5; index++ {
+		gallery := f.galleryRow(mediaRow{title: "Set " + string(rune('a'+index)), images: 20, video: linked})
+		galleries[gallery] = true
+		f.event(schema.EventKindView, schema.RecordKindGallery, gallery, time.Hour, nil)
+	}
+	for index := 0; index < newestCandidateLimit+10; index++ {
+		f.video(mediaRow{title: "Video " + string(rune('a'+index%26)) + string(rune('a'+index/26))})
+	}
+
+	matches, err := f.engine.Recommendations(f.ctx, schema.Filter{Kinds: []schema.MediaKind{schema.MediaKindGallery}}, 50, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, match := range matches {
+		if match.Item.Kind != schema.RecordKindGallery {
+			t.Errorf("%s %s in the gallery feed", match.Item.Kind, match.Item.Id)
+		}
+		delete(galleries, match.Item.Id)
+	}
+	if len(galleries) != 0 {
+		t.Errorf("galleries missing from the feed: %v", galleries)
+	}
+	mixed := f.recommendations(10)
+	if len(mixed) == 0 {
+		t.Error("the mixed feed is empty")
+	}
+}
+
+// TestUnrankedKindsRecommendNothing answers a filter naming only kinds that
+// aren't ranked with nothing.
+func TestUnrankedKindsRecommendNothing(t *testing.T) {
+	f := newFixture(t)
+	f.video(mediaRow{title: "A video"})
+	matches, err := f.engine.Recommendations(f.ctx, schema.Filter{Kinds: []schema.MediaKind{schema.MediaKindAudio}}, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Errorf("matches = %+v, want none", matches)
+	}
+}
