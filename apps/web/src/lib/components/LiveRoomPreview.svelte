@@ -1,7 +1,6 @@
 <!--
 	A room's live stream as a small muted preview at its lowest quality,
-	covering a card's picture once it plays. It starts at the live edge with
-	little buffered, so it shows soon. The stream URL's token expires within
+	covering a card's picture once it plays. The stream URL's token expires within
 	about a minute, so a failed stream asks for a fresh one a few times before
 	giving up and leaving the picture.
 -->
@@ -44,15 +43,12 @@
 				return;
 			}
 			instance?.destroy();
-			// Segments are about 1.6 s: start one from the live edge, fetch the
-			// first while the playlist is parsed, and buffer only a few seconds.
+			// Two segments behind the live edge: with ~1.6 s segments, one stalls
+			// waiting for the next.
 			instance = new HlsClass({
 				startLevel: 0,
 				capLevelToPlayerSize: true,
-				liveSyncDurationCount: 1,
-				initialLiveManifestSize: 1,
-				startFragPrefetch: true,
-				maxBufferLength: 4
+				liveSyncDurationCount: 2
 			});
 			instance.on(HlsClass.Events.MANIFEST_PARSED, () => {
 				if (instance) instance.currentLevel = 0;
