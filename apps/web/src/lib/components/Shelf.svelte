@@ -1,7 +1,8 @@
 <!--
-	A titled row of cards that scrolls sideways, with ‹ › buttons and an
-	optional "See all" link. Renders nothing while it has no items, so empty
-	rows vanish.
+	A titled row of cards that scrolls sideways, with an optional grey
+	subtitle, ‹ › buttons (only while the row overflows, shown on hover) and
+	an optional "See all" link. Renders nothing while it has no items, so
+	empty rows vanish.
 -->
 <script lang="ts" generics="Item">
 	import type { Snippet } from 'svelte';
@@ -10,6 +11,8 @@
 
 	interface Props {
 		title: string;
+		// A short grey note beside the title, e.g. "3 live".
+		subtitle?: string | null;
 		items: Item[];
 		// A stable key per item.
 		key: (item: Item) => string;
@@ -21,7 +24,7 @@
 		card: Snippet<[Item, number]>;
 	}
 
-	let { title, items, key, itemWidth, href = null, card }: Props = $props();
+	let { title, subtitle = null, items, key, itemWidth, href = null, card }: Props = $props();
 
 	let scroller = $state<HTMLElement>();
 	let atStart = $state(true);
@@ -43,34 +46,32 @@
 		void items.length;
 		updateEnds();
 	});
+
+	// A resized window can make the row fit, or overflow.
+	$effect(() => {
+		if (!scroller) return;
+		const observer = new ResizeObserver(updateEnds);
+		observer.observe(scroller);
+		return () => observer.disconnect();
+	});
 </script>
 
 {#if items.length > 0}
-	<section class="flex flex-col gap-3">
+	<section class="group/shelf flex flex-col gap-3">
 		<div class="flex items-center justify-between gap-3">
-			<h2 class="text-lg font-semibold">{title}</h2>
+			<h2 class="flex items-baseline gap-2 text-lg font-semibold">
+				{title}
+				{#if subtitle}
+					<span class="text-base-content/45 text-sm font-normal">{subtitle}</span>
+				{/if}
+			</h2>
 			<div class="flex items-center gap-1">
 				{#if href}
 					<a {href} class="text-primary mr-2 text-sm">See all</a>
 				{/if}
-				<button
-					type="button"
-					aria-label="Scroll back"
-					class="hover:bg-base-200 flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
-					disabled={atStart}
-					onclick={() => page(-1)}
-				>
-					<CaretLeftIcon size={18} />
-				</button>
-				<button
-					type="button"
-					aria-label="Scroll forward"
-					class="hover:bg-base-200 flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
-					disabled={atEnd}
-					onclick={() => page(1)}
-				>
-					<CaretRightIcon size={18} />
-				</button>
+				{#if !(atStart && atEnd)}
+					{@render arrows()}
+				{/if}
 			</div>
 		</div>
 		<div
@@ -86,3 +87,28 @@
 		</div>
 	</section>
 {/if}
+
+{#snippet arrows()}
+	<div
+		class="flex items-center gap-1 opacity-0 transition-opacity group-focus-within/shelf:opacity-100 group-hover/shelf:opacity-100"
+	>
+		<button
+			type="button"
+			aria-label="Scroll back"
+			class="hover:bg-base-200 flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
+			disabled={atStart}
+			onclick={() => page(-1)}
+		>
+			<CaretLeftIcon size={18} />
+		</button>
+		<button
+			type="button"
+			aria-label="Scroll forward"
+			class="hover:bg-base-200 flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
+			disabled={atEnd}
+			onclick={() => page(1)}
+		>
+			<CaretRightIcon size={18} />
+		</button>
+	</div>
+{/snippet}

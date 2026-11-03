@@ -1,8 +1,9 @@
 <!--
 	A cam room in a grid or row: its picture, which turns into the muted live
-	stream while hovered, the viewer count, marks for a room followed,
-	auto-recorded or recording now, and the caption with the room's name, its
-	performer, how long it's been on (or when it was last seen) and its topic.
+	stream while hovered, marks for a room followed, auto-recorded or
+	recording now, and the caption with the room's name, its performer, its
+	audience and how long it's been on (or when it was last seen), and why
+	it's recommended or else its topic.
 	The Live badge shows only where offline rooms are listed too; the site
 	only when more than one cam site is installed. The ⋮ menu follows,
 	auto-records, records and blocks the room; a blocked room's card hides.
@@ -91,7 +92,7 @@
 	let performers = $derived(room.performer ? [room.performer] : []);
 	let detail = $derived(onlineDetail(room));
 	let menuActions = $derived(actionsFor(room, followed, recording));
-	let shownReason = $derived(reason ?? cam.reason ?? null);
+	let note = $derived(noteFor(reason ?? cam.reason ?? null, room));
 	let subject = $derived(camSubject(cam.id));
 
 	$effect(() => {
@@ -104,12 +105,21 @@
 		onclick();
 	}
 
-	/** How long the room has been on, or when it was last seen. */
-	function onlineDetail(current: CamRow): string | null {
-		if (current.live?.startedAt) return `on for ${dayjs(current.live.startedAt).fromNow(true)}`;
-		if (current.live) return null;
+	/** "358 watching · 3 hours" while live, else when the room was last seen. */
+	function onlineDetail(current: CamRow): string {
+		if (current.live) {
+			const audience = `${compactNumber.format(current.live.viewers)} watching`;
+			if (!current.live.startedAt) return audience;
+			return `${audience} · ${dayjs(current.live.startedAt).fromNow(true)}`;
+		}
 		if (current.lastSeenOnlineAt) return `seen ${dayjs(current.lastSeenOnlineAt).fromNow()}`;
 		return 'offline';
+	}
+
+	/** The caption's last line: why the room is recommended, else its topic. */
+	function noteFor(why: string | null, current: CamRow): string | null {
+		if (why) return why;
+		return roomTopic(current.live?.subject);
 	}
 
 	/**
@@ -219,12 +229,6 @@
 					{/if}
 				</CardBadge>
 			{/if}
-			{#if room.live}
-				<CardBadge corner="bottom-right">
-					<span class="live-dot" style:width="6px" style:height="6px"></span>
-					{compactNumber.format(room.live.viewers)}
-				</CardBadge>
-			{/if}
 		</CoverFrame>
 
 		<CardCaption
@@ -233,13 +237,10 @@
 			{site}
 			siteAvatar={site !== null}
 			{detail}
-			note={roomTopic(room.live?.subject)}
+			{note}
 			onclick={open}
 			onmore={(button) => (menuAnchor = button)}
 		/>
-		{#if shownReason}
-			<span class="text-base-content/55 -mt-1 truncate text-xs leading-4">{shownReason}</span>
-		{/if}
 	</div>
 
 	{#if menuAnchor}

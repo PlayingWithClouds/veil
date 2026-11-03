@@ -1,7 +1,8 @@
 <!--
-	Cams: the top recommended room playing in a banner, recordings running
-	now, the user's rooms (followed or auto-recorded) as round pictures, more
-	live rooms picked by their taste and finished recordings, then every room
+	Cams: the top recommended rooms in a spotlight (one plays, the rest are
+	listed beside it), the user's rooms (being recorded, followed or
+	auto-recorded) as round pictures, more live rooms picked by their taste
+	and finished recordings, then every room
 	live now on the cam sites, sorted by viewers or show start and narrowed by
 	gender, site and tag from a bar that sticks while the grid scrolls. A top
 	bar search (?q=) or a tag (?tag=) hides the rows and narrows the live
@@ -17,9 +18,8 @@
 	import Shelf from '$lib/components/Shelf.svelte';
 	import CamAvatar from '$lib/components/CamAvatar.svelte';
 	import CamCard from '$lib/components/CamCard.svelte';
-	import CamHero from '$lib/components/CamHero.svelte';
+	import CamSpotlight from '$lib/components/CamSpotlight.svelte';
 	import Segmented from '$lib/components/Segmented.svelte';
-	import RecordingCard from '$lib/components/RecordingCard.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import {
@@ -50,6 +50,10 @@
 	// Cards at least CARD_WIDTH wide, and never narrower than a fifth of the row.
 	const GRID_COLUMNS = `repeat(auto-fill, minmax(max(${CARD_WIDTH}px, calc((100% - ${(MAX_COLUMNS - 1) * COLUMN_GAP}px) / ${MAX_COLUMNS})), 1fr))`;
 	const AVATAR_WIDTH = 96;
+	// Picks in the spotlight; the rest of the recommendations follow in a row.
+	const SPOTLIGHT_COUNT = 5;
+	// Tags shown instead of a reason an earlier pick already gave.
+	const REASON_TAG_COUNT = 3;
 	const POPULAR_TAG_COUNT = 16;
 	// Placeholder cards while the first rooms load.
 	const SKELETON_COUNT = 12;
@@ -90,9 +94,11 @@
 	let siteChoices = $derived(camSites($sites));
 	let tagChoices = $derived(tagChipsWith(popularTags, tag));
 	let recordingIds = $derived(recordings.map((recording) => recording.camModel?.id));
-	let hero = $derived(forYou[0] ?? null);
-	let moreForYou = $derived(forYou.slice(1));
-	let liveFirstRooms = $derived(liveFirst(yourRooms));
+	let spotlight = $derived(forYou.slice(0, SPOTLIGHT_COUNT));
+	let moreForYou = $derived(forYou.slice(SPOTLIGHT_COUNT));
+	let shownReasons = $derived(distinctReasons(forYou));
+	let roomStrip = $derived(stripOf(recordings, yourRooms));
+	let liveCount = $derived(yourRooms.filter((room) => room.live).length);
 
 	$effect(() => {
 		load(fetchYourRooms(), (found) => (yourRooms = found));
@@ -120,11 +126,57 @@
 		request.then(fill, (failure) => console.warn('cams row failed to load', failure));
 	}
 
-	/** The rooms live now first, each group in its own order. */
-	function liveFirst(list: CamRow[]): CamRow[] {
-		const live = list.filter((room) => room.live);
-		const offline = list.filter((room) => !room.live);
-		return [...live, ...offline];
+	/**
+	 * The user's rooms as the strip shows them: rooms being recorded first
+	 * (with how long), then the live ones, then the offline ones.
+	 */
+	function stripOf(
+		running: ActiveRecordingRow[],
+		own: CamRow[]
+	): { room: CamRow; recordingSeconds: number | null }[] {
+		const strip: { room: CamRow; recordingSeconds: number | null }[] = [];
+		for (const recording of running) {
+			if (!recording.camModel) continue;
+			strip.push({ room: recording.camModel, recordingSeconds: recording.durationSeconds ?? 0 });
+		}
+		const recorded = strip.map((entry) => entry.room.id);
+		const rest = own.filter((room) => !recorded.includes(room.id));
+		for (const room of rest.filter((candidate) => candidate.live)) {
+			strip.push({ room, recordingSeconds: null });
+		}
+		for (const room of rest.filter((candidate) => !candidate.live)) {
+			strip.push({ room, recordingSeconds: null });
+		}
+		return strip;
+	}
+
+	/**
+	 * Each pick's caption line by room id: its reason the first time a reason
+	 * appears, its tags when an earlier pick already said the same.
+	 */
+	function distinctReasons(picks: CamRow[]): Record<string, string> {
+		const lines: Record<string, string> = {};
+		const given: string[] = [];
+		for (const pick of picks) {
+			const reason = pick.reason ?? '';
+			if (reason !== '' && !given.includes(reason)) {
+				given.push(reason);
+				lines[pick.id] = reason;
+				continue;
+			}
+			const tags = pick.tags.slice(0, REASON_TAG_COUNT).map((name) => `#${name}`);
+			lines[pick.id] = tags.join(' ');
+		}
+		return lines;
+	}
+
+	/** "3 live · 1 recording", or null when neither. */
+	function stripSubtitle(live: number, recordingCount: number): string | null {
+		const parts: string[] = [];
+		if (live > 0) parts.push(`${live} live`);
+		if (recordingCount > 0) parts.push(`${recordingCount} recording`);
+		if (parts.length === 0) return null;
+		return parts.join(' · ');
 	}
 
 	/** How long a card waits before rising in, so a page of cards cascades. */
@@ -238,20 +290,15 @@
 		}
 		goto(`${camsUrl()}?${search}`, { keepFocus: true, noScroll: true });
 	}
-
-	/** Opens the room a recording is made from. */
-	function openRecording(recording: ActiveRecordingRow) {
-		if (!recording.camModel) return;
-		goto(camUrl(recording.camModel.id));
-	}
 </script>
 
 <svelte:head><title>Cams · Veil</title></svelte:head>
 
-{#snippet roomCard(room: CamRow, markLive: boolean, position: number)}
+{#snippet roomCard(room: CamRow, markLive: boolean, position: number, reason: string | null)}
 	<CamCard
 		cam={room}
 		{markLive}
+		{reason}
 		shown={{ surface: CAMS_SURFACE, position }}
 		recording={recordingIds.includes(room.id)}
 		onrecordingchange={refreshRecordings}
@@ -267,7 +314,7 @@
 	</div>
 {/snippet}
 
-<div class="isolate flex flex-col gap-8">
+<div class="isolate flex flex-col gap-7">
 	<div class="flex items-end justify-between gap-4 pt-2">
 		<div class="min-w-0">
 			<h1 class="text-3xl font-bold tracking-tight">Cams</h1>
@@ -296,56 +343,60 @@
 	{/if}
 
 	{#if showOverview}
-		{#if hero}
+		{#if spotlight.length > 0}
 			<div class="rise-in">
-				<CamHero
-					cam={hero}
-					reason={hero.reason}
-					shown={{ surface: CAMS_SURFACE, position: 0 }}
-					onopen={() => goto(camUrl(hero.id))}
+				<CamSpotlight
+					rooms={spotlight}
+					surface={CAMS_SURFACE}
+					onopen={(room) => goto(camUrl(room.id))}
 				/>
 			</div>
 		{:else if !forYouLoaded}
-			<div
-				class="skeleton aspect-[16/7] max-h-[72vh] min-h-[360px] rounded-2xl"
-				aria-hidden="true"
-			></div>
+			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]" aria-hidden="true">
+				<div class="skeleton aspect-video rounded-2xl"></div>
+				<div class="flex flex-col gap-2 max-lg:hidden">
+					{#each { length: SPOTLIGHT_COUNT }, position (position)}
+						<div class="skeleton flex-1 rounded-xl"></div>
+					{/each}
+				</div>
+			</div>
 		{/if}
 
 		<Shelf
-			title="Recording now"
-			items={recordings}
-			key={(recording) => recording.camModel?.id ?? recording.startedAt}
-			itemWidth={CARD_WIDTH}
-		>
-			{#snippet card(recording)}
-				<RecordingCard {recording} onclick={() => openRecording(recording)} />
-			{/snippet}
-		</Shelf>
-
-		<Shelf
 			title="Your rooms"
-			items={liveFirstRooms}
-			key={(room) => room.id}
+			subtitle={stripSubtitle(liveCount, recordings.length)}
+			items={roomStrip}
+			key={(entry) => entry.room.id}
 			itemWidth={AVATAR_WIDTH}
 		>
-			{#snippet card(room, position)}
+			{#snippet card(entry, position)}
 				<div class="rise-in pt-2" style:--rise-delay={riseDelay(position)}>
-					<CamAvatar cam={room} onclick={() => goto(camUrl(room.id))} />
+					<CamAvatar
+						cam={entry.room}
+						recordingSeconds={entry.recordingSeconds}
+						onclick={() => goto(camUrl(entry.room.id))}
+					/>
 				</div>
 			{/snippet}
 		</Shelf>
 
-		<Shelf title="More for you" items={moreForYou} key={(room) => room.id} itemWidth={CARD_WIDTH}>
+		<Shelf
+			title="More for you"
+			subtitle="from what you watch"
+			items={moreForYou}
+			key={(room) => room.id}
+			itemWidth={CARD_WIDTH}
+		>
 			{#snippet card(room, position)}
 				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
-					{@render roomCard(room, false, position)}
+					{@render roomCard(room, false, SPOTLIGHT_COUNT + position, shownReasons[room.id] ?? null)}
 				</div>
 			{/snippet}
 		</Shelf>
 
 		<Shelf
 			title="Recordings"
+			subtitle="finished shows"
 			items={recordedVideos}
 			key={(video) => video.id}
 			itemWidth={VIDEO_WIDTH}
@@ -436,7 +487,7 @@
 		>
 			{#each rooms as room, position (room.id)}
 				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
-					{@render roomCard(room, false, position)}
+					{@render roomCard(room, false, position, null)}
 				</div>
 			{:else}
 				{#if loading}
