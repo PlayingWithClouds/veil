@@ -1273,6 +1273,7 @@ type ComplexityRoot struct {
 	}
 
 	Video struct {
+		CamRooms            func(childComplexity int) int
 		Categories          func(childComplexity int) int
 		Clips               func(childComplexity int) int
 		Comments            func(childComplexity int) int
@@ -1781,6 +1782,7 @@ type VideoResolver interface {
 	FieldSources(ctx context.Context, obj *schema.Video) ([]*schema.FieldSource, error)
 	Revisions(ctx context.Context, obj *schema.Video, limit *int, offset *int) ([]*schema.Revision, error)
 	RecordedFrom(ctx context.Context, obj *schema.Video) (*schema.CamModel, error)
+	CamRooms(ctx context.Context, obj *schema.Video) ([]*schema.CamModel, error)
 	Categories(ctx context.Context, obj *schema.Video) ([]*schema.Category, error)
 	Related(ctx context.Context, obj *schema.Video, limit *int) ([]*schema.Match, error)
 	Files(ctx context.Context, obj *schema.Video) ([]*schema.MediaFile, error)
@@ -8298,6 +8300,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.UserState.ViewCount(childComplexity), true
 
+	case "Video.camRooms":
+		if e.ComplexityRoot.Video.CamRooms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Video.CamRooms(childComplexity), true
 	case "Video.categories":
 		if e.ComplexityRoot.Video.Categories == nil {
 			break
@@ -9095,6 +9103,10 @@ type ActiveRecording {
 extend type Video {
   # The cam room it was recorded from.
   recordedFrom: CamModel
+  # The cam rooms of the person in it, live state checked now: the room it
+  # was recorded from, rooms linked to its performers, and rooms its title
+  # names by username along with their site (as cam show archives do).
+  camRooms: [CamModel!]!
 }
 `, BuiltIn: false},
 	{Name: "../schema/curation.graphql", Input: `# What the user curates: categories (our taxonomy over site tags),
@@ -12982,6 +12994,8 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 		return ec.fieldContext_Video_revisions(ctx, field)
 	case "recordedFrom":
 		return ec.fieldContext_Video_recordedFrom(ctx, field)
+	case "camRooms":
+		return ec.fieldContext_Video_camRooms(ctx, field)
 	case "categories":
 		return ec.fieldContext_Video_categories(ctx, field)
 	case "related":
@@ -44983,6 +44997,38 @@ func (ec *executionContext) fieldContext_Video_recordedFrom(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Video_camRooms(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Video_camRooms(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Video().CamRooms(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamModelᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Video_camRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Video_categories(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -61834,6 +61880,42 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Video_recordedFrom(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "camRooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_camRooms(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

@@ -496,6 +496,7 @@ type ActiveRecording {
 
 type Video {
   recordedFrom: CamModel
+  camRooms: [CamModel!]!
   categories: [Category!]!
   related(limit: Int): [Match!]!
   files: [MediaFile!]!

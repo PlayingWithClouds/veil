@@ -100,4 +100,8 @@ type ActiveRecording {
 extend type Video {
   # The cam room it was recorded from.
   recordedFrom: CamModel
+  # The cam rooms of the person in it, live state checked now: the room it
+  # was recorded from, rooms linked to its performers, and rooms its title
+  # names by username along with their site (as cam show archives do).
+  camRooms: [CamModel!]!
 }

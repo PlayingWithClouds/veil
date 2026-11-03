@@ -4,8 +4,9 @@
 	plays. The player's quality menu switches between every source's streams.
 	Under the player: the acts bar (segments: what happens when), the title,
 	studio (changeable), the performers as large cards with suggestions and
-	adding (VideoPeople; a background face scan adds face matches), the
-	description, the main tags, sources and the
+	adding (VideoPeople; a background face scan adds face matches), their cam
+	rooms and whether they're live now, the description, the main tags,
+	sources and the
 	sites' comments. Videos like it run alongside on wide screens, below on
 	narrow ones.
 -->
@@ -23,6 +24,8 @@
 	import VideoComments from '$lib/components/VideoComments.svelte';
 	import ActsBar from '$lib/components/ActsBar.svelte';
 	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
+	import VideoCamRooms from '$lib/components/VideoCamRooms.svelte';
+	import { fetchVideoRooms, type CamRow } from '$lib/cams';
 	import { formatClock } from '$lib/time';
 	import {
 		createStudio,
@@ -57,6 +60,7 @@
 
 	let video = $state<VideoDetail | null>(null);
 	let related = $state<VideoCardRow[]>([]);
+	let camRooms = $state<CamRow[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let active = $state<ActiveStream | null>(null);
@@ -90,6 +94,7 @@
 	async function load(videoId: string) {
 		video = null;
 		related = [];
+		camRooms = [];
 		active = null;
 		error = null;
 		loading = true;
@@ -102,12 +107,26 @@
 		void watchFaces(videoId);
 		try {
 			video = await openVideo(videoId);
+			// After opening: reading the source pages credits the cam site
+			// (the studio) that names the room. Not awaited, as it asks the
+			// cam sites whether the rooms are live.
+			if (video) void loadCamRooms(videoId);
 			if (video) logEvent({ kind: 'view', subject: { kind: 'video', id: video.id } });
 			if (video && video.streams.length > 0) await start(video.streams[0]);
 		} catch (failure) {
 			error = String(failure);
 		} finally {
 			loading = false;
+		}
+	}
+
+	/** Loads the cam rooms of the person in the video, unless the page moved on. */
+	async function loadCamRooms(videoId: string) {
+		try {
+			const found = await fetchVideoRooms(videoId);
+			if (videoId === id) camRooms = found;
+		} catch (failure) {
+			console.warn('cam rooms failed to load', failure);
 		}
 	}
 
@@ -296,6 +315,10 @@
 						{#if video.userState.viewCount}<span>watched {video.userState.viewCount}×</span>{/if}
 					</div>
 				</div>
+
+				{#if camRooms.length > 0}
+					<VideoCamRooms rooms={camRooms} />
+				{/if}
 
 				<VideoPeople {video} {faces} onchange={(saved) => (video = saved)} />
 

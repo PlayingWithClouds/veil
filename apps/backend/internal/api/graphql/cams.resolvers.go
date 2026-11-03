@@ -127,6 +127,12 @@ func (r *videoResolver) RecordedFrom(ctx context.Context, obj *schema.Video) (*s
 	return db.Get[schema.CamModel](ctx, r.library.DB(), "CamModel", *obj.RecordedFrom)
 }
 
+// CamRooms is the resolver for the camRooms field.
+func (r *videoResolver) CamRooms(ctx context.Context, obj *schema.Video) ([]*schema.CamModel, error) {
+	rooms, err := r.cams.VideoRooms(ctx, *obj)
+	return pointers(rooms), err
+}
+
 // ActiveRecording returns generated.ActiveRecordingResolver implementation.
 func (r *Resolver) ActiveRecording() generated.ActiveRecordingResolver {
 	return &activeRecordingResolver{r}

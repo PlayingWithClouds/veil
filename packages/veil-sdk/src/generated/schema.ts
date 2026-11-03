@@ -446,6 +446,7 @@ export interface ActiveRecording {
 
 export interface Video {
     recordedFrom: (CamModel | null)
+    camRooms: CamModel[]
     categories: Category[]
     related: Match[]
     files: MediaFile[]
@@ -1873,6 +1874,7 @@ export interface ActiveRecordingGenqlSelection{
 
 export interface VideoGenqlSelection{
     recordedFrom?: CamModelGenqlSelection
+    camRooms?: CamModelGenqlSelection
     categories?: CategoryGenqlSelection
     related?: (MatchGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     files?: MediaFileGenqlSelection

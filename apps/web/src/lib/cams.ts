@@ -183,6 +183,12 @@ export function findRoomShows(
 	});
 }
 
+/** The cam rooms of the person in a video, live state checked now. */
+export async function fetchVideoRooms(videoId: string): Promise<CamRow[]> {
+	const data = await gqlClient.query({ video: { __args: { id: videoId }, camRooms: CAM_CARD } });
+	return data.video?.camRooms ?? [];
+}
+
 /** One room's shows of the last eight weeks, newest first. */
 export async function fetchCamShows(id: string): Promise<CamShowRow[]> {
 	const data = await gqlClient.query({ camModel: { __args: { id }, shows: CAM_SHOW } });

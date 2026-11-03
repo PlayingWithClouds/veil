@@ -3072,6 +3072,9 @@ export default {
             "recordedFrom": [
                 36
             ],
+            "camRooms": [
+                36
+            ],
             "categories": [
                 41
             ],
