@@ -109,7 +109,7 @@ func TestMergeByViewersKeepsARepeatedRoomOnce(t *testing.T) {
 	second := []schema.CamModel{withViewers("b", 400), withViewers("c", 300)}
 
 	ids := []string{}
-	for _, merged := range mergeByViewers([][]schema.CamModel{first, second}) {
+	for _, merged := range mergeBy([][]schema.CamModel{first, second}, moreViewers) {
 		ids = append(ids, merged.Id)
 	}
 	if strings.Join(ids, ",") != "a,b,c" {

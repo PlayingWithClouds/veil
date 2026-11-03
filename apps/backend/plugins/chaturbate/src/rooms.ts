@@ -13,6 +13,7 @@ export interface ChaturbateRoom {
   num_users?: number;
   img?: string;
   room_subject?: string;
+  start_dt_utc?: string;
   current_show?: string;
   has_password?: boolean;
 }
@@ -44,6 +45,7 @@ export function toCamRoom(room: ChaturbateRoom): CamRoom {
   if (typeof room.num_users === "number") camRoom.viewers = room.num_users;
   if (room.tags && room.tags.length > 0) camRoom.tags = room.tags;
   if (room.room_subject) camRoom.subject = room.room_subject;
+  if (room.start_dt_utc) camRoom.started_at = room.start_dt_utc;
   if (room.gender && GENDER_NAMES[room.gender]) camRoom.gender = GENDER_NAMES[room.gender];
   return camRoom;
 }

@@ -808,6 +808,8 @@ export interface CamRoom {
   gender?: string;
   /** the room's current title / subject line */
   subject?: string;
+  /** when the current show began (ISO 8601), when the site says */
+  started_at?: string;
   /** false for rooms in a private or password show, which cannot be watched */
   online: boolean;
 }

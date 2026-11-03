@@ -31,6 +31,7 @@ type CamQuery struct {
 	Text    *string  `json:"text,omitempty"`
 	Tag     *string  `json:"tag,omitempty"`
 	Gender  *string  `json:"gender,omitempty"`
+	Sort    *CamSort `json:"sort,omitempty"`
 	Limit   *int     `json:"limit,omitempty"`
 	Offset  *int     `json:"offset,omitempty"`
 }
@@ -427,6 +428,63 @@ type VideoFaces struct {
 	Scan    *schema.FaceScan `json:"scan,omitempty"`
 	People  []*FacePerson    `json:"people"`
 	Guesses []*FaceGuess     `json:"guesses"`
+}
+
+type CamSort string
+
+const (
+	CamSortViewers CamSort = "viewers"
+	CamSortFewest  CamSort = "fewest"
+	CamSortStarted CamSort = "started"
+)
+
+var AllCamSort = []CamSort{
+	CamSortViewers,
+	CamSortFewest,
+	CamSortStarted,
+}
+
+func (e CamSort) IsValid() bool {
+	switch e {
+	case CamSortViewers, CamSortFewest, CamSortStarted:
+		return true
+	}
+	return false
+}
+
+func (e CamSort) String() string {
+	return string(e)
+}
+
+func (e *CamSort) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CamSort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CamSort", str)
+	}
+	return nil
+}
+
+func (e CamSort) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CamSort) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CamSort) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ListKind string

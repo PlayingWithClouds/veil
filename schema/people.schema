@@ -99,6 +99,15 @@ model CamModel extends Entity {
   20 recordQuality: string?
 }
 
+/// One show of a cam room, from its start to when it was last seen live.
+/// Stored when the room goes offline; the room's usual hours come from them.
+@index(fields: ["camModel", "startedAt"])
+model CamShow extends Entity {
+  10 camModel: ref<CamModel>
+  11 startedAt: timestamp
+  12 endedAt: timestamp
+}
+
 /// A site's own grouping of videos: a movie, a series, a compilation.
 /// Unlike a Collection it comes from sites, not from the user.
 model Group extends Entity {

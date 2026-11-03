@@ -789,6 +789,15 @@ type CamModel struct {
 	RecordQuality    *string  `json:"recordQuality,omitempty"`
 }
 
+// One show of a cam room, from its start to when it was last seen live.
+// Stored when the room goes offline; the room's usual hours come from them.
+type CamShow struct {
+	Entity
+	CamModel  string `json:"camModel"`
+	StartedAt string `json:"startedAt"`
+	EndedAt   string `json:"endedAt"`
+}
+
 // A site's own grouping of videos: a movie, a series, a compilation.
 // Unlike a Collection it comes from sites, not from the user.
 type Group struct {

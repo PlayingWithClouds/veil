@@ -62,10 +62,7 @@ func (s *Service) Check(ctx context.Context) {
 // expireStaleLive takes rooms offline that nobody saw online for liveStaleAfter.
 func (s *Service) expireStaleLive(ctx context.Context) {
 	cutoff := db.FormatTime(s.now().Add(-liveStaleAfter))
-	_, err := s.services.Database.Exec(ctx,
-		`UPDATE "CamModel" SET "live" = NULL, "updatedAt" = $now
-		 WHERE "live" IS NOT NULL AND ("lastSeenOnlineAt" IS NULL OR "lastSeenOnlineAt" < $cutoff)`,
-		db.Vars{"cutoff": cutoff, "now": db.FormatTime(s.now())})
+	err := s.takeOffline(ctx, `"lastSeenOnlineAt" IS NULL OR "lastSeenOnlineAt" < $cutoff`, db.Vars{"cutoff": cutoff})
 	if err != nil {
 		log.Printf("cams: expire live state: %v", err)
 	}

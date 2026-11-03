@@ -103,6 +103,15 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"autoRecord":       19,
 		"recordQuality":    20,
 	},
+	"CamShow": {
+		"id":        1,
+		"createdAt": 2,
+		"updatedAt": 3,
+		"deletedAt": 4,
+		"camModel":  10,
+		"startedAt": 11,
+		"endedAt":   12,
+	},
 	"Category": {
 		"id":         1,
 		"createdAt":  2,

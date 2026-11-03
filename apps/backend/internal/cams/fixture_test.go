@@ -58,13 +58,15 @@ func (sites *fakeSites) Plugin(name string) (*plugins.Plugin, bool) {
 	return nil, false
 }
 
-// List returns all of the plugin's rooms.
+// List returns the page of the plugin's rooms at the args' offset and limit.
 func (sites *fakeSites) List(ctx context.Context, plugin *plugins.Plugin, args plugins.CamListArgs) (*plugins.CamListResult, error) {
 	sites.mutex.Lock()
 	defer sites.mutex.Unlock()
 	sites.listCalls++
 	rooms := sites.rooms[plugin.Meta.Name]
-	return &plugins.CamListResult{Rooms: rooms, Total: len(rooms)}, nil
+	start := min(args.Offset, len(rooms))
+	end := min(start+args.Limit, len(rooms))
+	return &plugins.CamListResult{Rooms: rooms[start:end], Total: len(rooms)}, nil
 }
 
 // Stream resolves a room to the live origin's master playlist with its

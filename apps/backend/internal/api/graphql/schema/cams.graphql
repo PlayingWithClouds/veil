@@ -2,8 +2,12 @@
 # ordinary videos with recordedFrom set).
 
 extend type Query {
-  # Rooms online now on every cam site (or some), most viewers first.
+  # Rooms online now on every cam site (or some), most viewers first unless
+  # the query sorts otherwise. Blocked rooms are left out.
   camRooms(query: CamQuery): CamRoomPage!
+  # Rooms live now ranked by what the user likes: their tags and linked
+  # performers. Followed, auto-recorded and blocked rooms are left out.
+  camRecommendations(limit: Int): [CamModel!]!
   # Stored rooms, live first.
   camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
   camModel(id: ID!): CamModel
@@ -30,8 +34,18 @@ input CamQuery {
   tag: String
   # female, male, couple, trans
   gender: String
+  sort: CamSort
   limit: Int
   offset: Int
+}
+
+enum CamSort {
+  # Most viewers first.
+  viewers
+  # Fewest viewers first.
+  fewest
+  # The shows that began last first, among each site's 500 most watched rooms.
+  started
 }
 
 type CamRoomPage {
@@ -56,7 +70,15 @@ type CamModel {
   recordQuality: String
   # Its recordings, newest first.
   recordings: [Video!]!
+  # Its shows of the last eight weeks that were seen ending, newest first.
+  shows: [CamShow!]!
   userState: UserState!
+}
+
+# One show of a room, from its start to when it was last seen live.
+type CamShow {
+  startedAt: String!
+  endedAt: String!
 }
 
 type CamLive {

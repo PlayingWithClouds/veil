@@ -8,6 +8,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/lookup"
+	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -26,10 +27,27 @@ func camQuery(query *model.CamQuery) cams.Query {
 	if query == nil {
 		return cams.Query{}
 	}
-	return cams.Query{
+	camQuery := cams.Query{
 		Plugins: query.Plugins, Text: text(query.Text), Tag: text(query.Tag), Gender: text(query.Gender),
 		Limit: number(query.Limit), Offset: number(query.Offset),
 	}
+	if query.Sort != nil {
+		camQuery.Sort = string(*query.Sort)
+	}
+	return camQuery
+}
+
+// camAffinity is the taste profile's tags (by name) and performers, as the
+// cam service ranks rooms by them.
+func camAffinity(taste recommend.Taste) cams.Affinity {
+	affinity := cams.Affinity{Tags: map[string]float64{}, Performers: map[string]float64{}}
+	for _, entry := range taste.Tags {
+		affinity.Tags[entry.Name] = entry.Weight
+	}
+	for _, entry := range taste.Performers {
+		affinity.Performers[entry.Id] = entry.Weight
+	}
+	return affinity
 }
 
 // lookupQuery maps the API's lookup input, decoding the picture.

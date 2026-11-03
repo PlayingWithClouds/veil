@@ -777,6 +777,8 @@ type CamRoom struct {
 	Gender       string   `json:"gender,omitempty"`
 	// Subject is the room's current title line.
 	Subject string `json:"subject,omitempty"`
+	// StartedAt is when the current show began (RFC 3339), when the site says.
+	StartedAt string `json:"started_at,omitempty"`
 	// Online is false for rooms in a private or password show, which cannot be watched.
 	Online bool `json:"online"`
 }

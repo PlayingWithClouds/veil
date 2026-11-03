@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-chaturbate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Veil plugin for chaturbate.com live cams",
   "private": true,
   "type": "module",

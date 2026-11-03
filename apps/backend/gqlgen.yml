@@ -383,6 +383,8 @@ models:
         resolver: true
   CamLive:
     model: github.com/playingwithclouds/veil/internal/schema.CamLive
+  CamShow:
+    model: github.com/playingwithclouds/veil/internal/schema.CamShow
   ActiveRecording:
     model: github.com/playingwithclouds/veil/internal/cams.ActiveRecording
     fields:

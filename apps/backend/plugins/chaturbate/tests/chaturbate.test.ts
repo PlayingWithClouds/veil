@@ -11,6 +11,7 @@ test("toCamRoom maps a public room", () => {
       num_users: 120,
       img: "https://thumb.live.mmcdn.com/riw/someone.jpg?1",
       room_subject: "hello",
+      start_dt_utc: "2026-11-03T15:28:00.249335+00:00",
       current_show: "public",
     }),
   ).toEqual({
@@ -21,6 +22,7 @@ test("toCamRoom maps a public room", () => {
     viewers: 120,
     tags: ["18", "anal"],
     subject: "hello",
+    started_at: "2026-11-03T15:28:00.249335+00:00",
     gender: "couple",
     online: true,
   });

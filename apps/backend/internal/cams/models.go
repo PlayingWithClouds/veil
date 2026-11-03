@@ -201,26 +201,26 @@ func (s *Service) cachedOnline(id string) (online bool, found bool) {
 }
 
 // markOnlineQuery keeps a live room's state and marks an offline one live as
-// of now; markOfflineQuery clears it.
-const (
-	markOnlineQuery = `UPDATE "CamModel" SET
-		"live" = COALESCE("live", json_object('viewers', 0, 'startedAt', $now)),
-		"lastSeenOnlineAt" = $now, "updatedAt" = $now
-		WHERE "id" = $id`
-	markOfflineQuery = `UPDATE "CamModel" SET "live" = NULL, "updatedAt" = $now WHERE "id" = $id AND "live" IS NOT NULL`
-)
+// of now.
+const markOnlineQuery = `UPDATE "CamModel" SET
+	"live" = COALESCE("live", json_object('viewers', 0, 'startedAt', $now)),
+	"lastSeenOnlineAt" = $now, "updatedAt" = $now
+	WHERE "id" = $id`
 
-// recordOnline caches a liveness answer and stores it on the row.
+// recordOnline caches a liveness answer and stores it on the row; going
+// offline stores the show that ended.
 func (s *Service) recordOnline(ctx context.Context, id string, online bool) {
 	s.mutex.Lock()
 	s.online[id] = cachedOnline{online: online, expires: s.now().Add(onlineCacheTTL)}
 	s.mutex.Unlock()
 
-	query := markOfflineQuery
+	var err error
 	if online {
-		query = markOnlineQuery
+		_, err = s.services.Database.Exec(ctx, markOnlineQuery, db.Vars{"id": id, "now": db.FormatTime(s.now())})
+	} else {
+		err = s.takeOffline(ctx, `"id" = $id`, db.Vars{"id": id})
 	}
-	if _, err := s.services.Database.Exec(ctx, query, db.Vars{"id": id, "now": db.FormatTime(s.now())}); err != nil {
+	if err != nil {
 		log.Printf("cams: record online %s: %v", id, err)
 	}
 }

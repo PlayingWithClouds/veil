@@ -567,6 +567,12 @@ export interface CamModel extends Entity {
   recordQuality?: string;
 }
 
+export interface CamShow extends Entity {
+  camModel: string;
+  startedAt: string;
+  endedAt: string;
+}
+
 export interface Group extends Entity {
   title: string;
   details?: string;

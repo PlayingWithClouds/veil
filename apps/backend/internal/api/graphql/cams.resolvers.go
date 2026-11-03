@@ -42,6 +42,12 @@ func (r *camModelResolver) Recordings(ctx context.Context, obj *schema.CamModel)
 	return pointers(videos), err
 }
 
+// Shows is the resolver for the shows field.
+func (r *camModelResolver) Shows(ctx context.Context, obj *schema.CamModel) ([]*schema.CamShow, error) {
+	shows, err := r.cams.Shows(ctx, obj.Id)
+	return pointers(shows), err
+}
+
 // UserState is the resolver for the userState field.
 func (r *camModelResolver) UserState(ctx context.Context, obj *schema.CamModel) (*schema.UserState, error) {
 	return r.userStateOf(ctx, schema.RecordKindCamModel, obj.Id)
@@ -83,6 +89,17 @@ func (r *queryResolver) CamRooms(ctx context.Context, query *model.CamQuery) (*m
 		return nil, err
 	}
 	return &model.CamRoomPage{Rooms: pointers(rooms), Total: total}, nil
+}
+
+// CamRecommendations is the resolver for the camRecommendations field.
+func (r *queryResolver) CamRecommendations(ctx context.Context, limit *int) ([]*schema.CamModel, error) {
+	taste, err := r.recommend.Taste(ctx)
+	if err != nil {
+		return nil, err
+	}
+	size, _ := page(limit, nil)
+	rooms, err := r.cams.Recommended(ctx, camAffinity(taste), size)
+	return pointers(rooms), err
 }
 
 // CamModels is the resolver for the camModels field.

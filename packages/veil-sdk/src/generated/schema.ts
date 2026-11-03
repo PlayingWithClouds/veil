@@ -30,6 +30,7 @@ export interface Query {
     automationRun: (AutomationRun | null)
     automationActions: Scalars['String'][]
     camRooms: CamRoomPage
+    camRecommendations: CamModel[]
     camModels: CamModel[]
     camModel: (CamModel | null)
     activeRecordings: ActiveRecording[]
@@ -392,6 +393,8 @@ export interface StepResult {
     __typename: 'StepResult'
 }
 
+export type CamSort = 'viewers' | 'fewest' | 'started'
+
 export interface CamRoomPage {
     rooms: CamModel[]
     total: Scalars['Int']
@@ -412,8 +415,15 @@ export interface CamModel {
     autoRecord: Scalars['Boolean']
     recordQuality: (Scalars['String'] | null)
     recordings: Video[]
+    shows: CamShow[]
     userState: UserState
     __typename: 'CamModel'
+}
+
+export interface CamShow {
+    startedAt: Scalars['String']
+    endedAt: Scalars['String']
+    __typename: 'CamShow'
 }
 
 export interface CamLive {
@@ -1426,6 +1436,7 @@ export interface QueryGenqlSelection{
     automationRun?: (AutomationRunGenqlSelection & { __args: {id: Scalars['ID']} })
     automationActions?: boolean | number
     camRooms?: (CamRoomPageGenqlSelection & { __args?: {query?: (CamQuery | null)} })
+    camRecommendations?: (CamModelGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     camModels?: (CamModelGenqlSelection & { __args?: {live?: (Scalars['Boolean'] | null), autoRecord?: (Scalars['Boolean'] | null), performerId?: (Scalars['ID'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     camModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     activeRecordings?: ActiveRecordingGenqlSelection
@@ -1804,7 +1815,7 @@ export interface StepResultGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface CamQuery {plugins?: (Scalars['String'][] | null),text?: (Scalars['String'] | null),tag?: (Scalars['String'] | null),gender?: (Scalars['String'] | null),limit?: (Scalars['Int'] | null),offset?: (Scalars['Int'] | null)}
+export interface CamQuery {plugins?: (Scalars['String'][] | null),text?: (Scalars['String'] | null),tag?: (Scalars['String'] | null),gender?: (Scalars['String'] | null),sort?: (CamSort | null),limit?: (Scalars['Int'] | null),offset?: (Scalars['Int'] | null)}
 
 export interface CamRoomPageGenqlSelection{
     rooms?: CamModelGenqlSelection
@@ -1827,7 +1838,15 @@ export interface CamModelGenqlSelection{
     autoRecord?: boolean | number
     recordQuality?: boolean | number
     recordings?: VideoGenqlSelection
+    shows?: CamShowGenqlSelection
     userState?: UserStateGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CamShowGenqlSelection{
+    startedAt?: boolean | number
+    endedAt?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3078,6 +3097,14 @@ export interface SavedFilterGenqlSelection{
     
 
 
+    const CamShow_possibleTypes: string[] = ['CamShow']
+    export const isCamShow = (obj?: { __typename?: any } | null): obj is CamShow => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCamShow"')
+      return CamShow_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
     const CamLive_possibleTypes: string[] = ['CamLive']
     export const isCamLive = (obj?: { __typename?: any } | null): obj is CamLive => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isCamLive"')
@@ -3802,6 +3829,12 @@ export const enumRunStatus = {
    succeeded: 'succeeded' as const,
    failed: 'failed' as const,
    undone: 'undone' as const
+}
+
+export const enumCamSort = {
+   viewers: 'viewers' as const,
+   fewest: 'fewest' as const,
+   started: 'started' as const
 }
 
 export const enumCollectionKind = {

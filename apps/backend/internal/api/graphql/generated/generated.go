@@ -192,6 +192,7 @@ type ComplexityRoot struct {
 		Plugin           func(childComplexity int) int
 		RecordQuality    func(childComplexity int) int
 		Recordings       func(childComplexity int) int
+		Shows            func(childComplexity int) int
 		Tags             func(childComplexity int) int
 		Thumbnail        func(childComplexity int) int
 		UserState        func(childComplexity int) int
@@ -201,6 +202,11 @@ type ComplexityRoot struct {
 	CamRoomPage struct {
 		Rooms func(childComplexity int) int
 		Total func(childComplexity int) int
+	}
+
+	CamShow struct {
+		EndedAt   func(childComplexity int) int
+		StartedAt func(childComplexity int) int
 	}
 
 	Category struct {
@@ -909,6 +915,7 @@ type ComplexityRoot struct {
 		BuiltInCollection        func(childComplexity int, kind schema.CollectionKind) int
 		CamModel                 func(childComplexity int, id string) int
 		CamModels                func(childComplexity int, live *bool, autoRecord *bool, performerID *string, limit *int, offset *int) int
+		CamRecommendations       func(childComplexity int, limit *int) int
 		CamRooms                 func(childComplexity int, query *model.CamQuery) int
 		Categories               func(childComplexity int) int
 		Category                 func(childComplexity int, id *string, slug *string) int
@@ -1358,6 +1365,7 @@ type CamModelResolver interface {
 	Performer(ctx context.Context, obj *schema.CamModel) (*schema.Performer, error)
 
 	Recordings(ctx context.Context, obj *schema.CamModel) ([]*schema.Video, error)
+	Shows(ctx context.Context, obj *schema.CamModel) ([]*schema.CamShow, error)
 	UserState(ctx context.Context, obj *schema.CamModel) (*schema.UserState, error)
 }
 type CategoryResolver interface {
@@ -1615,6 +1623,7 @@ type QueryResolver interface {
 	AutomationRun(ctx context.Context, id string) (*schema.AutomationRun, error)
 	AutomationActions(ctx context.Context) ([]string, error)
 	CamRooms(ctx context.Context, query *model.CamQuery) (*model.CamRoomPage, error)
+	CamRecommendations(ctx context.Context, limit *int) ([]*schema.CamModel, error)
 	CamModels(ctx context.Context, live *bool, autoRecord *bool, performerID *string, limit *int, offset *int) ([]*schema.CamModel, error)
 	CamModel(ctx context.Context, id string) (*schema.CamModel, error)
 	ActiveRecordings(ctx context.Context) ([]*cams.ActiveRecording, error)
@@ -2316,6 +2325,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CamModel.Recordings(childComplexity), true
+	case "CamModel.shows":
+		if e.ComplexityRoot.CamModel.Shows == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamModel.Shows(childComplexity), true
 	case "CamModel.tags":
 		if e.ComplexityRoot.CamModel.Tags == nil {
 			break
@@ -2353,6 +2368,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CamRoomPage.Total(childComplexity), true
+
+	case "CamShow.endedAt":
+		if e.ComplexityRoot.CamShow.EndedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamShow.EndedAt(childComplexity), true
+	case "CamShow.startedAt":
+		if e.ComplexityRoot.CamShow.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamShow.StartedAt(childComplexity), true
 
 	case "Category.children":
 		if e.ComplexityRoot.Category.Children == nil {
@@ -6256,6 +6284,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CamModels(childComplexity, args["live"].(*bool), args["autoRecord"].(*bool), args["performerId"].(*string), args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.camRecommendations":
+		if e.ComplexityRoot.Query.CamRecommendations == nil {
+			break
+		}
+
+		args, err := ec.field_Query_camRecommendations_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CamRecommendations(childComplexity, args["limit"].(*int)), true
 	case "Query.camRooms":
 		if e.ComplexityRoot.Query.CamRooms == nil {
 			break
@@ -8958,8 +8997,12 @@ type StepResult {
 # ordinary videos with recordedFrom set).
 
 extend type Query {
-  # Rooms online now on every cam site (or some), most viewers first.
+  # Rooms online now on every cam site (or some), most viewers first unless
+  # the query sorts otherwise. Blocked rooms are left out.
   camRooms(query: CamQuery): CamRoomPage!
+  # Rooms live now ranked by what the user likes: their tags and linked
+  # performers. Followed, auto-recorded and blocked rooms are left out.
+  camRecommendations(limit: Int): [CamModel!]!
   # Stored rooms, live first.
   camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
   camModel(id: ID!): CamModel
@@ -8986,8 +9029,18 @@ input CamQuery {
   tag: String
   # female, male, couple, trans
   gender: String
+  sort: CamSort
   limit: Int
   offset: Int
+}
+
+enum CamSort {
+  # Most viewers first.
+  viewers
+  # Fewest viewers first.
+  fewest
+  # The shows that began last first, among each site's 500 most watched rooms.
+  started
 }
 
 type CamRoomPage {
@@ -9012,7 +9065,15 @@ type CamModel {
   recordQuality: String
   # Its recordings, newest first.
   recordings: [Video!]!
+  # Its shows of the last eight weeks that were seen ending, newest first.
+  shows: [CamShow!]!
   userState: UserState!
+}
+
+# One show of a room, from its start to when it was last seen live.
+type CamShow {
+  startedAt: String!
+  endedAt: String!
 }
 
 type CamLive {
@@ -11189,6 +11250,8 @@ func (ec *executionContext) childFields_CamModel(ctx context.Context, field grap
 		return ec.fieldContext_CamModel_recordQuality(ctx, field)
 	case "recordings":
 		return ec.fieldContext_CamModel_recordings(ctx, field)
+	case "shows":
+		return ec.fieldContext_CamModel_shows(ctx, field)
 	case "userState":
 		return ec.fieldContext_CamModel_userState(ctx, field)
 	}
@@ -11203,6 +11266,16 @@ func (ec *executionContext) childFields_CamRoomPage(ctx context.Context, field g
 		return ec.fieldContext_CamRoomPage_total(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CamRoomPage", field.Name)
+}
+
+func (ec *executionContext) childFields_CamShow(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "startedAt":
+		return ec.fieldContext_CamShow_startedAt(ctx, field)
+	case "endedAt":
+		return ec.fieldContext_CamShow_endedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CamShow", field.Name)
 }
 
 func (ec *executionContext) childFields_Category(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -15925,6 +15998,20 @@ func (ec *executionContext) field_Query_camModels_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_camRecommendations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_camRooms_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19851,6 +19938,38 @@ func (ec *executionContext) fieldContext_CamModel_recordings(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _CamModel_shows(ctx context.Context, field graphql.CollectedField, obj *schema.CamModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamModel_shows(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.CamModel().Shows(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.CamShow) graphql.Marshaler {
+			return ec.marshalNCamShow2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamShowᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamModel_shows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CamModel",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamShow(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CamModel_userState(ctx context.Context, field graphql.CollectedField, obj *schema.CamModel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19936,6 +20055,52 @@ func (ec *executionContext) _CamRoomPage_total(ctx context.Context, field graphq
 }
 func (ec *executionContext) fieldContext_CamRoomPage_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CamRoomPage", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CamShow_startedAt(ctx context.Context, field graphql.CollectedField, obj *schema.CamShow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamShow_startedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamShow_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamShow", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CamShow_endedAt(ctx context.Context, field graphql.CollectedField, obj *schema.CamShow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamShow_endedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamShow_endedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamShow", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Category_id(ctx context.Context, field graphql.CollectedField, obj *schema.Category) (ret graphql.Marshaler) {
@@ -35744,6 +35909,50 @@ func (ec *executionContext) fieldContext_Query_camRooms(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_camRecommendations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_camRecommendations(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CamRecommendations(ctx, fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.CamModel) graphql.Marshaler {
+			return ec.marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamModelᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_camRecommendations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CamModel(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_camRecommendations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_camModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -46433,7 +46642,7 @@ func (ec *executionContext) unmarshalInputCamQuery(ctx context.Context, obj any)
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"plugins", "text", "tag", "gender", "limit", "offset"}
+	fieldsInOrder := [...]string{"plugins", "text", "tag", "gender", "sort", "limit", "offset"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -46468,6 +46677,13 @@ func (ec *executionContext) unmarshalInputCamQuery(ctx context.Context, obj any)
 				return it, err
 			}
 			it.Gender = data
+		case "sort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sort"))
+			data, err := ec.unmarshalOCamSort2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSort(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sort = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -49768,6 +49984,42 @@ func (ec *executionContext) _CamModel(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "shows":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CamModel_shows(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "userState":
 			field := field
 
@@ -49845,6 +50097,50 @@ func (ec *executionContext) _CamRoomPage(ctx context.Context, sel ast.SelectionS
 			}
 		case "total":
 			out.Values[i] = ec._CamRoomPage_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var camShowImplementors = []string{"CamShow"}
+
+func (ec *executionContext) _CamShow(ctx context.Context, sel ast.SelectionSet, obj *schema.CamShow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, camShowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CamShow")
+		case "startedAt":
+			out.Values[i] = ec._CamShow_startedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endedAt":
+			out.Values[i] = ec._CamShow_endedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -56534,6 +56830,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "camRecommendations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_camRecommendations(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "camModels":
 			field := field
 
@@ -62657,6 +62975,32 @@ func (ec *executionContext) marshalNCamRoomPage2ᚖgithubᚗcomᚋplayingwithclo
 	return ec._CamRoomPage(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCamShow2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamShowᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.CamShow) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCamShow2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamShow(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCamShow2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamShow(ctx context.Context, sel ast.SelectionSet, v *schema.CamShow) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CamShow(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCategory2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCategory(ctx context.Context, sel ast.SelectionSet, v schema.Category) graphql.Marshaler {
 	return ec._Category(ctx, sel, &v)
 }
@@ -65880,6 +66224,22 @@ func (ec *executionContext) unmarshalOCamQuery2ᚖgithubᚗcomᚋplayingwithclou
 	}
 	res, err := ec.unmarshalInputCamQuery(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOCamSort2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSort(ctx context.Context, v any) (*model.CamSort, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.CamSort)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCamSort2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamSort(ctx context.Context, sel ast.SelectionSet, v *model.CamSort) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOCategory2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCategory(ctx context.Context, sel ast.SelectionSet, v *schema.Category) graphql.Marshaler {

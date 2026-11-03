@@ -16,6 +16,7 @@ type Query {
   automationRun(id: ID!): AutomationRun
   automationActions: [String!]!
   camRooms(query: CamQuery): CamRoomPage!
+  camRecommendations(limit: Int): [CamModel!]!
   camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
   camModel(id: ID!): CamModel
   activeRecordings: [ActiveRecording!]!
@@ -438,8 +439,15 @@ input CamQuery {
   text: String
   tag: String
   gender: String
+  sort: CamSort
   limit: Int
   offset: Int
+}
+
+enum CamSort {
+  viewers
+  fewest
+  started
 }
 
 type CamRoomPage {
@@ -461,7 +469,13 @@ type CamModel {
   autoRecord: Boolean!
   recordQuality: String
   recordings: [Video!]!
+  shows: [CamShow!]!
   userState: UserState!
+}
+
+type CamShow {
+  startedAt: String!
+  endedAt: String!
 }
 
 type CamLive {

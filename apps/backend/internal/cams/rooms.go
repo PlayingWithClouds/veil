@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,20 @@ const (
 	maxWanted = 1000
 	// defaultPageLimit is the page size when the query names none.
 	defaultPageLimit = 48
+	// startedDepth is how many of each site's most watched rooms SortStarted
+	// ranks: a site lists rooms by popularity only.
+	startedDepth = 500
+)
+
+// The orders of a room listing.
+const (
+	// SortViewers lists the most watched rooms first; the default.
+	SortViewers = "viewers"
+	// SortFewest lists the least watched rooms first, from the end of each site's list.
+	SortFewest = "fewest"
+	// SortStarted lists the rooms whose show began last first, among the
+	// startedDepth most watched of each site.
+	SortStarted = "started"
 )
 
 // Query narrows a room listing.
@@ -33,8 +48,10 @@ type Query struct {
 	Text    string
 	Tag     string
 	Gender  string
-	Limit   int
-	Offset  int
+	// Sort is one of the Sort constants; empty is SortViewers.
+	Sort   string
+	Limit  int
+	Offset int
 }
 
 // cachedChunk is one listing page of one plugin.
@@ -53,8 +70,9 @@ type pluginListing struct {
 
 // List returns one page of the rooms online now across the selected cam
 // plugins, stored as CamModels with fresh live state, and the number of rooms
-// the sites have in total. Each plugin's own popularity order is kept and the
-// plugins are merged by viewers, so a later page continues the earlier ones.
+// the sites have in total. Each site's list is put in the query's order chunk
+// by chunk (a site's popularity order only roughly follows viewers), and the
+// sites are merged in it, so a later page continues the earlier ones.
 func (s *Service) List(ctx context.Context, query Query) ([]schema.CamModel, int, error) {
 	limit := query.Limit
 	if limit <= 0 {
@@ -70,7 +88,68 @@ func (s *Service) List(ctx context.Context, query Query) ([]schema.CamModel, int
 	if err != nil {
 		return nil, 0, err
 	}
-	return pageOf(mergeByViewers(lists), query.Offset, limit), total, nil
+	unblocked, err := s.withoutBlocked(ctx, mergeBy(lists, rankOf(query.Sort)))
+	if err != nil {
+		return nil, 0, err
+	}
+	return pageOf(unblocked, query.Offset, limit), total, nil
+}
+
+// blockedRoomsQuery selects the ids of the rooms the user blocked.
+const blockedRoomsQuery = `
+	SELECT "subjectId" FROM "UserState"
+	WHERE "subjectKind" = $camModel AND "blocked" = 1 AND "deletedAt" IS NULL`
+
+// withoutBlocked leaves out the rooms the user blocked.
+func (s *Service) withoutBlocked(ctx context.Context, rooms []schema.CamModel) ([]schema.CamModel, error) {
+	blockedIDs, err := s.services.Database.Strings(ctx, blockedRoomsQuery, db.Vars{"camModel": schema.RecordKindCamModel})
+	if err != nil || len(blockedIDs) == 0 {
+		return rooms, err
+	}
+	return slices.DeleteFunc(rooms, func(camModel schema.CamModel) bool {
+		return slices.Contains(blockedIDs, camModel.Id)
+	}), nil
+}
+
+// rankOf is the order of a sort: whether the first room goes before the second.
+func rankOf(sort string) func(first, second schema.CamModel) bool {
+	switch sort {
+	case SortFewest:
+		return fewerViewers
+	case SortStarted:
+		return laterStart
+	}
+	return moreViewers
+}
+
+// moreViewers orders the bigger audience first.
+func moreViewers(first, second schema.CamModel) bool {
+	return viewersOf(first) > viewersOf(second)
+}
+
+// fewerViewers orders the smaller audience first.
+func fewerViewers(first, second schema.CamModel) bool {
+	return viewersOf(first) < viewersOf(second)
+}
+
+// laterStart orders the show that began last first.
+func laterStart(first, second schema.CamModel) bool {
+	return liveSince(first) > liveSince(second)
+}
+
+// sortedRooms returns the rooms in rank order, keeping the order of ties.
+func sortedRooms(rooms []schema.CamModel, before func(first, second schema.CamModel) bool) []schema.CamModel {
+	sorted := slices.Clone(rooms)
+	slices.SortStableFunc(sorted, func(first, second schema.CamModel) int {
+		if before(first, second) {
+			return -1
+		}
+		if before(second, first) {
+			return 1
+		}
+		return 0
+	})
+	return sorted
 }
 
 // selectPlugins returns the cam plugins named by names, or all when empty.
@@ -135,9 +214,22 @@ func pageOf(rooms []schema.CamModel, offset, limit int) []schema.CamModel {
 	return page
 }
 
-// pluginRooms returns the first wanted online rooms of one plugin, paging
-// through the plugin in chunks.
+// pluginRooms returns the first wanted online rooms of one plugin in the
+// query's order, and how many the site has.
 func (s *Service) pluginRooms(ctx context.Context, plugin *plugins.Plugin, query Query, wanted int) ([]schema.CamModel, int, error) {
+	switch query.Sort {
+	case SortFewest:
+		return s.roomsFromEnd(ctx, plugin, query, wanted)
+	case SortStarted:
+		rooms, total, err := s.roomsFromStart(ctx, plugin, query, max(wanted, startedDepth))
+		return sortedRooms(rooms, laterStart), total, err
+	}
+	return s.roomsFromStart(ctx, plugin, query, wanted)
+}
+
+// roomsFromStart pages through the site's list from its most popular room
+// until it has wanted rooms, each chunk most watched first.
+func (s *Service) roomsFromStart(ctx context.Context, plugin *plugins.Plugin, query Query, wanted int) ([]schema.CamModel, int, error) {
 	var rooms []schema.CamModel
 	total := 0
 	for chunkOffset := 0; len(rooms) < wanted; chunkOffset += chunkSize {
@@ -149,12 +241,42 @@ func (s *Service) pluginRooms(ctx context.Context, plugin *plugins.Plugin, query
 			return nil, 0, err
 		}
 		total = chunk.total
-		rooms = append(rooms, chunk.rooms...)
+		rooms = append(rooms, sortedRooms(chunk.rooms, moreViewers)...)
 		if len(chunk.rooms) == 0 || chunkOffset+chunkSize >= chunk.total {
 			break
 		}
 	}
 	return rooms, total, nil
+}
+
+// roomsFromEnd pages backwards from the end of the site's list, where its
+// least watched rooms are, until it has wanted rooms, each chunk fewest first.
+// The first chunk tells where the list ends.
+func (s *Service) roomsFromEnd(ctx context.Context, plugin *plugins.Plugin, query Query, wanted int) ([]schema.CamModel, int, error) {
+	first, err := s.chunk(ctx, plugin, query, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	var rooms []schema.CamModel
+	for chunkOffset := lastChunkOffset(first.total); chunkOffset >= 0 && len(rooms) < wanted; chunkOffset -= chunkSize {
+		chunk, err := s.chunk(ctx, plugin, query, chunkOffset)
+		if err != nil && len(rooms) > 0 {
+			break
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+		rooms = append(rooms, sortedRooms(chunk.rooms, fewerViewers)...)
+	}
+	return rooms, first.total, nil
+}
+
+// lastChunkOffset is the offset of the chunk holding the last of total rooms.
+func lastChunkOffset(total int) int {
+	if total <= 0 {
+		return 0
+	}
+	return (total - 1) / chunkSize * chunkSize
 }
 
 // chunk returns one cached page of a plugin's listing, fetching and storing the
@@ -202,16 +324,16 @@ func (s *Service) storeChunk(key string, chunk cachedChunk) {
 	s.chunks[key] = chunk
 }
 
-// mergeByViewers merges lists that are each ordered best first into one list,
-// always taking the head with the most viewers. A room listed twice (sites
-// reorder rooms between the chunks of one listing, and chunks are cached at
-// different times) keeps only its first, best place.
-func mergeByViewers(lists [][]schema.CamModel) []schema.CamModel {
+// mergeBy merges lists that are each in rank order into one list, always
+// taking the head that ranks first. A room listed twice (sites reorder rooms
+// between the chunks of one listing, and chunks are cached at different
+// times) keeps only its first, best place.
+func mergeBy(lists [][]schema.CamModel, before func(first, second schema.CamModel) bool) []schema.CamModel {
 	positions := make([]int, len(lists))
 	seen := map[string]bool{}
 	merged := []schema.CamModel{}
 	for {
-		best := bestHead(lists, positions)
+		best := bestHead(lists, positions, before)
 		if best == -1 {
 			return merged
 		}
@@ -225,15 +347,15 @@ func mergeByViewers(lists [][]schema.CamModel) []schema.CamModel {
 	}
 }
 
-// bestHead returns the index of the list whose next room has the most
-// viewers, or -1 when every list is used up.
-func bestHead(lists [][]schema.CamModel, positions []int) int {
+// bestHead returns the index of the list whose next room ranks first, or -1
+// when every list is used up.
+func bestHead(lists [][]schema.CamModel, positions []int, before func(first, second schema.CamModel) bool) int {
 	best := -1
 	for index, list := range lists {
 		if positions[index] >= len(list) {
 			continue
 		}
-		if best == -1 || viewersOf(list[positions[index]]) > viewersOf(lists[best][positions[best]]) {
+		if best == -1 || before(list[positions[index]], lists[best][positions[best]]) {
 			best = index
 		}
 	}
@@ -267,7 +389,8 @@ func (s *Service) storeRooms(ctx context.Context, pluginName string, rooms []plu
 }
 
 // upsertRoomQuery inserts a room or refreshes the one with the same plugin
-// and username. A room already live keeps the start of its show.
+// and username. The show starts when the site says, else a room already live
+// keeps the start it has.
 const upsertRoomQuery = `
 	INSERT INTO "CamModel" ("id", "plugin", "username", "displayName", "thumbnail", "tags", "gender", "live", "lastSeenOnlineAt", "autoRecord")
 	VALUES ($id, $plugin, $username, $displayName, $thumbnail, $tags, $gender, $live, $now, 0)
@@ -276,8 +399,9 @@ const upsertRoomQuery = `
 		"thumbnail" = COALESCE(excluded."thumbnail", "CamModel"."thumbnail"),
 		"tags" = excluded."tags",
 		"gender" = COALESCE(excluded."gender", "CamModel"."gender"),
-		"live" = json_set(excluded."live", '$.startedAt',
-			COALESCE(json_extract("CamModel"."live", '$.startedAt'), json_extract(excluded."live", '$.startedAt'))),
+		"live" = json_set(excluded."live", '$.startedAt', CASE WHEN $siteStarted
+			THEN json_extract(excluded."live", '$.startedAt')
+			ELSE COALESCE(json_extract("CamModel"."live", '$.startedAt'), json_extract(excluded."live", '$.startedAt')) END),
 		"lastSeenOnlineAt" = excluded."lastSeenOnlineAt",
 		"updatedAt" = excluded."lastSeenOnlineAt"
 	RETURNING *`
@@ -285,6 +409,10 @@ const upsertRoomQuery = `
 // upsertRoom stores a room a listing showed online, with its live state.
 func (s *Service) upsertRoom(ctx context.Context, pluginName string, room plugins.CamRoom) (*schema.CamModel, error) {
 	now := db.FormatTime(s.now())
+	startedAt, siteStarted := siteStart(room)
+	if !siteStarted {
+		startedAt = now
+	}
 	thumbnail := assetOf(room.ThumbnailURL)
 	camModel, err := db.QueryOneAs[schema.CamModel](ctx, s.services.Database, upsertRoomQuery, db.Vars{
 		"id":          db.NewID(),
@@ -294,7 +422,8 @@ func (s *Service) upsertRoom(ctx context.Context, pluginName string, room plugin
 		"thumbnail":   thumbnail,
 		"tags":        room.Tags,
 		"gender":      optionalText(room.Gender),
-		"live":        schema.CamLive{Viewers: int32(room.Viewers), Subject: optionalText(room.Subject), StartedAt: &now, Thumbnail: thumbnail},
+		"live":        schema.CamLive{Viewers: int32(room.Viewers), Subject: optionalText(room.Subject), StartedAt: &startedAt, Thumbnail: thumbnail},
+		"siteStarted": siteStarted,
 		"now":         now,
 	})
 	if err != nil {
@@ -304,6 +433,19 @@ func (s *Service) upsertRoom(ctx context.Context, pluginName string, room plugin
 		return nil, errors.New("no row returned")
 	}
 	return camModel, nil
+}
+
+// siteStart is the show start the site gave, in the stored time format, and
+// whether it gave a readable one.
+func siteStart(room plugins.CamRoom) (string, bool) {
+	if room.StartedAt == "" {
+		return "", false
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, room.StartedAt)
+	if err != nil {
+		return "", false
+	}
+	return db.FormatTime(parsed), true
 }
 
 // displayNameOf is the room's shown name, its username when the site gives none.
