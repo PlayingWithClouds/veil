@@ -21,6 +21,11 @@ export function studioUrl(id: string): string {
 	return `/studios/${encodeURIComponent(id)}`;
 }
 
+/** The galleries page. */
+export function galleriesUrl(): string {
+	return '/galleries';
+}
+
 /** One gallery's page. */
 export function galleryUrl(id: string): string {
 	return `/galleries/${encodeURIComponent(id)}`;

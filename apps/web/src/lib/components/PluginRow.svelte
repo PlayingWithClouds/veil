@@ -15,7 +15,7 @@
 		type InstalledPlugin
 	} from '$lib/plugins';
 	import { browse, type Listed } from '$lib/library';
-	import { audiosUrl, storiesUrl } from '$lib/routes';
+	import { audiosUrl, galleriesUrl, storiesUrl } from '$lib/routes';
 
 	interface Props {
 		plugin: InstalledPlugin;
@@ -31,7 +31,7 @@
 	// Where a browsed kind lands in the answer, and the page that shows it.
 	const BROWSE_TARGETS: Record<BrowseKind, { listed: keyof Listed; page: string }> = {
 		VIDEO: { listed: 'videos', page: '/' },
-		GALLERY: { listed: 'galleries', page: '/galleries' },
+		GALLERY: { listed: 'galleries', page: galleriesUrl() },
 		AUDIO: { listed: 'audios', page: audiosUrl() },
 		STORY: { listed: 'stories', page: storiesUrl() }
 	};

@@ -7,7 +7,7 @@ import UsersIcon from 'phosphor-svelte/lib/UsersIcon';
 import FilmSlateIcon from 'phosphor-svelte/lib/FilmSlateIcon';
 import PlugsIcon from 'phosphor-svelte/lib/PlugsIcon';
 import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
-import { audiosUrl, pluginsUrl, storiesUrl } from '$lib/routes';
+import { audiosUrl, galleriesUrl, pluginsUrl, storiesUrl } from '$lib/routes';
 
 /** One top-level destination, in the sidebar and the phone tab bar. */
 export interface NavLink {
@@ -21,7 +21,7 @@ export interface NavLink {
 /** The top-level pages, in menu order. */
 export const navLinks: NavLink[] = [
 	{ label: 'Home', icon: HouseIcon, href: '/', exact: true },
-	{ label: 'Galleries', icon: ImagesIcon, href: '/galleries' },
+	{ label: 'Galleries', icon: ImagesIcon, href: galleriesUrl() },
 	{ label: 'Audio', icon: HeadphonesIcon, href: audiosUrl() },
 	{ label: 'Stories', icon: BookOpenTextIcon, href: storiesUrl() },
 	{ label: 'Performers', icon: UsersIcon, href: '/performers' },
@@ -36,8 +36,10 @@ export interface SearchScope {
 	placeholder: string;
 }
 
-/** The search scope of a page: audio and story pages search their own sites. */
+/** The search scope of a page: gallery, audio and story pages search their own sites. */
 export function searchScopeOf(pathname: string): SearchScope {
+	if (pathname.startsWith(galleriesUrl()))
+		return { path: galleriesUrl(), placeholder: 'Search galleries' };
 	if (pathname.startsWith(audiosUrl())) return { path: audiosUrl(), placeholder: 'Search audio' };
 	if (pathname.startsWith(storiesUrl()))
 		return { path: storiesUrl(), placeholder: 'Search stories' };

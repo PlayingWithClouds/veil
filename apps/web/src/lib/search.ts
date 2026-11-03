@@ -8,7 +8,7 @@ import {
 	type SearchBatch
 } from '@playingwithclouds/veil-sdk/generated';
 import { getWsClient, gqlClient } from '$lib/veil';
-import { VIDEO_CARD } from '$lib/library';
+import { GALLERY_CARD, VIDEO_CARD } from '$lib/library';
 import { AUDIO_CARD, STORY_CARD } from '$lib/media';
 
 // How long the sites' preference scores are reused before they're asked again.
@@ -40,7 +40,7 @@ const SEARCH_BATCH = {
 	final: true,
 	exhausted: true,
 	returned: true,
-	listed: { videos: VIDEO_CARD, audios: AUDIO_CARD, stories: STORY_CARD }
+	listed: { videos: VIDEO_CARD, galleries: GALLERY_CARD, audios: AUDIO_CARD, stories: STORY_CARD }
 } as const;
 
 export type SearchBatchRow = FieldsSelection<SearchBatch, typeof SEARCH_BATCH>;

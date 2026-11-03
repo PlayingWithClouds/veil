@@ -1,9 +1,10 @@
 <!--
-	A page of one media kind beyond videos (audio, stories). With a search
-	from the top bar (?q=), what the sites that list the kind answer, as they
-	answer. With a tag (?tag=), the library's media carrying it. Otherwise the
-	overview's rows, then everything, most recently added first. "Browse a
-	site" stores a page of one site's catalog.
+	A page of one media kind beyond videos (galleries, audio, stories). With a
+	search from the top bar (?q=), what the sites that list the kind answer,
+	as they answer. With a tag (?tag=), the library's media carrying it.
+	Otherwise the overview's rows, then the endless feed when there is one
+	(galleries: recommended, then the rest), else everything most recently
+	added first. "Browse a site" stores a page of one site's catalog.
 -->
 <script lang="ts" generics="Item extends { id: string }">
 	import { untrack, type Snippet } from 'svelte';
@@ -18,12 +19,14 @@
 	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { searchPage, type SearchBatchRow, type SearchPage } from '$lib/search';
+	import { resetShown, type Shown } from '$lib/events';
+	import type { Feed } from '$lib/feed';
 
 	const PAGE_SIZE = 40;
 
 	interface Props {
 		title: string;
-		kind: 'AUDIO' | 'STORY';
+		kind: 'GALLERY' | 'AUDIO' | 'STORY';
 		// What the page lists, by name ("stories").
 		noun: string;
 		// A page of the library's items.
@@ -32,12 +35,30 @@
 		pick: (batch: SearchBatchRow) => Item[];
 		// Smallest card width in px.
 		cardWidth: number;
-		card: Snippet<[Item]>;
+		// A card, with where it's shown when that's logged (the feed, a search).
+		card: Snippet<[Item, Shown | null]>;
 		// Rows shown above everything when there's no search or tag.
 		overview?: Snippet;
+		// Starts the endless feed under the overview, instead of everything most recently added first.
+		feed?: () => Feed<Item>;
+		// The feed's heading and the surface its cards are logged on.
+		feedTitle?: string;
+		feedSurface?: string;
 	}
 
-	let { title, kind, noun, load, pick, cardWidth, card, overview }: Props = $props();
+	let {
+		title,
+		kind,
+		noun,
+		load,
+		pick,
+		cardWidth,
+		card,
+		overview,
+		feed,
+		feedTitle = 'Recently added',
+		feedSurface = 'library'
+	}: Props = $props();
 
 	let items = $state<Item[]>([]);
 	let loading = $state(false);
@@ -54,6 +75,8 @@
 	let running: SearchPage | null = null;
 	let searchSites = new Set<string>();
 	let drySites = new Set<string>();
+	// The overview's endless feed while it's shown.
+	let activeFeed: Feed<Item> | null = null;
 	// Counts loads started, so a late answer to an earlier one is dropped.
 	let generation = 0;
 
@@ -78,7 +101,12 @@
 		exhausted = false;
 		error = null;
 		tagName = null;
+		activeFeed = null;
 		if (tag !== '') void fetchTagName(tag).then((name) => (tagName = name));
+		if (searchText === '' && tag === '' && feed) {
+			resetShown(feedSurface);
+			activeFeed = feed();
+		}
 		if (searchText === '') {
 			await loadMore();
 			return;
@@ -99,17 +127,34 @@
 		loading = true;
 		const started = generation;
 		try {
-			const listing: MediaListing = {};
-			if (tagId !== '') listing.tagId = tagId;
-			const nextPage = await load(PAGE_SIZE, items.length, listing);
+			const nextPage = await nextLibraryPage();
 			if (started !== generation) return;
-			items = [...items, ...nextPage];
-			exhausted = nextPage.length < PAGE_SIZE;
+			items = [...items, ...nextPage.items];
+			exhausted = nextPage.last;
 		} catch (failure) {
 			error = String(failure);
 		} finally {
 			loading = false;
 		}
+	}
+
+	/** The next page of the feed, or of everything (one tag's) most recently added first. */
+	async function nextLibraryPage(): Promise<{ items: Item[]; last: boolean }> {
+		if (activeFeed) {
+			const found = await activeFeed(PAGE_SIZE);
+			return { items: found, last: found.length === 0 };
+		}
+		const listing: MediaListing = {};
+		if (tagId !== '') listing.tagId = tagId;
+		const found = await load(PAGE_SIZE, items.length, listing);
+		return { items: found, last: found.length < PAGE_SIZE };
+	}
+
+	/** Where the card at position is shown, when the page logs it: the feed or a search. */
+	function shownAt(position: number): Shown | null {
+		if (query !== '') return { surface: 'search', position };
+		if (activeFeed) return { surface: feedSurface, position };
+		return null;
 	}
 
 	/** Asks the sites with more results for their next page. */
@@ -236,14 +281,14 @@
 
 	<section class="flex flex-col gap-4">
 		{#if showOverview && items.length > 0}
-			<h2 class="text-lg font-semibold">Recently added</h2>
+			<h2 class="text-lg font-semibold">{feedTitle}</h2>
 		{/if}
 		<div
 			class="grid gap-x-4 gap-y-6"
 			style:grid-template-columns="repeat(auto-fill, minmax({cardWidth}px, 1fr))"
 		>
-			{#each items as item (item.id)}
-				{@render card(item)}
+			{#each items as item, position (item.id)}
+				{@render card(item, shownAt(position))}
 			{/each}
 		</div>
 	</section>

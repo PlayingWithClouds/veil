@@ -114,7 +114,7 @@ export interface MediaListing {
 }
 
 /** The filter of a listing. */
-function listingFilter(listing: MediaListing): FilterInput {
+export function listingFilter(listing: MediaListing): FilterInput {
 	const filter: FilterInput = {};
 	if (listing.tagId) filter.includeTagIds = [listing.tagId];
 	if (listing.byRelease) filter.sort = { field: 'date', descending: true };
@@ -145,17 +145,20 @@ export async function fetchStories(
 	return data.stories;
 }
 
-/** The tags most common on audio or stories, most common first. */
-export async function fetchTopTags(kind: 'audio' | 'story', limit = 3): Promise<TagCountRow[]> {
+/** The kinds with an overview of rows: audio, stories and galleries. */
+export type OverviewKind = 'audio' | 'story' | 'gallery';
+
+/** The tags most common on media of a kind, most common first. */
+export async function fetchTopTags(kind: OverviewKind, limit = 3): Promise<TagCountRow[]> {
 	const data = await gqlClient.query({
 		mediaTagCounts: { __args: { kind, limit }, ...TAG_COUNT }
 	});
 	return data.mediaTagCounts;
 }
 
-/** The voices of audio or authors of stories: favourites first, then the most credited. */
+/** The performers of a kind (the voices of audio, authors of stories): favourites first, then the most credited. */
 export async function fetchCreditedPerformers(
-	kind: 'audio' | 'story',
+	kind: OverviewKind,
 	limit = 20
 ): Promise<MemberRow[]> {
 	const data = await gqlClient.query({

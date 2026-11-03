@@ -42,13 +42,16 @@ const (
 const (
 	// surfaceHome is where Recommendations is shown.
 	surfaceHome = "home"
+	// surfaceGalleries is the galleries' recommended feed, on the galleries
+	// page and under a gallery.
+	surfaceGalleries = "galleries"
 )
 
 // recommendationSurfaces are the surfaces whose showings were the engine's
 // choice: only they teach the source priors and count as "shown but not
 // opened". A card passed by on a performer page or in search results says
 // nothing against what the engine would have picked.
-var recommendationSurfaces = []string{surfaceHome}
+var recommendationSurfaces = []string{surfaceHome, surfaceGalleries}
 
 // mediaKinds are the record kinds the feed recommends and learns from.
 var mediaKinds = []string{"video", "gallery"}

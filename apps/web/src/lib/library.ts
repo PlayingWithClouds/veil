@@ -115,10 +115,12 @@ const VIDEO_DETAIL = {
 const GALLERY_DETAIL = {
 	...GALLERY_CARD,
 	details: true,
-	performers: NAMED,
+	performers: { id: true, name: true, image: { uri: true } },
 	tags: NAMED,
-	images: { id: true, position: true, asset: { uri: true } },
-	sources: SOURCE
+	images: { id: true, position: true, width: true, height: true, asset: { uri: true } },
+	video: { id: true, title: true },
+	sources: SOURCE,
+	userState: { favorite: true, rating: true }
 } as const;
 
 /** A studio's page. */

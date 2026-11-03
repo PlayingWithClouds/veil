@@ -1,6 +1,7 @@
 <!--
-	The rows at the top of the audio and stories pages: what you stopped
-	partway, the newest releases, the voices or authors (favourites first),
+	The rows at the top of the galleries, audio and stories pages: what you
+	stopped partway (or viewed last), your favourites when the page has them,
+	the newest releases, the performers, voices or authors (favourites first),
 	then a row for each of the most common tags with "See all". Each row loads
 	on its own and stays hidden while empty.
 -->
@@ -14,6 +15,7 @@
 		fetchCreditedPerformers,
 		fetchTopTags,
 		type MediaListing,
+		type OverviewKind,
 		type TagCountRow
 	} from '$lib/media';
 	import type { MemberRow } from '$lib/library';
@@ -24,12 +26,14 @@
 	const PERFORMER_WIDTH = 140;
 
 	interface Props {
-		kind: 'audio' | 'story';
-		// "Continue listening", "Continue reading".
+		kind: OverviewKind;
+		// "Continue listening", "Continue reading", "Recently viewed".
 		continueTitle: string;
-		// "Voices", "Authors".
+		// "Voices", "Authors", "Performers".
 		peopleTitle: string;
 		fetchContinue: () => Promise<Item[]>;
+		// The favourites row, on pages that have one.
+		fetchFavorites?: () => Promise<Item[]>;
 		load: (limit: number, offset: number, listing: MediaListing) => Promise<Item[]>;
 		itemWidth: number;
 		mediaCard: Snippet<[Item]>;
@@ -42,6 +46,7 @@
 		continueTitle,
 		peopleTitle,
 		fetchContinue,
+		fetchFavorites,
 		load,
 		itemWidth,
 		mediaCard,
@@ -55,12 +60,14 @@
 	}
 
 	let started = $state<Item[]>([]);
+	let favorites = $state<Item[]>([]);
 	let newest = $state<Item[]>([]);
 	let people = $state<MemberRow[]>([]);
 	let tagRows = $state<TagRow[]>([]);
 
 	$effect(() => {
 		fill(fetchContinue(), (found) => (started = found));
+		if (fetchFavorites) fill(fetchFavorites(), (found) => (favorites = found));
 		fill(load(ROW_ITEMS, 0, { byRelease: true }), (found) => (newest = found));
 		fill(fetchCreditedPerformers(kind), (found) => (people = found));
 		fill(loadTagRows(), (found) => (tagRows = found));
@@ -96,6 +103,12 @@
 			{:else}
 				{@render mediaCard(item)}
 			{/if}
+		{/snippet}
+	</Shelf>
+
+	<Shelf title="Favourites" items={favorites} key={(item) => item.id} {itemWidth}>
+		{#snippet card(item)}
+			{@render mediaCard(item)}
 		{/snippet}
 	</Shelf>
 
