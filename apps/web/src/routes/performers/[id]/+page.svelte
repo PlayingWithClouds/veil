@@ -1,7 +1,9 @@
 <!--
-	One performer: a profile header (picture lighting the shared glow, name,
-	counts, actions), facts as tiles, about, tags, their profiles and links,
-	and their videos and galleries.
+	One performer: a compact profile header (picture lighting the shared
+	glow, name, counts and a few facts, actions, two lines of bio, their
+	profiles, links and tags as one chip row) so their videos and galleries
+	start on the first screen. "All facts" opens every fact as tiles; one bar
+	folds what's there to review (merges, face matches, fields the user set).
 	Opening the page reads their pages on the sites they came from (bio,
 	picture, attributes) and asks the other sites to identify them, adding the
 	profiles they're sure of; the result shows when it's in. Refresh reads and
@@ -15,6 +17,7 @@
 	there, that profile moves away with its videos.
 -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import dayjs from 'dayjs';
@@ -35,7 +38,8 @@
 	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
 	import { setBlocked, setFavorite, logNotInterested } from '$lib/userState';
 	import { showUndo } from '$lib/stores/undoToast';
-	import TagChips from '$lib/components/TagChips.svelte';
+	import { tagLabel } from '$lib/components/TagChips.svelte';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 	import RecordMedia from '$lib/components/RecordMedia.svelte';
 	import PerformerEditor from '$lib/components/PerformerEditor.svelte';
 	import PerformerMerge from '$lib/components/PerformerMerge.svelte';
@@ -68,7 +72,7 @@
 	import { capitalize } from '$lib/performerPresets';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
-	import { performerUrl, videoUrl } from '$lib/routes';
+	import { performerUrl, tagFilterUrl, videoUrl } from '$lib/routes';
 	import {
 		FACE_MODEL,
 		fetchFaceMatches,
@@ -128,6 +132,8 @@
 
 	// Width of a card in the "Could be the same person" row (px).
 	const DUPLICATE_WIDTH = 140;
+	// Facts named in the header line; "All facts" shows every one.
+	const HEADLINE_FACTS = 5;
 	// Width of a card in the "Probably also in" row (px).
 	const FACE_MATCH_WIDTH = 260;
 	// How often the page asks what's being fetched while something is.
@@ -148,6 +154,24 @@
 		(performer?.fieldSources ?? []).filter((source) => source.locked).map((source) => source.field)
 	);
 	let refreshSites = $derived(refreshSitesOf(performer, $sites));
+	// The header's folded parts, opened on demand.
+	let allFacts = $state(false);
+	let fullBio = $state(false);
+	let reviewing = $state(false);
+	// The few facts the header names in one line.
+	let headlineFacts = $derived(facts.slice(0, HEADLINE_FACTS));
+	let reviewSummary = $derived(
+		reviewLine(duplicates.length, shownFaceMatches.length, merges.length)
+	);
+
+	// A link to the face matches (from a video's notice) opens them and scrolls there.
+	$effect(() => {
+		if (page.url.hash !== '#face-matches' || shownFaceMatches.length === 0) return;
+		reviewing = true;
+		void tick().then(() =>
+			document.getElementById('face-matches')?.scrollIntoView({ behavior: 'smooth' })
+		);
+	});
 	let picture = $derived(cacheUrl(performer?.image?.uri));
 
 	showAmbientGlow(() => picture);
@@ -164,6 +188,9 @@
 		merges = [];
 		faceMatches = [];
 		dismissedMatches = [];
+		allFacts = false;
+		fullBio = false;
+		reviewing = false;
 		try {
 			performer = await fetchPerformer(performerId);
 		} finally {
@@ -455,6 +482,22 @@
 		return choices;
 	}
 
+	/** "2 could be the same person · 4 videos probably with them", or null when nothing waits. */
+	function reviewLine(
+		duplicateCount: number,
+		matchCount: number,
+		mergeCount: number
+	): string | null {
+		const parts: string[] = [];
+		if (duplicateCount > 0) parts.push(`${duplicateCount} could be the same person`);
+		if (matchCount > 0) {
+			parts.push(`${matchCount} ${matchCount === 1 ? 'video' : 'videos'} probably with them`);
+		}
+		if (mergeCount > 0) parts.push(`${mergeCount} merged in`);
+		if (parts.length === 0) return null;
+		return parts.join(' · ');
+	}
+
 	/** A steady colour per name, for the initial of a performer without a picture. */
 	function hueOf(name: string): number {
 		let hash = 0;
@@ -471,12 +514,12 @@
 
 <svelte:head><title>{performer?.name ?? 'Performer'} · Veil</title></svelte:head>
 
-<div class="flex flex-col gap-8 pt-2">
+<div class="flex flex-col gap-6 pt-2">
 	{#if performer}
-		<header class="flex gap-7 max-md:flex-col max-md:items-center max-md:text-center">
+		<header class="flex gap-6 max-md:flex-col max-md:items-center max-md:text-center">
 			<button
 				type="button"
-				class="group relative flex aspect-[3/4] w-52 shrink-0 items-center justify-center overflow-hidden rounded-3xl shadow-2xl ring-1 shadow-black/50 ring-white/10"
+				class="group relative flex aspect-[3/4] w-36 shrink-0 items-center justify-center self-start overflow-hidden rounded-3xl shadow-2xl ring-1 shadow-black/50 ring-white/10 max-md:self-center"
 				style:background-color={picture ? null : `hsl(${hueOf(performer.name)} 45% 62%)`}
 				aria-label="Change the picture"
 				onclick={() => (choosingPicture = true)}
@@ -488,7 +531,7 @@
 						class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
 					/>
 				{:else}
-					<span class="text-7xl font-bold text-black/60">
+					<span class="text-5xl font-bold text-black/60">
 						{performer.name.trim().charAt(0).toUpperCase()}
 					</span>
 				{/if}
@@ -499,18 +542,32 @@
 				</span>
 			</button>
 
-			<div class="flex min-w-0 flex-1 flex-col justify-end gap-4">
-				<div class="flex flex-col gap-1">
-					<h1 class="text-4xl font-bold tracking-tight">{performer.name}</h1>
+			<div class="flex min-w-0 flex-1 flex-col gap-3">
+				<div class="flex flex-col gap-0.5">
+					<h1 class="text-3xl font-bold tracking-tight">{performer.name}</h1>
 					{#if performer.aliases.length > 0}
 						<p class="text-base-content/50 text-sm">Also known as {performer.aliases.join(', ')}</p>
 					{/if}
-					<p class="text-base-content/60 mt-1 text-sm">
+					<p class="text-base-content/60 text-sm">
 						{performer.videoCount}
 						{performer.videoCount === 1 ? 'video' : 'videos'}
 						{#if performer.galleryCount > 0}
 							· {performer.galleryCount}
 							{performer.galleryCount === 1 ? 'gallery' : 'galleries'}
+						{/if}
+						{#each headlineFacts as fact (fact.label)}
+							<span class="text-base-content/45"> · {fact.label}</span>
+							{fact.value}
+						{/each}
+						{#if facts.length > 0}
+							<button
+								type="button"
+								class="text-info ml-1 text-xs font-semibold"
+								aria-expanded={allFacts}
+								onclick={() => (allFacts = !allFacts)}
+							>
+								{allFacts ? 'Fewer facts' : 'All facts'}
+							</button>
 						{/if}
 					</p>
 				</div>
@@ -570,11 +627,64 @@
 						</button>
 					</div>
 				{/if}
+
+				{#if performer.details}
+					<div class="flex max-w-3xl flex-col items-start gap-1">
+						<p
+							class="text-base-content/75 text-sm leading-relaxed whitespace-pre-line"
+							class:line-clamp-2={!fullBio}
+						>
+							{performer.details}
+						</p>
+						{#if performer.details.length > 180}
+							<button
+								type="button"
+								class="text-info text-xs font-semibold"
+								onclick={() => (fullBio = !fullBio)}
+							>
+								{fullBio ? 'Show less' : 'Show more'}
+							</button>
+						{/if}
+					</div>
+				{/if}
+
+				<div
+					class="no-scrollbar fade-right-edge -mx-1 flex items-center gap-2 overflow-x-auto px-1 py-0.5"
+				>
+					<!-- Keyed by place: two sites, or two ids on one site, can share a URL. -->
+					{#each performer.sources as source, position (position)}
+						<a
+							href={source.url}
+							target="_blank"
+							rel="noreferrer"
+							class="chip chip-sm"
+							title="{siteDisplayName(source.plugin, $sites)}, {readLabel(source.fetchedAt)}"
+						>
+							{siteDisplayName(source.plugin, $sites)}
+							<ArrowSquareOutIcon size={11} class="opacity-60" />
+						</a>
+					{/each}
+					<!-- Keyed by place: older records can list a link twice. -->
+					{#each performer.links as link, position (position)}
+						<a href={link} target="_blank" rel="noreferrer" class="chip chip-sm">
+							{new URL(link).hostname.replace(/^www\./, '')}
+							<ArrowSquareOutIcon size={11} class="opacity-60" />
+						</a>
+					{/each}
+					{#if performer.tags.length > 0 && (performer.sources.length > 0 || performer.links.length > 0)}
+						<span class="h-4 w-px shrink-0 bg-white/15"></span>
+					{/if}
+					{#each performer.tags as tag (tag.id)}
+						<a href={tagFilterUrl(tag.id)} class="chip chip-sm" title={tag.name}>
+							{tagLabel(tag.name)}
+						</a>
+					{/each}
+				</div>
 			</div>
 		</header>
 
-		{#if facts.length > 0}
-			<dl class="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+		{#if allFacts && facts.length > 0}
+			<dl class="rise-in grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
 				{#each facts as fact (fact.label)}
 					<div
 						class="flex flex-col gap-0.5 rounded-2xl bg-white/[0.04] px-4 py-3 ring-1 ring-white/5"
@@ -586,156 +696,149 @@
 			</dl>
 		{/if}
 
-		{#if performer.details}
-			<p class="text-base-content/80 max-w-3xl text-[15px] leading-relaxed whitespace-pre-line">
-				{performer.details}
-			</p>
-		{/if}
-
-		<TagChips tags={performer.tags} />
-
-		{#if performer.sources.length > 0 || performer.links.length > 0}
-			<section class="flex flex-col gap-3">
-				<h2 class="text-base-content/45 text-xs font-semibold tracking-wider uppercase">
-					On the sites
-				</h2>
-				<div class="flex flex-wrap gap-2">
-					<!-- Keyed by place: two sites, or two ids on one site, can share a URL. -->
-					{#each performer.sources as source, position (position)}
-						<a href={source.url} target="_blank" rel="noreferrer" class="chip">
-							{siteDisplayName(source.plugin, $sites)}
-							<span class="text-xs opacity-50">{readLabel(source.fetchedAt)}</span>
-							<ArrowSquareOutIcon size={12} class="opacity-60" />
-						</a>
-					{/each}
-					<!-- Keyed by place: older records can list a link twice. -->
-					{#each performer.links as link, position (position)}
-						<a href={link} target="_blank" rel="noreferrer" class="chip">
-							{new URL(link).hostname.replace(/^www\./, '')}
-							<ArrowSquareOutIcon size={12} class="opacity-60" />
-						</a>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		{#if lockedFields.length > 0}
-			<div class="flex flex-wrap items-center gap-2 text-xs">
-				<span class="text-base-content/45">Set by you, the sites leave these alone:</span>
-				{#each lockedFields as field (field)}
-					<button
-						type="button"
-						class="chip chip-sm"
-						title="Let the sites update {FIELD_LABELS[field] ?? field} again"
-						onclick={() => unlock(field)}
-					>
-						{FIELD_LABELS[field] ?? field}
-						<XIcon size={11} />
-					</button>
-				{/each}
-			</div>
-		{/if}
-
-		{#if merges.length > 0}
-			<section class="flex flex-col gap-3">
-				<h2 class="text-lg font-semibold">Merged in</h2>
-				<div class="flex flex-wrap gap-2">
-					{#each merges as merge (merge.id)}
-						<span class="chip">
-							<span class="font-medium">{merge.mergedName ?? 'A performer'}</span>
-							<span class="text-xs opacity-50">{dayjs(merge.createdAt).fromNow()}</span>
-							<button
-								type="button"
-								class="text-info text-xs font-semibold"
-								onclick={() => void unmerge(merge.id, null)}
-							>
-								Undo
-							</button>
-						</span>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<!-- The suggestions, then a card to merge with anyone else. -->
-		<Shelf
-			title="Could be the same person"
-			items={[...duplicates, null]}
-			key={(duplicate) => duplicate?.id ?? 'someone-else'}
-			itemWidth={DUPLICATE_WIDTH}
-		>
-			{#snippet card(duplicate)}
-				{#if duplicate}
-					<div class="flex flex-col gap-2">
-						<MemberCard kind="performer" member={duplicate} />
-						<span class="flex gap-1">
-							<button
-								type="button"
-								class="chip chip-sm flex-1 justify-center"
-								onclick={() => void mergeNow(duplicate)}
-							>
-								<UsersThreeIcon size={14} /> Merge
-							</button>
-							<button
-								type="button"
-								class="chip chip-sm px-2"
-								aria-label="Compare before merging"
-								title="Compare before merging"
-								onclick={() => startMerge(duplicate)}
-							>
-								<ArrowsLeftRightIcon size={14} />
-							</button>
-						</span>
-					</div>
-				{:else}
-					<button
-						type="button"
-						class="text-base-content/60 hover:text-base-content flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 text-sm transition-colors hover:border-white/35 hover:bg-white/5"
-						onclick={() => startMerge(null)}
-					>
-						<UsersThreeIcon size={22} />
-						Someone else…
-					</button>
-				{/if}
-			{/snippet}
-		</Shelf>
-
-		<!-- The face matches: suggestions only, nothing is credited without a click. -->
-		<div id="face-matches">
-			<Shelf
-				title="Probably also in"
-				items={shownFaceMatches}
-				key={(match) => match.video.id}
-				itemWidth={FACE_MATCH_WIDTH}
+		<div class="flex flex-col gap-5 rounded-2xl bg-white/[0.03] ring-1 ring-white/5">
+			<button
+				type="button"
+				class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition-colors hover:bg-white/[0.03]"
+				aria-expanded={reviewing}
+				onclick={() => (reviewing = !reviewing)}
 			>
-				{#snippet card(match)}
-					<div class="flex flex-col gap-2">
-						<SceneCard
-							video={match.video}
-							note={`Face match ${Math.round(match.similarity * 100)}%`}
-							onclick={() => goto(videoUrl(match.video.id))}
-						/>
-						<span class="flex gap-1">
-							<button
-								type="button"
-								class="chip chip-sm flex-1 justify-center"
-								onclick={() => void creditFaceMatch(match)}
-							>
-								Add {performer?.name}
-							</button>
-							<button
-								type="button"
-								class="chip chip-sm px-2"
-								aria-label="Not {performer?.name}"
-								title="Not {performer?.name}"
-								onclick={() => (dismissedMatches = [...dismissedMatches, match.video.id])}
-							>
-								<XIcon size={14} />
-							</button>
-						</span>
+				<UsersThreeIcon size={18} class="shrink-0 opacity-60" />
+				<span class="min-w-0 flex-1 truncate">
+					{#if reviewSummary}
+						<span class="font-medium">To review:</span>
+						<span class="text-base-content/65">{reviewSummary}</span>
+					{:else}
+						<span class="text-base-content/65">Merges, face matches and what you've set</span>
+					{/if}
+				</span>
+				<span class="flex transition-transform" class:rotate-180={reviewing}>
+					<CaretDownIcon size={14} weight="bold" />
+				</span>
+			</button>
+
+			{#if reviewing}
+				<div class="flex flex-col gap-6 px-4 pb-4">
+					{#if lockedFields.length > 0}
+						<div class="flex flex-wrap items-center gap-2 text-xs">
+							<span class="text-base-content/45">Set by you, the sites leave these alone:</span>
+							{#each lockedFields as field (field)}
+								<button
+									type="button"
+									class="chip chip-sm"
+									title="Let the sites update {FIELD_LABELS[field] ?? field} again"
+									onclick={() => unlock(field)}
+								>
+									{FIELD_LABELS[field] ?? field}
+									<XIcon size={11} />
+								</button>
+							{/each}
+						</div>
+					{/if}
+
+					{#if merges.length > 0}
+						<section class="flex flex-col gap-3">
+							<h2 class="text-lg font-semibold">Merged in</h2>
+							<div class="flex flex-wrap gap-2">
+								{#each merges as merge (merge.id)}
+									<span class="chip">
+										<span class="font-medium">{merge.mergedName ?? 'A performer'}</span>
+										<span class="text-xs opacity-50">{dayjs(merge.createdAt).fromNow()}</span>
+										<button
+											type="button"
+											class="text-info text-xs font-semibold"
+											onclick={() => void unmerge(merge.id, null)}
+										>
+											Undo
+										</button>
+									</span>
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					<!-- The suggestions, then a card to merge with anyone else. -->
+					<Shelf
+						title="Could be the same person"
+						items={[...duplicates, null]}
+						key={(duplicate) => duplicate?.id ?? 'someone-else'}
+						itemWidth={DUPLICATE_WIDTH}
+					>
+						{#snippet card(duplicate)}
+							{#if duplicate}
+								<div class="flex flex-col gap-2">
+									<MemberCard kind="performer" member={duplicate} />
+									<span class="flex gap-1">
+										<button
+											type="button"
+											class="chip chip-sm flex-1 justify-center"
+											onclick={() => void mergeNow(duplicate)}
+										>
+											<UsersThreeIcon size={14} /> Merge
+										</button>
+										<button
+											type="button"
+											class="chip chip-sm px-2"
+											aria-label="Compare before merging"
+											title="Compare before merging"
+											onclick={() => startMerge(duplicate)}
+										>
+											<ArrowsLeftRightIcon size={14} />
+										</button>
+									</span>
+								</div>
+							{:else}
+								<button
+									type="button"
+									class="text-base-content/60 hover:text-base-content flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 text-sm transition-colors hover:border-white/35 hover:bg-white/5"
+									onclick={() => startMerge(null)}
+								>
+									<UsersThreeIcon size={22} />
+									Someone else…
+								</button>
+							{/if}
+						{/snippet}
+					</Shelf>
+
+					<!-- The face matches: suggestions only, nothing is credited without a click. -->
+					<div id="face-matches">
+						<Shelf
+							title="Probably also in"
+							items={shownFaceMatches}
+							key={(match) => match.video.id}
+							itemWidth={FACE_MATCH_WIDTH}
+						>
+							{#snippet card(match)}
+								<div class="flex flex-col gap-2">
+									<SceneCard
+										video={match.video}
+										note={`Face match ${Math.round(match.similarity * 100)}%`}
+										onclick={() => goto(videoUrl(match.video.id))}
+									/>
+									<span class="flex gap-1">
+										<button
+											type="button"
+											class="chip chip-sm flex-1 justify-center"
+											onclick={() => void creditFaceMatch(match)}
+										>
+											Add {performer?.name}
+										</button>
+										<button
+											type="button"
+											class="chip chip-sm px-2"
+											aria-label="Not {performer?.name}"
+											title="Not {performer?.name}"
+											onclick={() => (dismissedMatches = [...dismissedMatches, match.video.id])}
+										>
+											<XIcon size={14} />
+										</button>
+									</span>
+								</div>
+							{/snippet}
+						</Shelf>
 					</div>
-				{/snippet}
-			</Shelf>
+				</div>
+			{/if}
 		</div>
 
 		{#key mediaKey}
