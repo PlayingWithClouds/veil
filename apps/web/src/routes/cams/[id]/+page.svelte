@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
 	import dayjs from 'dayjs';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import BellIcon from 'phosphor-svelte/lib/BellIcon';
@@ -73,7 +74,8 @@
 	let recording = $state<ActiveRecordingRow | null>(null);
 	let videos = $state<VideoCardRow[]>([]);
 	// The running search of the cam show sites, and how far it got.
-	let finding = $state<SearchPage | null>(null);
+	// Raw, so it stays the very object findShows compares it with.
+	let finding = $state.raw<SearchPage | null>(null);
 	let sitesAsked = $state(0);
 	let sitesAnswered = $state(0);
 	let shows = $state<CamShowRow[]>([]);
@@ -88,8 +90,11 @@
 	let followed = $derived($followedCams.has(id));
 	let topic = $derived(roomTopic(cam?.live?.subject));
 
+	// Reloads for a new room only: load reads state (the running search) it
+	// must not rerun on.
 	$effect(() => {
-		void load(id);
+		const camId = id;
+		untrack(() => void load(camId));
 	});
 
 	$effect(() => {
