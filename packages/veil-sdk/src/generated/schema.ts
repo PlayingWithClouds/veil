@@ -82,6 +82,7 @@ export interface Query {
     stories: Story[]
     storyCount: Scalars['Int']
     story: (Story | null)
+    similarStories: Story[]
     posts: Post[]
     postCount: Scalars['Int']
     post: (Post | null)
@@ -1463,6 +1464,7 @@ export interface QueryGenqlSelection{
     stories?: (StoryGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     storyCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
     story?: (StoryGenqlSelection & { __args: {id: Scalars['ID']} })
+    similarStories?: (StoryGenqlSelection & { __args: {id: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
     posts?: (PostGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     postCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
     post?: (PostGenqlSelection & { __args: {id: Scalars['ID']} })

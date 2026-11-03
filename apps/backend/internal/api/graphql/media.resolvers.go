@@ -183,6 +183,16 @@ func (r *queryResolver) Story(ctx context.Context, id string) (*schema.Story, er
 	return r.library.Story(ctx, id)
 }
 
+// SimilarStories is the resolver for the similarStories field.
+func (r *queryResolver) SimilarStories(ctx context.Context, id string, limit *int) ([]*schema.Story, error) {
+	size := 12
+	if limit != nil && *limit > 0 {
+		size = *limit
+	}
+	stories, err := r.library.SimilarStories(ctx, id, size)
+	return pointers(stories), err
+}
+
 // Posts is the resolver for the posts field.
 func (r *queryResolver) Posts(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Post, error) {
 	posts, err := r.library.Posts(ctx, mediaQuery(filter, limit, offset))

@@ -696,6 +696,18 @@ export default {
                     ]
                 }
             ],
+            "similarStories": [
+                106,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "posts": [
                 108,
                 {

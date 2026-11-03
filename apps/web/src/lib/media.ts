@@ -111,6 +111,20 @@ export async function fetchStories(limit = 20, offset = 0): Promise<StoryCardRow
 	return data.stories;
 }
 
+/** Newest stories credited to a performer (on story sites, the author). */
+export async function fetchStoriesBy(performerId: string, limit = 12): Promise<StoryCardRow[]> {
+	const data = await gqlClient.query({
+		stories: { __args: { filter: { performerIds: [performerId] }, limit }, ...STORY_CARD }
+	});
+	return data.stories;
+}
+
+/** Other stories sharing the most tags with one. */
+export async function fetchSimilarStories(id: string, limit = 12): Promise<StoryCardRow[]> {
+	const data = await gqlClient.query({ similarStories: { __args: { id, limit }, ...STORY_CARD } });
+	return data.similarStories;
+}
+
 /** Stories the user stopped partway, most recently read first. */
 export async function fetchContinueReading(limit = 20): Promise<StoryCardRow[]> {
 	const data = await gqlClient.query({

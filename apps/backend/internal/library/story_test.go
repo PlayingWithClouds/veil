@@ -48,3 +48,39 @@ func TestBranchingStory(t *testing.T) {
 func childOf(chapter, parent schema.StoryChapter, choice string) bool {
 	return chapter.Parent != nil && *chapter.Parent == parent.Id && chapter.Choice != nil && *chapter.Choice == choice
 }
+
+// TestSimilarStories ranks other stories by the tags they share with one,
+// leaving out the story itself and stories sharing none.
+func TestSimilarStories(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	ids := map[string]string{}
+	for _, entry := range []struct {
+		id   string
+		tags []string
+	}{
+		{"origin", []string{"Lake", "Summer", "Romance"}},
+		{"close", []string{"Lake", "Summer"}},
+		{"loose", []string{"Romance", "Office"}},
+		{"none", []string{"Office"}},
+	} {
+		story := &plugins.Story{ExternalID: entry.id, SourceURL: "https://site.test/" + entry.id, Title: entry.id, Tags: entry.tags}
+		ref, err := library.IngestFound(ctx, "site", []*plugins.ScrapeResult{{Type: plugins.MediaTypeStory, Story: story}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[entry.id] = ref.Id
+	}
+
+	similar, err := library.SimilarStories(ctx, ids["origin"], 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	titles := []string{}
+	for _, story := range similar {
+		titles = append(titles, story.Title)
+	}
+	if len(titles) != 2 || titles[0] != "close" || titles[1] != "loose" {
+		t.Errorf("similar = %v, want [close loose]", titles)
+	}
+}

@@ -12,6 +12,8 @@ extend type Query {
   stories(filter: FilterInput, limit: Int, offset: Int): [Story!]!
   storyCount(filter: FilterInput): Int!
   story(id: ID!): Story
+  # Other stories sharing the most tags with the story (default 12).
+  similarStories(id: ID!, limit: Int): [Story!]!
   posts(filter: FilterInput, limit: Int, offset: Int): [Post!]!
   postCount(filter: FilterInput): Int!
   post(id: ID!): Post
