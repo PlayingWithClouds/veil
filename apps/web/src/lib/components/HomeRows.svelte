@@ -49,6 +49,7 @@
 	import {
 		videoUrl,
 		camUrl,
+		camsUrl,
 		audioUrl,
 		audiosUrl,
 		storiesUrl,
@@ -190,7 +191,7 @@
 			{/snippet}
 		</Shelf>
 
-		<Shelf title="Live now" items={live} key={liveKey} itemWidth={LIVE_WIDTH}>
+		<Shelf title="Live now" items={live} key={liveKey} itemWidth={LIVE_WIDTH} href={camsUrl()}>
 			{#snippet card(item)}
 				{#if item.recording}
 					<RecordingCard recording={item.recording} onclick={() => openRecording(item.recording)} />

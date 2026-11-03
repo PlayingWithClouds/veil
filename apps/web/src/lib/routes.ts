@@ -107,6 +107,11 @@ export function collectionUrl(id: string): string {
 	return `/collections/${encodeURIComponent(id)}`;
 }
 
+/** The cams page: recordings, the user's rooms and the rooms live now. */
+export function camsUrl(): string {
+	return '/cams';
+}
+
 /** One cam room's live stream. */
 export function camUrl(id: string): string {
 	return `/cams/${encodeURIComponent(id)}`;
