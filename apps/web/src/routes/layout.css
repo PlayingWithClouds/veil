@@ -1565,6 +1565,31 @@
 	color: var(--color-error);
 }
 
+/* A grid of cards, at most --grid-columns (5) across: cards are at least
+   --card-min wide, and never narrower than a fifth of the row. */
+.card-grid {
+	--grid-columns: 5;
+	--grid-gap: 1rem;
+	display: grid;
+	column-gap: var(--grid-gap);
+	row-gap: 2rem;
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(
+			max(
+				var(--card-min, 260px),
+				calc((100% - (var(--grid-columns) - 1) * var(--grid-gap)) / var(--grid-columns))
+			),
+			1fr
+		)
+	);
+}
+@media (width < 720px) {
+	.card-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* Cards rise in one after another; --rise-delay staggers a batch. */
 .rise-in {
 	animation: feed-card-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;

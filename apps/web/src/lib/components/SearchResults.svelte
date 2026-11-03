@@ -1,7 +1,10 @@
 <!--
 	A search across the sites, shown as it comes in and never reshuffled:
 	each site's best four take the top twenty places in the order the sites
-	answer, the rest follows sites taking turns (SearchLayout). Scrolling on
+	answer, the rest follows sites taking turns (SearchLayout). The first
+	five fill a spotlight (the best match in a large frame, lighting the
+	shared glow), the rest a grid at most five across; a line on top says
+	how many sites answered while they still are. Scrolling on
 	asks the sites for their next page until none has more. Every six grid
 	rows a row breaks the grid up: performers by that name, picks for you,
 	your favourites. A site that answered the same search within six hours
@@ -10,23 +13,40 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import Shelf from '$lib/components/Shelf.svelte';
+	import VideoSpotlight from '$lib/components/VideoSpotlight.svelte';
 	import MemberCard from '$lib/components/cards/MemberCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
-	import { fetchPerformers, fetchVideosMatching, type MemberRow, type VideoCardRow } from '$lib/library';
+	import {
+		fetchPerformers,
+		fetchVideosMatching,
+		type MemberRow,
+		type VideoCardRow
+	} from '$lib/library';
 	import { fetchRecommendedVideos } from '$lib/home';
 	import { searchPage, sitePreferences, type SearchBatchRow, type SearchPage } from '$lib/search';
 	import { SearchLayout, TOP_PLACES } from '$lib/searchLayout';
 	import { logEvent, resetShown } from '$lib/events';
+	import { pluginForUrl, siteDisplayName } from '$lib/plugins';
+	import { sites as installedSites } from '$lib/stores/sites';
 	import { videoUrl } from '$lib/routes';
 	import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 
 	// Grid rows between two breaking rows, after the top places.
 	const SECTION_ROWS = 6;
-	// The grid's card width and gap (px), to count its columns.
+	// The grid's card width, gap (px) and most columns (card-grid), to count its columns.
 	const CARD_MIN_WIDTH = 260;
 	const GRID_GAP = 16;
+	const MAX_COLUMNS = 5;
+	// Results in the spotlight, before the grid.
+	const SPOTLIGHT_COUNT = 5;
+	// Placeholder cards while the sites are asked.
+	const SKELETON_COUNT = 10;
+	// Cards rise in this far apart, up to RISE_MAX_DELAY_MS.
+	const RISE_STEP_MS = 30;
+	const RISE_MAX_DELAY_MS = 450;
 	// Videos in a breaking row.
 	const ROW_VIDEOS = 8;
 	const VIDEO_WIDTH = 260;
@@ -87,6 +107,9 @@
 	let favoritePool: Promise<VideoCardRow[]> | null = null;
 
 	let sections = $derived(splitSections(videos));
+	let spotlight = $derived(
+		videos.slice(0, SPOTLIGHT_COUNT).map((video) => ({ video, reason: siteOf(video) }))
+	);
 
 	$effect(() => {
 		const searchText = query;
@@ -113,8 +136,23 @@
 	/** SECTION_ROWS full rows of the grid at its current width. */
 	function sectionSize(): number {
 		const width = container?.clientWidth ?? 0;
-		const columns = Math.max(1, Math.floor((width + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP)));
+		const fitting = Math.floor((width + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP));
+		const columns = Math.min(MAX_COLUMNS, Math.max(1, fitting));
 		return columns * SECTION_ROWS;
+	}
+
+	/** "On xVideos": the site a result came from, for the spotlight. */
+	function siteOf(video: VideoCardRow): string | null {
+		const sourceUrl = video.sources[0]?.url;
+		if (!sourceUrl) return null;
+		const plugin = pluginForUrl(sourceUrl, $installedSites);
+		if (!plugin) return null;
+		return `On ${siteDisplayName(plugin.name, $installedSites)}`;
+	}
+
+	/** How long a card waits before rising in, so arriving results cascade. */
+	function riseDelay(offset: number): string {
+		return `${Math.min((offset % 10) * RISE_STEP_MS, RISE_MAX_DELAY_MS)}ms`;
 	}
 
 	/** Stops listening to the running page and the release timer. */
@@ -163,7 +201,15 @@
 		sitesAnswered = 0;
 		newThisPage = new Map();
 		returnedThisPage = new Map();
-		const running = searchPage('VIDEO', searchText, pageNumber, plugins, activeFilter, null, receive);
+		const running = searchPage(
+			'VIDEO',
+			searchText,
+			pageNumber,
+			plugins,
+			activeFilter,
+			null,
+			receive
+		);
 		current = running;
 		try {
 			await running.done;
@@ -283,7 +329,8 @@
 		if (index % 3 === 2) {
 			favoritePool ??= fetchVideosMatching({ text: query, favorite: true }, 60, 0);
 			const favorites = takeUnseen(await favoritePool);
-			if (favorites.length > 0) return { title: 'Your favourites', videos: favorites, performers: [] };
+			if (favorites.length > 0)
+				return { title: 'Your favourites', videos: favorites, performers: [] };
 		}
 		recommendedPool ??= fetchPicks();
 		return { title: 'Picked for you', videos: takeUnseen(await recommendedPool), performers: [] };
@@ -328,32 +375,57 @@
 
 <div class="flex flex-col gap-8" bind:this={container}>
 	{#if searching && pageNumber === 0 && sitesAsked > 0}
-		<p class="text-base-content/50 -mt-4 text-sm">
-			{sitesAnswered} of {sitesAsked} sites answered
-		</p>
+		<div class="-mt-4 flex items-center gap-3">
+			<span class="chip pointer-events-none">
+				<span class="loading loading-spinner loading-xs"></span>
+				{sitesAnswered} of {sitesAsked} sites answered
+			</span>
+			<span class="h-1 w-40 overflow-hidden rounded-full bg-white/10">
+				<span
+					class="bg-primary block h-full rounded-full transition-[width] duration-300"
+					style:width="{(sitesAnswered / sitesAsked) * 100}%"
+				></span>
+			</span>
+		</div>
 	{/if}
 	{#if error}
 		<p class="text-error text-sm">{error}</p>
 	{/if}
 
-	{#each sections as section, index (index)}
-		<div
-			class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 max-md:grid-cols-1"
-		>
-			{#each section as video, offset (video.id)}
-				<SceneCard
-					{video}
-					shown={{ surface: 'search', position: sectionStart(index) + offset }}
-					onclick={() => goto(videoUrl(video.id))}
-				/>
-			{/each}
+	{#if spotlight.length > 0}
+		<div class="rise-in">
+			<VideoSpotlight
+				picks={spotlight}
+				surface="search"
+				label="Best match"
+				onopen={(video) => goto(videoUrl(video.id))}
+			/>
 		</div>
+	{/if}
+
+	{#each sections as section, index (index)}
+		{@const gridVideos = index === 0 ? section.slice(SPOTLIGHT_COUNT) : section}
+		{@const skipped = index === 0 ? SPOTLIGHT_COUNT : 0}
+		{#if gridVideos.length > 0}
+			<div class="card-grid">
+				{#each gridVideos as video, offset (video.id)}
+					<div class="rise-in" style:--rise-delay={riseDelay(offset)}>
+						<SceneCard
+							{video}
+							shown={{ surface: 'search', position: sectionStart(index) + skipped + offset }}
+							onclick={() => goto(videoUrl(video.id))}
+						/>
+					</div>
+				{/each}
+			</div>
+		{/if}
 		{#if rowShown[index] && rows[index]}
 			{@const row = rows[index]}
-			<div class="bg-base-200/60 -mx-3 rounded-2xl p-3">
+			<div class="-mx-3 rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/5">
 				{#if row.performers.length > 0}
 					<Shelf
 						title={row.title}
+						subtitle="named “{query}”"
 						items={row.performers}
 						key={(performer) => performer.id}
 						itemWidth={PERFORMER_WIDTH}
@@ -363,7 +435,12 @@
 						{/snippet}
 					</Shelf>
 				{:else}
-					<Shelf title={row.title} items={row.videos} key={(video) => video.id} itemWidth={VIDEO_WIDTH}>
+					<Shelf
+						title={row.title}
+						items={row.videos}
+						key={(video) => video.id}
+						itemWidth={VIDEO_WIDTH}
+					>
 						{#snippet card(video)}
 							<SceneCard {video} onclick={() => goto(videoUrl(video.id))} />
 						{/snippet}
@@ -374,9 +451,33 @@
 	{/each}
 
 	{#if !searching && finished && videos.length === 0}
-		<p class="text-base-content/50 text-sm">No site found anything for this search.</p>
+		<div class="flex flex-col items-center gap-3 py-16 text-center">
+			<span class="flex h-14 w-14 items-center justify-center rounded-full bg-white/5">
+				<MagnifyingGlassIcon size={26} class="opacity-50" />
+			</span>
+			<p class="font-medium">No site found anything for “{query}”</p>
+			<p class="text-base-content/50 text-sm">Try fewer words, or another spelling of the name.</p>
+		</div>
 	{:else if searching && videos.length === 0}
-		<p class="text-base-content/50 text-sm">Asking the sites…</p>
+		<div class="flex flex-col gap-8" aria-hidden="true">
+			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
+				<div class="skeleton aspect-video rounded-2xl"></div>
+				<div class="flex flex-col gap-2 max-lg:hidden">
+					{#each { length: SPOTLIGHT_COUNT }, position (position)}
+						<div class="skeleton flex-1 rounded-xl"></div>
+					{/each}
+				</div>
+			</div>
+			<div class="card-grid">
+				{#each { length: SKELETON_COUNT }, position (position)}
+					<div class="flex flex-col gap-2">
+						<div class="skeleton aspect-video w-full rounded-xl"></div>
+						<div class="skeleton h-3.5 w-3/4 rounded"></div>
+						<div class="skeleton h-3 w-1/3 rounded"></div>
+					</div>
+				{/each}
+			</div>
+		</div>
 	{/if}
 
 	<ScrollSentinel onvisible={loadMore} loading={searching && videos.length > 0} done={finished} />

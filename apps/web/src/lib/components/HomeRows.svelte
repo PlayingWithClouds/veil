@@ -1,6 +1,6 @@
 <!--
 	Home without a search: the top recommendations in a spotlight, then
-	Continue watching, Live now, more For you (three rows of six), Continue
+	Continue watching, Live now, more For you (three rows of five), Continue
 	reading, the newest stories and audio, the user's performers and the
 	sites. Recommendations follow the library filter; while one is set, only
 	the spotlight and For you show. Videos being watched are never
@@ -68,9 +68,9 @@
 	const STORY_WIDTH = 150;
 	const AUDIO_WIDTH = 180;
 	const SITE_WIDTH = 150;
-	// Picks in the spotlight; For you fills three rows of six after them.
+	// Picks in the spotlight; For you fills three rows of five after them.
 	const SPOTLIGHT_COUNT = 5;
-	const FOR_YOU_COUNT = 18;
+	const FOR_YOU_COUNT = 15;
 	// Cards of For you rise in this far apart, up to RISE_MAX_DELAY_MS.
 	const RISE_STEP_MS = 30;
 	const RISE_MAX_DELAY_MS = 450;
@@ -208,7 +208,7 @@
 			<!-- The engine's own picks, so their surface is "home": the one it learns from.
 			     Positions continue after the spotlight's. -->
 			<div
-				class="grid grid-cols-6 gap-x-4 gap-y-8 max-xl:grid-cols-4 max-lg:grid-cols-3 max-md:grid-cols-1"
+				class="grid grid-cols-5 gap-x-4 gap-y-8 max-xl:grid-cols-4 max-lg:grid-cols-3 max-md:grid-cols-1"
 			>
 				{#each forYou as item, index (item.video.id)}
 					<div class="rise-in" style:--rise-delay={riseDelay(index)}>

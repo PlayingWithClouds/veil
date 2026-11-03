@@ -29,10 +29,12 @@
 		picks: RecommendedVideo[];
 		// The surface the picks are logged as shown on, at positions 0….
 		surface: string;
+		// The line over the featured title, e.g. "Top pick for you", "Best match".
+		label?: string;
 		onopen: (video: VideoCardRow) => void;
 	}
 
-	let { picks, surface, onopen }: Props = $props();
+	let { picks, surface, label = 'Top pick for you', onopen }: Props = $props();
 
 	// Pointing at a pick this long puts it in the frame, so passing over the list doesn't.
 	const SELECT_DELAY_MS = 350;
@@ -161,7 +163,7 @@
 		>
 			<div class="min-w-0">
 				<p class="text-xs font-semibold tracking-wide text-white/90 uppercase">
-					Top pick for you{#if selected.reason}<span class="text-white/65 normal-case">
+					{label}{#if selected.reason}<span class="text-white/65 normal-case">
 							· {selected.reason}</span
 						>{/if}
 				</p>
