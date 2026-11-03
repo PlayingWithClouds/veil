@@ -54,8 +54,8 @@ func (r *camModelResolver) UserState(ctx context.Context, obj *schema.CamModel) 
 }
 
 // WatchCam is the resolver for the watchCam field.
-func (r *mutationResolver) WatchCam(ctx context.Context, id string) (*model.Playable, error) {
-	url, mimeType, err := r.cams.Watch(ctx, id)
+func (r *mutationResolver) WatchCam(ctx context.Context, id string, preview *bool) (*model.Playable, error) {
+	url, mimeType, err := r.cams.Watch(ctx, id, preview != nil && *preview)
 	if err != nil {
 		return nil, err
 	}

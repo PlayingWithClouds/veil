@@ -128,7 +128,7 @@ type Mutation {
   deleteAutomation(id: ID!): Boolean!
   runAutomation(id: ID!, subjects: [RecordRefInput!], dryRun: Boolean): AutomationRun!
   undoAutomationRun(id: ID!): AutomationRun!
-  watchCam(id: ID!): Playable!
+  watchCam(id: ID!, preview: Boolean): Playable!
   setCamAutoRecord(id: ID!, on: Boolean!, quality: String): CamModel!
   linkCamPerformer(id: ID!, performerId: ID): CamModel!
   startRecording(id: ID!, quality: String, fromSecondsAgo: Int): Job!

@@ -1304,6 +1304,9 @@ export default {
                     "id": [
                         2,
                         "ID!"
+                    ],
+                    "preview": [
+                        4
                     ]
                 }
             ],

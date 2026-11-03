@@ -341,7 +341,4 @@ func TestManifestURLHandsOutCachedBlobsDirectly(t *testing.T) {
 	if err != nil || playable != blobURL {
 		t.Errorf("playable = %q, %v", playable, err)
 	}
-	if _, caching := testCache.service.inflight.Load(blobURL); caching {
-		t.Error("started caching a cached blob")
-	}
 }

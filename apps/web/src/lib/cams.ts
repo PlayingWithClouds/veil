@@ -333,10 +333,16 @@ export async function fetchCam(id: string): Promise<CamRow | null> {
 	return data.camModel ?? null;
 }
 
-/** A playable URL for a room's live stream. */
-export async function watchCam(id: string): Promise<{ url: string; mimeType: string }> {
+/**
+ * A playable URL for a room's live stream. A preview (a card's hover) starts
+ * no live buffer, so it can't be rewound.
+ */
+export async function watchCam(
+	id: string,
+	preview = false
+): Promise<{ url: string; mimeType: string }> {
 	const data = await gqlClient.mutation({
-		watchCam: { __args: { id }, url: true, mimeType: true }
+		watchCam: { __args: { id, preview }, url: true, mimeType: true }
 	});
 	return { url: backendUrl(data.watchCam.url), mimeType: data.watchCam.mimeType };
 }

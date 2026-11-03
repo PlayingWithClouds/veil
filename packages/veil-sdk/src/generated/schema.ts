@@ -1551,7 +1551,7 @@ export interface MutationGenqlSelection{
     deleteAutomation?: { __args: {id: Scalars['ID']} }
     runAutomation?: (AutomationRunGenqlSelection & { __args: {id: Scalars['ID'], subjects?: (RecordRefInput[] | null), dryRun?: (Scalars['Boolean'] | null)} })
     undoAutomationRun?: (AutomationRunGenqlSelection & { __args: {id: Scalars['ID']} })
-    watchCam?: (PlayableGenqlSelection & { __args: {id: Scalars['ID']} })
+    watchCam?: (PlayableGenqlSelection & { __args: {id: Scalars['ID'], preview?: (Scalars['Boolean'] | null)} })
     setCamAutoRecord?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], on: Scalars['Boolean'], quality?: (Scalars['String'] | null)} })
     linkCamPerformer?: (CamModelGenqlSelection & { __args: {id: Scalars['ID'], performerId?: (Scalars['ID'] | null)} })
     startRecording?: (JobGenqlSelection & { __args: {id: Scalars['ID'], quality?: (Scalars['String'] | null), fromSecondsAgo?: (Scalars['Int'] | null)} })

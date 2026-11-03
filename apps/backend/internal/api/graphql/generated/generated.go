@@ -706,7 +706,7 @@ type ComplexityRoot struct {
 		UpdatePluginSettings      func(childComplexity int, plugin string, values []*model.PluginSettingValueInput) int
 		UpdatePlugins             func(childComplexity int) int
 		UpdateSettings            func(childComplexity int, values interface{}) int
-		WatchCam                  func(childComplexity int, id string) int
+		WatchCam                  func(childComplexity int, id string, preview *bool) int
 	}
 
 	Notification struct {
@@ -1471,7 +1471,7 @@ type MutationResolver interface {
 	DeleteAutomation(ctx context.Context, id string) (bool, error)
 	RunAutomation(ctx context.Context, id string, subjects []*schema.RecordRef, dryRun *bool) (*schema.AutomationRun, error)
 	UndoAutomationRun(ctx context.Context, id string) (*schema.AutomationRun, error)
-	WatchCam(ctx context.Context, id string) (*model.Playable, error)
+	WatchCam(ctx context.Context, id string, preview *bool) (*model.Playable, error)
 	SetCamAutoRecord(ctx context.Context, id string, on bool, quality *string) (*schema.CamModel, error)
 	LinkCamPerformer(ctx context.Context, id string, performerID *string) (*schema.CamModel, error)
 	StartRecording(ctx context.Context, id string, quality *string, fromSecondsAgo *int) (*jobs.Job, error)
@@ -5312,7 +5312,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.WatchCam(childComplexity, args["id"].(string)), true
+		return e.ComplexityRoot.Mutation.WatchCam(childComplexity, args["id"].(string), args["preview"].(*bool)), true
 
 	case "Notification.at":
 		if e.ComplexityRoot.Notification.At == nil {
@@ -9019,8 +9019,9 @@ extend type Query {
 }
 
 extend type Mutation {
-  # A playable live URL for a room (with rewind through the live buffer).
-  watchCam(id: ID!): Playable!
+  # A playable live URL for a room (with rewind through the live buffer). A
+  # preview (a card's hover) is relayed as it comes and starts no buffer.
+  watchCam(id: ID!, preview: Boolean): Playable!
   # quality: "best", "720p", …
   setCamAutoRecord(id: ID!, on: Boolean!, quality: String): CamModel!
   # Links the room to a library performer; null unlinks.
@@ -15719,6 +15720,14 @@ func (ec *executionContext) field_Mutation_watchCam_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "preview",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["preview"] = arg1
 	return args, nil
 }
 
@@ -27516,7 +27525,7 @@ func (ec *executionContext) _Mutation_watchCam(ctx context.Context, field graphq
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().WatchCam(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Mutation().WatchCam(ctx, fc.Args["id"].(string), fc.Args["preview"].(*bool))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.Playable) graphql.Marshaler {

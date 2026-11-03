@@ -16,8 +16,9 @@ extend type Query {
 }
 
 extend type Mutation {
-  # A playable live URL for a room (with rewind through the live buffer).
-  watchCam(id: ID!): Playable!
+  # A playable live URL for a room (with rewind through the live buffer). A
+  # preview (a card's hover) is relayed as it comes and starts no buffer.
+  watchCam(id: ID!, preview: Boolean): Playable!
   # quality: "best", "720p", …
   setCamAutoRecord(id: ID!, on: Boolean!, quality: String): CamModel!
   # Links the room to a library performer; null unlinks.

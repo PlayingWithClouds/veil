@@ -146,7 +146,9 @@ func (s *Service) requirePerformer(ctx context.Context, performerID string) erro
 
 // Watch resolves a room to a live stream and returns the proxy URL the player
 // loads and its mime type. A room that cannot be resolved is stored as offline.
-func (s *Service) Watch(ctx context.Context, id string) (playableURL, mimeType string, err error) {
+// A preview is relayed without the live buffer, so a card's hover doesn't keep
+// downloading the room after it ends.
+func (s *Service) Watch(ctx context.Context, id string, preview bool) (playableURL, mimeType string, err error) {
 	camModel, err := s.load(ctx, id)
 	if err != nil {
 		return "", "", err
@@ -161,7 +163,11 @@ func (s *Service) Watch(ctx context.Context, id string) (playableURL, mimeType s
 		return "", "", fmt.Errorf("%w: %s: %v", ErrOffline, camModel.DisplayName, err)
 	}
 	s.recordOnline(ctx, id, true)
-	playableURL, err = s.services.Proxy.LiveManifestURL(ctx, result, id)
+	bufferedRoom := id
+	if preview {
+		bufferedRoom = ""
+	}
+	playableURL, err = s.services.Proxy.LiveManifestURL(ctx, result, bufferedRoom)
 	if err != nil {
 		return "", "", err
 	}

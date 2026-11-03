@@ -31,7 +31,7 @@
 		async function attach() {
 			let url: string;
 			try {
-				url = (await watchCam(id)).url;
+				url = (await watchCam(id, true)).url;
 			} catch {
 				return;
 			}

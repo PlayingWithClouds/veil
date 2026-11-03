@@ -31,7 +31,9 @@ func (s *Service) SetCache(c *stream.CacheService) {
 	s.cache = c
 }
 
-// Resolve returns a direct playable URL for the given provider URL.
+// Resolve returns a direct playable URL for the given provider URL. Nothing
+// is downloaded here: playback buffers what it plays through the stream
+// proxy, and downloads cache the whole stream themselves.
 func (s *Service) Resolve(ctx context.Context, providerURL string) (*plugins.ResolveResult, error) {
 	if s.cache != nil {
 		if cached, ok := s.cache.Lookup(ctx, providerURL); ok {
@@ -39,16 +41,7 @@ func (s *Service) Resolve(ctx context.Context, providerURL string) (*plugins.Res
 			return cached, nil
 		}
 	}
-
-	result, err := s.doResolve(ctx, providerURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.cache != nil {
-		s.cache.StartCaching(result, result.Headers)
-	}
-	return result, nil
+	return s.doResolve(ctx, providerURL)
 }
 
 func (s *Service) doResolve(ctx context.Context, providerURL string) (*plugins.ResolveResult, error) {

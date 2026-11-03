@@ -49,6 +49,8 @@ type Proxy struct {
 	baseURL string // public backend URL, e.g. "http://localhost:8080"
 	// liveBuffer keeps the last minutes of watched live rooms; nil disables rewinding.
 	liveBuffer *livebuffer.Manager
+	// mp4 buffers the MP4 files being played a little ahead of the player.
+	mp4 *mp4Buffer
 }
 
 // SetLiveBuffer turns on rewinding for live room sessions.
@@ -57,13 +59,13 @@ func (p *Proxy) SetLiveBuffer(buffer *livebuffer.Manager) {
 }
 
 func NewProxy(cs *CacheService, kv *cache.Client, baseURL string) *Proxy {
-	return &Proxy{cache: cs, kv: kv, baseURL: baseURL}
+	return &Proxy{cache: cs, kv: kv, baseURL: baseURL, mp4: newMP4Buffer(cs)}
 }
 
 // ManifestURL returns a local proxy URL for the given resolved stream.
 // For HLS: stores headers in a kv session and returns the proxy manifest URL.
-// For MP4: returns the blob store URL if cached, otherwise returns a proxy URL that
-// forwards Range requests to the CDN while background-caching the file.
+// For MP4: returns the blob store URL if cached, otherwise a proxy URL that
+// serves the file through the read-ahead buffer (mp4Buffer).
 func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) (string, error) {
 	// A cache hit is already a local blob. Proxying it would fetch it from
 	// ourselves and cache a second copy.
@@ -75,7 +77,6 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 		if err != nil {
 			return result.URL, nil
 		}
-		p.cache.StartCaching(result, result.Headers)
 		return p.baseURL + "/api/stream/mp4?s=" + id + "&u=" + encURL(result.URL), nil
 	}
 
@@ -92,7 +93,8 @@ func (p *Proxy) ManifestURL(ctx context.Context, result *plugins.ResolveResult) 
 // the blob store.
 //
 // roomID names the cam room: the live buffer keeps its last minutes, and the
-// playlists served to the player cover that window.
+// playlists served to the player cover that window. An empty roomID relays
+// the broadcast as it comes, buffering nothing.
 func (p *Proxy) LiveManifestURL(ctx context.Context, result *plugins.ResolveResult, roomID string) (string, error) {
 	id, err := p.newSession(ctx, result.Headers, true, roomID)
 	if err != nil {
@@ -368,7 +370,11 @@ func (p *Proxy) serveMP4(w http.ResponseWriter, r *http.Request) {
 	}
 
 	headers, _ := p.loadSession(r.Context(), sessID)
+	if p.mp4.serve(w, r, mediaURL, headers) {
+		return
+	}
 
+	// The origin can't be buffered in chunks: relay the range asked for.
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, mediaURL, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

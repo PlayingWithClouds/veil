@@ -7,8 +7,9 @@
 //
 // MP4: the file is streamed directly from the source into the blob store.
 //
-// The "inflight" sync.Map deduplicates concurrent background caches for the
-// same URL so only one goroutine downloads a given stream at a time.
+// Whole streams are cached only for downloads (CacheNow). Playback caches
+// what it plays: HLS segments as the player fetches them, MP4 files in chunks
+// a little ahead of the player (mp4Buffer).
 package stream
 
 import (
@@ -52,9 +53,8 @@ type cacheEntry struct {
 
 // CacheService caches resolved streams to the blob store and tracks them in the kv cache.
 type CacheService struct {
-	kv       *cache.Client
-	storage  *storage.Client
-	inflight sync.Map // set of URLs currently being cached
+	kv      *cache.Client
+	storage *storage.Client
 
 	// operations holds the start time of every running cache operation, so
 	// eviction keeps the blobs they write or reuse.
@@ -128,21 +128,6 @@ func (s *CacheService) Lookup(ctx context.Context, originalURL string) (*plugins
 // and never copied into the stream cache.
 func (s *CacheService) IsRecording(blobURL string) bool {
 	return strings.HasPrefix(blobURL, s.storage.DirectURL(storage.RecordingPrefix))
-}
-
-// StartCaching begins caching a stream in the background; no-ops if already in progress.
-func (s *CacheService) StartCaching(result *plugins.ResolveResult, headers map[string]string) {
-	if _, loaded := s.inflight.LoadOrStore(result.URL, struct{}{}); loaded {
-		return
-	}
-	go func() {
-		defer s.inflight.Delete(result.URL)
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
-		defer cancel()
-		if _, err := s.cache(ctx, result, headers, nil); err != nil {
-			log.Printf("stream cache (bg): %s: %v", result.URL, err)
-		}
-	}()
 }
 
 // CacheNow caches a stream synchronously, reporting progress via the optional callback.

@@ -122,13 +122,13 @@ func TestMergeByViewersKeepsARepeatedRoomOnce(t *testing.T) {
 func TestWatchResolvesTheRoomAndRecordsItsState(t *testing.T) {
 	f := newFixture(t, [][]int{{0}}, false)
 	f.sites.live = nil
-	playableURL, mimeType, err := f.service.Watch(f.ctx, f.roomID)
+	playableURL, mimeType, err := f.service.Watch(f.ctx, f.roomID, false)
 	if err != nil || playableURL != "http://backend.test/api/stream/manifest?live=https://edge.example/nova.m3u8" || mimeType != "application/x-mpegURL" {
 		t.Fatalf("watch = %q %q %v", playableURL, mimeType, err)
 	}
 
 	f.sites.setOffline("nova", true)
-	if _, _, err := f.service.Watch(f.ctx, f.roomID); err == nil {
+	if _, _, err := f.service.Watch(f.ctx, f.roomID, false); err == nil {
 		t.Fatal("watching an offline room succeeded")
 	}
 	camModel, _ := f.service.load(f.ctx, f.roomID)
