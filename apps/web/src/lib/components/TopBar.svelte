@@ -2,7 +2,8 @@
 	Global top bar: logo on the left, the search (with "Who is this?") in the
 	middle with the library filter's chip row under it (HeaderFilters),
 	notifications on the right. A search opens home with ?q=, which
-	asks every site and stores what they return. Phones get
+	asks every site and stores what they return; on audio and story pages
+	it opens their overview with ?q= instead, asking their sites. Phones get
 	a slim bar floating over the page that slides away while scrolling down
 	(chromeHidden), with a back button on detail pages.
 -->
@@ -13,7 +14,7 @@
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
-	import { activeNavIndex } from '$lib/navigation';
+	import { activeNavIndex, searchScopeOf } from '$lib/navigation';
 	import WhoIsThis from '$lib/components/WhoIsThis.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
 	import HeaderFilters from '$lib/components/HeaderFilters.svelte';
@@ -22,6 +23,13 @@
 
 	// Top-level pages show the logo; detail pages a back button.
 	let onTopLevelPage = $derived(activeNavIndex(page.url.pathname) !== -1);
+	// Audio and story pages search their own sites; everywhere else, the video sites.
+	let scope = $derived(searchScopeOf(page.url.pathname));
+
+	// The box shows the search of the page it's on.
+	$effect(() => {
+		query = page.url.searchParams.get('q') ?? '';
+	});
 
 	// Measured, not assumed: sticky rows below (top-chrome) must sit flush under it.
 	let compactHeaderHeight = $state(0);
@@ -33,15 +41,15 @@
 		);
 	});
 
-	/** Opens home searching the sites for the typed query. */
+	/** Opens the scope's page (home, audio, stories) searching its sites for the typed query. */
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		const trimmed = query.trim();
 		if (trimmed === '') {
-			goto('/');
+			goto(scope.path);
 			return;
 		}
-		goto(`/?${new URLSearchParams({ q: trimmed })}`);
+		goto(`${scope.path}?${new URLSearchParams({ q: trimmed })}`);
 	}
 </script>
 
@@ -56,7 +64,7 @@
 			id="global-search"
 			type="search"
 			bind:value={query}
-			placeholder="Search the sites"
+			placeholder={scope.placeholder}
 			class="h-full min-w-0 flex-1 bg-transparent px-2.5 text-[15px] outline-none"
 		/>
 		<WhoIsThis />

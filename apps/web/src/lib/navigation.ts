@@ -30,6 +30,20 @@ export const navLinks: NavLink[] = [
 	{ label: 'Plugins', icon: PlugsIcon, href: pluginsUrl() }
 ];
 
+/** Where the top bar's search goes and what it says it searches. */
+export interface SearchScope {
+	path: string;
+	placeholder: string;
+}
+
+/** The search scope of a page: audio and story pages search their own sites. */
+export function searchScopeOf(pathname: string): SearchScope {
+	if (pathname.startsWith(audiosUrl())) return { path: audiosUrl(), placeholder: 'Search audio' };
+	if (pathname.startsWith(storiesUrl()))
+		return { path: storiesUrl(), placeholder: 'Search stories' };
+	return { path: '/', placeholder: 'Search the sites' };
+}
+
 /** Whether the link points at the page at pathname. */
 export function isNavActive(link: NavLink, pathname: string): boolean {
 	if (link.exact) return pathname === link.href;

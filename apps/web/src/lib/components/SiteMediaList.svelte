@@ -1,17 +1,20 @@
 <!--
-	A page of one media kind beyond videos (audio, stories): the library's,
-	newest first, or with a search (?q=) what the sites that list the kind
-	answer, as they answer. "Browse a site" stores a page of one site's
-	catalog.
+	A page of one media kind beyond videos (audio, stories). With a search
+	from the top bar (?q=), what the sites that list the kind answer, as they
+	answer. With a tag (?tag=), the library's media carrying it. Otherwise the
+	overview's rows, then everything, most recently added first. "Browse a
+	site" stores a page of one site's catalog.
 -->
 <script lang="ts" generics="Item extends { id: string }">
 	import { untrack, type Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
+	import { tagLabel } from '$lib/components/TagChips.svelte';
 	import { browse } from '$lib/library';
+	import { fetchTagName, type MediaListing } from '$lib/media';
 	import { listers } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { searchPage, type SearchBatchRow, type SearchPage } from '$lib/search';
@@ -21,18 +24,20 @@
 	interface Props {
 		title: string;
 		kind: 'AUDIO' | 'STORY';
-		// What a search asks the sites for, by name ("stories").
+		// What the page lists, by name ("stories").
 		noun: string;
 		// A page of the library's items.
-		load: (limit: number, offset: number) => Promise<Item[]>;
+		load: (limit: number, offset: number, listing: MediaListing) => Promise<Item[]>;
 		// The items of this kind in one site's search answer.
 		pick: (batch: SearchBatchRow) => Item[];
 		// Smallest card width in px.
 		cardWidth: number;
 		card: Snippet<[Item]>;
+		// Rows shown above everything when there's no search or tag.
+		overview?: Snippet;
 	}
 
-	let { title, kind, noun, load, pick, cardWidth, card }: Props = $props();
+	let { title, kind, noun, load, pick, cardWidth, card, overview }: Props = $props();
 
 	let items = $state<Item[]>([]);
 	let loading = $state(false);
@@ -40,38 +45,40 @@
 	let error = $state<string | null>(null);
 	let browsePlugin = $state('');
 	let browsing = $state(false);
-	let typed = $state('');
 	let sitesAsked = $state(0);
 	let sitesAnswered = $state(0);
+	let searchPageNumber = $state(0);
+	let tagName = $state<string | null>(null);
 
 	// The running search page, the sites that answered and those with nothing more.
 	let running: SearchPage | null = null;
-	let searchPageNumber = $state(0);
 	let searchSites = new Set<string>();
 	let drySites = new Set<string>();
 	// Counts loads started, so a late answer to an earlier one is dropped.
 	let generation = 0;
 
 	let query = $derived(page.url.searchParams.get('q') ?? '');
+	let tagId = $derived(page.url.searchParams.get('tag') ?? '');
 	let kindSites = $derived(listers($sites, kind));
+	let showOverview = $derived(query === '' && tagId === '');
 
 	$effect(() => {
-		const current = query;
-		untrack(() => {
-			typed = current;
-			void restart(current);
-		});
+		const searchText = query;
+		const tag = tagId;
+		untrack(() => void restart(searchText, tag));
 		return () => running?.cancel();
 	});
 
-	/** Starts over: the library's first page, or the search's. */
-	async function restart(searchText: string) {
+	/** Starts over: the library's first page (all, or one tag's), or the search's. */
+	async function restart(searchText: string, tag: string) {
 		running?.cancel();
 		running = null;
 		generation++;
 		items = [];
 		exhausted = false;
 		error = null;
+		tagName = null;
+		if (tag !== '') void fetchTagName(tag).then((name) => (tagName = name));
 		if (searchText === '') {
 			await loadMore();
 			return;
@@ -92,7 +99,9 @@
 		loading = true;
 		const started = generation;
 		try {
-			const nextPage = await load(PAGE_SIZE, items.length);
+			const listing: MediaListing = {};
+			if (tagId !== '') listing.tagId = tagId;
+			const nextPage = await load(PAGE_SIZE, items.length, listing);
 			if (started !== generation) return;
 			items = [...items, ...nextPage];
 			exhausted = nextPage.length < PAGE_SIZE;
@@ -147,31 +156,18 @@
 		if (batch.exhausted || batch.returned === 0) drySites.add(batch.plugin);
 	}
 
-	/** Puts the typed search in the URL, which starts it. */
-	function submitSearch(event: SubmitEvent) {
-		event.preventDefault();
-		const url = new URL(page.url);
-		const searchText = typed.trim();
-		if (searchText === '') {
-			url.searchParams.delete('q');
-		} else {
-			url.searchParams.set('q', searchText);
-		}
-		goto(url, { keepFocus: true });
-	}
-
-	/** Stores a page of the picked site's catalog, then shows the library again. */
+	/** Stores a page of the picked site's catalog, then shows the overview again. */
 	async function browseSite() {
 		if (!browsePlugin) return;
 		browsing = true;
 		error = null;
 		try {
 			await browse(browsePlugin, kind);
-			if (query !== '') {
+			if (!showOverview) {
 				goto(page.url.pathname);
 				return;
 			}
-			await restart('');
+			await restart('', '');
 		} catch (failure) {
 			error = String(failure);
 		} finally {
@@ -182,7 +178,7 @@
 
 <svelte:head><title>{title} · Veil</title></svelte:head>
 
-<div class="flex flex-col gap-5">
+<div class="flex flex-col gap-8">
 	<PageHeader {title}>
 		{#snippet actions()}
 			{#if kindSites.length > 0}
@@ -208,40 +204,49 @@
 		{/snippet}
 	</PageHeader>
 
-	<form class="flex max-w-xl items-center gap-2" onsubmit={submitSearch}>
-		<label class="bg-base-200 flex h-10 flex-1 items-center gap-2 rounded-lg px-3">
-			<MagnifyingGlassIcon size={16} class="text-base-content/50" />
-			<input
-				type="search"
-				bind:value={typed}
-				placeholder="Search the sites for {noun}"
-				class="min-w-0 flex-1 bg-transparent text-sm outline-none"
-			/>
-		</label>
-		{#if query !== ''}
+	{#if !showOverview}
+		<div class="-mt-4 flex items-center gap-3">
+			<span class="text-base-content/70 text-sm">
+				{#if query !== ''}
+					Searching the sites for <span class="text-base-content font-medium">“{query}”</span>
+					{#if loading && searchPageNumber === 0 && sitesAsked > 0}
+						· {sitesAnswered} of {sitesAsked} answered
+					{/if}
+				{:else}
+					Tagged <span class="text-base-content font-medium">{tagLabel(tagName ?? '…')}</span>
+				{/if}
+			</span>
 			<button
 				type="button"
-				class="text-base-content/60 hover:text-base-content h-10 px-2 text-sm"
-				onclick={() => goto(page.url.pathname)}>Clear</button
+				class="bg-base-200 hover:bg-base-300 flex h-7 items-center gap-1 rounded-full px-3 text-xs"
+				onclick={() => goto(page.url.pathname)}
 			>
-		{/if}
-	</form>
-
-	{#if query !== '' && loading && searchPageNumber === 0 && sitesAsked > 0}
-		<p class="text-base-content/50 -mt-2 text-sm">{sitesAnswered} of {sitesAsked} sites answered</p>
+				<XIcon size={12} /> Clear
+			</button>
+		</div>
 	{/if}
+
 	{#if error}
 		<p class="text-error text-sm">{error}</p>
 	{/if}
 
-	<div
-		class="grid gap-x-4 gap-y-6"
-		style:grid-template-columns="repeat(auto-fill, minmax({cardWidth}px, 1fr))"
-	>
-		{#each items as item (item.id)}
-			{@render card(item)}
-		{/each}
-	</div>
+	{#if showOverview && overview}
+		{@render overview()}
+	{/if}
+
+	<section class="flex flex-col gap-4">
+		{#if showOverview && items.length > 0}
+			<h2 class="text-lg font-semibold">Recently added</h2>
+		{/if}
+		<div
+			class="grid gap-x-4 gap-y-6"
+			style:grid-template-columns="repeat(auto-fill, minmax({cardWidth}px, 1fr))"
+		>
+			{#each items as item (item.id)}
+				{@render card(item)}
+			{/each}
+		</div>
+	</section>
 
 	{#if !loading && items.length === 0}
 		{#if query !== ''}
@@ -251,7 +256,9 @@
 				No {noun} yet, and no installed plugin lists them. Install one on the plugins page.
 			</p>
 		{:else}
-			<p class="text-base-content/50 text-sm">No {noun} yet. Search or browse a site above.</p>
+			<p class="text-base-content/50 text-sm">
+				No {noun} yet. Search from the top bar or browse a site.
+			</p>
 		{/if}
 	{/if}
 

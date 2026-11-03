@@ -13,11 +13,13 @@
 		// CSS aspect ratio, e.g. "16 / 9", "1 / 1", "2 / 3".
 		aspect: string;
 		placeholder: Component;
+		// Drawn instead of the placeholder icon when there's no cover, e.g. a generated one.
+		fallback?: Snippet;
 		onclick: () => void;
 		children?: Snippet;
 	}
 
-	let { src, alt, aspect, placeholder: Placeholder, onclick, children }: Props = $props();
+	let { src, alt, aspect, placeholder: Placeholder, fallback, onclick, children }: Props = $props();
 </script>
 
 <button
@@ -28,6 +30,8 @@
 >
 	{#if src}
 		<img {src} {alt} loading="lazy" use:fadeInImage class="h-full w-full object-cover" />
+	{:else if fallback}
+		{@render fallback()}
 	{:else}
 		<span class="flex h-full w-full items-center justify-center">
 			<Placeholder size={40} class="opacity-20" />

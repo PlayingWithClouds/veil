@@ -3,13 +3,15 @@
 import type {
 	Audio,
 	FieldsSelection,
+	FilterInput,
 	Group,
 	Post,
 	Story,
-	StoryChapter
+	StoryChapter,
+	TagCount
 } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
-import { SOURCE, STREAM } from '$lib/library';
+import { MEMBER, SOURCE, STREAM, type MemberRow } from '$lib/library';
 
 const CREDIT = { id: true, name: true, image: { uri: true } } as const;
 const NAMED = { id: true, name: true } as const;
@@ -34,9 +36,12 @@ export const STORY_CARD = {
 	chapterCount: true,
 	complete: true,
 	cover: { uri: true },
-	performers: { id: true, name: true },
+	performers: CREDIT,
 	sources: { url: true }
 } as const;
+
+/** A tag with how many records carry it. */
+const TAG_COUNT = { count: true, tag: NAMED } as const;
 
 /** An audio's page: what the card shows, its description, tags, streams and resume point. */
 const AUDIO_DETAIL = {
@@ -96,19 +101,89 @@ export type StoryCardRow = FieldsSelection<Story, typeof STORY_CARD>;
 export type StoryDetail = FieldsSelection<Story, typeof STORY_DETAIL>;
 export type ChapterRow = FieldsSelection<StoryChapter, typeof CHAPTER>;
 export type ChapterText = ChapterRow & { text: string };
+export type TagCountRow = FieldsSelection<TagCount, typeof TAG_COUNT>;
 export type PostCardRow = FieldsSelection<Post, typeof POST_CARD>;
 export type GroupCardRow = FieldsSelection<Group, typeof GROUP_CARD>;
 
-/** Newest audio, sites taking turns. */
-export async function fetchAudios(limit = 20, offset = 0): Promise<AudioCardRow[]> {
-	const data = await gqlClient.query({ audios: { __args: { limit, offset }, ...AUDIO_CARD } });
+/** Narrows a list of audio or stories. */
+export interface MediaListing {
+	// Only the media carrying this tag.
+	tagId?: string;
+	// Newest release first, instead of the most recently added.
+	byRelease?: boolean;
+}
+
+/** The filter of a listing. */
+function listingFilter(listing: MediaListing): FilterInput {
+	const filter: FilterInput = {};
+	if (listing.tagId) filter.includeTagIds = [listing.tagId];
+	if (listing.byRelease) filter.sort = { field: 'date', descending: true };
+	return filter;
+}
+
+/** Audio, most recently added first (or as listing says). */
+export async function fetchAudios(
+	limit = 20,
+	offset = 0,
+	listing: MediaListing = {}
+): Promise<AudioCardRow[]> {
+	const data = await gqlClient.query({
+		audios: { __args: { filter: listingFilter(listing), limit, offset }, ...AUDIO_CARD }
+	});
 	return data.audios;
 }
 
-/** Newest stories, sites taking turns. */
-export async function fetchStories(limit = 20, offset = 0): Promise<StoryCardRow[]> {
-	const data = await gqlClient.query({ stories: { __args: { limit, offset }, ...STORY_CARD } });
+/** Stories, most recently added first (or as listing says). */
+export async function fetchStories(
+	limit = 20,
+	offset = 0,
+	listing: MediaListing = {}
+): Promise<StoryCardRow[]> {
+	const data = await gqlClient.query({
+		stories: { __args: { filter: listingFilter(listing), limit, offset }, ...STORY_CARD }
+	});
 	return data.stories;
+}
+
+/** The tags most common on audio or stories, most common first. */
+export async function fetchTopTags(kind: 'audio' | 'story', limit = 3): Promise<TagCountRow[]> {
+	const data = await gqlClient.query({
+		mediaTagCounts: { __args: { kind, limit }, ...TAG_COUNT }
+	});
+	return data.mediaTagCounts;
+}
+
+/** The voices of audio or authors of stories: favourites first, then the most credited. */
+export async function fetchCreditedPerformers(
+	kind: 'audio' | 'story',
+	limit = 20
+): Promise<MemberRow[]> {
+	const data = await gqlClient.query({
+		creditedPerformers: { __args: { kind, limit }, ...MEMBER }
+	});
+	return data.creditedPerformers;
+}
+
+/** A tag's name. */
+export async function fetchTagName(id: string): Promise<string | null> {
+	const data = await gqlClient.query({ tag: { __args: { id }, name: true } });
+	return data.tag?.name ?? null;
+}
+
+/** Audio the user stopped partway, most recently listened first. */
+export async function fetchContinueListening(limit = 20): Promise<AudioCardRow[]> {
+	const data = await gqlClient.query({
+		history: {
+			__args: { kind: 'audio', limit: limit * 2 },
+			progress: true,
+			record: { on_Audio: { __typename: true, ...AUDIO_CARD } }
+		}
+	});
+	const started = data.history.flatMap((state) => {
+		if (!state.progress || state.record?.__typename !== 'Audio') return [];
+		return [state.record];
+	});
+	return started.slice(0, limit);
 }
 
 /** Newest audio credited to a performer (on audio sites, the voice). */

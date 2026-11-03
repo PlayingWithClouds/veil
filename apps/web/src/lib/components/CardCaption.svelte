@@ -21,6 +21,9 @@
 		performers?: NamedRef[];
 		// Channel or performer image for the avatar; falls back to the site icon.
 		avatarUrl?: string | null;
+		// Whether the avatar falls back to the site icon; off where every card
+		// is from the same few sites, so the avatar shows only who's credited.
+		siteAvatar?: boolean;
 		site?: SitePlugin | null;
 		// Shown instead of the site's name, e.g. the host for a plugin covering many sites.
 		siteName?: string | null;
@@ -38,6 +41,7 @@
 		byline = null,
 		performers = [],
 		avatarUrl = null,
+		siteAvatar = true,
 		site = null,
 		siteName = null,
 		detail = null,
@@ -68,7 +72,9 @@
 		return parts.join(' · ');
 	});
 
-	let avatarSource = $derived(avatarUrl || site?.iconUrl || null);
+	let avatarSource = $derived(avatarUrl || (siteAvatar ? site?.iconUrl : null) || null);
+	// Without the site icon, a card with no one to show goes without an avatar.
+	let showAvatar = $derived(siteAvatar || Boolean(avatarUrl) || Boolean(byline));
 	let avatarInitial = $derived((byline || title || '?').trim().charAt(0).toUpperCase());
 
 	/** The site's display label. */
@@ -85,15 +91,17 @@
 
 <div class="relative flex items-start gap-1">
 	<div class="flex min-w-0 flex-1 gap-3">
-		<span
-			class="bg-base-300 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
-		>
-			{#if avatarSource}
-				<img src={avatarSource} alt="" loading="lazy" class="h-full w-full object-cover" />
-			{:else}
-				<span class="text-base-content/60 text-sm font-semibold">{avatarInitial}</span>
-			{/if}
-		</span>
+		{#if showAvatar}
+			<span
+				class="bg-base-300 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+			>
+				{#if avatarSource}
+					<img src={avatarSource} alt="" loading="lazy" class="h-full w-full object-cover" />
+				{:else}
+					<span class="text-base-content/60 text-sm font-semibold">{avatarInitial}</span>
+				{/if}
+			</span>
+		{/if}
 		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
 			<button
 				type="button"
