@@ -52,6 +52,16 @@ func (l *Library) audioFields(ctx context.Context, plugin string, audio *plugins
 	return fields, l.setCredits(ctx, fields, plugin, audio.Performers, audio.Tags)
 }
 
+// SimilarAudios lists up to limit other audio sharing the most tags with the
+// audio (see SimilarByTags).
+func (l *Library) SimilarAudios(ctx context.Context, audioID string, limit int) ([]schema.Audio, error) {
+	ids, err := l.SimilarByTags(ctx, schema.RecordKindAudio, audioID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return loadAll(ctx, ids, l.Audio)
+}
+
 // Audios lists a page of audio matching the query's filter.
 func (l *Library) Audios(ctx context.Context, query MediaQuery) ([]schema.Audio, error) {
 	statement, vars := mediaQuery(schema.RecordKindAudio, query)

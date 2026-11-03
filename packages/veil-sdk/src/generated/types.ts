@@ -665,6 +665,18 @@ export default {
                     ]
                 }
             ],
+            "similarAudios": [
+                77,
+                {
+                    "id": [
+                        2,
+                        "ID!"
+                    ],
+                    "limit": [
+                        3
+                    ]
+                }
+            ],
             "stories": [
                 106,
                 {

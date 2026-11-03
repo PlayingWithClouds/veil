@@ -79,6 +79,7 @@ export interface Query {
     audios: Audio[]
     audioCount: Scalars['Int']
     audio: (Audio | null)
+    similarAudios: Audio[]
     stories: Story[]
     storyCount: Scalars['Int']
     story: (Story | null)
@@ -1461,6 +1462,7 @@ export interface QueryGenqlSelection{
     audios?: (AudioGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     audioCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
     audio?: (AudioGenqlSelection & { __args: {id: Scalars['ID']} })
+    similarAudios?: (AudioGenqlSelection & { __args: {id: Scalars['ID'], limit?: (Scalars['Int'] | null)} })
     stories?: (StoryGenqlSelection & { __args?: {filter?: (FilterInput | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     storyCount?: { __args: {filter?: (FilterInput | null)} } | boolean | number
     story?: (StoryGenqlSelection & { __args: {id: Scalars['ID']} })

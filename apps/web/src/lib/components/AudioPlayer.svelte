@@ -130,7 +130,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="bg-base-200 flex flex-col gap-3 rounded-2xl p-4">
+<div class="bg-base-content/5 flex flex-col gap-3 rounded-2xl p-4 backdrop-blur-md">
 	<div class="flex items-center gap-3">
 		<span class="text-base-content/60 w-14 text-right font-mono text-xs tabular-nums">
 			{formatClock(currentTime) ?? '0:00'}

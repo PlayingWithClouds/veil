@@ -167,6 +167,12 @@ func (r *queryResolver) Audio(ctx context.Context, id string) (*schema.Audio, er
 	return r.library.Audio(ctx, id)
 }
 
+// SimilarAudios is the resolver for the similarAudios field.
+func (r *queryResolver) SimilarAudios(ctx context.Context, id string, limit *int) ([]*schema.Audio, error) {
+	audios, err := r.library.SimilarAudios(ctx, id, similarLimit(limit))
+	return pointers(audios), err
+}
+
 // Stories is the resolver for the stories field.
 func (r *queryResolver) Stories(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Story, error) {
 	stories, err := r.library.Stories(ctx, mediaQuery(filter, limit, offset))
@@ -185,11 +191,7 @@ func (r *queryResolver) Story(ctx context.Context, id string) (*schema.Story, er
 
 // SimilarStories is the resolver for the similarStories field.
 func (r *queryResolver) SimilarStories(ctx context.Context, id string, limit *int) ([]*schema.Story, error) {
-	size := 12
-	if limit != nil && *limit > 0 {
-		size = *limit
-	}
-	stories, err := r.library.SimilarStories(ctx, id, size)
+	stories, err := r.library.SimilarStories(ctx, id, similarLimit(limit))
 	return pointers(stories), err
 }
 

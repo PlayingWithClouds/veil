@@ -55,6 +55,17 @@ func number(value *int) int {
 	return *value
 }
 
+// defaultSimilarLimit is how many similar records a page shows unless asked otherwise.
+const defaultSimilarLimit = 12
+
+// similarLimit is the asked-for number of similar records, else the default.
+func similarLimit(limit *int) int {
+	if limit == nil || *limit <= 0 {
+		return defaultSimilarLimit
+	}
+	return *limit
+}
+
 // optionalText returns nil for "", else a pointer to the string.
 func optionalText(value string) *string {
 	if value == "" {

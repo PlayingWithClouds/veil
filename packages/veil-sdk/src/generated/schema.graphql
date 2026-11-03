@@ -65,6 +65,7 @@ type Query {
   audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
   audioCount(filter: FilterInput): Int!
   audio(id: ID!): Audio
+  similarAudios(id: ID!, limit: Int): [Audio!]!
   stories(filter: FilterInput, limit: Int, offset: Int): [Story!]!
   storyCount(filter: FilterInput): Int!
   story(id: ID!): Story

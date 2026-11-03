@@ -2,7 +2,6 @@ package library
 
 import (
 	"context"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -163,46 +162,13 @@ func (l *Library) Story(ctx context.Context, id string) (*schema.Story, error) {
 }
 
 // SimilarStories lists up to limit other stories sharing the most tags with
-// the story, newest first among equals; blocked and trashed ones are left out.
+// the story (see SimilarByTags).
 func (l *Library) SimilarStories(ctx context.Context, storyID string, limit int) ([]schema.Story, error) {
-	story, err := l.Story(ctx, storyID)
-	if err != nil || story == nil || len(story.Tags) == 0 {
-		return []schema.Story{}, err
-	}
-	vars := db.Vars{"story": storyID, "tags": story.Tags}
-	vars["limit"], _ = pageBounds(limit, 0)
-	ids, err := l.database.Strings(ctx, `SELECT "other"."id" FROM "Story" AS "other", json_each("other"."tags") AS "tag"
-		WHERE "other"."deletedAt" IS NULL AND "other"."id" != $story
-			AND "tag"."value" IN (SELECT value FROM json_each($tags))
-		GROUP BY "other"."id"
-		ORDER BY COUNT(*) DESC, "other"."createdAt" DESC
-		LIMIT $limit`, vars)
+	ids, err := l.SimilarByTags(ctx, schema.RecordKindStory, storyID, limit)
 	if err != nil {
 		return nil, err
 	}
-	visible, err := l.MatchingIDs(ctx, schema.RecordKindStory, schema.Filter{}, ids)
-	if err != nil {
-		return nil, err
-	}
-	return l.storiesInOrder(ctx, ids, visible)
-}
-
-// storiesInOrder loads the stories of ids that are also in visible, in the order of ids.
-func (l *Library) storiesInOrder(ctx context.Context, ids, visible []string) ([]schema.Story, error) {
-	stories := make([]schema.Story, 0, len(visible))
-	for _, id := range ids {
-		if !slices.Contains(visible, id) {
-			continue
-		}
-		story, err := l.Story(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		if story != nil {
-			stories = append(stories, *story)
-		}
-	}
-	return stories, nil
+	return loadAll(ctx, ids, l.Story)
 }
 
 // Chapters lists a story's chapters in reading order.

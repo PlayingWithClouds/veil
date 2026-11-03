@@ -111,6 +111,20 @@ export async function fetchStories(limit = 20, offset = 0): Promise<StoryCardRow
 	return data.stories;
 }
 
+/** Newest audio credited to a performer (on audio sites, the voice). */
+export async function fetchAudiosBy(performerId: string, limit = 12): Promise<AudioCardRow[]> {
+	const data = await gqlClient.query({
+		audios: { __args: { filter: { performerIds: [performerId] }, limit }, ...AUDIO_CARD }
+	});
+	return data.audios;
+}
+
+/** Other audio sharing the most tags with one. */
+export async function fetchSimilarAudios(id: string, limit = 12): Promise<AudioCardRow[]> {
+	const data = await gqlClient.query({ similarAudios: { __args: { id, limit }, ...AUDIO_CARD } });
+	return data.similarAudios;
+}
+
 /** Newest stories credited to a performer (on story sites, the author). */
 export async function fetchStoriesBy(performerId: string, limit = 12): Promise<StoryCardRow[]> {
 	const data = await gqlClient.query({

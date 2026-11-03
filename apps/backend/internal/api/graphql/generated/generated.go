@@ -963,6 +963,7 @@ type ComplexityRoot struct {
 		Settings                 func(childComplexity int) int
 		Shorts                   func(childComplexity int, filter *schema.Filter, limit *int) int
 		Similar                  func(childComplexity int, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) int
+		SimilarAudios            func(childComplexity int, id string, limit *int) int
 		SimilarStories           func(childComplexity int, id string, limit *int) int
 		SitePreferences          func(childComplexity int) int
 		StorageLocations         func(childComplexity int, deviceID *string) int
@@ -1649,6 +1650,7 @@ type QueryResolver interface {
 	Audios(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Audio, error)
 	AudioCount(ctx context.Context, filter *schema.Filter) (int, error)
 	Audio(ctx context.Context, id string) (*schema.Audio, error)
+	SimilarAudios(ctx context.Context, id string, limit *int) ([]*schema.Audio, error)
 	Stories(ctx context.Context, filter *schema.Filter, limit *int, offset *int) ([]*schema.Story, error)
 	StoryCount(ctx context.Context, filter *schema.Filter) (int, error)
 	Story(ctx context.Context, id string) (*schema.Story, error)
@@ -6819,6 +6821,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Similar(childComplexity, args["subject"].(schema.RecordRef), args["kind"].(schema.EmbeddingKind), args["model"].(string), args["limit"].(*int)), true
+	case "Query.similarAudios":
+		if e.ComplexityRoot.Query.SimilarAudios == nil {
+			break
+		}
+
+		args, err := ec.field_Query_similarAudios_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SimilarAudios(childComplexity, args["id"].(string), args["limit"].(*int)), true
 	case "Query.similarStories":
 		if e.ComplexityRoot.Query.SimilarStories == nil {
 			break
@@ -9896,6 +9909,8 @@ extend type Query {
   audios(filter: FilterInput, limit: Int, offset: Int): [Audio!]!
   audioCount(filter: FilterInput): Int!
   audio(id: ID!): Audio
+  # Other audio sharing the most tags with the audio (default 12).
+  similarAudios(id: ID!, limit: Int): [Audio!]!
   stories(filter: FilterInput, limit: Int, offset: Int): [Story!]!
   storyCount(filter: FilterInput): Int!
   story(id: ID!): Story
@@ -16738,6 +16753,28 @@ func (ec *executionContext) field_Query_shorts_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["filter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_similarAudios_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
 		func(ctx context.Context, v any) (*int, error) {
 			return ec.unmarshalOInt2ᚖint(ctx, v)
@@ -37391,6 +37428,50 @@ func (ec *executionContext) fieldContext_Query_audio(ctx context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_similarAudios(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_similarAudios(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SimilarAudios(ctx, fc.Args["id"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Audio) graphql.Marshaler {
+			return ec.marshalNAudio2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAudioᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_similarAudios(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Audio(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_similarAudios_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_stories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56897,6 +56978,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_audio(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "similarAudios":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_similarAudios(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
