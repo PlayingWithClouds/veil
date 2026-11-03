@@ -20,3 +20,4 @@ paths:
 - Follows of rooms live in the `followedCams` store (room id → follow id), loaded once by `loadFollowedCams`; change them only through `toggleCamFollow`.
 - The live grid on `/cams` refreshes shown rooms in place every minute rather than reloading, so it never reorders under the user.
 - There is no split view; don't add one.
+- Pink (`text-live`, `.live-dot`, `.live-ring`) means live; filters are `.chip`/`.chip-on` and `Segmented` (layout.css).

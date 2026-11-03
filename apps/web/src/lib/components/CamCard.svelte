@@ -12,7 +12,6 @@
 	import BellIcon from 'phosphor-svelte/lib/BellIcon';
 	import BellSlashIcon from 'phosphor-svelte/lib/BellSlashIcon';
 	import BellRingingIcon from 'phosphor-svelte/lib/BellRingingIcon';
-	import EyeIcon from 'phosphor-svelte/lib/EyeIcon';
 	import ProhibitIcon from 'phosphor-svelte/lib/ProhibitIcon';
 	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
 	import StopIcon from 'phosphor-svelte/lib/StopIcon';
@@ -208,7 +207,7 @@
 			{/if}
 			{#if recording}
 				<CardBadge corner="top-right"
-					><RecordIcon size={12} weight="fill" class="text-error" /> REC</CardBadge
+					><RecordIcon size={12} weight="fill" class="text-live" /> REC</CardBadge
 				>
 			{:else if followed || room.autoRecord}
 				<CardBadge corner="top-right">
@@ -222,7 +221,7 @@
 			{/if}
 			{#if room.live}
 				<CardBadge corner="bottom-right">
-					<EyeIcon size={12} />
+					<span class="live-dot" style:width="6px" style:height="6px"></span>
 					{compactNumber.format(room.live.viewers)}
 				</CardBadge>
 			{/if}
@@ -239,7 +238,7 @@
 			onmore={(button) => (menuAnchor = button)}
 		/>
 		{#if shownReason}
-			<span class="text-accent -mt-1 truncate text-xs leading-4">{shownReason}</span>
+			<span class="text-live -mt-1 truncate text-xs leading-4">{shownReason}</span>
 		{/if}
 	</div>
 

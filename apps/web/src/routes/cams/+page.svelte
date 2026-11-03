@@ -1,10 +1,12 @@
 <!--
-	Cams: recordings running now, the user's rooms (followed or auto-recorded),
+	Cams: the top recommended room playing in a banner, recordings running
+	now, the user's rooms (followed or auto-recorded) as round pictures, more
 	live rooms picked by their taste and finished recordings, then every room
 	live now on the cam sites, sorted by viewers or show start and narrowed by
-	gender, site and tag. A top bar search (?q=) or a tag (?tag=) hides the
-	rows and narrows the live rooms. Shown rooms refresh their picture and
-	audience every minute, in place.
+	gender, site and tag from a bar that sticks while the grid scrolls. A top
+	bar search (?q=) or a tag (?tag=) hides the rows and narrows the live
+	rooms. Shown rooms refresh their picture and audience every minute, in
+	place; a filter change fades the old rooms until the new ones arrive.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
@@ -12,15 +14,18 @@
 	import { page } from '$app/state';
 	import type { CamSort } from '@playingwithclouds/veil-sdk/generated';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Shelf from '$lib/components/Shelf.svelte';
+	import CamAvatar from '$lib/components/CamAvatar.svelte';
 	import CamCard from '$lib/components/CamCard.svelte';
+	import CamHero from '$lib/components/CamHero.svelte';
+	import Segmented from '$lib/components/Segmented.svelte';
 	import RecordingCard from '$lib/components/RecordingCard.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import {
 		CAM_GENDERS,
 		CAM_SORTS,
+		CAMS_SURFACE,
 		camSites,
 		fetchActiveRecordings,
 		fetchCamRooms,
@@ -39,7 +44,18 @@
 	const PAGE_SIZE = 48;
 	const CARD_WIDTH = 220;
 	const VIDEO_WIDTH = 280;
+	// The live grid's columns at most, however wide the window; its gap (gap-x-4).
+	const MAX_COLUMNS = 5;
+	const COLUMN_GAP = 16;
+	// Cards at least CARD_WIDTH wide, and never narrower than a fifth of the row.
+	const GRID_COLUMNS = `repeat(auto-fill, minmax(max(${CARD_WIDTH}px, calc((100% - ${(MAX_COLUMNS - 1) * COLUMN_GAP}px) / ${MAX_COLUMNS})), 1fr))`;
+	const AVATAR_WIDTH = 96;
 	const POPULAR_TAG_COUNT = 16;
+	// Placeholder cards while the first rooms load.
+	const SKELETON_COUNT = 12;
+	// Cards of one page rise in this far apart, up to RISE_MAX_DELAY_MS.
+	const RISE_STEP_MS = 30;
+	const RISE_MAX_DELAY_MS = 450;
 	// Running recordings change length and end; the row follows them.
 	const RECORDING_REFRESH_MS = 10_000;
 	// The sites' pictures and audiences change; shown rooms follow them.
@@ -50,6 +66,7 @@
 	let recordings = $state<ActiveRecordingRow[]>([]);
 	let yourRooms = $state<CamRow[]>([]);
 	let forYou = $state<CamRow[]>([]);
+	let forYouLoaded = $state(false);
 	let recordedVideos = $state<VideoCardRow[]>([]);
 
 	let gender = $state('');
@@ -59,6 +76,8 @@
 	let total = $state(0);
 	let loading = $state(false);
 	let exhausted = $state(false);
+	// The shown rooms are for old filters: they fade until the new ones replace them.
+	let stale = $state(false);
 	let error = $state<string | null>(null);
 	// The tags of the unnarrowed rooms, so picking one keeps the chip row in place.
 	let popularTags = $state<string[]>([]);
@@ -71,10 +90,15 @@
 	let siteChoices = $derived(camSites($sites));
 	let tagChoices = $derived(tagChipsWith(popularTags, tag));
 	let recordingIds = $derived(recordings.map((recording) => recording.camModel?.id));
+	let hero = $derived(forYou[0] ?? null);
+	let moreForYou = $derived(forYou.slice(1));
+	let liveFirstRooms = $derived(liveFirst(yourRooms));
 
 	$effect(() => {
 		load(fetchYourRooms(), (found) => (yourRooms = found));
-		load(fetchRecommendedCams(), (found) => (forYou = found));
+		const recommended = fetchRecommendedCams();
+		load(recommended, (found) => (forYou = found));
+		recommended.finally(() => (forYouLoaded = true)).catch(() => {});
 		load(fetchRecordedVideos(), (found) => (recordedVideos = found));
 		refreshRecordings();
 		const recordingTimer = setInterval(refreshRecordings, RECORDING_REFRESH_MS);
@@ -96,6 +120,19 @@
 		request.then(fill, (failure) => console.warn('cams row failed to load', failure));
 	}
 
+	/** The rooms live now first, each group in its own order. */
+	function liveFirst(list: CamRow[]): CamRow[] {
+		const live = list.filter((room) => room.live);
+		const offline = list.filter((room) => !room.live);
+		return [...live, ...offline];
+	}
+
+	/** How long a card waits before rising in, so a page of cards cascades. */
+	function riseDelay(position: number): string {
+		const step = (position % PAGE_SIZE) * RISE_STEP_MS;
+		return `${Math.min(step, RISE_MAX_DELAY_MS)}ms`;
+	}
+
 	/** Reloads the recordings running now. */
 	function refreshRecordings() {
 		load(fetchActiveRecordings(), (found) => (recordings = found));
@@ -112,20 +149,19 @@
 		return [active, ...popular];
 	}
 
-	/** Clears the live rooms and loads their first page for the current filters. */
+	/** Loads the first page of live rooms for the current filters; the old ones fade until it arrives. */
 	function restart() {
 		generation += 1;
-		rooms = [];
-		total = 0;
+		stale = rooms.length > 0;
 		exhausted = false;
 		loading = false;
 		error = null;
 		void loadMore();
 	}
 
-	/** The rooms of a page not shown yet, each once (a site can list a room twice). */
-	function unseenRooms(pageRooms: CamRow[]): CamRow[] {
-		const known = new Set(rooms.map((room) => room.id));
+	/** The rooms of a page not in shown yet, each once (a site can list a room twice). */
+	function unseenRooms(shown: CamRow[], pageRooms: CamRow[]): CamRow[] {
+		const known = new Set(shown.map((room) => room.id));
 		const unseen: CamRow[] = [];
 		for (const room of pageRooms) {
 			if (known.has(room.id)) continue;
@@ -135,21 +171,27 @@
 		return unseen;
 	}
 
-	/** Appends the next page of live rooms. */
+	/** Appends the next page of live rooms, or replaces stale ones with the first. */
 	async function loadMore() {
 		if (loading || exhausted) return;
 		loading = true;
 		const requested = generation;
+		let shown = rooms;
+		if (stale) {
+			shown = [];
+		}
 		try {
-			const found = await fetchCamRooms(currentFilter(), PAGE_SIZE, rooms.length);
+			const found = await fetchCamRooms(currentFilter(), PAGE_SIZE, shown.length);
 			if (requested !== generation) return;
-			const before = rooms.length;
-			rooms = [...rooms, ...unseenRooms(found.rooms)];
+			rooms = [...shown, ...unseenRooms(shown, found.rooms)];
+			stale = false;
 			total = found.total;
-			exhausted = found.rooms.length < PAGE_SIZE || rooms.length === before;
+			exhausted = found.rooms.length < PAGE_SIZE || rooms.length === shown.length;
 			if (tag === '') popularTags = popularRoomTags(rooms, POPULAR_TAG_COUNT);
 		} catch (failure) {
 			if (requested !== generation) return;
+			rooms = shown;
+			stale = false;
 			error = String(failure);
 			exhausted = true;
 		} finally {
@@ -206,44 +248,37 @@
 
 <svelte:head><title>Cams · Veil</title></svelte:head>
 
-{#snippet roomCard(room: CamRow, markLive: boolean)}
+{#snippet roomCard(room: CamRow, markLive: boolean, position: number)}
 	<CamCard
 		cam={room}
 		{markLive}
+		shown={{ surface: CAMS_SURFACE, position }}
 		recording={recordingIds.includes(room.id)}
 		onrecordingchange={refreshRecordings}
 		onclick={() => goto(camUrl(room.id))}
 	/>
 {/snippet}
 
-{#snippet segmented<Value extends string>(
-	label: string,
-	choices: { value: Value; label: string }[],
-	current: Value,
-	choose: (value: Value) => void
-)}
-	<div class="bg-base-200 flex gap-1 rounded-full p-1" role="group" aria-label={label}>
-		{#each choices as choice (choice.value)}
-			<button
-				type="button"
-				class="rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors"
-				class:bg-base-100={current === choice.value}
-				class:shadow-sm={current === choice.value}
-				class:opacity-60={current !== choice.value}
-				aria-pressed={current === choice.value}
-				onclick={() => choose(choice.value)}
-			>
-				{choice.label}
-			</button>
-		{/each}
+{#snippet skeletonCard()}
+	<div class="flex flex-col gap-2" aria-hidden="true">
+		<div class="skeleton aspect-video w-full"></div>
+		<div class="skeleton h-3.5 w-2/3 rounded"></div>
+		<div class="skeleton h-3 w-1/3 rounded"></div>
 	</div>
 {/snippet}
 
-<div class="flex flex-col gap-8">
-	<PageHeader
-		title="Cams"
-		description={total > 0 ? `${total.toLocaleString()} rooms live` : null}
-	/>
+<div class="isolate flex flex-col gap-8">
+	<div class="flex items-end justify-between gap-4 pt-2">
+		<div class="min-w-0">
+			<h1 class="text-3xl font-bold tracking-tight">Cams</h1>
+			{#if total > 0}
+				<p class="text-base-content/60 mt-1 flex items-center gap-2 text-sm">
+					<span class="live-dot"></span>
+					<span class="tabular-nums">{total.toLocaleString()}</span> rooms live now
+				</p>
+			{/if}
+		</div>
+	</div>
 
 	{#if !showOverview}
 		<div class="-mt-4 flex items-center gap-3">
@@ -251,20 +286,29 @@
 				{#if query !== ''}
 					Rooms matching <span class="text-base-content font-medium">“{query}”</span>
 				{:else}
-					Rooms tagged <span class="text-base-content font-medium">{tag}</span>
+					Rooms tagged <span class="text-base-content font-medium">#{tag}</span>
 				{/if}
 			</span>
-			<button
-				type="button"
-				class="bg-base-200 hover:bg-base-300 flex h-7 items-center gap-1 rounded-full px-3 text-xs"
-				onclick={() => goto(camsUrl())}
-			>
+			<button type="button" class="chip" onclick={() => goto(camsUrl())}>
 				<XIcon size={12} /> Clear
 			</button>
 		</div>
 	{/if}
 
 	{#if showOverview}
+		{#if hero}
+			<div class="rise-in">
+				<CamHero
+					cam={hero}
+					reason={hero.reason}
+					shown={{ surface: CAMS_SURFACE, position: 0 }}
+					onopen={() => goto(camUrl(hero.id))}
+				/>
+			</div>
+		{:else if !forYouLoaded}
+			<div class="skeleton h-[clamp(320px,48vh,500px)] rounded-2xl" aria-hidden="true"></div>
+		{/if}
+
 		<Shelf
 			title="Recording now"
 			items={recordings}
@@ -276,15 +320,24 @@
 			{/snippet}
 		</Shelf>
 
-		<Shelf title="Your rooms" items={yourRooms} key={(room) => room.id} itemWidth={CARD_WIDTH}>
-			{#snippet card(room)}
-				{@render roomCard(room, true)}
+		<Shelf
+			title="Your rooms"
+			items={liveFirstRooms}
+			key={(room) => room.id}
+			itemWidth={AVATAR_WIDTH}
+		>
+			{#snippet card(room, position)}
+				<div class="rise-in pt-2" style:--rise-delay={riseDelay(position)}>
+					<CamAvatar cam={room} onclick={() => goto(camUrl(room.id))} />
+				</div>
 			{/snippet}
 		</Shelf>
 
-		<Shelf title="For you" items={forYou} key={(room) => room.id} itemWidth={CARD_WIDTH}>
-			{#snippet card(room)}
-				{@render roomCard(room, false)}
+		<Shelf title="More for you" items={moreForYou} key={(room) => room.id} itemWidth={CARD_WIDTH}>
+			{#snippet card(room, position)}
+				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
+					{@render roomCard(room, false, position)}
+				</div>
 			{/snippet}
 		</Shelf>
 
@@ -312,57 +365,82 @@
 	{/if}
 
 	<section class="flex flex-col gap-4">
-		<div class="flex flex-wrap items-center gap-3">
-			<h2 class="text-lg font-semibold">Live now</h2>
-			{@render segmented('Gender', CAM_GENDERS, gender, (value) => (gender = value))}
-			{@render segmented('Sort', CAM_SORTS, sort, (value) => (sort = value))}
-			{#if siteChoices.length > 1}
-				{#each siteChoices as site (site.name)}
-					<button
-						type="button"
-						class="rounded-full px-3 py-1 text-sm whitespace-nowrap hover:brightness-125"
-						class:bg-base-200={!selectedSites.includes(site.name)}
-						class:bg-primary={selectedSites.includes(site.name)}
-						class:text-primary-content={selectedSites.includes(site.name)}
-						aria-pressed={selectedSites.includes(site.name)}
-						onclick={() => toggleSite(site.name)}
-					>
-						{site.displayName ?? site.name}
-					</button>
-				{/each}
+		<div
+			class="top-chrome bg-base-100/75 sticky z-20 -mx-4 flex flex-col gap-3 border-b border-white/5 px-4 py-3 backdrop-blur-xl max-md:-mx-3 max-md:px-3"
+		>
+			<div class="flex flex-wrap items-center gap-3">
+				<h2 class="flex items-center gap-2 text-lg font-semibold">
+					<span class="live-dot"></span> Live now
+				</h2>
+				<Segmented
+					label="Gender"
+					choices={CAM_GENDERS}
+					current={gender}
+					onchoose={(value) => (gender = value)}
+				/>
+				<Segmented
+					label="Sort"
+					choices={CAM_SORTS}
+					current={sort}
+					onchoose={(value) => (sort = value)}
+				/>
+				{#if siteChoices.length > 1}
+					{#each siteChoices as site (site.name)}
+						<button
+							type="button"
+							class="chip"
+							class:chip-on={selectedSites.includes(site.name)}
+							aria-pressed={selectedSites.includes(site.name)}
+							onclick={() => toggleSite(site.name)}
+						>
+							{site.displayName ?? site.name}
+						</button>
+					{/each}
+				{/if}
+			</div>
+
+			{#if tagChoices.length > 0}
+				<div
+					class="no-scrollbar fade-right-edge -mx-1 flex items-center gap-2 overflow-x-auto px-1 py-0.5"
+				>
+					{#each tagChoices as name (name)}
+						<button
+							type="button"
+							class="chip"
+							class:chip-on={tag === name}
+							aria-pressed={tag === name}
+							onclick={() => toggleTag(name)}
+						>
+							<span class="opacity-50">#</span>{name}
+							{#if tag === name}
+								<XIcon size={12} />
+							{/if}
+						</button>
+					{/each}
+				</div>
 			{/if}
 		</div>
-
-		{#if tagChoices.length > 0}
-			<div
-				class="no-scrollbar fade-right-edge -mx-1 flex items-center gap-2 overflow-x-auto px-1 py-0.5"
-			>
-				{#each tagChoices as name (name)}
-					<button
-						type="button"
-						class="shrink-0 rounded-full px-3 py-1 text-sm whitespace-nowrap hover:brightness-125"
-						class:bg-base-200={tag !== name}
-						class:bg-primary={tag === name}
-						class:text-primary-content={tag === name}
-						aria-pressed={tag === name}
-						onclick={() => toggleTag(name)}
-					>
-						{name}
-					</button>
-				{/each}
-			</div>
-		{/if}
 
 		{#if error}
 			<p class="text-error text-sm">{error}</p>
 		{/if}
 
 		<div
-			class="grid gap-x-4 gap-y-6"
-			style:grid-template-columns="repeat(auto-fill, minmax({CARD_WIDTH}px, 1fr))"
+			class="grid gap-x-4 gap-y-6 transition-opacity duration-300"
+			class:opacity-35={stale}
+			class:pointer-events-none={stale}
+			style:grid-template-columns={GRID_COLUMNS}
 		>
-			{#each rooms as room (room.id)}
-				{@render roomCard(room, false)}
+			{#each rooms as room, position (room.id)}
+				<div class="rise-in" style:--rise-delay={riseDelay(position)}>
+					{@render roomCard(room, false, position)}
+				</div>
+			{:else}
+				{#if loading}
+					{#each { length: SKELETON_COUNT }, position (position)}
+						{@render skeletonCard()}
+					{/each}
+				{/if}
 			{/each}
 		</div>
 

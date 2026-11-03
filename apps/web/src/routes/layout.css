@@ -208,6 +208,9 @@
 	--color-amber: var(--ctx-amber);
 	--color-blue: var(--ctx-blue);
 	--color-violet: var(--ctx-violet);
+	/* What's live (cams) is pink. */
+	--color-live: var(--ctx-pink);
+	--color-live-soft: var(--ctx-pink-soft);
 	--color-green-soft: var(--ctx-green-soft);
 	--color-red-soft: var(--ctx-red-soft);
 	--color-amber-soft: var(--ctx-amber-soft);
@@ -473,6 +476,15 @@
 		color: var(--text);
 		/* Touches get the scale-down press feedback (pressFeedback.ts) instead of the grey flash. */
 		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* Tailwind v4 leaves buttons with the default arrow; anything clickable points. */
+	button:not(:disabled),
+	[role='button']:not([aria-disabled='true']),
+	summary,
+	label[for],
+	select {
+		cursor: pointer;
 	}
 
 	.pegboard {
@@ -1366,10 +1378,149 @@
 	}
 }
 
+/* ═══════════════════════════════════════════════════════════════
+ * CHIPS & LIVE — filter chips, segmented switches, and the pink that
+ * means "live" (cams).
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* A filter chip: a visible surface with a faint edge; white when on. */
+.chip {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 0.375rem;
+	height: 2rem;
+	padding: 0 0.875rem;
+	border-radius: 9999px;
+	border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+	background-color: var(--surface);
+	color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+	font-size: var(--text-sm);
+	font-weight: 500;
+	white-space: nowrap;
+	transition:
+		background-color 150ms,
+		border-color 150ms,
+		color 150ms,
+		scale 120ms;
+}
+.chip:hover {
+	border-color: color-mix(in oklab, var(--color-base-content) 22%, transparent);
+	background-color: var(--surface-hover);
+	color: var(--color-base-content);
+}
+.chip:active {
+	scale: 0.96;
+}
+.chip-on,
+.chip-on:hover {
+	border-color: var(--color-primary);
+	background-color: var(--color-primary);
+	color: var(--color-primary-content);
+}
+
+/* A row of exclusive choices; .segmented-thumb slides under the chosen one. */
+.segmented {
+	position: relative;
+	display: flex;
+	gap: 0.125rem;
+	padding: 0.1875rem;
+	border-radius: 9999px;
+	border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+	background-color: var(--surface);
+}
+.segmented-option {
+	position: relative;
+	z-index: 1;
+	height: 1.75rem;
+	padding: 0 0.875rem;
+	border-radius: 9999px;
+	color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+	font-size: var(--text-sm);
+	font-weight: 500;
+	white-space: nowrap;
+	transition: color 200ms;
+}
+.segmented-option:hover {
+	color: var(--color-base-content);
+}
+.segmented-option[aria-pressed='true'] {
+	color: var(--color-primary-content);
+}
+.segmented-thumb {
+	position: absolute;
+	top: 0.1875rem;
+	bottom: 0.1875rem;
+	border-radius: 9999px;
+	background-color: var(--color-primary);
+	transition:
+		left 280ms cubic-bezier(0.22, 1, 0.36, 1),
+		width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The pulsing dot of something live. */
+.live-dot {
+	position: relative;
+	display: inline-block;
+	width: 0.5rem;
+	height: 0.5rem;
+	flex-shrink: 0;
+	border-radius: 9999px;
+	background-color: var(--ctx-pink);
+}
+.live-dot::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background-color: inherit;
+	animation: live-pulse 1.8s ease-out infinite;
+}
+
+@keyframes live-pulse {
+	from {
+		opacity: 0.7;
+		scale: 1;
+	}
+	to {
+		opacity: 0;
+		scale: 2.6;
+	}
+}
+
+/* A live room's avatar ring, slowly breathing. */
+.live-ring {
+	box-shadow:
+		0 0 0 2px var(--color-base-100),
+		0 0 0 4px var(--ctx-pink);
+	animation: live-ring 2.4s ease-in-out infinite;
+}
+
+@keyframes live-ring {
+	50% {
+		box-shadow:
+			0 0 0 2px var(--color-base-100),
+			0 0 0 4px var(--ctx-pink),
+			0 0 18px 4px var(--ctx-pink-soft);
+	}
+}
+
+/* Cards rise in one after another; --rise-delay staggers a batch. */
+.rise-in {
+	animation: feed-card-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--rise-delay, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.feed-card,
+	.rise-in,
+	.live-dot::after,
+	.live-ring,
 	.skeleton {
 		animation: none;
+	}
+	.segmented-thumb {
+		transition: none;
 	}
 	.fade-in-image {
 		transition: none;
