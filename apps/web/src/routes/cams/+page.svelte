@@ -306,7 +306,10 @@
 				/>
 			</div>
 		{:else if !forYouLoaded}
-			<div class="skeleton h-[clamp(320px,48vh,500px)] rounded-2xl" aria-hidden="true"></div>
+			<div
+				class="skeleton aspect-[16/7] max-h-[72vh] min-h-[360px] rounded-2xl"
+				aria-hidden="true"
+			></div>
 		{/if}
 
 		<Shelf

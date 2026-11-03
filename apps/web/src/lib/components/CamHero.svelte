@@ -80,7 +80,7 @@
 	<section
 		bind:this={banner}
 		use:impression={{ subject, shown }}
-		class="bg-base-300 relative h-[clamp(320px,48vh,500px)] overflow-hidden rounded-2xl ring-1 ring-white/10 max-md:aspect-[4/5] max-md:h-auto"
+		class="bg-base-300 relative aspect-[16/7] max-h-[72vh] min-h-[360px] w-full overflow-hidden rounded-2xl ring-1 ring-white/10 max-md:aspect-[4/5]"
 	>
 		<button
 			type="button"
@@ -103,7 +103,7 @@
 		<div
 			class="pointer-events-none absolute inset-y-0 left-0 flex max-w-xl flex-col justify-end gap-3 p-8 max-md:inset-x-0 max-md:max-w-none max-md:p-5"
 		>
-			<p class="text-live flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
+			<p class="flex items-center gap-2 text-xs font-semibold tracking-wide text-white uppercase">
 				<span class="live-dot"></span>
 				Top pick for you{#if reason}<span class="text-white/70 normal-case">· {reason}</span>{/if}
 			</p>

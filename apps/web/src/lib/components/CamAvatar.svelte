@@ -53,7 +53,9 @@
 		{#if detail}
 			<span class="text-base-content/45 truncate text-xs">{detail}</span>
 		{:else}
-			<span class="text-live flex items-center justify-center gap-1.5 text-xs font-medium">
+			<span
+				class="text-base-content/60 flex items-center justify-center gap-1.5 text-xs font-medium"
+			>
 				<span class="live-dot" style:width="6px" style:height="6px"></span> Live
 			</span>
 		{/if}

@@ -238,7 +238,7 @@
 			onmore={(button) => (menuAnchor = button)}
 		/>
 		{#if shownReason}
-			<span class="text-live -mt-1 truncate text-xs leading-4">{shownReason}</span>
+			<span class="text-base-content/55 -mt-1 truncate text-xs leading-4">{shownReason}</span>
 		{/if}
 	</div>
 
