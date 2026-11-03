@@ -1,13 +1,16 @@
 <!--
-	Cams: recordings running now, the user's rooms (followed or auto-recorded)
-	and finished recordings, then every room live now on the cam sites, most
-	viewers first, narrowed by gender, site and tag. A top bar search (?q=)
-	or a tag (?tag=) hides the rows and narrows the live rooms.
+	Cams: recordings running now, the user's rooms (followed or auto-recorded),
+	live rooms picked by their taste and finished recordings, then every room
+	live now on the cam sites, sorted by viewers or show start and narrowed by
+	gender, site and tag. A top bar search (?q=) or a tag (?tag=) hides the
+	rows and narrows the live rooms. Shown rooms refresh their picture and
+	audience every minute, in place.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import type { CamSort } from '@playingwithclouds/veil-sdk/generated';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Shelf from '$lib/components/Shelf.svelte';
@@ -17,13 +20,16 @@
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import {
 		CAM_GENDERS,
+		CAM_SORTS,
 		camSites,
 		fetchActiveRecordings,
 		fetchCamRooms,
+		fetchRecommendedCams,
 		fetchRecordedVideos,
 		fetchYourRooms,
 		popularRoomTags,
 		type ActiveRecordingRow,
+		type CamFilter,
 		type CamRow
 	} from '$lib/cams';
 	import type { VideoCardRow } from '$lib/library';
@@ -36,12 +42,18 @@
 	const POPULAR_TAG_COUNT = 16;
 	// Running recordings change length and end; the row follows them.
 	const RECORDING_REFRESH_MS = 10_000;
+	// The sites' pictures and audiences change; shown rooms follow them.
+	const ROOM_REFRESH_MS = 60_000;
+	// Rooms refreshed at most, from the top: one listing answers them.
+	const ROOM_REFRESH_LIMIT = 192;
 
 	let recordings = $state<ActiveRecordingRow[]>([]);
 	let yourRooms = $state<CamRow[]>([]);
+	let forYou = $state<CamRow[]>([]);
 	let recordedVideos = $state<VideoCardRow[]>([]);
 
 	let gender = $state('');
+	let sort = $state<CamSort>('viewers');
 	let selectedSites = $state<string[]>([]);
 	let rooms = $state<CamRow[]>([]);
 	let total = $state(0);
@@ -58,18 +70,24 @@
 	let showOverview = $derived(query === '' && tag === '');
 	let siteChoices = $derived(camSites($sites));
 	let tagChoices = $derived(tagChipsWith(popularTags, tag));
+	let recordingIds = $derived(recordings.map((recording) => recording.camModel?.id));
 
 	$effect(() => {
 		load(fetchYourRooms(), (found) => (yourRooms = found));
+		load(fetchRecommendedCams(), (found) => (forYou = found));
 		load(fetchRecordedVideos(), (found) => (recordedVideos = found));
 		refreshRecordings();
-		const timer = setInterval(refreshRecordings, RECORDING_REFRESH_MS);
-		return () => clearInterval(timer);
+		const recordingTimer = setInterval(refreshRecordings, RECORDING_REFRESH_MS);
+		const roomTimer = setInterval(refreshShownRooms, ROOM_REFRESH_MS);
+		return () => {
+			clearInterval(recordingTimer);
+			clearInterval(roomTimer);
+		};
 	});
 
 	// Starts the live rooms over whenever a filter changes.
 	$effect(() => {
-		void [gender, selectedSites, tag, query];
+		void [gender, sort, selectedSites, tag, query];
 		untrack(restart);
 	});
 
@@ -81,6 +99,11 @@
 	/** Reloads the recordings running now. */
 	function refreshRecordings() {
 		load(fetchActiveRecordings(), (found) => (recordings = found));
+	}
+
+	/** The live rooms' filter as the controls and the URL set it. */
+	function currentFilter(): CamFilter {
+		return { plugins: selectedSites, gender, tag, text: query, sort };
 	}
 
 	/** The popular tags, with the active one first when it isn't among them. */
@@ -118,11 +141,7 @@
 		loading = true;
 		const requested = generation;
 		try {
-			const found = await fetchCamRooms(
-				{ plugins: selectedSites, gender, tag, text: query },
-				PAGE_SIZE,
-				rooms.length
-			);
+			const found = await fetchCamRooms(currentFilter(), PAGE_SIZE, rooms.length);
 			if (requested !== generation) return;
 			const before = rooms.length;
 			rooms = [...rooms, ...unseenRooms(found.rooms)];
@@ -136,6 +155,21 @@
 		} finally {
 			if (requested === generation) loading = false;
 		}
+	}
+
+	/**
+	 * Gives the shown rooms their current picture and audience without moving
+	 * them, so the grid doesn't reorder under the user.
+	 */
+	async function refreshShownRooms() {
+		if (document.hidden || rooms.length === 0 || loading) return;
+		const requested = generation;
+		const limit = Math.min(rooms.length, ROOM_REFRESH_LIMIT);
+		const found = await fetchCamRooms(currentFilter(), limit, 0);
+		if (requested !== generation) return;
+		const fresh = new Map(found.rooms.map((room) => [room.id, room]));
+		rooms = rooms.map((room) => fresh.get(room.id) ?? room);
+		total = found.total;
 	}
 
 	/** Adds or removes one site from the filter. */
@@ -171,6 +205,39 @@
 </script>
 
 <svelte:head><title>Cams · Veil</title></svelte:head>
+
+{#snippet roomCard(room: CamRow, markLive: boolean)}
+	<CamCard
+		cam={room}
+		{markLive}
+		recording={recordingIds.includes(room.id)}
+		onrecordingchange={refreshRecordings}
+		onclick={() => goto(camUrl(room.id))}
+	/>
+{/snippet}
+
+{#snippet segmented<Value extends string>(
+	label: string,
+	choices: { value: Value; label: string }[],
+	current: Value,
+	choose: (value: Value) => void
+)}
+	<div class="bg-base-200 flex gap-1 rounded-full p-1" role="group" aria-label={label}>
+		{#each choices as choice (choice.value)}
+			<button
+				type="button"
+				class="rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors"
+				class:bg-base-100={current === choice.value}
+				class:shadow-sm={current === choice.value}
+				class:opacity-60={current !== choice.value}
+				aria-pressed={current === choice.value}
+				onclick={() => choose(choice.value)}
+			>
+				{choice.label}
+			</button>
+		{/each}
+	</div>
+{/snippet}
 
 <div class="flex flex-col gap-8">
 	<PageHeader
@@ -211,7 +278,13 @@
 
 		<Shelf title="Your rooms" items={yourRooms} key={(room) => room.id} itemWidth={CARD_WIDTH}>
 			{#snippet card(room)}
-				<CamCard cam={room} onclick={() => goto(camUrl(room.id))} />
+				{@render roomCard(room, true)}
+			{/snippet}
+		</Shelf>
+
+		<Shelf title="For you" items={forYou} key={(room) => room.id} itemWidth={CARD_WIDTH}>
+			{#snippet card(room)}
+				{@render roomCard(room, false)}
 			{/snippet}
 		</Shelf>
 
@@ -229,26 +302,20 @@
 				/>
 			{/snippet}
 		</Shelf>
+
+		{#if yourRooms.length === 0 && recordings.length === 0}
+			<p class="text-base-content/50 -mt-4 text-sm">
+				Follow a room from its ⋮ menu to hear when it goes live, or auto-record it to keep its
+				shows.
+			</p>
+		{/if}
 	{/if}
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center gap-3">
 			<h2 class="text-lg font-semibold">Live now</h2>
-			<div class="bg-base-200 flex gap-1 rounded-full p-1" role="group" aria-label="Gender">
-				{#each CAM_GENDERS as choice (choice.value)}
-					<button
-						type="button"
-						class="rounded-full px-3 py-1 text-sm font-medium transition-colors"
-						class:bg-base-100={gender === choice.value}
-						class:shadow-sm={gender === choice.value}
-						class:opacity-60={gender !== choice.value}
-						aria-pressed={gender === choice.value}
-						onclick={() => (gender = choice.value)}
-					>
-						{choice.label}
-					</button>
-				{/each}
-			</div>
+			{@render segmented('Gender', CAM_GENDERS, gender, (value) => (gender = value))}
+			{@render segmented('Sort', CAM_SORTS, sort, (value) => (sort = value))}
 			{#if siteChoices.length > 1}
 				{#each siteChoices as site (site.name)}
 					<button
@@ -295,7 +362,7 @@
 			style:grid-template-columns="repeat(auto-fill, minmax({CARD_WIDTH}px, 1fr))"
 		>
 			{#each rooms as room (room.id)}
-				<CamCard cam={room} onclick={() => goto(camUrl(room.id))} />
+				{@render roomCard(room, false)}
 			{/each}
 		</div>
 

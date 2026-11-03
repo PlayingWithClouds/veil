@@ -109,7 +109,9 @@
 			<div class="flex h-11 items-center">
 				{@render searchBox()}
 			</div>
-			<HeaderFilters />
+			{#if scope.libraryFilter}
+				<HeaderFilters />
+			{/if}
 		</div>
 		<div class="flex h-11 w-56 shrink-0 items-center justify-end">
 			<NotificationBell />

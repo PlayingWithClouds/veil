@@ -13,13 +13,10 @@ paths:
 - Any list of scenes logs impressions (`use:impression`, `recordClicked`, `resetShownImpressions` on replace; see recommendations rules).
 - New UI follows `src/routes/layout.css` tokens and patterns. TV/D-pad focus: `src/lib/tv.css`, `FocusGrid`, `FocusList`.
 
-## Split view
+## Cams
 
-`SplitView` is mounted by the root layout so players survive navigation. On `/split` (`routes/split`, `splitUrl()`, empty route) it fills the page; elsewhere it's a muted dock at bottom left that opens `/split`.
+`lib/cams.ts` is the data module; `CamCard` is the one room card (hover plays the muted stream via `LiveRoomPreview`, ⋮ menu follows, auto-records, records, blocks).
 
-- Up to 4 cams/scenes: 1 full, 2 side by side, 3–4 in 2×2. Drag-to-reorder tab bar, fullscreen button.
-- State in `lib/stores/split.ts` (localStorage `veil:split`: `{kind, mediaId, title}` per pane + focused index; playback restarts on reload).
-- `SplitAddButton` (hover on `SceneCard`, `ExploreSceneCard`, `CamCard`, sidebar followed cams, `ActiveRecordings`) → `openInSplit`: adds a pane, stays on the page. With 4 open it replaces the focused pane and says so.
-- Each `SplitPane` resolves its own stream (cam: `fetchCamStream`, re-resolved on error; scene: best stream) into a private `VideoPlayer`, never the shared one, so the mini player is untouched.
-- Only the focused pane is unmuted, unless "All audio" (`allAudio`, saved). The selecting click doesn't pause (`silenced`, which also isolates it from the session's live-audio choice). Only the focused pane takes keyboard shortcuts (`keyboard`).
-- Panes keep their DOM position and are placed with CSS `order`, because moving a player's element stalls its stream.
+- Follows of rooms live in the `followedCams` store (room id → follow id), loaded once by `loadFollowedCams`; change them only through `toggleCamFollow`.
+- The live grid on `/cams` refreshes shown rooms in place every minute rather than reloading, so it never reorders under the user.
+- There is no split view; don't add one.

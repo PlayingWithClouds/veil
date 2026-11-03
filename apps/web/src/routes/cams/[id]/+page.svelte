@@ -1,43 +1,57 @@
 <!--
-	One cam room: its live stream, played as soon as the page opens, then
-	follow, recording (now or from back in the live buffer), auto-record with
-	the room's quality, and the room's finished recordings.
+	One cam room: its live stream, played as soon as the page opens; its
+	performer (linked from the library), topic and tags; follow, recording
+	(now or from back in the live buffer) and auto-record at the room's
+	quality; when it's usually on; its finished recordings; and similar rooms
+	live now.
 -->
 <script lang="ts">
+	import dayjs from 'dayjs';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import BellIcon from 'phosphor-svelte/lib/BellIcon';
 	import BellRingingIcon from 'phosphor-svelte/lib/BellRingingIcon';
 	import RecordIcon from 'phosphor-svelte/lib/RecordIcon';
 	import StopIcon from 'phosphor-svelte/lib/StopIcon';
+	import UserIcon from 'phosphor-svelte/lib/UserIcon';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
+	import CamCard from '$lib/components/CamCard.svelte';
+	import Shelf from '$lib/components/Shelf.svelte';
 	import Toggle from '$lib/components/Toggle.svelte';
+	import UsualHours from '$lib/components/UsualHours.svelte';
+	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import {
 		RECORD_QUALITIES,
 		RECORD_REWINDS,
 		fetchCam,
-		fetchCamFollow,
 		fetchCamRecordings,
+		fetchCamShows,
 		fetchRoomRecording,
-		followCam,
+		fetchSimilarRooms,
+		followedCams,
+		linkCamPerformer,
+		loadFollowedCams,
+		roomTopic,
 		setCamAutoRecord,
 		startCamRecording,
 		stopCamRecording,
-		unfollowCam,
+		toggleCamFollow,
 		watchCam,
 		type ActiveRecordingRow,
-		type CamRow
+		type CamRow,
+		type CamShowRow
 	} from '$lib/cams';
-	import type { VideoCardRow } from '$lib/library';
+	import { fetchPerformers, type VideoCardRow } from '$lib/library';
 	import { siteDisplayName } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
 	import { formatClock } from '$lib/time';
-	import { videoUrl } from '$lib/routes';
+	import { camUrl, camsUrl, performerUrl, videoUrl } from '$lib/routes';
 	import { isCompact } from '$lib/stores/viewport';
 
 	const VIDEO_WIDTH = 280;
+	const ROOM_WIDTH = 220;
 	// A running recording's length and size, and one just started or stopped.
 	const RECORDING_REFRESH_MS = 5_000;
 
@@ -51,15 +65,19 @@
 	let stream = $state<{ url: string; mimeType: string } | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let followId = $state<string | null>(null);
 	let recording = $state<ActiveRecordingRow | null>(null);
 	let recordings = $state<VideoCardRow[]>([]);
+	let shows = $state<CamShowRow[]>([]);
+	let similar = $state<CamRow[]>([]);
 	let rewindSeconds = $state(0);
+	let pickingPerformer = $state(false);
 	// An action waiting for the backend; its buttons are disabled meanwhile.
 	let busy = $state(false);
 
 	let id = $derived(page.params.id ?? '');
 	let quality = $derived(cam?.recordQuality ?? 'source');
+	let followed = $derived($followedCams.has(id));
+	let topic = $derived(roomTopic(cam?.live?.subject));
 
 	$effect(() => {
 		void load(id);
@@ -75,18 +93,20 @@
 		return () => clearInterval(timer);
 	});
 
-	/** Loads the room, its follow, recording and recordings, and while it's live, its stream. */
+	/** Loads the room and its extras, and while it's live, its stream. */
 	async function load(camId: string) {
 		cam = null;
 		stream = null;
 		error = null;
-		followId = null;
 		recording = null;
 		recordings = [];
+		shows = [];
+		similar = [];
 		loading = true;
 		void loadExtras(camId);
 		try {
 			cam = await fetchCam(camId);
+			if (cam) void loadSimilar(cam);
 			if (cam?.live) stream = await watchCam(camId);
 		} catch (failure) {
 			error = String(failure);
@@ -95,20 +115,31 @@
 		}
 	}
 
-	/** Loads what the controls and the recordings section show. */
+	/** Loads what the controls, the schedule and the recordings section show. */
 	async function loadExtras(camId: string) {
 		try {
-			const [follow, running, finished] = await Promise.all([
-				fetchCamFollow(camId),
+			const [running, finished, pastShows] = await Promise.all([
 				fetchRoomRecording(camId),
-				fetchCamRecordings(camId)
+				fetchCamRecordings(camId),
+				fetchCamShows(camId),
+				loadFollowedCams()
 			]);
 			if (camId !== id) return;
-			followId = follow;
 			recording = running;
 			recordings = finished;
+			shows = pastShows;
 		} catch (failure) {
 			console.warn('cam room details failed to load', failure);
+		}
+	}
+
+	/** Loads the rooms live now that share the room's tags. */
+	async function loadSimilar(room: CamRow) {
+		try {
+			const found = await fetchSimilarRooms(room);
+			if (room.id === id) similar = found;
+		} catch (failure) {
+			console.warn('similar rooms failed to load', failure);
 		}
 	}
 
@@ -134,18 +165,6 @@
 		} finally {
 			busy = false;
 		}
-	}
-
-	/** Follows the room, or stops following it. */
-	function toggleFollow() {
-		void act(async () => {
-			if (followId) {
-				await unfollowCam(followId);
-				followId = null;
-				return;
-			}
-			followId = await followCam(id);
-		});
 	}
 
 	/** Starts recording at the room's quality, from the chosen point back. */
@@ -178,6 +197,19 @@
 			cam = await setCamAutoRecord(id, cam?.autoRecord ?? false, chosen);
 		});
 	}
+
+	/** Links the room to a library performer, or unlinks it with null. */
+	function linkPerformer(performerId: string | null) {
+		pickingPerformer = false;
+		void act(async () => {
+			cam = await linkCamPerformer(id, performerId);
+		});
+	}
+
+	/** The cams page narrowed to one tag. */
+	function tagUrl(tag: string): string {
+		return `${camsUrl()}?${new URLSearchParams({ tag })}`;
+	}
 </script>
 
 <svelte:head><title>{cam?.displayName ?? 'Cam'} · Veil</title></svelte:head>
@@ -201,7 +233,9 @@
 			{#if loading}
 				<span class="loading loading-spinner"></span>
 			{:else if cam && !cam.live}
-				{cam.displayName} is offline.
+				{cam.displayName} is offline{#if cam.lastSeenOnlineAt}, last seen {dayjs(
+						cam.lastSeenOnlineAt
+					).fromNow()}{/if}.
 			{:else if !cam}
 				This room isn't known.
 			{/if}
@@ -214,30 +248,67 @@
 
 	{#if cam}
 		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div class="flex min-w-0 flex-col gap-1">
+			<div class="flex min-w-0 flex-col gap-1.5">
 				<h1 class="text-xl font-semibold">{cam.displayName}</h1>
-				<p class="text-base-content/60 text-sm">
-					{siteDisplayName(cam.plugin, $sites)}
-					{#if cam.live}· {cam.live.viewers} watching{/if}
+				<p class="text-base-content/60 flex flex-wrap items-center gap-x-1.5 text-sm">
+					{#if cam.performer}
+						<a href={performerUrl(cam.performer.id)} class="text-base-content hover:underline">
+							{cam.performer.name}
+						</a>
+						<span aria-hidden="true">·</span>
+					{/if}
+					<span>{siteDisplayName(cam.plugin, $sites)}</span>
+					{#if cam.live}
+						<span aria-hidden="true">·</span>
+						<span>{cam.live.viewers.toLocaleString()} watching</span>
+					{/if}
+					{#if cam.live?.startedAt}
+						<span aria-hidden="true">·</span>
+						<span>on for {dayjs(cam.live.startedAt).fromNow(true)}</span>
+					{/if}
 				</p>
-				{#if cam.live?.subject}
-					<p class="text-base-content/80 text-sm">{cam.live.subject}</p>
+				{#if topic}
+					<p class="text-base-content/80 text-sm">{topic}</p>
+				{/if}
+				{#if cam.tags.length > 0}
+					<div class="flex flex-wrap gap-1.5 pt-1">
+						{#each cam.tags as tag (tag)}
+							<a
+								href={tagUrl(tag)}
+								class="bg-base-200 rounded-full px-2.5 py-0.5 text-xs hover:brightness-125"
+							>
+								#{tag}
+							</a>
+						{/each}
+					</div>
 				{/if}
 			</div>
-			<button
-				type="button"
-				class="btn btn-sm"
-				class:btn-primary={followId === null}
-				disabled={busy}
-				onclick={toggleFollow}
-				title="Notifies you when the room goes live"
-			>
-				{#if followId}
-					<BellRingingIcon size={16} /> Following
-				{:else}
-					<BellIcon size={16} /> Follow
-				{/if}
-			</button>
+			<div class="flex shrink-0 items-center gap-2">
+				<button
+					type="button"
+					class="btn btn-sm"
+					disabled={busy}
+					onclick={() => (pickingPerformer = true)}
+					title="The same person in the library; her recordings credit them"
+				>
+					<UserIcon size={16} />
+					{cam.performer ? 'Change performer' : 'Link a performer'}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm"
+					class:btn-primary={!followed}
+					disabled={busy}
+					onclick={() => void act(() => toggleCamFollow(id))}
+					title="Notifies you when the room goes live"
+				>
+					{#if followed}
+						<BellRingingIcon size={16} /> Following
+					{:else}
+						<BellIcon size={16} /> Follow
+					{/if}
+				</button>
+			</div>
 		</div>
 
 		<div class="bg-base-200 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl p-4">
@@ -306,6 +377,19 @@
 			</div>
 		</div>
 
+		{#if shows.length > 0}
+			<section class="flex flex-col gap-3 pt-4">
+				<h2 class="text-lg font-semibold">
+					Usually on
+					<span class="text-base-content/50 text-sm font-normal">
+						· from {shows.length}
+						{shows.length === 1 ? 'show' : 'shows'} seen
+					</span>
+				</h2>
+				<UsualHours {shows} />
+			</section>
+		{/if}
+
 		{#if recordings.length > 0}
 			<section class="flex flex-col gap-4 pt-4">
 				<h2 class="text-lg font-semibold">Recordings</h2>
@@ -323,5 +407,27 @@
 				</div>
 			</section>
 		{/if}
+
+		<div class="pt-4">
+			<Shelf title="Similar rooms" items={similar} key={(room) => room.id} itemWidth={ROOM_WIDTH}>
+				{#snippet card(room)}
+					<CamCard cam={room} onclick={() => goto(camUrl(room.id))} />
+				{/snippet}
+			</Shelf>
+		</div>
 	{/if}
 </div>
+
+{#if pickingPerformer && cam}
+	<RecordPickerDialog
+		kind="performer"
+		title={cam.performer ? 'Change the performer' : 'Link a performer'}
+		placeholder="Find a performer by name…"
+		search={(text) => fetchPerformers(text, 24)}
+		taken={cam.performer ? [cam.performer.id] : []}
+		clearLabel={cam.performer ? 'Unlink the performer' : undefined}
+		onclear={() => linkPerformer(null)}
+		onpick={(performer) => linkPerformer(performer.id)}
+		onclose={() => (pickingPerformer = false)}
+	/>
+{/if}

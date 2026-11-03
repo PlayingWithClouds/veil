@@ -1,6 +1,9 @@
+import { get, writable } from 'svelte/store';
 import type {
 	ActiveRecording,
 	CamModel,
+	CamShow,
+	CamSort,
 	FieldsSelection
 } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
@@ -12,12 +15,15 @@ import type { SitePlugin } from '$lib/plugins';
 const CAM_CARD = {
 	id: true,
 	plugin: true,
+	username: true,
 	displayName: true,
 	tags: true,
 	autoRecord: true,
 	recordQuality: true,
+	lastSeenOnlineAt: true,
+	performer: { id: true, name: true },
 	thumbnail: { uri: true },
-	live: { viewers: true, subject: true, thumbnail: { uri: true } }
+	live: { viewers: true, subject: true, startedAt: true, thumbnail: { uri: true } }
 } as const;
 
 /** A recording running now. */
@@ -29,15 +35,20 @@ const ACTIVE_RECORDING = {
 	quality: true
 } as const;
 
+/** A finished show of a room. */
+const CAM_SHOW = { startedAt: true, endedAt: true } as const;
+
 export type CamRow = FieldsSelection<CamModel, typeof CAM_CARD>;
 export type ActiveRecordingRow = FieldsSelection<ActiveRecording, typeof ACTIVE_RECORDING>;
+export type CamShowRow = FieldsSelection<CamShow, typeof CAM_SHOW>;
 
-/** What narrows the live rooms; empty values don't narrow. */
+/** What narrows the live rooms and how they're ordered; empty values don't narrow. */
 export interface CamFilter {
 	plugins: string[];
 	gender: string;
 	tag: string;
 	text: string;
+	sort: CamSort;
 }
 
 /** The genders the cam sites sort rooms by, as filter choices. */
@@ -47,6 +58,13 @@ export const CAM_GENDERS = [
 	{ value: 'male', label: 'Male' },
 	{ value: 'couple', label: 'Couples' },
 	{ value: 'trans', label: 'Trans' }
+];
+
+/** The orders of the live rooms. */
+export const CAM_SORTS: { value: CamSort; label: string }[] = [
+	{ value: 'viewers', label: 'Most viewers' },
+	{ value: 'started', label: 'Just started' },
+	{ value: 'fewest', label: 'Fewest viewers' }
 ];
 
 /** The qualities a recording can run at; the backend reads "source" or a height. */
@@ -64,11 +82,32 @@ export const RECORD_REWINDS = [
 	{ seconds: 180, label: '3 min ago' }
 ];
 
+/** The rooms the user follows: room id → follow id. Filled by loadFollowedCams. */
+export const followedCams = writable<Map<string, string>>(new Map());
+
+let followedLoad: Promise<void> | null = null;
+
 /** The enabled sites that list cam rooms. */
 export function camSites(plugins: SitePlugin[]): SitePlugin[] {
 	return plugins.filter(
 		(plugin) => plugin.enabled && plugin.available && plugin.capabilities.includes('cam:list')
 	);
+}
+
+/**
+ * The room's subject without hashtags and token counters ("[840 tokens
+ * left]"); null when nothing else is in it.
+ */
+export function roomTopic(subject: string | null | undefined): string | null {
+	if (!subject) return null;
+	const cleaned = subject
+		.replace(/#[\p{L}\p{N}_-]+/gu, '')
+		.replace(/\[[^\]]*\]/g, '')
+		.replace(/\s+/g, ' ')
+		.replace(/[\s/|,-]+$/u, '')
+		.trim();
+	if (cleaned === '') return null;
+	return cleaned;
 }
 
 /** Recordings running now. */
@@ -99,6 +138,12 @@ export async function fetchCamRecordings(id: string): Promise<VideoCardRow[]> {
 	return data.camModel?.recordings ?? [];
 }
 
+/** One room's shows of the last eight weeks, newest first. */
+export async function fetchCamShows(id: string): Promise<CamShowRow[]> {
+	const data = await gqlClient.query({ camModel: { __args: { id }, shows: CAM_SHOW } });
+	return data.camModel?.shows ?? [];
+}
+
 /** Rooms live now on every cam site, most viewers first. */
 export async function fetchLiveCams(limit = 20): Promise<CamRow[]> {
 	const data = await gqlClient.query({
@@ -107,7 +152,7 @@ export async function fetchLiveCams(limit = 20): Promise<CamRow[]> {
 	return data.camRooms.rooms;
 }
 
-/** A page of the rooms live now that match the filter, most viewers first. */
+/** A page of the rooms live now that match the filter, in its order. */
 export async function fetchCamRooms(
 	filter: CamFilter,
 	limit: number,
@@ -118,6 +163,7 @@ export async function fetchCamRooms(
 		gender: filter.gender || undefined,
 		tag: filter.tag || undefined,
 		text: filter.text || undefined,
+		sort: filter.sort,
 		limit,
 		offset
 	};
@@ -127,17 +173,41 @@ export async function fetchCamRooms(
 	return data.camRooms;
 }
 
+/** Rooms live now that match what the user likes, best first. */
+export async function fetchRecommendedCams(limit = 20): Promise<CamRow[]> {
+	const data = await gqlClient.query({ camRecommendations: { __args: { limit }, ...CAM_CARD } });
+	return data.camRecommendations;
+}
+
+/** Rooms live now sharing the room's first tags, most viewers first, without it. */
+export async function fetchSimilarRooms(room: CamRow, limit = 12): Promise<CamRow[]> {
+	const tags = room.tags.slice(0, 2);
+	const pages = await Promise.all(
+		tags.map((tag) =>
+			fetchCamRooms({ plugins: [], gender: '', tag, text: '', sort: 'viewers' }, limit, 0)
+		)
+	);
+	const seen = new Set([room.id]);
+	const similar: CamRow[] = [];
+	for (const candidate of pages.flatMap((found) => found.rooms)) {
+		if (seen.has(candidate.id)) continue;
+		seen.add(candidate.id);
+		similar.push(candidate);
+	}
+	return similar.sort(compareRooms).slice(0, limit);
+}
+
 /**
  * The rooms the user keeps: followed or auto-recorded, live ones first
  * (most viewers first), then the offline ones by name.
  */
 export async function fetchYourRooms(): Promise<CamRow[]> {
-	const [followedIds, autoRecorded] = await Promise.all([
-		fetchFollowedCamIds(),
+	const [, autoRecorded] = await Promise.all([
+		loadFollowedCams(),
 		gqlClient.query({ camModels: { __args: { autoRecord: true, limit: 200 }, ...CAM_CARD } })
 	]);
 	const known = new Set(autoRecorded.camModels.map((room) => room.id));
-	const missingIds = followedIds.filter((id) => !known.has(id));
+	const missingIds = [...get(followedCams).keys()].filter((id) => !known.has(id));
 	const followed = await Promise.all(missingIds.map((id) => fetchCam(id)));
 	const rooms = [...autoRecorded.camModels, ...followed.filter((room) => room !== null)];
 	return rooms.sort(compareRooms);
@@ -151,17 +221,47 @@ function compareRooms(first: CamRow, second: CamRow): number {
 	return first.displayName.localeCompare(second.displayName);
 }
 
-/** The ids of the rooms with an enabled follow. */
-async function fetchFollowedCamIds(): Promise<string[]> {
+/** Loads the followed rooms into followedCams, once per page load. */
+export function loadFollowedCams(): Promise<void> {
+	if (followedLoad === null) {
+		followedLoad = fetchFollowedCams().then((followed) => followedCams.set(followed));
+	}
+	return followedLoad;
+}
+
+/** The rooms with an enabled follow, each with its follow's id. */
+async function fetchFollowedCams(): Promise<Map<string, string>> {
 	const data = await gqlClient.query({
-		follows: { enabled: true, targetKind: true, targetId: true }
+		follows: { id: true, enabled: true, targetKind: true, targetId: true }
 	});
-	const ids: string[] = [];
+	const followed = new Map<string, string>();
 	for (const follow of data.follows) {
 		if (!follow.enabled || follow.targetKind !== 'camModel' || !follow.targetId) continue;
-		ids.push(follow.targetId);
+		followed.set(follow.targetId, follow.id);
 	}
-	return ids;
+	return followed;
+}
+
+/** Follows a room (going live notifies), or ends its follow. */
+export async function toggleCamFollow(id: string): Promise<void> {
+	await loadFollowedCams();
+	const followId = get(followedCams).get(id);
+	if (followId) {
+		await gqlClient.mutation({ unfollow: { __args: { id: followId } } });
+		followedCams.update((current) => withoutKey(current, id));
+		return;
+	}
+	const data = await gqlClient.mutation({
+		followRecord: { __args: { subject: { kind: 'camModel', id }, notify: true }, id: true }
+	});
+	followedCams.update((current) => new Map(current).set(id, data.followRecord.id));
+}
+
+/** A copy of the map without one key. */
+function withoutKey(map: Map<string, string>, key: string): Map<string, string> {
+	const copy = new Map(map);
+	copy.delete(key);
+	return copy;
 }
 
 /** The tags most of the rooms carry, most common first. */
@@ -190,34 +290,20 @@ export async function watchCam(id: string): Promise<{ url: string; mimeType: str
 	return { url: backendUrl(data.watchCam.url), mimeType: data.watchCam.mimeType };
 }
 
-/** The id of the room's follow, or null when it isn't followed. */
-export async function fetchCamFollow(id: string): Promise<string | null> {
-	const data = await gqlClient.query({
-		followOf: { __args: { subject: { kind: 'camModel', id } }, id: true, enabled: true }
-	});
-	if (!data.followOf?.enabled) return null;
-	return data.followOf.id;
-}
-
-/** Follows a room, so going live notifies; returns the follow's id. */
-export async function followCam(id: string): Promise<string> {
-	const data = await gqlClient.mutation({
-		followRecord: { __args: { subject: { kind: 'camModel', id }, notify: true }, id: true }
-	});
-	return data.followRecord.id;
-}
-
-/** Ends a follow. */
-export async function unfollowCam(followId: string): Promise<void> {
-	await gqlClient.mutation({ unfollow: { __args: { id: followId } } });
-}
-
 /** Turns auto-recording of a room on or off, at a quality when given. */
 export async function setCamAutoRecord(id: string, on: boolean, quality?: string): Promise<CamRow> {
 	const data = await gqlClient.mutation({
 		setCamAutoRecord: { __args: { id, on, quality }, ...CAM_CARD }
 	});
 	return data.setCamAutoRecord;
+}
+
+/** Links the room to a library performer; null unlinks. */
+export async function linkCamPerformer(id: string, performerId: string | null): Promise<CamRow> {
+	const data = await gqlClient.mutation({
+		linkCamPerformer: { __args: { id, performerId }, ...CAM_CARD }
+	});
+	return data.linkCamPerformer;
 }
 
 /** Starts recording a room, from some seconds back in the live buffer. */
@@ -234,4 +320,31 @@ export async function startCamRecording(
 /** Stops a room's recording; the backend files it as a video. */
 export async function stopCamRecording(id: string): Promise<void> {
 	await gqlClient.mutation({ stopRecording: { __args: { id } } });
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * When the room is usually on: per weekday (0 = Sunday) and hour, in local
+ * time, the share of the weeks since its oldest show it was on then, 0..1.
+ */
+export function usualHours(shows: CamShowRow[]): number[][] {
+	const hours = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
+	if (shows.length === 0) return hours;
+	for (const show of shows) {
+		markShowHours(hours, new Date(show.startedAt), new Date(show.endedAt));
+	}
+	const oldest = Math.min(...shows.map((show) => new Date(show.startedAt).getTime()));
+	const weeks = Math.max(1, Math.ceil((Date.now() - oldest) / WEEK_MS));
+	return hours.map((day) => day.map((count) => Math.min(1, count / weeks)));
+}
+
+/** Counts each local hour a show was on. */
+function markShowHours(hours: number[][], start: Date, end: Date) {
+	const cursor = new Date(start);
+	cursor.setMinutes(0, 0, 0);
+	while (cursor < end) {
+		hours[cursor.getDay()][cursor.getHours()] += 1;
+		cursor.setHours(cursor.getHours() + 1);
+	}
 }

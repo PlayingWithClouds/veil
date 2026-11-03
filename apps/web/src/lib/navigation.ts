@@ -45,17 +45,21 @@ export const navLinks: NavLink[] = [
 export interface SearchScope {
 	path: string;
 	placeholder: string;
+	// Whether the library filter's chip row shows under the search; cams have their own filters.
+	libraryFilter: boolean;
 }
 
 /** The search scope of a page: cam, gallery, audio and story pages search their own sites. */
 export function searchScopeOf(pathname: string): SearchScope {
-	if (pathname.startsWith(camsUrl())) return { path: camsUrl(), placeholder: 'Search cams' };
+	if (pathname.startsWith(camsUrl()))
+		return { path: camsUrl(), placeholder: 'Search cams', libraryFilter: false };
 	if (pathname.startsWith(galleriesUrl()))
-		return { path: galleriesUrl(), placeholder: 'Search galleries' };
-	if (pathname.startsWith(audiosUrl())) return { path: audiosUrl(), placeholder: 'Search audio' };
+		return { path: galleriesUrl(), placeholder: 'Search galleries', libraryFilter: true };
+	if (pathname.startsWith(audiosUrl()))
+		return { path: audiosUrl(), placeholder: 'Search audio', libraryFilter: true };
 	if (pathname.startsWith(storiesUrl()))
-		return { path: storiesUrl(), placeholder: 'Search stories' };
-	return { path: '/', placeholder: 'Search the sites' };
+		return { path: storiesUrl(), placeholder: 'Search stories', libraryFilter: true };
+	return { path: '/', placeholder: 'Search the sites', libraryFilter: true };
 }
 
 /** Whether the link points at the page at pathname. */
