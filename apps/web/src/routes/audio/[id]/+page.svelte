@@ -90,7 +90,7 @@
 	{#if audio}
 		<div class="flex gap-6 max-md:flex-col">
 			<div
-				class="bg-base-200 flex aspect-square w-64 shrink-0 items-center justify-center overflow-hidden rounded-2xl max-md:w-full"
+				class="bg-base-200 flex aspect-square w-64 shrink-0 items-center justify-center self-start overflow-hidden rounded-2xl max-md:w-full"
 			>
 				{#if cover}
 					<img src={cover} alt={audio.title} class="h-full w-full object-cover" />

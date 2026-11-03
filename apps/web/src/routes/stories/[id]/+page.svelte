@@ -20,13 +20,18 @@
 	import { logEvent } from '$lib/events';
 	import { isBranching, minutesLeft, readingPointOf } from '$lib/storyReading';
 
+	// Tags shown before "+N more": story sites let authors pile on keywords.
+	const MAIN_TAGS = 12;
+
 	let story = $state<StoryDetail | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let allTags = $state(false);
 
 	let id = $derived(page.params.id ?? '');
 	let cover = $derived(cacheUrl(story?.cover?.uri));
 	let branching = $derived(story ? isBranching(story.chapters) : false);
+	let shownTags = $derived(allTags ? (story?.tags ?? []) : (story?.tags ?? []).slice(0, MAIN_TAGS));
 	// The chapter reading stopped in, when it's still there.
 	let resumeChapter = $derived.by(() => {
 		const point = readingPointOf(story?.userState.progress);
@@ -46,6 +51,7 @@
 		story = null;
 		error = null;
 		loading = true;
+		allTags = false;
 		try {
 			const found = await openStory(storyId);
 			if (storyId !== id) return;
@@ -77,7 +83,7 @@
 	{#if story}
 		<div class="flex gap-6 max-md:flex-col">
 			<div
-				class="bg-base-200 flex aspect-[2/3] w-48 shrink-0 items-center justify-center overflow-hidden rounded-2xl max-md:w-36"
+				class="bg-base-200 flex aspect-[2/3] w-48 shrink-0 items-center justify-center self-start overflow-hidden rounded-2xl max-md:w-36"
 			>
 				{#if cover}
 					<img src={cover} alt={story.title} class="h-full w-full object-cover" />
@@ -89,6 +95,19 @@
 			<div class="flex min-w-0 flex-1 flex-col gap-3">
 				<h1 class="text-2xl font-semibold">{story.title}</h1>
 				<div class="text-base-content/60 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+					{#if story.performers.length > 0}
+						<span>
+							by
+							{#each story.performers as performer, index (performer.id)}
+								{#if index > 0},
+								{/if}
+								<a
+									href={performerUrl(performer.id)}
+									class="text-base-content font-medium hover:underline">{performer.name}</a
+								>
+							{/each}
+						</span>
+					{/if}
 					{#if story.studio}
 						<a
 							href={studioUrl(story.studio.id)}
@@ -100,7 +119,8 @@
 						{story.chapters.length}
 						{story.chapters.length === 1 ? 'chapter' : 'chapters'}
 					</span>
-					{#if words > 0}
+					<!-- A branching story's length is only what's been read of it. -->
+					{#if words > 0 && !branching}
 						<span>{words.toLocaleString()} words · {minutesLeft(words, 0)} min</span>
 					{/if}
 					{#if branching}
@@ -120,17 +140,18 @@
 						</a>
 					{/each}
 				</div>
-				{#if story.performers.length > 0}
-					<div class="flex flex-wrap gap-2 text-sm">
-						{#each story.performers as performer (performer.id)}
-							<a
-								href={performerUrl(performer.id)}
-								class="bg-base-200 hover:bg-base-300 rounded-full px-3 py-1">{performer.name}</a
-							>
-						{/each}
-					</div>
-				{/if}
-				<TagChips tags={story.tags} />
+				<div class="flex flex-wrap items-center gap-2">
+					<TagChips tags={shownTags} />
+					{#if story.tags.length > MAIN_TAGS}
+						<button
+							type="button"
+							class="text-base-content/60 hover:text-base-content text-xs"
+							onclick={() => (allTags = !allTags)}
+						>
+							{allTags ? 'Fewer tags' : `+${story.tags.length - MAIN_TAGS} more`}
+						</button>
+					{/if}
+				</div>
 				{#if story.details}
 					<p class="text-base-content/80 max-w-prose text-sm leading-relaxed whitespace-pre-line">
 						{story.details}
