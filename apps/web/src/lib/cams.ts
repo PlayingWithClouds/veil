@@ -11,6 +11,7 @@ import { backendUrl } from '$lib/server';
 import { VIDEO_CARD, fetchVideosMatching, type VideoCardRow } from '$lib/library';
 import type { SitePlugin } from '$lib/plugins';
 import { searchPage, type SearchPage } from '$lib/search';
+import { flushEvents, logEvent, type Subject } from '$lib/events';
 
 /** A cam room as a card shows it; live is null while the room is offline. */
 const CAM_CARD = {
@@ -39,7 +40,8 @@ const ACTIVE_RECORDING = {
 /** A finished show of a room. */
 const CAM_SHOW = { startedAt: true, endedAt: true } as const;
 
-export type CamRow = FieldsSelection<CamModel, typeof CAM_CARD>;
+// reason says why a room ranked by taste is listed ("Because you like #asian").
+export type CamRow = FieldsSelection<CamModel, typeof CAM_CARD> & { reason?: string };
 export type ActiveRecordingRow = FieldsSelection<ActiveRecording, typeof ACTIVE_RECORDING>;
 export type CamShowRow = FieldsSelection<CamShow, typeof CAM_SHOW>;
 
@@ -64,6 +66,7 @@ export const CAM_GENDERS = [
 /** The orders of the live rooms. */
 export const CAM_SORTS: { value: CamSort; label: string }[] = [
 	{ value: 'viewers', label: 'Most viewers' },
+	{ value: 'forYou', label: 'For you' },
 	{ value: 'started', label: 'Just started' },
 	{ value: 'fewest', label: 'Fewest viewers' }
 ];
@@ -219,33 +222,62 @@ export async function fetchCamRooms(
 		offset
 	};
 	const data = await gqlClient.query({
-		camRooms: { __args: { query }, rooms: CAM_CARD, total: true }
+		camRooms: { __args: { query }, rooms: CAM_CARD, total: true, reasons: true }
 	});
-	return data.camRooms;
+	return {
+		rooms: withReasons(data.camRooms.rooms, data.camRooms.reasons),
+		total: data.camRooms.total
+	};
 }
 
-/** Rooms live now that match what the user likes, best first. */
+/** Rooms live now that match what the user likes, best first, each with its reason. */
 export async function fetchRecommendedCams(limit = 20): Promise<CamRow[]> {
-	const data = await gqlClient.query({ camRecommendations: { __args: { limit }, ...CAM_CARD } });
-	return data.camRecommendations;
+	const data = await gqlClient.query({
+		camRecommendations: { __args: { limit }, rooms: CAM_CARD, reasons: true }
+	});
+	return withReasons(data.camRecommendations.rooms, data.camRecommendations.reasons);
 }
 
-/** Rooms live now sharing the room's first tags, most viewers first, without it. */
+/** Gives each room the reason at its position; an empty reason is none. */
+function withReasons(rooms: CamRow[], reasons: string[]): CamRow[] {
+	return rooms.map((room, index) => {
+		const reason = reasons[index];
+		if (!reason) return room;
+		return { ...room, reason };
+	});
+}
+
+/**
+ * Rooms live now sharing the room's first tags, without it: each tag's rooms
+ * ranked by the user's taste, taken in turns.
+ */
 export async function fetchSimilarRooms(room: CamRow, limit = 12): Promise<CamRow[]> {
 	const tags = room.tags.slice(0, 2);
 	const pages = await Promise.all(
 		tags.map((tag) =>
-			fetchCamRooms({ plugins: [], gender: '', tag, text: '', sort: 'viewers' }, limit, 0)
+			fetchCamRooms({ plugins: [], gender: '', tag, text: '', sort: 'forYou' }, limit, 0)
 		)
 	);
 	const seen = new Set([room.id]);
 	const similar: CamRow[] = [];
-	for (const candidate of pages.flatMap((found) => found.rooms)) {
+	for (const candidate of inTurns(pages.map((found) => found.rooms))) {
 		if (seen.has(candidate.id)) continue;
 		seen.add(candidate.id);
 		similar.push(candidate);
 	}
-	return similar.sort(compareRooms).slice(0, limit);
+	return similar.slice(0, limit);
+}
+
+/** The lists' first entries, then their second ones, and so on. */
+function inTurns<Entry>(lists: Entry[][]): Entry[] {
+	const merged: Entry[] = [];
+	const longest = Math.max(0, ...lists.map((list) => list.length));
+	for (let index = 0; index < longest; index++) {
+		for (const list of lists) {
+			if (index < list.length) merged.push(list[index]);
+		}
+	}
+	return merged;
 }
 
 /**
@@ -423,4 +455,48 @@ function markShowHours(hours: number[][], start: Date, end: Date) {
 		hours[cursor.getDay()][cursor.getHours()] += 1;
 		cursor.setHours(cursor.getHours() + 1);
 	}
+}
+
+// Where cam room cards are shown, for their impressions and choices.
+export const CAMS_SURFACE = 'cams';
+// How often a room being watched reports how long it has played.
+const WATCH_REPORT_SECONDS = 30;
+
+/** The event subject of a cam room. */
+export function camSubject(id: string): Subject {
+	return { kind: 'camModel', id };
+}
+
+/**
+ * Logs that the room was opened, then how long it played while isPlaying
+ * says so: every WATCH_REPORT_SECONDS of playing, and once more when the
+ * returned stop is called (leaving the room). The longest report of the
+ * session is how long the room was watched; one under ten seconds counts as
+ * leaving it at once. A room that never played (a stream that failed)
+ * reports nothing.
+ */
+export function trackRoomWatch(id: string, isPlaying: () => boolean): () => void {
+	const subject = camSubject(id);
+	const sessionId = crypto.randomUUID();
+	let watched = 0;
+	let reported = 0;
+	logEvent({ kind: 'view', subject, data: { surface: CAMS_SURFACE }, sessionId });
+
+	/** Sends how long the room has played, unless that was sent already. */
+	function report() {
+		if (watched === reported) return;
+		reported = watched;
+		logEvent({ kind: 'progress', subject, data: { watched }, sessionId });
+	}
+
+	const timer = setInterval(() => {
+		if (!isPlaying()) return;
+		watched += 1;
+		if (watched % WATCH_REPORT_SECONDS === 0) report();
+	}, 1000);
+	return () => {
+		clearInterval(timer);
+		report();
+		void flushEvents();
+	};
 }

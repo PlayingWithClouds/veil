@@ -5,9 +5,11 @@ extend type Query {
   # Rooms online now on every cam site (or some), most viewers first unless
   # the query sorts otherwise. Blocked rooms are left out.
   camRooms(query: CamQuery): CamRoomPage!
-  # Rooms live now ranked by what the user likes: their tags and linked
-  # performers. Followed, auto-recorded and blocked rooms are left out.
-  camRecommendations(limit: Int): [CamModel!]!
+  # Rooms live now ranked by what the user likes, from their videos,
+  # galleries and the rooms they watch: tags, linked performers, the rooms
+  # themselves and rooms like them; every sixth an unmatched popular room.
+  # Followed, auto-recorded and blocked rooms are left out. reasons says why.
+  camRecommendations(limit: Int): CamRoomPage!
   # Stored rooms, live first.
   camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
   camModel(id: ID!): CamModel
@@ -47,11 +49,18 @@ enum CamSort {
   fewest
   # The shows that began last first, among each site's 500 most watched rooms.
   started
+  # The rooms the user's taste matches first, best first, then the rest by
+  # viewers, among each site's 600 most watched rooms.
+  forYou
 }
 
 type CamRoomPage {
   rooms: [CamModel!]!
   total: Int!
+  # Why each room is listed, by position ("Because you like #asian"); empty
+  # strings for rooms matching nothing, and an empty list unless the rooms
+  # are ranked by taste.
+  reasons: [String!]!
 }
 
 # A room on one cam site.

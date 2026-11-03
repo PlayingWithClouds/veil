@@ -46,6 +46,9 @@ type signals struct {
 	watches []watch
 	// ignored counts the showings no open followed, per item.
 	ignored map[schema.RecordRef]ignoredImpression
+	// cams are the signals on cam rooms, kept apart from items: a room is
+	// never a seed or a candidate, it only feeds the taste.
+	cams []signal
 }
 
 // ignoredImpression counts the showings of one item that no open followed.
@@ -89,6 +92,7 @@ func (e *Engine) collectSignals(ctx context.Context, now time.Time) (*signals, e
 		e.galleryViewSignals,
 		e.watchSignals,
 		e.ignoredImpressionSignals,
+		e.camSignals,
 	}
 	for _, step := range steps {
 		if err := step(ctx, collected, since, now); err != nil {

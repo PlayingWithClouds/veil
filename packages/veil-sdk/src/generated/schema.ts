@@ -30,7 +30,7 @@ export interface Query {
     automationRun: (AutomationRun | null)
     automationActions: Scalars['String'][]
     camRooms: CamRoomPage
-    camRecommendations: CamModel[]
+    camRecommendations: CamRoomPage
     camModels: CamModel[]
     camModel: (CamModel | null)
     activeRecordings: ActiveRecording[]
@@ -393,11 +393,12 @@ export interface StepResult {
     __typename: 'StepResult'
 }
 
-export type CamSort = 'viewers' | 'fewest' | 'started'
+export type CamSort = 'viewers' | 'fewest' | 'started' | 'forYou'
 
 export interface CamRoomPage {
     rooms: CamModel[]
     total: Scalars['Int']
+    reasons: Scalars['String'][]
     __typename: 'CamRoomPage'
 }
 
@@ -1437,7 +1438,7 @@ export interface QueryGenqlSelection{
     automationRun?: (AutomationRunGenqlSelection & { __args: {id: Scalars['ID']} })
     automationActions?: boolean | number
     camRooms?: (CamRoomPageGenqlSelection & { __args?: {query?: (CamQuery | null)} })
-    camRecommendations?: (CamModelGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
+    camRecommendations?: (CamRoomPageGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
     camModels?: (CamModelGenqlSelection & { __args?: {live?: (Scalars['Boolean'] | null), autoRecord?: (Scalars['Boolean'] | null), performerId?: (Scalars['ID'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     camModel?: (CamModelGenqlSelection & { __args: {id: Scalars['ID']} })
     activeRecordings?: ActiveRecordingGenqlSelection
@@ -1821,6 +1822,7 @@ export interface CamQuery {plugins?: (Scalars['String'][] | null),text?: (Scalar
 export interface CamRoomPageGenqlSelection{
     rooms?: CamModelGenqlSelection
     total?: boolean | number
+    reasons?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3836,7 +3838,8 @@ export const enumRunStatus = {
 export const enumCamSort = {
    viewers: 'viewers' as const,
    fewest: 'fewest' as const,
-   started: 'started' as const
+   started: 'started' as const,
+   forYou: 'forYou' as const
 }
 
 export const enumCollectionKind = {

@@ -45,7 +45,11 @@ func (e *Engine) profileAt(ctx context.Context, now time.Time) (*profile, *signa
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	inputs := profileInputs{features: features, blocked: blocked, stats: stats, moments: moments}
+	camRooms, err := e.loadCamInputs(ctx, collected.cams)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	inputs := profileInputs{features: features, blocked: blocked, stats: stats, moments: moments, cams: camRooms}
 	return buildProfile(collected, inputs, now), collected, features, nil
 }
 

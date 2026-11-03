@@ -39,6 +39,9 @@ const (
 	// SortStarted lists the rooms whose show began last first, among the
 	// startedDepth most watched of each site.
 	SortStarted = "started"
+	// SortForYou ranks rooms by the user's taste (see ForYou); List itself
+	// lists them as SortViewers.
+	SortForYou = "forYou"
 )
 
 // Query narrows a room listing.
@@ -203,9 +206,9 @@ func collectListings(selected []*plugins.Plugin, listings []pluginListing) ([][]
 }
 
 // pageOf cuts one page out of the merged rooms.
-func pageOf(rooms []schema.CamModel, offset, limit int) []schema.CamModel {
+func pageOf[Room any](rooms []Room, offset, limit int) []Room {
 	if offset >= len(rooms) {
-		return []schema.CamModel{}
+		return []Room{}
 	}
 	page := rooms[offset:]
 	if len(page) > limit {

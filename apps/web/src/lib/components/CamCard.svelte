@@ -25,6 +25,7 @@
 	import LiveRoomPreview from '$lib/components/LiveRoomPreview.svelte';
 	import {
 		camSites,
+		camSubject,
 		followedCams,
 		loadFollowedCams,
 		previewStream,
@@ -35,6 +36,8 @@
 		toggleCamFollow,
 		type CamRow
 	} from '$lib/cams';
+	import { logChosen, type Shown } from '$lib/events';
+	import { impression } from '$lib/impression';
 	import { cacheUrl } from '$lib/img';
 	import { block } from '$lib/recordActions';
 	import { sites } from '$lib/stores/sites';
@@ -50,9 +53,21 @@
 		recording?: boolean;
 		// Called after a menu action started or stopped a recording.
 		onrecordingchange?: () => void;
+		// Why the room is recommended; the row's own reason when not given.
+		reason?: string | null;
+		// Where the card is shown; logs it as shown there and, on click, chosen.
+		shown?: Shown | null;
 	}
 
-	let { cam, onclick, markLive = false, recording = false, onrecordingchange }: Props = $props();
+	let {
+		cam,
+		onclick,
+		markLive = false,
+		recording = false,
+		onrecordingchange,
+		reason = null,
+		shown = null
+	}: Props = $props();
 
 	// Hovering this long starts the live preview, so passing over cards doesn't.
 	const PREVIEW_DELAY_MS = 400;
@@ -77,10 +92,18 @@
 	let performers = $derived(room.performer ? [room.performer] : []);
 	let detail = $derived(onlineDetail(room));
 	let menuActions = $derived(actionsFor(room, followed, recording));
+	let shownReason = $derived(reason ?? cam.reason ?? null);
+	let subject = $derived(camSubject(cam.id));
 
 	$effect(() => {
 		void loadFollowedCams();
 	});
+
+	/** Opens the room, logging it as chosen where it was shown. */
+	function open() {
+		if (shown) logChosen(subject, shown);
+		onclick();
+	}
 
 	/** How long the room has been on, or when it was last seen. */
 	function onlineDetail(current: CamRow): string | null {
@@ -165,13 +188,14 @@
 		role="presentation"
 		onpointerenter={hoverStart}
 		onpointerleave={hoverEnd}
+		use:impression={{ subject, shown }}
 	>
 		<CoverFrame
 			src={cover}
 			alt={room.displayName}
 			aspect="16 / 9"
 			placeholder={VideoCameraIcon}
-			{onclick}
+			onclick={open}
 		>
 			{#if previewing}
 				<LiveRoomPreview camId={room.id} />
@@ -211,9 +235,12 @@
 			siteAvatar={site !== null}
 			{detail}
 			note={roomTopic(room.live?.subject)}
-			{onclick}
+			onclick={open}
 			onmore={(button) => (menuAnchor = button)}
 		/>
+		{#if shownReason}
+			<span class="text-accent -mt-1 truncate text-xs leading-4">{shownReason}</span>
+		{/if}
 	</div>
 
 	{#if menuAnchor}

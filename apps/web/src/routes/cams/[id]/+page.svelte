@@ -26,6 +26,7 @@
 	import UsualHours from '$lib/components/UsualHours.svelte';
 	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
 	import {
+		CAMS_SURFACE,
 		RECORD_QUALITIES,
 		RECORD_REWINDS,
 		fetchCam,
@@ -42,6 +43,7 @@
 		startCamRecording,
 		stopCamRecording,
 		toggleCamFollow,
+		trackRoomWatch,
 		uniqueVideos,
 		watchCam,
 		type ActiveRecordingRow,
@@ -84,6 +86,7 @@
 	let pickingPerformer = $state(false);
 	// An action waiting for the backend; its buttons are disabled meanwhile.
 	let busy = $state(false);
+	let playerBox = $state<HTMLElement | null>(null);
 
 	let id = $derived(page.params.id ?? '');
 	let quality = $derived(cam?.recordQuality ?? 'source');
@@ -105,6 +108,15 @@
 			);
 		}, RECORDING_REFRESH_MS);
 		return () => clearInterval(timer);
+	});
+
+	// Logs the room's watch while its stream is open, for the taste.
+	$effect(() => {
+		if (!stream) return;
+		return trackRoomWatch(
+			untrack(() => id),
+			streamPlaying
+		);
 	});
 
 	// A search still running when the page leaves the room stops.
@@ -137,6 +149,15 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	/** Whether the room's stream is playing now, on screen. */
+	function streamPlaying(): boolean {
+		const video = playerBox?.querySelector('video');
+		if (!video) return false;
+		return (
+			!video.paused && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && !document.hidden
+		);
 	}
 
 	/** Loads what the controls and the schedule show. */
@@ -272,16 +293,18 @@
 <div class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]">
 	<div class="flex min-w-0 flex-col gap-4">
 		{#if stream && cam}
-			<VideoPlayer
-				src={stream.url}
-				mimeType={stream.mimeType}
-				title={cam.displayName}
-				poster={cacheUrl(cam.live?.thumbnail?.uri ?? cam.thumbnail?.uri)}
-				live
-				inline
-				square={$isCompact}
-				onclose={() => (stream = null)}
-			/>
+			<div class="contents" bind:this={playerBox}>
+				<VideoPlayer
+					src={stream.url}
+					mimeType={stream.mimeType}
+					title={cam.displayName}
+					poster={cacheUrl(cam.live?.thumbnail?.uri ?? cam.thumbnail?.uri)}
+					live
+					inline
+					square={$isCompact}
+					onclose={() => (stream = null)}
+				/>
+			</div>
 		{:else}
 			<div
 				class="bg-base-200 text-base-content/70 flex aspect-video w-full items-center justify-center rounded-xl text-sm"
@@ -448,8 +471,12 @@
 
 			<div class="pt-4">
 				<Shelf title="Similar rooms" items={similar} key={(room) => room.id} itemWidth={ROOM_WIDTH}>
-					{#snippet card(room)}
-						<CamCard cam={room} onclick={() => goto(camUrl(room.id))} />
+					{#snippet card(room, position)}
+						<CamCard
+							cam={room}
+							shown={{ surface: CAMS_SURFACE, position }}
+							onclick={() => goto(camUrl(room.id))}
+						/>
 					{/snippet}
 				</Shelf>
 			</div>

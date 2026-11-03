@@ -84,22 +84,29 @@ func (r *mutationResolver) StopRecording(ctx context.Context, id string) (bool, 
 
 // CamRooms is the resolver for the camRooms field.
 func (r *queryResolver) CamRooms(ctx context.Context, query *model.CamQuery) (*model.CamRoomPage, error) {
-	rooms, total, err := r.cams.List(ctx, camQuery(query))
+	listing := camQuery(query)
+	if listing.Sort == cams.SortForYou {
+		return r.camRoomsForYou(ctx, listing)
+	}
+	rooms, total, err := r.cams.List(ctx, listing)
 	if err != nil {
 		return nil, err
 	}
-	return &model.CamRoomPage{Rooms: pointers(rooms), Total: total}, nil
+	return &model.CamRoomPage{Rooms: pointers(rooms), Total: total, Reasons: []string{}}, nil
 }
 
 // CamRecommendations is the resolver for the camRecommendations field.
-func (r *queryResolver) CamRecommendations(ctx context.Context, limit *int) ([]*schema.CamModel, error) {
-	taste, err := r.recommend.Taste(ctx)
+func (r *queryResolver) CamRecommendations(ctx context.Context, limit *int) (*model.CamRoomPage, error) {
+	taste, err := r.recommend.CamTaste(ctx)
 	if err != nil {
 		return nil, err
 	}
 	size, _ := page(limit, nil)
-	rooms, err := r.cams.Recommended(ctx, camAffinity(taste), size)
-	return pointers(rooms), err
+	picked, err := r.cams.Recommended(ctx, camAffinity(taste), size)
+	if err != nil {
+		return nil, err
+	}
+	return camRecommendationPage(picked, len(picked)), nil
 }
 
 // CamModels is the resolver for the camModels field.

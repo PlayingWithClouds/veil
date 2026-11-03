@@ -200,8 +200,9 @@ type ComplexityRoot struct {
 	}
 
 	CamRoomPage struct {
-		Rooms func(childComplexity int) int
-		Total func(childComplexity int) int
+		Reasons func(childComplexity int) int
+		Rooms   func(childComplexity int) int
+		Total   func(childComplexity int) int
 	}
 
 	CamShow struct {
@@ -1624,7 +1625,7 @@ type QueryResolver interface {
 	AutomationRun(ctx context.Context, id string) (*schema.AutomationRun, error)
 	AutomationActions(ctx context.Context) ([]string, error)
 	CamRooms(ctx context.Context, query *model.CamQuery) (*model.CamRoomPage, error)
-	CamRecommendations(ctx context.Context, limit *int) ([]*schema.CamModel, error)
+	CamRecommendations(ctx context.Context, limit *int) (*model.CamRoomPage, error)
 	CamModels(ctx context.Context, live *bool, autoRecord *bool, performerID *string, limit *int, offset *int) ([]*schema.CamModel, error)
 	CamModel(ctx context.Context, id string) (*schema.CamModel, error)
 	ActiveRecordings(ctx context.Context) ([]*cams.ActiveRecording, error)
@@ -2358,6 +2359,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.CamModel.Username(childComplexity), true
 
+	case "CamRoomPage.reasons":
+		if e.ComplexityRoot.CamRoomPage.Reasons == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CamRoomPage.Reasons(childComplexity), true
 	case "CamRoomPage.rooms":
 		if e.ComplexityRoot.CamRoomPage.Rooms == nil {
 			break
@@ -9008,9 +9015,11 @@ extend type Query {
   # Rooms online now on every cam site (or some), most viewers first unless
   # the query sorts otherwise. Blocked rooms are left out.
   camRooms(query: CamQuery): CamRoomPage!
-  # Rooms live now ranked by what the user likes: their tags and linked
-  # performers. Followed, auto-recorded and blocked rooms are left out.
-  camRecommendations(limit: Int): [CamModel!]!
+  # Rooms live now ranked by what the user likes, from their videos,
+  # galleries and the rooms they watch: tags, linked performers, the rooms
+  # themselves and rooms like them; every sixth an unmatched popular room.
+  # Followed, auto-recorded and blocked rooms are left out. reasons says why.
+  camRecommendations(limit: Int): CamRoomPage!
   # Stored rooms, live first.
   camModels(live: Boolean, autoRecord: Boolean, performerId: ID, limit: Int, offset: Int): [CamModel!]!
   camModel(id: ID!): CamModel
@@ -9050,11 +9059,18 @@ enum CamSort {
   fewest
   # The shows that began last first, among each site's 500 most watched rooms.
   started
+  # The rooms the user's taste matches first, best first, then the rest by
+  # viewers, among each site's 600 most watched rooms.
+  forYou
 }
 
 type CamRoomPage {
   rooms: [CamModel!]!
   total: Int!
+  # Why each room is listed, by position ("Because you like #asian"); empty
+  # strings for rooms matching nothing, and an empty list unless the rooms
+  # are ranked by taste.
+  reasons: [String!]!
 }
 
 # A room on one cam site.
@@ -11279,6 +11295,8 @@ func (ec *executionContext) childFields_CamRoomPage(ctx context.Context, field g
 		return ec.fieldContext_CamRoomPage_rooms(ctx, field)
 	case "total":
 		return ec.fieldContext_CamRoomPage_total(ctx, field)
+	case "reasons":
+		return ec.fieldContext_CamRoomPage_reasons(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CamRoomPage", field.Name)
 }
@@ -20088,6 +20106,29 @@ func (ec *executionContext) _CamRoomPage_total(ctx context.Context, field graphq
 }
 func (ec *executionContext) fieldContext_CamRoomPage_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CamRoomPage", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CamRoomPage_reasons(ctx context.Context, field graphql.CollectedField, obj *model.CamRoomPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CamRoomPage_reasons(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reasons, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CamRoomPage_reasons(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CamRoomPage", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _CamShow_startedAt(ctx context.Context, field graphql.CollectedField, obj *schema.CamShow) (ret graphql.Marshaler) {
@@ -35955,8 +35996,8 @@ func (ec *executionContext) _Query_camRecommendations(ctx context.Context, field
 			return ec.Resolvers.Query().CamRecommendations(ctx, fc.Args["limit"].(*int))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*schema.CamModel) graphql.Marshaler {
-			return ec.marshalNCamModel2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCamModelᚄ(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CamRoomPage) graphql.Marshaler {
+			return ec.marshalNCamRoomPage2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCamRoomPage(ctx, selections, v)
 		},
 		true,
 		true,
@@ -35969,7 +36010,7 @@ func (ec *executionContext) fieldContext_Query_camRecommendations(ctx context.Co
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_CamModel(ctx, field)
+			return ec.childFields_CamRoomPage(ctx, field)
 		},
 	}
 	defer func() {
@@ -50162,6 +50203,11 @@ func (ec *executionContext) _CamRoomPage(ctx context.Context, sel ast.SelectionS
 			}
 		case "total":
 			out.Values[i] = ec._CamRoomPage_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasons":
+			out.Values[i] = ec._CamRoomPage_reasons(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -164,7 +164,7 @@ export default {
                 }
             ],
             "camRecommendations": [
-                36,
+                35,
                 {
                     "limit": [
                         3
@@ -2965,6 +2965,9 @@ export default {
             ],
             "total": [
                 3
+            ],
+            "reasons": [
+                1
             ],
             "__typename": [
                 1

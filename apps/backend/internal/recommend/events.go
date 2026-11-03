@@ -27,6 +27,16 @@ package recommend
 //   - like: {"value": 1} or {"value": -1}. Thumbs up or down on a video,
 //     gallery, performer, studio or tag. A thumbs-down item is never
 //     recommended.
+//
+// Cam rooms (subject kind camModel) send their own data:
+//
+//   - impression and choice: {"surface": "cams", "position": n}, as above.
+//     A choice counts as a small like of the room.
+//   - view: {"surface": "cams"} (optional), with a sessionId. The room was
+//     opened.
+//   - progress: {"watched": seconds}, with the view's sessionId. How long the
+//     room has played in this session, sent every half minute while it plays
+//     and once when it is left. The longest of a session counts.
 
 // Event data fields the engine reads, as json_extract paths.
 const (
@@ -36,6 +46,7 @@ const (
 	pathEnd      = "$.end"
 	pathValue    = "$.value"
 	pathText     = "$.text"
+	pathWatched  = "$.watched"
 )
 
 // Surfaces.

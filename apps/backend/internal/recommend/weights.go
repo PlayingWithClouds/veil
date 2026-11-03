@@ -51,6 +51,24 @@ const (
 	affinityBlocked = -1.0
 )
 
+// Cam rooms (see camsignals.go). A room is live, not a fixed item, so its
+// signals feed the taste through its tags, performer and site.
+const (
+	// weightCamWatch is a watch of a minute; longer watches grow with the log
+	// of their length up to weightCamWatchCap.
+	weightCamWatch    = 1.0
+	weightCamWatchCap = 4.0
+	// weightCamQuickLeave is a room left within camQuickLeaveSeconds.
+	weightCamQuickLeave  = -0.5
+	camQuickLeaveSeconds = 10
+	// camTasteFactor is the share of a room's weight its tags, performer and
+	// site take into the video taste: watching a room says less about which
+	// videos to watch than watching a video.
+	camTasteFactor = 0.5
+	// camTasteTTL keeps the cam taste for a page of rooms and the next.
+	camTasteTTL = time.Minute
+)
+
 // Ratings (UserState.rating, 0..10).
 const (
 	// ratingNeutral splits the rating: above leans like, below dislike; the

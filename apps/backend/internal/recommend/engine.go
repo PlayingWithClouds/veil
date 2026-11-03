@@ -37,6 +37,8 @@ type Engine struct {
 	random sampler
 	// stats caches the library-wide aggregates (tag rarity, performer looks).
 	stats statsCache
+	// camTaste caches the taste cam rooms are ranked by.
+	camTaste camTasteCache
 
 	mutex sync.Mutex
 	// rankings holds one ranking per set of kinds (rankingKey): the mixed

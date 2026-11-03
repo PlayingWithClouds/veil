@@ -30,6 +30,12 @@ type profile struct {
 	attributes map[string]float64
 	// sessionEnds is when each session-ending video was last watched.
 	sessionEnds map[schema.RecordRef]time.Time
+	// camRooms is the affinity per cam room id, camGenders per room gender.
+	camRooms   map[string]float64
+	camGenders map[string]float64
+	// camTags holds the room tags no library tag is spelled like, by
+	// names.CompactKey, on the scale of tags.
+	camTags map[string]float64
 
 	runtime          [runtimeBands]float64
 	rarity           *tagRarity
@@ -57,6 +63,8 @@ type profileInputs struct {
 	// moments holds, per session-ending video, the tags of the segments near
 	// where playback stopped and near the replay peak.
 	moments map[schema.RecordRef][]string
+	// cams describes the signalled cam rooms.
+	cams *camInputs
 }
 
 // newProfile returns a profile with empty affinity maps.
@@ -69,6 +77,9 @@ func newProfile(signalCount int) *profile {
 		disliked:         map[schema.RecordRef]bool{},
 		attributes:       map[string]float64{},
 		sessionEnds:      map[schema.RecordRef]time.Time{},
+		camRooms:         map[string]float64{},
+		camGenders:       map[string]float64{},
+		camTags:          map[string]float64{},
 		blockedPerformer: map[string]bool{},
 		signalCount:      signalCount,
 	}
@@ -76,7 +87,7 @@ func newProfile(signalCount int) *profile {
 
 // buildProfile turns signals into per-entity affinities.
 func buildProfile(collected *signals, inputs profileInputs, now time.Time) *profile {
-	taste := newProfile(len(collected.items) + len(collected.entities))
+	taste := newProfile(len(collected.items) + len(collected.entities) + len(collected.cams))
 	if inputs.stats != nil {
 		taste.rarity = inputs.stats.rarity
 		taste.performerLooks = inputs.stats.attributes
@@ -96,6 +107,7 @@ func buildProfile(collected *signals, inputs profileInputs, now time.Time) *prof
 		}
 	}
 	taste.addEntitySignals(collected.entities, now)
+	taste.addCamSignals(collected.cams, inputs.cams, now)
 	taste.normalize()
 	taste.normalizeRuntime()
 	taste.applyBlocked(inputs.blocked)
@@ -194,24 +206,31 @@ func (taste *profile) dimension(kind schema.RecordKind) map[string]float64 {
 	return taste.tags
 }
 
-// normalize scales each dimension into [-1, 1] by its largest magnitude.
+// normalize scales each dimension into [-1, 1] by its largest magnitude. The
+// room tags without a library tag share the tags' scale.
 func (taste *profile) normalize() {
-	for _, affinities := range []map[string]float64{taste.tags, taste.performers, taste.studios, taste.sites} {
+	normalizeAffinities(taste.tags, taste.camTags)
+	for _, affinities := range []map[string]float64{taste.performers, taste.studios, taste.sites, taste.camRooms, taste.camGenders} {
 		normalizeAffinities(affinities)
 	}
 }
 
-// normalizeAffinities divides every value by the largest magnitude.
-func normalizeAffinities(affinities map[string]float64) {
+// normalizeAffinities divides every value of the maps by the largest
+// magnitude among them.
+func normalizeAffinities(maps ...map[string]float64) {
 	largest := 0.0
-	for _, value := range affinities {
-		largest = math.Max(largest, math.Abs(value))
+	for _, affinities := range maps {
+		for _, value := range affinities {
+			largest = math.Max(largest, math.Abs(value))
+		}
 	}
 	if largest == 0 {
 		return
 	}
-	for key, value := range affinities {
-		affinities[key] = value / largest
+	for _, affinities := range maps {
+		for key, value := range affinities {
+			affinities[key] = value / largest
+		}
 	}
 }
 

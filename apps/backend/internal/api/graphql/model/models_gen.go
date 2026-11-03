@@ -37,8 +37,9 @@ type CamQuery struct {
 }
 
 type CamRoomPage struct {
-	Rooms []*schema.CamModel `json:"rooms"`
-	Total int                `json:"total"`
+	Rooms   []*schema.CamModel `json:"rooms"`
+	Total   int                `json:"total"`
+	Reasons []string           `json:"reasons"`
 }
 
 type CategoryInput struct {
@@ -436,17 +437,19 @@ const (
 	CamSortViewers CamSort = "viewers"
 	CamSortFewest  CamSort = "fewest"
 	CamSortStarted CamSort = "started"
+	CamSortForYou  CamSort = "forYou"
 )
 
 var AllCamSort = []CamSort{
 	CamSortViewers,
 	CamSortFewest,
 	CamSortStarted,
+	CamSortForYou,
 }
 
 func (e CamSort) IsValid() bool {
 	switch e {
-	case CamSortViewers, CamSortFewest, CamSortStarted:
+	case CamSortViewers, CamSortFewest, CamSortStarted, CamSortForYou:
 		return true
 	}
 	return false

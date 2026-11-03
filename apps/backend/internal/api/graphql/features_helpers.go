@@ -37,17 +37,35 @@ func camQuery(query *model.CamQuery) cams.Query {
 	return camQuery
 }
 
-// camAffinity is the taste profile's tags (by name) and performers, as the
-// cam service ranks rooms by them.
-func camAffinity(taste recommend.Taste) cams.Affinity {
-	affinity := cams.Affinity{Tags: map[string]float64{}, Performers: map[string]float64{}}
-	for _, entry := range taste.Tags {
-		affinity.Tags[entry.Name] = entry.Weight
+// camAffinity is the cam taste as the cam service ranks rooms by it.
+func camAffinity(taste recommend.CamTaste) cams.Affinity {
+	return cams.Affinity{
+		Tags: taste.Tags, Performers: taste.Performers, PerformerNames: taste.PerformerNames,
+		Sites: taste.Sites, Genders: taste.Genders, Rooms: taste.Rooms,
 	}
-	for _, entry := range taste.Performers {
-		affinity.Performers[entry.Id] = entry.Weight
+}
+
+// camRoomsForYou lists one page of rooms ranked by the user's taste.
+func (r *queryResolver) camRoomsForYou(ctx context.Context, listing cams.Query) (*model.CamRoomPage, error) {
+	taste, err := r.recommend.CamTaste(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return affinity
+	ranked, total, err := r.cams.ForYou(ctx, listing, camAffinity(taste))
+	if err != nil {
+		return nil, err
+	}
+	return camRecommendationPage(ranked, total), nil
+}
+
+// camRecommendationPage is a page of recommended rooms with their reasons.
+func camRecommendationPage(recommendations []cams.Recommendation, total int) *model.CamRoomPage {
+	listing := &model.CamRoomPage{Rooms: []*schema.CamModel{}, Total: total, Reasons: []string{}}
+	for index := range recommendations {
+		listing.Rooms = append(listing.Rooms, &recommendations[index].Room)
+		listing.Reasons = append(listing.Reasons, recommendations[index].Reason)
+	}
+	return listing
 }
 
 // lookupQuery maps the API's lookup input, decoding the picture.
