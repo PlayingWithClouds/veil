@@ -457,7 +457,11 @@
 	</div>
 
 	{#if cam}
-		<aside class="flex flex-col gap-4">
+		<!-- Beside the player it stays put and scrolls on its own: the page's
+		     scroller is <main>, under the top bar. -->
+		<aside
+			class="no-scrollbar flex flex-col gap-4 xl:sticky xl:top-0 xl:max-h-[calc(100dvh-5.5rem)] xl:self-start xl:overflow-y-auto xl:overscroll-y-contain xl:pb-4"
+		>
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="text-lg font-semibold">Her videos</h2>
 				<button
