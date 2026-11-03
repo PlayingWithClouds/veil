@@ -320,6 +320,19 @@ export async function browse(
 	return data.browse;
 }
 
+/** A page of one site's videos (its search, with query), stored as it comes. */
+export async function browseVideos(
+	plugin: string,
+	limit: number,
+	offset: number,
+	query = ''
+): Promise<VideoCardRow[]> {
+	const data = await gqlClient.mutation({
+		browse: { __args: { plugin, kind: 'VIDEO', query, limit, offset }, videos: VIDEO_CARD }
+	});
+	return data.browse.videos;
+}
+
 /** Searches every plugin that lists this kind and stores the results. */
 export async function search(kind: ListKind, query: string, limit = 20): Promise<Listed> {
 	const data = await gqlClient.mutation({ search: { __args: { kind, query, limit }, ...LISTED } });

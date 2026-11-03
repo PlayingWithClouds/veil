@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { endlessFeed, type RankedPage } from '../src/lib/feed';
+import { endlessFeed, siteSource, type RankedPage } from '../src/lib/feed';
 
 /** Items with ids from names. */
 function items(...names: string[]) {
@@ -51,4 +51,18 @@ test('a ranked page with entries that did not load still advances by its entries
 	);
 	expect(await drain(feed, 3)).toEqual(['a']);
 	expect(offsets).toEqual([0, 3]);
+});
+
+test('after the library the sites take turns until each runs dry or fails', async () => {
+	const catalogs: Record<string, { id: string }[]> = {
+		one: items('o1', 'o2', 'o3'),
+		two: items('t1', 'a'),
+		broken: []
+	};
+	const sites = siteSource(() => ['one', 'two', 'broken'], async (plugin, limit, offset) => {
+		if (plugin === 'broken') throw new Error('login needed');
+		return catalogs[plugin].slice(offset, offset + limit);
+	});
+	const feed = endlessFeed({ rest: restOver(items('a')), sites }, []);
+	expect(await drain(feed, 2)).toEqual(['a', 'o1', 'o2', 't1', 'o3']);
 });

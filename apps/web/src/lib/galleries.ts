@@ -4,7 +4,8 @@ import type { FilterInput } from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
 import { GALLERY_CARD, type GalleryCardRow } from '$lib/library';
 import { listingFilter, type MediaListing } from '$lib/media';
-import { endlessFeed, type Feed, type RankedPage } from '$lib/feed';
+import { endlessFeed, siteSource, type Feed, type RankedPage } from '$lib/feed';
+import { listerNames } from '$lib/stores/sites';
 
 /** Recommendations ranked among galleries only. */
 const GALLERIES_ONLY: FilterInput = { kinds: ['gallery'] };
@@ -75,10 +76,30 @@ export async function fetchRelatedGalleries(id: string, limit = 24): Promise<Gal
 	});
 }
 
-/** The endless gallery feed: recommended first, then the rest of the library, newest first. */
+/** A page of one site's galleries (its search, with query), stored as it comes. */
+export async function browseGalleries(
+	plugin: string,
+	limit: number,
+	offset: number,
+	query = ''
+): Promise<GalleryCardRow[]> {
+	const data = await gqlClient.mutation({
+		browse: { __args: { plugin, kind: 'GALLERY', query, limit, offset }, galleries: GALLERY_CARD }
+	});
+	return data.browse.galleries;
+}
+
+/**
+ * The endless gallery feed: recommended first, then the rest of the library
+ * newest first, then new galleries from the gallery sites.
+ */
 export function galleryFeed(leaveOut: string[] = []): Feed<GalleryCardRow> {
 	return endlessFeed(
-		{ ranked: fetchRecommendedGalleries, rest: (limit, offset) => fetchGalleryListing(limit, offset) },
+		{
+			ranked: fetchRecommendedGalleries,
+			rest: (limit, offset) => fetchGalleryListing(limit, offset),
+			sites: siteSource(() => listerNames('GALLERY'), browseGalleries)
+		},
 		leaveOut
 	);
 }

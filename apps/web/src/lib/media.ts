@@ -173,6 +173,32 @@ export async function fetchTagName(id: string): Promise<string | null> {
 	return data.tag?.name ?? null;
 }
 
+/** A page of one site's audio (its search, with query), stored as it comes. */
+export async function browseAudios(
+	plugin: string,
+	limit: number,
+	offset: number,
+	query = ''
+): Promise<AudioCardRow[]> {
+	const data = await gqlClient.mutation({
+		browse: { __args: { plugin, kind: 'AUDIO', query, limit, offset }, audios: AUDIO_CARD }
+	});
+	return data.browse.audios;
+}
+
+/** A page of one site's stories (its search, with query), stored as it comes. */
+export async function browseStories(
+	plugin: string,
+	limit: number,
+	offset: number,
+	query = ''
+): Promise<StoryCardRow[]> {
+	const data = await gqlClient.mutation({
+		browse: { __args: { plugin, kind: 'STORY', query, limit, offset }, stories: STORY_CARD }
+	});
+	return data.browse.stories;
+}
+
 /** Audio the user stopped partway, most recently listened first. */
 export async function fetchContinueListening(limit = 20): Promise<AudioCardRow[]> {
 	const data = await gqlClient.query({

@@ -1,14 +1,14 @@
 <!--
 	Audio: Continue listening, newest releases, voices and the most common
-	tags, then everything most recently added first; a top bar search asks
-	the audio sites.
+	tags, then everything most recently added first and new audio from the
+	sites after that; a top bar search asks the audio sites.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import AudioCard from '$lib/components/AudioCard.svelte';
 	import MediaOverview from '$lib/components/MediaOverview.svelte';
 	import SiteMediaList from '$lib/components/SiteMediaList.svelte';
-	import { fetchAudios, fetchContinueListening } from '$lib/media';
+	import { browseAudios, fetchAudios, fetchContinueListening } from '$lib/media';
 	import { audioUrl } from '$lib/routes';
 
 	const CARD_WIDTH = 180;
@@ -19,6 +19,7 @@
 	kind="AUDIO"
 	noun="audio"
 	load={fetchAudios}
+	browsePage={browseAudios}
 	pick={(batch) => batch.listed.audios}
 	cardWidth={CARD_WIDTH}
 >

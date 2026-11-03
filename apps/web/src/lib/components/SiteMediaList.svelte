@@ -2,9 +2,10 @@
 	A page of one media kind beyond videos (galleries, audio, stories). With a
 	search from the top bar (?q=), what the sites that list the kind answer,
 	as they answer. With a tag (?tag=), the library's media carrying it.
-	Otherwise the overview's rows, then the endless feed when there is one
+	Otherwise the overview's rows, then an endless feed: the page's own
 	(galleries: recommended, then the rest), else everything most recently
-	added first. "Browse a site" stores a page of one site's catalog.
+	added first, continued by new pages from the sites once the library is
+	through. "Browse a site" stores a page of one site's catalog.
 -->
 <script lang="ts" generics="Item extends { id: string }">
 	import { untrack, type Snippet } from 'svelte';
@@ -20,7 +21,8 @@
 	import { sites } from '$lib/stores/sites';
 	import { searchPage, type SearchBatchRow, type SearchPage } from '$lib/search';
 	import { resetShown, type Shown } from '$lib/events';
-	import type { Feed } from '$lib/feed';
+	import { endlessFeed, siteSource, type Feed, type Source } from '$lib/feed';
+	import { listerNames } from '$lib/stores/sites';
 
 	const PAGE_SIZE = 40;
 
@@ -39,8 +41,11 @@
 		card: Snippet<[Item, Shown | null]>;
 		// Rows shown above everything when there's no search or tag.
 		overview?: Snippet;
-		// Starts the endless feed under the overview, instead of everything most recently added first.
+		// Starts the endless feed under the overview, instead of everything most
+		// recently added first, then what browsePage brings from the sites.
 		feed?: () => Feed<Item>;
+		// A page of one site's catalog, stored as it comes, once the library is through.
+		browsePage?: (plugin: string, limit: number, offset: number) => Promise<Item[]>;
 		// The feed's heading and the surface its cards are logged on.
 		feedTitle?: string;
 		feedSurface?: string;
@@ -56,6 +61,7 @@
 		card,
 		overview,
 		feed,
+		browsePage,
 		feedTitle = 'Recently added',
 		feedSurface = 'library'
 	}: Props = $props();
@@ -103,9 +109,9 @@
 		tagName = null;
 		activeFeed = null;
 		if (tag !== '') void fetchTagName(tag).then((name) => (tagName = name));
-		if (searchText === '' && tag === '' && feed) {
+		if (searchText === '' && tag === '') {
 			resetShown(feedSurface);
-			activeFeed = feed();
+			activeFeed = overviewFeed();
 		}
 		if (searchText === '') {
 			await loadMore();
@@ -136,6 +142,14 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	/** The feed under the overview: the page's own, else the library most recently added first, then the sites. */
+	function overviewFeed(): Feed<Item> {
+		if (feed) return feed();
+		let sites: Source<Item> | undefined;
+		if (browsePage) sites = siteSource(() => listerNames(kind), browsePage);
+		return endlessFeed({ rest: (limit, offset) => load(limit, offset, {}), sites });
 	}
 
 	/** The next page of the feed, or of everything (one tag's) most recently added first. */

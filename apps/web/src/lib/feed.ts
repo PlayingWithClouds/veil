@@ -1,5 +1,5 @@
 // Endless feeds: a ranked list that runs out, continued by the rest of the
-// library, without repeats.
+// library, then by pages fetched from the sites, without repeats.
 
 /** The next items of an endless feed, about limit of them; none once it has nothing more. */
 export type Feed<Item> = (limit: number) => Promise<Item[]>;
@@ -10,40 +10,42 @@ export interface RankedPage<Item> {
 	entryCount: number;
 }
 
-/** Where an endless feed takes its items from. */
+/** The next page from wherever a source is; null once it has nothing more. */
+export type Source<Item> = (limit: number) => Promise<Item[] | null>;
+
+/** Where an endless feed takes its items from, in this order. */
 export interface FeedSources<Item> {
 	// The ranked list, read until a page comes back short.
-	ranked: (limit: number, offset: number) => Promise<RankedPage<Item>>;
-	// Everything else, read until it's through.
+	ranked?: (limit: number, offset: number) => Promise<RankedPage<Item>>;
+	// Everything stored, read until it's through.
 	rest: (limit: number, offset: number) => Promise<Item[]>;
+	// New items from the sites once the library is through (siteSource).
+	sites?: Source<Item>;
 }
 
 /**
- * An endless feed: the ranked items, then, once those run out, the rest.
- * Nothing shows twice, and the ids in leaveOut (shown elsewhere on the page)
- * not at all.
+ * An endless feed: the ranked items, then the rest of the library, then what
+ * the sites add. Nothing shows twice, and the ids in leaveOut (shown
+ * elsewhere on the page) not at all.
  */
 export function endlessFeed<Item extends { id: string }>(
 	sources: FeedSources<Item>,
 	leaveOut: string[] = []
 ): Feed<Item> {
 	const seen = new Set(leaveOut);
-	let rankedOffset = 0;
-	// Where the rest continues; null while the ranked list lasts.
-	let restOffset: number | null = null;
+	const phases: Source<Item>[] = [];
+	if (sources.ranked) phases.push(rankedSource(sources.ranked));
+	phases.push(offsetSource(sources.rest));
+	if (sources.sites) phases.push(sources.sites);
 
-	/** The next batch from wherever the feed is; null once the rest is through. */
+	/** The next batch from the first phase that still has items; null once all are through. */
 	async function nextBatch(limit: number): Promise<Item[] | null> {
-		if (restOffset === null) {
-			const page = await sources.ranked(limit, rankedOffset);
-			rankedOffset += page.entryCount;
-			if (page.entryCount < limit) restOffset = 0;
-			return page.items;
+		while (phases.length > 0) {
+			const batch = await phases[0](limit);
+			if (batch !== null) return batch;
+			phases.shift();
 		}
-		const page = await sources.rest(limit, restOffset);
-		if (page.length === 0) return null;
-		restOffset += page.length;
-		return page;
+		return null;
 	}
 
 	return async (limit) => {
@@ -58,5 +60,66 @@ export function endlessFeed<Item extends { id: string }>(
 			}
 		}
 		return fresh;
+	};
+}
+
+/** A ranked list as a source: through once a page comes back short. */
+function rankedSource<Item>(
+	ranked: (limit: number, offset: number) => Promise<RankedPage<Item>>
+): Source<Item> {
+	let offset = 0;
+	let through = false;
+	return async (limit) => {
+		if (through) return null;
+		const page = await ranked(limit, offset);
+		offset += page.entryCount;
+		if (page.entryCount < limit) through = true;
+		return page.items;
+	};
+}
+
+/** An offset-paged list as a source: through once a page comes back empty. */
+function offsetSource<Item>(list: (limit: number, offset: number) => Promise<Item[]>): Source<Item> {
+	let offset = 0;
+	return async (limit) => {
+		const page = await list(limit, offset);
+		if (page.length === 0) return null;
+		offset += page.length;
+		return page;
+	};
+}
+
+/**
+ * Pages from the sites, the sites taking turns, each paged by its own
+ * offset. The sites are asked for when first needed (the installed plugins
+ * load after the page). A site that returns nothing or fails drops out (a
+ * failure is logged); the source is through once every site has.
+ */
+export function siteSource<Item>(
+	plugins: () => string[],
+	fetchPage: (plugin: string, limit: number, offset: number) => Promise<Item[]>
+): Source<Item> {
+	let remaining: string[] | null = null;
+	const offsets = new Map<string, number>();
+	let turn = 0;
+	return async (limit) => {
+		if (remaining === null) remaining = [...plugins()];
+		while (remaining.length > 0) {
+			turn = turn % remaining.length;
+			const plugin = remaining[turn];
+			const offset = offsets.get(plugin) ?? 0;
+			const page = await fetchPage(plugin, limit, offset).catch((failure) => {
+				console.warn(`${plugin} gave no more`, failure);
+				return [];
+			});
+			if (page.length === 0) {
+				remaining.splice(turn, 1);
+				continue;
+			}
+			offsets.set(plugin, offset + page.length);
+			turn++;
+			return page;
+		}
+		return null;
 	};
 }

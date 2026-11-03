@@ -1,6 +1,7 @@
 <!--
 	Home. Without a search: the featured video and rows (HomeRows) above the
-	library's videos, sites taking turns. The filter under the search box
+	library's videos, endless: unfiltered, new pages from the video sites
+	follow once the library is through. The filter under the search box
 	(HeaderFilters; on phones above the rows) narrows recommendations and grid
 	through the URL (libraryFilter: ?tag=, ?not=, ?performer=, ?studio=,
 	?site=, ?len=, ?res=, ?rating=, ?unwatched, ?fav, ?sort=). ?saved= plays a
@@ -17,7 +18,9 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
 	import SearchResults from '$lib/components/SearchResults.svelte';
-	import { fetchVideosMatching, browse, type VideoCardRow } from '$lib/library';
+	import { fetchVideosMatching, browse, browseVideos, type VideoCardRow } from '$lib/library';
+	import { endlessFeed, siteSource, type Feed, type Source } from '$lib/feed';
+	import { listerNames } from '$lib/stores/sites';
 	import { fetchSavedFilter, type SavedFilterDetail } from '$lib/home';
 	import { filterFromParams, isFiltered } from '$lib/libraryFilter';
 	import { resetShown } from '$lib/events';
@@ -34,6 +37,8 @@
 	let exhausted = $state(false);
 	let error = $state<string | null>(null);
 	let savedFilter = $state<SavedFilterDetail | null>(null);
+	// The grid's feed for the current filter; replaced when it changes.
+	let grid: Feed<VideoCardRow> | null = null;
 	let browsing = $state(false);
 	let browsePlugin = $state('');
 
@@ -60,41 +65,51 @@
 		void loadFirst(query, JSON.parse(filterKey), savedId);
 	});
 
-	/** Fetches a page of the grid: the saved filter's videos, else the URL filter's. */
-	async function fetchPage(filter: FilterInput, offset: number): Promise<VideoCardRow[]> {
-		if (savedFilter) return fetchVideosMatching(savedFilter.filter, PAGE_SIZE, offset);
-		return fetchVideosMatching(filter, PAGE_SIZE, offset);
+	/**
+	 * The grid's feed: the saved filter's videos, else the URL filter's; with
+	 * neither, new videos from the sites once the library is through (the
+	 * sites can't apply a filter).
+	 */
+	function gridFeed(filter: FilterInput): Feed<VideoCardRow> {
+		const shownFilter = savedFilter ? savedFilter.filter : filter;
+		let sites: Source<VideoCardRow> | undefined;
+		if (!savedFilter && !filtered) sites = siteSource(() => listerNames('VIDEO'), browseVideos);
+		return endlessFeed({
+			rest: (limit, offset) => fetchVideosMatching(shownFilter, limit, offset),
+			sites
+		});
 	}
 
-	/** Loads the first page of the library grid; a search has its own results. */
+	/** Starts the grid over; a search has its own results. */
 	async function loadFirst(searchText: string, filter: FilterInput, savedFilterId: string) {
 		resetShown('library');
 		videos = [];
 		exhausted = false;
 		error = null;
+		grid = null;
 		if (searchText) return;
-		loading = true;
 		try {
 			savedFilter = null;
 			if (savedFilterId) savedFilter = await fetchSavedFilter(savedFilterId);
-			const firstPage = await fetchPage(filter, 0);
-			videos = firstPage;
-			exhausted = firstPage.length < PAGE_SIZE;
+			grid = gridFeed(filter);
+			await loadMore();
 		} catch (failure) {
 			error = String(failure);
-		} finally {
-			loading = false;
 		}
 	}
 
-	/** Appends the next page of the library grid. */
+	/** Appends the grid's next page. */
 	async function loadMore() {
-		if (loading || exhausted || query) return;
+		if (!grid || loading || exhausted || query) return;
+		const current = grid;
 		loading = true;
 		try {
-			const nextPage = await fetchPage(JSON.parse(filterKey), videos.length);
+			const nextPage = await current(PAGE_SIZE);
+			if (current !== grid) return;
 			videos = [...videos, ...nextPage];
-			exhausted = nextPage.length < PAGE_SIZE;
+			exhausted = nextPage.length === 0;
+		} catch (failure) {
+			error = String(failure);
 		} finally {
 			loading = false;
 		}

@@ -8,7 +8,7 @@
 	import StoryCard from '$lib/components/StoryCard.svelte';
 	import MediaOverview from '$lib/components/MediaOverview.svelte';
 	import SiteMediaList from '$lib/components/SiteMediaList.svelte';
-	import { fetchContinueReading, fetchStories } from '$lib/media';
+	import { browseStories, fetchContinueReading, fetchStories } from '$lib/media';
 	import { storyReaderUrl, storyUrl } from '$lib/routes';
 
 	const CARD_WIDTH = 150;
@@ -19,6 +19,7 @@
 	kind="STORY"
 	noun="stories"
 	load={fetchStories}
+	browsePage={browseStories}
 	pick={(batch) => batch.listed.stories}
 	cardWidth={CARD_WIDTH}
 >
