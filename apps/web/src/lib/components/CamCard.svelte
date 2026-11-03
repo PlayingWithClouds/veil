@@ -27,6 +27,7 @@
 		camSites,
 		followedCams,
 		loadFollowedCams,
+		previewStream,
 		roomTopic,
 		setCamAutoRecord,
 		startCamRecording,
@@ -89,9 +90,15 @@
 		return 'offline';
 	}
 
-	/** Starts the preview after a pause, for a mouse or pen over a live room. */
+	/**
+	 * Starts the preview after a pause, for a mouse or pen over a live room.
+	 * The stream and the player load during the pause, so the preview finds
+	 * them ready.
+	 */
 	function hoverStart(event: PointerEvent) {
 		if (event.pointerType === 'touch' || !room.live) return;
+		previewStream(room.id).catch(() => {});
+		void import('hls.js');
 		previewTimer = setTimeout(() => (previewing = true), PREVIEW_DELAY_MS);
 	}
 

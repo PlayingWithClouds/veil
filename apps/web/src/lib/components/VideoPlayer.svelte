@@ -570,12 +570,17 @@
 	}
 
 	// Seek-bar hover scrub: a muted mirror <video> is seeked to the hovered time
-	// and shown as a thumbnail above the cursor.
+	// and shown as a thumbnail above the cursor. It loads on the first hover,
+	// not with the page.
 	let previewVideoEl = $state<HTMLVideoElement | undefined>();
+	let previewWanted = $state(false);
 	let seekWrapEl = $state<HTMLDivElement | undefined>();
 	let hoverActive = $state(false);
 	let hoverTime = $state(0);
 	let hoverX = $state(0);
+
+	// A preview this close to the hovered time is close enough.
+	const PREVIEW_TOLERANCE_SECONDS = 0.25;
 
 	function onSeekHover(event: MouseEvent) {
 		if (!seekWrapEl || duration <= 0) return;
@@ -584,10 +589,33 @@
 		hoverX = ratio * rect.width;
 		hoverTime = ratio * duration;
 		hoverActive = true;
-		// Skip while a prior seek is in flight so a fast drag doesn't thrash.
-		if (previewVideoEl && !previewVideoEl.seeking && isFinite(hoverTime)) {
-			previewVideoEl.currentTime = hoverTime;
-		}
+		previewWanted = true;
+		seekPreview(hoverTime);
+	}
+
+	/**
+	 * Seeks the preview to a time. A seek still loading isn't interrupted, so a
+	 * fast drag doesn't thrash; onPreviewSeeked catches up with the latest time.
+	 */
+	function seekPreview(time: number) {
+		if (!previewVideoEl || previewVideoEl.seeking || !isFinite(time)) return;
+		previewVideoEl.currentTime = time;
+	}
+
+	/** Once a preview seek (or the first load) ends, seeks on to where the pointer is now. */
+	function onPreviewSeeked() {
+		if (!previewVideoEl || !hoverActive) return;
+		if (Math.abs(previewVideoEl.currentTime - hoverTime) <= PREVIEW_TOLERANCE_SECONDS) return;
+		seekPreview(hoverTime);
+	}
+
+	/**
+	 * The preview's source: a proxied MP4 is asked for as a scrub, which the
+	 * backend relays without buffering ahead (a preview needs one frame).
+	 */
+	function scrubSource(url: string): string {
+		if (!url.includes('/api/stream/mp4?')) return url;
+		return `${url}&scrub=1`;
 	}
 
 	function onSeekLeave() {
@@ -828,6 +856,7 @@
 	function onSeekPointerDown(event: PointerEvent) {
 		if (event.pointerType !== 'touch') return;
 		scrubbing = true;
+		previewWanted = true;
 		clearTimeout(hideTimer);
 	}
 
@@ -846,9 +875,7 @@
 		hoverX = ratio * seekWrapEl.getBoundingClientRect().width;
 		hoverTime = value;
 		hoverActive = true;
-		if (previewVideoEl && !previewVideoEl.seeking && isFinite(value)) {
-			previewVideoEl.currentTime = value;
-		}
+		seekPreview(value);
 	}
 
 	function fmtTime(s: number): string {
@@ -1175,7 +1202,7 @@
 	// cheap — the lowest HLS level, or the provider's lowest progressive copy
 	// (never the high-res source that is actually playing).
 	$effect(() => {
-		if (!previewVideoEl) return;
+		if (!previewVideoEl || !previewWanted) return;
 		const isHLS = mimeType.includes('mpegURL') || src.includes('.m3u8');
 		if (!isHLS) {
 			const lowest = previewSource;
@@ -1185,14 +1212,14 @@
 				let cancelled = false;
 				onresolvesource(lowest.id).then((resolved) => {
 					if (cancelled || !previewVideoEl || !resolved) return;
-					previewVideoEl.src = resolved.url;
+					previewVideoEl.src = scrubSource(resolved.url);
 				});
 				return () => {
 					cancelled = true;
 				};
 			}
 			previewResolvedFor = '';
-			previewVideoEl.src = src;
+			previewVideoEl.src = scrubSource(src);
 			return;
 		}
 		previewResolvedFor = '';
@@ -1203,8 +1230,12 @@
 				if (previewVideoEl.canPlayType('application/vnd.apple.mpegurl')) previewVideoEl.src = src;
 				return;
 			}
+			// A preview shows one frame per seek: buffer about a segment, not 30 s.
 			const instance = new Hls({
 				startLevel: 0,
+				maxBufferLength: 2,
+				maxMaxBufferLength: 4,
+				backBufferLength: 0,
 				xhrSetup(xhr) {
 					for (const [name, value] of Object.entries(headers)) {
 						xhr.setRequestHeader(name, value);
@@ -1667,6 +1698,8 @@
 							muted
 							playsinline
 							preload="auto"
+							onloadedmetadata={onPreviewSeeked}
+							onseeked={onPreviewSeeked}
 						></video>
 					</div>
 					<span

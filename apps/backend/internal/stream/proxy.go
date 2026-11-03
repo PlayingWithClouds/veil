@@ -351,9 +351,9 @@ func hasAnyPrefix(text string, prefixes []string) bool {
 	return false
 }
 
-// serveMP4 proxies an MP4: redirects to the blob store if cached, otherwise forwards the
-// request (including any Range header) to the CDN. Background caching is started
-// by ManifestURL so the file lands in the blob store without blocking playback.
+// serveMP4 proxies an MP4: redirects to the blob store if the whole file is
+// cached (a download), else serves it through the read-ahead buffer, else
+// forwards the request (including any Range header) to the CDN.
 func (p *Proxy) serveMP4(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	sessID := q.Get("s")
@@ -370,11 +370,13 @@ func (p *Proxy) serveMP4(w http.ResponseWriter, r *http.Request) {
 	}
 
 	headers, _ := p.loadSession(r.Context(), sessID)
-	if p.mp4.serve(w, r, mediaURL, headers) {
+	// A seek bar preview (scrub=1) wants one frame now: relayed byte by byte
+	// as it comes, with nothing fetched ahead.
+	if q.Get("scrub") != "1" && p.mp4.serve(w, r, mediaURL, headers) {
 		return
 	}
 
-	// The origin can't be buffered in chunks: relay the range asked for.
+	// Relay the range asked for: a scrub, or an origin that can't be buffered in chunks.
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, mediaURL, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

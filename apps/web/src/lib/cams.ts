@@ -347,6 +347,25 @@ export async function watchCam(
 	return { url: backendUrl(data.watchCam.url), mimeType: data.watchCam.mimeType };
 }
 
+// A room's preview stream stays playable about a minute (its token expires).
+const PREVIEW_STREAM_MS = 45_000;
+
+const previewStreams = new Map<string, { at: number; url: Promise<string> }>();
+
+/**
+ * The preview stream of a room, resolved once and reused for a while, so a
+ * card can ask as the pointer enters and the preview finds it ready. fresh
+ * asks again, for a stream whose token ran out.
+ */
+export function previewStream(id: string, fresh = false): Promise<string> {
+	const known = previewStreams.get(id);
+	if (!fresh && known && Date.now() - known.at < PREVIEW_STREAM_MS) return known.url;
+	const url = watchCam(id, true).then((stream) => stream.url);
+	previewStreams.set(id, { at: Date.now(), url });
+	url.catch(() => previewStreams.delete(id));
+	return url;
+}
+
 /** Turns auto-recording of a room on or off, at a quality when given. */
 export async function setCamAutoRecord(id: string, on: boolean, quality?: string): Promise<CamRow> {
 	const data = await gqlClient.mutation({
