@@ -47,10 +47,10 @@
 			<div class="grid flex-1 grid-cols-24 gap-px">
 				{#each hours[day] as share, hour (hour)}
 					<span
-						class="bg-base-300 relative h-4 overflow-hidden rounded-sm"
+						class="relative h-4 overflow-hidden rounded-sm bg-white/5"
 						title="{weekdayLabel(day)} {hourLabel(hour)}: {Math.round(share * 100)}% of weeks"
 					>
-						<span class="bg-primary absolute inset-0" style:opacity={cellOpacity(share)}></span>
+						<span class="bg-live absolute inset-0" style:opacity={cellOpacity(share)}></span>
 					</span>
 				{/each}
 			</div>
