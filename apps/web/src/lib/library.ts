@@ -109,6 +109,8 @@ const VIDEO_DETAIL = {
 	tags: NAMED,
 	sources: SOURCE,
 	streams: STREAM,
+	// Local copies (downloads, cam recordings); they play before any site's stream.
+	files: { id: true, url: true, mimeType: true, quality: true, missing: true },
 	segments: { id: true, startSeconds: true, endSeconds: true, title: true, tag: NAMED },
 	comments: COMMENT,
 	gallery: { id: true, imageCount: true, cover: { uri: true } }
@@ -337,6 +339,13 @@ export async function browseVideos(
 export async function search(kind: ListKind, query: string, limit = 20): Promise<Listed> {
 	const data = await gqlClient.mutation({ search: { __args: { kind, query, limit }, ...LISTED } });
 	return data.search;
+}
+
+export type LocalFileRow = VideoDetail['files'][number];
+
+/** A local file as the player plays it, at its backend URL. */
+export function playableFile(file: LocalFileRow): { url: string; mimeType: string } {
+	return { url: backendUrl(file.url), mimeType: file.mimeType };
 }
 
 /** Resolves a stream to a URL the player can load. */

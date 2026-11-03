@@ -33,7 +33,9 @@
 		fetchStudios,
 		openVideo,
 		play,
+		playableFile,
 		setVideoStudio,
+		type LocalFileRow,
 		type StreamRow,
 		type VideoCardRow,
 		type VideoDetail
@@ -74,13 +76,20 @@
 	let playerElement: HTMLVideoElement | null = null;
 
 	let id = $derived(page.params.id ?? '');
-	let playerSources = $derived<PlayerSource[]>(
-		(video?.streams ?? []).map((stream) => ({
+	let localFiles = $derived((video?.files ?? []).filter((file) => !file.missing));
+	let playerSources = $derived<PlayerSource[]>([
+		...localFiles.map((file) => ({
+			id: file.id,
+			provider: 'local',
+			quality: file.quality ?? 'source'
+		})),
+		...(video?.streams ?? []).map((stream) => ({
 			id: stream.id,
 			provider: stream.source?.plugin ?? 'site',
 			quality: stream.quality ?? 'auto'
 		}))
-	);
+	]);
+	let canPlay = $derived(localFiles.length > 0 || (video?.streams.length ?? 0) > 0);
 	let durationLabel = $derived(formatClock(video?.durationSeconds));
 	let poster = $derived(cacheUrl(video?.cover?.uri));
 	let shownTags = $derived(allTags ? (video?.tags ?? []) : (video?.tags ?? []).slice(0, MAIN_TAGS));
@@ -112,7 +121,7 @@
 			// cam sites whether the rooms are live.
 			if (video) void loadCamRooms(videoId);
 			if (video) logEvent({ kind: 'view', subject: { kind: 'video', id: video.id } });
-			if (video && video.streams.length > 0) await start(video.streams[0]);
+			await startFirst();
 		} catch (failure) {
 			error = String(failure);
 		} finally {
@@ -177,22 +186,44 @@
 		}
 	}
 
-	/** Switches to the stream picked in the player's menu. */
+	/** Plays a local copy when there is one, else the first site stream. */
+	async function startFirst() {
+		if (localFiles.length > 0) {
+			startFile(localFiles[0]);
+			return;
+		}
+		if (video && video.streams.length > 0) await start(video.streams[0]);
+	}
+
+	/** Hands a local file to the player; it needs no resolving. */
+	function startFile(file: LocalFileRow) {
+		const playable = playableFile(file);
+		active = { streamId: file.id, src: playable.url, mimeType: playable.mimeType };
+	}
+
+	/** Switches to the file or stream picked in the player's menu. */
 	function selectSource(source: PlayerSource) {
+		const file = localFiles.find((candidate) => candidate.id === source.id);
+		if (file) {
+			startFile(file);
+			return;
+		}
 		const stream = video?.streams.find((candidate) => candidate.id === source.id);
 		if (stream) void start(stream);
 	}
 
-	/** Resolves a stream for the player's quality upgrade. */
+	/** Resolves a file or stream for the player's quality upgrade. */
 	async function resolveSource(sourceId: string) {
+		const file = localFiles.find((candidate) => candidate.id === sourceId);
+		if (file) return playableFile(file);
 		const stream = video?.streams.find((candidate) => candidate.id === sourceId);
 		if (!stream) return null;
 		return play(stream.url);
 	}
 
-	/** Jumps to a moment, starting the stream first when it isn't playing. */
+	/** Jumps to a moment, starting playback first when nothing plays. */
 	async function seek(seconds: number) {
-		if (!active && video && video.streams.length > 0) await start(video.streams[0]);
+		if (!active) await startFirst();
 		player?.seekTo(seconds);
 	}
 
@@ -244,11 +275,11 @@
 					{#if loading || starting}
 						<span class="loading loading-spinner"></span>
 						{loading ? 'Reading the page…' : 'Starting the stream…'}
-					{:else if video && video.streams.length > 0}
+					{:else if canPlay}
 						<button
 							type="button"
 							class="bg-primary text-primary-content flex items-center gap-2 rounded-full px-4 py-2"
-							onclick={() => video && start(video.streams[0])}
+							onclick={startFirst}
 						>
 							<PlayIcon size={18} weight="fill" /> Play
 						</button>
