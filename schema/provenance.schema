@@ -126,6 +126,7 @@ model FaceScan extends Entity {
 
 /// Two records that are probably the same. Hidden from lists, never merged.
 @index(fields: ["subjectKind", "firstId", "secondId"], unique: true)
+@index(fields: ["subjectKind", "secondId"])
 model Alike extends Entity {
   10 subjectKind: RecordKind
   11 firstId: uuid
