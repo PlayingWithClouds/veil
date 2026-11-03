@@ -3,11 +3,10 @@ import type { HTMLElement } from "node-html-parser";
 import type { ScenePerformer, ScrapeResult, Story, StoryChapter } from "@playingwithclouds/veil-sdk";
 import { postedDate } from "./dates.ts";
 import {
-  absoluteUrl,
+  authorOfProfile,
   externalIdOf,
   fetchPage,
   normalizeText,
-  profileIdOf,
   storyIdOf,
   storySlugOf,
   storyUrl,
@@ -55,15 +54,7 @@ function introductionOf(root: HTMLElement): string {
 function authorOf(root: HTMLElement): ScenePerformer | undefined {
   const link = root.querySelector("#top_panel .title_link a");
   if (!link) return undefined;
-  const href = link.getAttribute("href") ?? "";
-  const profileId = profileIdOf(href);
-  const name = normalizeText(link.text);
-  if (profileId === undefined || profileId === "0" || name === "") return undefined;
-  return {
-    name,
-    external_id: `sexstories-author-${profileId}`,
-    source_url: absoluteUrl(encodeURI(href)),
-  };
+  return authorOfProfile(link.text, link.getAttribute("href") ?? "");
 }
 
 /** The genre and themes under the title, once each. */

@@ -1,6 +1,6 @@
 import { parse } from "node-html-parser";
 import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
-import { externalIdOf, fetchPage, normalizeText, parseAddress, userUrl } from "./site.ts";
+import { externalIdOf, fetchPage, normalizeText, parseAddress, userUrl, voiceOf } from "./site.ts";
 import { splitTitle } from "./titles.ts";
 
 /** The play counter text of a card ("Play Count: 25980") as a number, or undefined. */
@@ -23,6 +23,7 @@ export function parseUserPage(html: string): DiscoveredItem[] {
       media_type: "audio",
       source_url: link.getAttribute("href") ?? "",
       external_id: externalIdOf(address.user, address.slug),
+      studio: voiceOf(address.user),
     };
     const playCount = playCountOf(normalizeText(card.querySelector(".playCount")?.text ?? ""));
     if (playCount !== undefined) item.view_count = playCount;

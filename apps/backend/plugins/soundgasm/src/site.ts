@@ -1,3 +1,4 @@
+import type { StudioRef } from "@playingwithclouds/veil-sdk";
 import { fetchHtml } from "@playingwithclouds/veil-sdk";
 
 export const SITE_URL = "https://soundgasm.net";
@@ -28,6 +29,11 @@ export function userUrl(user: string): string {
 /** The page of one audio. */
 export function audioUrl(user: string, slug: string): string {
   return `${SITE_URL}/u/${user}/${slug}`;
+}
+
+/** The uploader as the voice credit; the audio page and the listing card share it so both resolve to one performer. */
+export function voiceOf(user: string): StudioRef {
+  return { name: user, external_id: user, source_url: userUrl(user) };
 }
 
 /** The identity an audio carries; slugs are only unique within an uploader. */

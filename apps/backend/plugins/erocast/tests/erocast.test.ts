@@ -4,7 +4,7 @@ import { audioFromTrackPage, genreNamesOf, scrapeAudio } from "../src/audio.ts";
 import { decodeEntities, toSiteUrl, trackIdFromUrl } from "../src/http.ts";
 import { audioList, listingPath, tracksFromSearch } from "../src/listing.ts";
 import { suggest, suggestionsFromReply } from "../src/suggest.ts";
-import { cardOf, tracksFromPage } from "../src/track.ts";
+import { cardOf, tracksFromPage, withSpaces } from "../src/track.ts";
 
 const NET_TIMEOUT = 60_000;
 
@@ -26,6 +26,11 @@ describe("helpers", () => {
 
   test("entities decode in one pass", () => {
     expect(decodeEntities("a &amp;lt; b &amp; c &#39;d&#39;")).toBe("a &lt; b & c 'd'");
+  });
+
+  test("form-encoded titles get their spaces back; a real plus stays", () => {
+    expect(withSpaces("[F4F]+Mutter+für+Männer")).toBe("[F4F] Mutter für Männer");
+    expect(withSpaces("1+1 makes two")).toBe("1+1 makes two");
   });
 
   test("listing paths: newest by default, creators under /tracks, listing pages as they are", () => {
@@ -61,6 +66,17 @@ describe("listing cards", () => {
     expect(card.title).toBe("[F4M] Bred By Him Part 3 The Window");
     expect(card.date).toBe("2026-11-02");
     expect(card.downloads).toBeUndefined();
+  });
+
+  test("a card credits the uploader as studio, the same identity the page credits as voice", () => {
+    const card = cardOf(tracks[3]);
+    expect(card.studio?.external_id).toBeTruthy();
+    expect(card.studio?.name).toBeTruthy();
+    expect(card.studio?.source_url).toStartWith("https://www.erocast.me/");
+    const page = audioFromTrackPage(loadFixture("track-page.html"), "15000");
+    const raw = tracksFromPage(loadFixture("track-page.html")).find((track) => track.id === 15000);
+    expect(raw).toBeDefined();
+    expect(cardOf(raw!).studio).toEqual(page.performers?.[0]);
   });
 
   test("the grey placeholder is no poster", () => {

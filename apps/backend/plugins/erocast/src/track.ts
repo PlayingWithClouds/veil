@@ -66,6 +66,8 @@ export function cardOf(track: RawTrack): DiscoveredItem {
   if (track.plays) card.view_count = track.plays;
   const downloads = downloadsOf(track);
   if (downloads.length > 0) card.downloads = downloads;
+  const voice = voiceOf(track);
+  if (voice !== undefined) card.studio = voice;
   return card;
 }
 
@@ -93,7 +95,16 @@ export function audioOf(track: RawTrack, genres: string[]): Audio {
 
 /** The title without the HTML entities the site leaves in it. */
 function titleOf(track: RawTrack): string {
-  return normalizeText(decodeEntities(track.title));
+  return normalizeText(withSpaces(decodeEntities(track.title)));
+}
+
+/**
+ * Some uploads keep their title form-encoded ("Bad+Girl+Detention"): with
+ * pluses and not one space, the pluses are the spaces.
+ */
+export function withSpaces(title: string): string {
+  if (!title.includes("+") || /\s/.test(title)) return title;
+  return title.replaceAll("+", " ");
 }
 
 /** The description, entities decoded, line breaks kept; undefined when the track has none. */

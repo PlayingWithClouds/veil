@@ -185,6 +185,15 @@ describe("story:list", () => {
     expect(alone?.rating).toBe(9);
   });
 
+  test("every card credits its author as studio, with the identity story:find gives its performer", async () => {
+    serve(() => loadFixture("search.json"));
+    const { items } = await storyList({});
+    expect(items.every((item) => item.studio?.name && item.studio.external_id === item.studio.name)).toBe(true);
+    for (const item of items) {
+      expect(item.studio?.source_url).toBe(`https://www.literotica.com/authors/${encodeURIComponent(item.studio!.name)}`);
+    }
+  });
+
   test("a query searches by relevance", async () => {
     serve(() => loadFixture("search.json"));
     await storyList({ query: "office" });

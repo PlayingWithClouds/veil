@@ -1,4 +1,5 @@
 import { NeedsLoginError, sessionFetch } from "@playingwithclouds/veil-sdk";
+import type { ScenePerformer } from "@playingwithclouds/veil-sdk";
 import { parse } from "node-html-parser";
 
 export const SITE_URL = "https://chyoa.com";
@@ -24,6 +25,20 @@ export function normalizeText(text: string): string {
 export function absoluteUrl(href: string): string {
   if (href.startsWith("/")) return `${SITE_URL}${href}`;
   return href;
+}
+
+/**
+ * The author a profile link names, or undefined without a name. Story pages and
+ * listing cards credit through this, so both resolve to the same performer.
+ */
+export function authorOfLink(link: { text: string; getAttribute: (name: string) => string | undefined }): ScenePerformer | undefined {
+  const name = normalizeText(link.text);
+  if (name === "") return undefined;
+  return {
+    name,
+    external_id: `chyoa-user-${name.toLowerCase()}`,
+    source_url: absoluteUrl(link.getAttribute("href") ?? "").replace(/(?:%20)+$/, ""),
+  };
 }
 
 /** The id out of a chyoa.com/story/<slug>.<id> address, or undefined for other addresses. */

@@ -103,7 +103,18 @@ describe("listing pages", () => {
       poster_path: "https://chyoa.com/data/covers/s/76/76880.jpg?1793408741",
       date: "2026-11-02",
       view_count: 50,
+      studio: {
+        name: "Somefucker123",
+        external_id: "chyoa-user-somefucker123",
+        source_url: "https://chyoa.com/user/Somefucker123",
+      },
     });
+  });
+
+  test("a card's studio is the identity the story page credits as performer", () => {
+    const story = storyFromPage(loadFixture("story-ending.html"), "https://chyoa.com/story/x.76880");
+    expect(story?.performers?.[0]).toEqual(items[0].studio);
+    expect(items.every((item) => item.studio?.external_id?.startsWith("chyoa-user-"))).toBe(true);
   });
 
   test("a card without a cover has no poster, and view counts lose their thousands separators", () => {

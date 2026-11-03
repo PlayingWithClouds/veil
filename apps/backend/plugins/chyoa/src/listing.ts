@@ -1,7 +1,7 @@
 import { parse } from "node-html-parser";
 import type { HTMLElement } from "node-html-parser";
 import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
-import { SITE_URL, absoluteUrl, externalIdOf, fetchPublicPage, normalizeText, storyIdOf } from "./site.ts";
+import { SITE_URL, absoluteUrl, authorOfLink, externalIdOf, fetchPublicPage, normalizeText, storyIdOf } from "./site.ts";
 
 // Every listing (new stories, search, categories) shows 20 stories per page.
 const PAGE_SIZE = 20;
@@ -32,6 +32,11 @@ function itemOf(card: HTMLElement): DiscoveredItem | undefined {
     source_url: sourceUrl,
     external_id: externalIdOf(storyId),
   };
+  const byline = card.querySelector('.redesign-search-story__byline a[href*="/user/"]');
+  if (byline !== null) {
+    const author = authorOfLink(byline);
+    if (author !== undefined) item.studio = author;
+  }
   const cover = card.querySelector("img")?.getAttribute("src");
   if (cover !== undefined && cover.includes("/data/covers/")) item.poster_path = cover;
   const updated = card.querySelector("[data-livestamp]")?.getAttribute("data-livestamp");

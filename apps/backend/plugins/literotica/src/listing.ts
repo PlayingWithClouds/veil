@@ -11,7 +11,7 @@ import {
   type SearchParams,
 } from "./api.ts";
 import { categoryIdOf } from "./categories.ts";
-import { seriesExternalId, workExternalId } from "./story.ts";
+import { performerOf, seriesExternalId, workExternalId } from "./story.ts";
 import { isoDateOf } from "./text.ts";
 
 /** Serves "story:list": the newest stories, a search, or a category or author page, as one entry per story or series. */
@@ -100,6 +100,7 @@ function workItem(work: ApiWork): DiscoveredItem {
     external_id: workExternalId(work.id),
     date: isoDateOf(work.date_approve),
     view_count: work.view_count,
+    studio: performerOf(work),
   };
   if (work.rate_all !== undefined && work.rate_all > 0) {
     item.rating = Math.round(work.rate_all * 20) / 10;

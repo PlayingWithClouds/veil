@@ -85,6 +85,11 @@ describe("user page", () => {
       source_url: "https://soundgasm.net/u/sassmastah77/Hmmm",
       external_id: "soundgasm-sassmastah77/Hmmm",
       view_count: 25980,
+      studio: {
+        name: "sassmastah77",
+        external_id: "sassmastah77",
+        source_url: "https://soundgasm.net/u/sassmastah77",
+      },
     });
     expect(items.find((item) => item.title.includes("Left"))?.title).toBe("Tegan & Sara - I Won't Be Left");
     expect(items.every((item) => !item.title.includes("["))).toBe(true);

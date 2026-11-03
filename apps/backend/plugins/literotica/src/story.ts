@@ -113,8 +113,8 @@ function chapterOf(work: ApiWork, text: string | undefined): StoryChapter {
   return chapter;
 }
 
-/** The author as the story's performer. */
-function performerOf(work: ApiWork): { name: string; external_id: string; source_url: string } {
+/** The author as the story's performer; listing cards credit the same identity as their studio. */
+export function performerOf(work: ApiWork): { name: string; external_id: string; source_url: string } {
   return { name: work.authorname, external_id: work.authorname, source_url: authorUrl(work.authorname) };
 }
 

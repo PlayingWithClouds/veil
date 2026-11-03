@@ -4,6 +4,7 @@ import type { ScenePerformer, ScrapeResult, Story, StoryChapter } from "@playing
 import {
   SITE_URL,
   absoluteUrl,
+  authorOfLink,
   chapterIdOf,
   externalIdOf,
   fetchReaderPage,
@@ -95,13 +96,7 @@ function detailOf(root: HTMLElement, name: string): HTMLElement | undefined {
 function authorOf(root: HTMLElement): ScenePerformer | undefined {
   const link = root.querySelector('.rd-story-reading-byline a[href*="/user/"]');
   if (!link) return undefined;
-  const name = normalizeText(link.text);
-  if (name === "") return undefined;
-  return {
-    name,
-    external_id: `chyoa-user-${name.toLowerCase()}`,
-    source_url: absoluteUrl(link.getAttribute("href") ?? "").replace(/(?:%20)+$/, ""),
-  };
+  return authorOfLink(link);
 }
 
 /** The category, then the tags the author gave, once each. */

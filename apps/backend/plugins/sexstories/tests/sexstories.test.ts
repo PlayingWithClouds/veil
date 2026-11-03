@@ -63,6 +63,12 @@ describe("dates", () => {
   });
 });
 
+const LILA_HART = {
+  name: "lila_hart",
+  external_id: "sexstories-author-2052904",
+  source_url: "https://www.sexstories.com/profile2052904/lila_hart",
+};
+
 describe("listing pages", () => {
   const items = parseStoryCards(loadFixture("updates.html"));
 
@@ -76,7 +82,14 @@ describe("listing pages", () => {
       date: "2026-10-01",
       rating: 10,
       view_count: 261777,
+      studio: LILA_HART,
     });
+  });
+
+  test("a card's studio is the author identity the story page credits as performer", () => {
+    const story = storyFromPage(loadFixture("story.html"), "115749", "https://www.sexstories.com/story/115749/my_bff_and_my_daddy");
+    expect(items[0].studio).toEqual(story?.performers?.[0]);
+    expect(items[1].studio?.external_id).toBe("sexstories-author-1790266");
   });
 
   test("cards with relative dates and without an author still parse", () => {
@@ -107,6 +120,7 @@ describe("listing pages", () => {
       external_id: "sexstories-115749",
       view_count: 107913,
       rating: 10,
+      studio: LILA_HART,
     });
   });
 });

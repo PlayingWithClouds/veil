@@ -1,6 +1,6 @@
 import { parse } from "node-html-parser";
 import type { Audio, ScrapeResult } from "@playingwithclouds/veil-sdk";
-import { audioUrl, externalIdOf, fetchPage, normalizeText, parseAddress, userUrl } from "./site.ts";
+import { audioUrl, externalIdOf, fetchPage, normalizeText, parseAddress, voiceOf } from "./site.ts";
 import { splitTitle } from "./titles.ts";
 
 /** The m4a address the page's player script plays, or an empty string. */
@@ -25,7 +25,7 @@ export function audioFromPage(html: string, user: string, slug: string): Audio |
     external_id: externalIdOf(user, slug),
     source_url: audioUrl(user, slug),
     title: title || slug,
-    performers: [{ name: user, external_id: user, source_url: userUrl(user) }],
+    performers: [voiceOf(user)],
     downloads: [{ label: "m4a", url: mediaUrl, format: "m4a" }],
   };
   if (details !== "") audio.details = details;

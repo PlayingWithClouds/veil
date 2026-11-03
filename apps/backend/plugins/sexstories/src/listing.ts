@@ -1,12 +1,15 @@
 import { parse } from "node-html-parser";
-import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
+import type { HTMLElement } from "node-html-parser";
+import type { DiscoveredItem, ItemsResult, ListArgs, StudioRef } from "@playingwithclouds/veil-sdk";
 import { postedDate } from "./dates.ts";
 import {
   SITE_URL,
   absoluteUrl,
+  authorOfProfile,
   externalIdOf,
   fetchPage,
   normalizeText,
+  profileIdOf,
   storyIdOf,
 } from "./site.ts";
 
@@ -49,14 +52,36 @@ function itemOf(link: { text: string; getAttribute: (name: string) => string | u
   };
 }
 
+/** The author in a card's byline link ("by <a>"), or undefined when the card has none or it is anonymous. */
+function authorOfCard(link: { text: string; getAttribute: (name: string) => string | undefined } | undefined): StudioRef | undefined {
+  if (link === undefined) return undefined;
+  return authorOfProfile(link.text, link.getAttribute("href") ?? "");
+}
+
+/**
+ * The owner of an author's page, read from the page's own "texts commented by"
+ * link, which holds the profile path; undefined when the page has none.
+ */
+function authorOfProfilePage(root: HTMLElement): StudioRef | undefined {
+  const name = root.querySelector("h3.notice .left")?.text ?? "";
+  for (const link of root.querySelectorAll("a.info")) {
+    const href = link.getAttribute("href") ?? "";
+    if (profileIdOf(href) === undefined) continue;
+    return authorOfProfile(name, href.replace(/\/comments$/, ""));
+  }
+  return undefined;
+}
+
 /** Lists the story cards of a toplist, update, category or search page. */
 export function parseStoryCards(html: string): DiscoveredItem[] {
   const items: DiscoveredItem[] = [];
   for (const card of parse(html).querySelectorAll(".stories_list li")) {
-    const link = card.querySelector("h4 a");
-    if (!link) continue;
-    const item = itemOf(link);
+    const links = card.querySelectorAll("h4 a");
+    if (links.length === 0) continue;
+    const item = itemOf(links[0]);
     if (item === undefined) continue;
+    const author = authorOfCard(links[1]);
+    if (author !== undefined) item.studio = author;
 
     const text = normalizeText(card.text);
     const date = postedDate(text);
@@ -73,13 +98,16 @@ export function parseStoryCards(html: string): DiscoveredItem[] {
 /** Lists the stories in the first table of an author's page; its rows carry no date. */
 export function parseAuthorPage(html: string): DiscoveredItem[] {
   const items: DiscoveredItem[] = [];
-  const table = parse(html).querySelector("table");
+  const root = parse(html);
+  const table = root.querySelector("table");
   if (!table) return items;
+  const author = authorOfProfilePage(root);
   for (const row of table.querySelectorAll("tbody tr")) {
     const link = row.querySelector("td a");
     if (!link) continue;
     const item = itemOf(link);
     if (item === undefined) continue;
+    if (author !== undefined) item.studio = author;
 
     const cells = row.querySelectorAll("td");
     const viewCount = readCountOf(`Read ${normalizeText(cells[2]?.text ?? "")}`);

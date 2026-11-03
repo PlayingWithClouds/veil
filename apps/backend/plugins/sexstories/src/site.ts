@@ -1,3 +1,4 @@
+import type { ScenePerformer } from "@playingwithclouds/veil-sdk";
 import { fetchHtml } from "@playingwithclouds/veil-sdk";
 
 export const SITE_URL = "https://www.sexstories.com";
@@ -41,6 +42,22 @@ export function storyUrl(storyId: string, slug: string): string {
 /** The identity a story carries. */
 export function externalIdOf(storyId: string): string {
   return `sexstories-${storyId}`;
+}
+
+/**
+ * The author a profile link names, or undefined for anonymous stories (profile 0)
+ * and links without a name. Story pages and listing cards credit through this, so
+ * both resolve to the same performer.
+ */
+export function authorOfProfile(name: string, href: string): ScenePerformer | undefined {
+  const profileId = profileIdOf(href);
+  const cleanName = normalizeText(name);
+  if (profileId === undefined || profileId === "0" || cleanName === "") return undefined;
+  return {
+    name: cleanName,
+    external_id: `sexstories-author-${profileId}`,
+    source_url: absoluteUrl(encodeURI(href)),
+  };
 }
 
 /** The account id out of a /profile<id>/<name> path, or undefined for other paths. */
