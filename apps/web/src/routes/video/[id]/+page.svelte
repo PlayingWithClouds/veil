@@ -2,8 +2,10 @@
 	One video. Opening it reads the pages behind its sources that haven't been
 	read yet (credits, description, streams, comments); then the first stream
 	plays. The player's quality menu switches between every source's streams.
-	Under the player: the acts bar (segments: what happens when), the title,
-	studio (changeable), the performers as large cards with suggestions and
+	Its cover lights the app's shared glow. Under the player: the acts bar
+	(segments: what happens when, the playing one lit), the title, studio
+	(changeable), what the user can do with it (like, favourite, rate,
+	watchlist, download, ⋮), the performers as large cards with suggestions and
 	adding (VideoPeople; a background face scan adds face matches), their cam
 	rooms and whether they're live now, the description, the main tags,
 	sources and the
@@ -19,8 +21,10 @@
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon';
 	import VideoPlayer, { type PlayerSource } from '$lib/components/VideoPlayer.svelte';
 	import TagChips from '$lib/components/TagChips.svelte';
-	import SceneCard from '$lib/components/SceneCard.svelte';
+	import VideoActions from '$lib/components/VideoActions.svelte';
+	import VideoListRow from '$lib/components/VideoListRow.svelte';
 	import VideoPeople from '$lib/components/VideoPeople.svelte';
+	import { showAmbientGlow } from '$lib/ambientGlow.svelte';
 	import VideoComments from '$lib/components/VideoComments.svelte';
 	import ActsBar from '$lib/components/ActsBar.svelte';
 	import RecordPickerDialog from '$lib/components/RecordPickerDialog.svelte';
@@ -74,6 +78,8 @@
 	let faces = $state<VideoFaceGuesses | null>(null);
 	// The element the player plays in, for the face scan; not reactive, only read.
 	let playerElement: HTMLVideoElement | null = null;
+	// Where playback is now, for the acts bar; null while nothing plays.
+	let playbackSeconds = $state<number | null>(null);
 
 	let id = $derived(page.params.id ?? '');
 	let localFiles = $derived((video?.files ?? []).filter((file) => !file.missing));
@@ -94,6 +100,8 @@
 	let poster = $derived(cacheUrl(video?.cover?.uri));
 	let shownTags = $derived(allTags ? (video?.tags ?? []) : (video?.tags ?? []).slice(0, MAIN_TAGS));
 	let quality = $derived(video ? qualityLabel(video.width, video.height) : null);
+
+	showAmbientGlow(() => poster);
 
 	$effect(() => {
 		void load(id);
@@ -153,13 +161,19 @@
 		if (outcome === 'scanned' || outcome === 'skipped') void loadFaces(videoId);
 	}
 
-	/** Keeps the playing element for the face scan, and logs the watch. */
+	/** Keeps the playing element for the face scan, follows its time for the acts bar, and logs the watch. */
 	function attachPlayer(element: HTMLVideoElement): () => void {
 		playerElement = element;
 		const stopTracking = trackWatch(element, id);
+		const followTime = () => (playbackSeconds = element.currentTime);
+		element.addEventListener('timeupdate', followTime);
 		return () => {
 			stopTracking();
-			if (playerElement === element) playerElement = null;
+			element.removeEventListener('timeupdate', followTime);
+			if (playerElement === element) {
+				playerElement = null;
+				playbackSeconds = null;
+			}
 		};
 	}
 
@@ -248,25 +262,27 @@
 <div class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]">
 	<div class="flex min-w-0 flex-col gap-4">
 		{#if active && video}
-			<VideoPlayer
-				bind:this={player}
-				src={active.src}
-				mimeType={active.mimeType}
-				title={video.title}
-				sources={playerSources}
-				activeSourceId={active.streamId}
-				onselectsource={selectSource}
-				onresolvesource={resolveSource}
-				inline
-				square={$isCompact}
-				{poster}
-				startPosition={video.userState.progress ?? 0}
-				onattach={attachPlayer}
-				onclose={() => (active = null)}
-			/>
+			<div class="overflow-hidden rounded-2xl shadow-2xl ring-1 shadow-black/50 ring-white/10">
+				<VideoPlayer
+					bind:this={player}
+					src={active.src}
+					mimeType={active.mimeType}
+					title={video.title}
+					sources={playerSources}
+					activeSourceId={active.streamId}
+					onselectsource={selectSource}
+					onresolvesource={resolveSource}
+					inline
+					square={$isCompact}
+					{poster}
+					startPosition={video.userState.progress ?? 0}
+					onattach={attachPlayer}
+					onclose={() => (active = null)}
+				/>
+			</div>
 		{:else}
 			<div
-				class="bg-base-200 relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl"
+				class="bg-base-300 relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl ring-1 ring-white/10"
 			>
 				{#if poster}
 					<img src={poster} alt="" class="absolute inset-0 h-full w-full object-cover opacity-40" />
@@ -278,7 +294,7 @@
 					{:else if canPlay}
 						<button
 							type="button"
-							class="bg-primary text-primary-content flex items-center gap-2 rounded-full px-4 py-2"
+							class="bg-primary text-primary-content flex h-12 items-center gap-2 rounded-full px-6 font-semibold shadow-xl transition-transform hover:scale-105 active:scale-95"
 							onclick={startFirst}
 						>
 							<PlayIcon size={18} weight="fill" /> Play
@@ -291,7 +307,12 @@
 		{/if}
 
 		{#if video?.durationSeconds}
-			<ActsBar segments={video.segments} durationSeconds={video.durationSeconds} onseek={seek} />
+			<ActsBar
+				segments={video.segments}
+				durationSeconds={video.durationSeconds}
+				currentSeconds={playbackSeconds}
+				onseek={seek}
+			/>
 		{/if}
 
 		{#if error}
@@ -300,7 +321,7 @@
 
 		{#if video}
 			<div class="flex flex-col gap-5">
-				<div class="flex flex-col gap-2">
+				<div class="flex flex-col gap-3">
 					<h1 class="text-2xl leading-tight font-bold tracking-tight">{video.title}</h1>
 					<div class="text-base-content/60 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 						{#if video.studio}
@@ -318,11 +339,7 @@
 								{video.studio.name}
 							</a>
 						{/if}
-						<button
-							type="button"
-							class="hover:text-base-content flex items-center gap-1 text-xs"
-							onclick={() => (changingStudio = true)}
-						>
+						<button type="button" class="chip chip-sm" onclick={() => (changingStudio = true)}>
 							<PencilSimpleIcon size={12} />
 							{video.studio ? 'Change studio' : 'Set studio'}
 						</button>
@@ -345,6 +362,7 @@
 						{#if quality}<span>{quality}</span>{/if}
 						{#if video.userState.viewCount}<span>watched {video.userState.viewCount}×</span>{/if}
 					</div>
+					<VideoActions {video} currentSeconds={playbackSeconds} />
 				</div>
 
 				{#if camRooms.length > 0}
@@ -389,7 +407,7 @@
 				{#if video.gallery}
 					<a
 						href={galleryUrl(video.gallery.id)}
-						class="bg-base-200 hover:bg-base-300 flex items-center gap-3 self-start rounded-xl p-2 pr-4 text-sm"
+						class="flex items-center gap-3 self-start rounded-2xl bg-white/[0.04] p-2 pr-5 text-sm ring-1 ring-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/[0.08] hover:ring-white/15"
 					>
 						<span
 							class="bg-base-300 flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md"
@@ -411,17 +429,15 @@
 					</a>
 				{/if}
 
-				<div class="flex flex-wrap gap-x-4 gap-y-1">
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="text-base-content/45 mr-1 text-xs font-semibold tracking-wide uppercase">
+						Found on
+					</span>
 					{#each video.sources as source (source.url)}
-						<a
-							href={source.url}
-							target="_blank"
-							rel="noreferrer"
-							class="text-base-content/60 hover:text-base-content flex items-center gap-1.5 text-sm"
-						>
-							<ArrowSquareOutIcon size={14} />
+						<a href={source.url} target="_blank" rel="noreferrer" class="chip chip-sm">
 							{siteDisplayName(source.plugin, $sites)}
-							{#if !source.fetchedAt}<span class="text-base-content/40">(page not read)</span>{/if}
+							{#if !source.fetchedAt}<span class="opacity-50">· page not read</span>{/if}
+							<ArrowSquareOutIcon size={12} class="opacity-60" />
 						</a>
 					{/each}
 				</div>
@@ -437,17 +453,22 @@
 	</div>
 
 	{#if related.length > 0}
-		<aside class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold">Up next</h2>
+		<aside class="flex flex-col gap-3">
+			<h2 class="flex items-baseline gap-2 text-lg font-semibold">
+				Up next
+				<span class="text-base-content/45 text-sm font-normal">like this one</span>
+			</h2>
 			<div
-				class="grid grid-cols-1 gap-x-4 gap-y-6 max-xl:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+				class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
 			>
 				{#each related as relatedVideo, position (relatedVideo.id)}
-					<SceneCard
-						video={relatedVideo}
-						shown={{ surface: 'related', position }}
-						onclick={() => goto(videoUrl(relatedVideo.id))}
-					/>
+					<div class="rise-in" style:--rise-delay="{Math.min(position * 30, 300)}ms">
+						<VideoListRow
+							video={relatedVideo}
+							shown={{ surface: 'related', position }}
+							onclick={() => goto(videoUrl(relatedVideo.id))}
+						/>
+					</div>
 				{/each}
 			</div>
 		</aside>

@@ -111,6 +111,7 @@ const VIDEO_DETAIL = {
 	streams: STREAM,
 	// Local copies (downloads, cam recordings); they play before any site's stream.
 	files: { id: true, url: true, mimeType: true, quality: true, missing: true },
+	oCount: true,
 	segments: { id: true, startSeconds: true, endSeconds: true, title: true, tag: NAMED },
 	comments: COMMENT,
 	gallery: { id: true, imageCount: true, cover: { uri: true } }
@@ -346,6 +347,13 @@ export type LocalFileRow = VideoDetail['files'][number];
 /** A local file as the player plays it, at its backend URL. */
 export function playableFile(file: LocalFileRow): { url: string; mimeType: string } {
 	return { url: backendUrl(file.url), mimeType: file.mimeType };
+}
+
+/** Downloads a video's best stream for keeps, as a background job. */
+export async function downloadVideo(videoId: string): Promise<void> {
+	await gqlClient.mutation({
+		download: { __args: { subject: { kind: 'video', id: videoId } }, id: true }
+	});
 }
 
 /** Resolves a stream to a URL the player can load. */

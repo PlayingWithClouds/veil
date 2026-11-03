@@ -230,10 +230,10 @@
 
 		<button
 			type="button"
-			class="bg-base-200 hover:bg-base-300 text-base-content/60 flex aspect-[3/4] w-28 flex-col items-center justify-center gap-1 rounded-xl text-xs"
+			class="text-base-content/60 hover:text-base-content flex h-9 items-center gap-1.5 self-center rounded-full border border-dashed border-white/15 px-4 text-sm transition-colors hover:border-white/35 hover:bg-white/5"
 			onclick={() => (adding = true)}
 		>
-			<PlusIcon size={20} />
+			<PlusIcon size={14} />
 			Add performer
 		</button>
 	</div>

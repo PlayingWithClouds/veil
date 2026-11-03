@@ -37,11 +37,7 @@
 {#if tags.length > 0}
 	<div class="flex flex-wrap items-center gap-1.5">
 		{#each tags as tag (tag.id)}
-			<a
-				href={tagFilterUrl(tag.id)}
-				class="border-base-300 bg-base-200 text-base-content/70 hover:text-base-content rounded-full border px-2.5 py-1 text-xs transition-colors"
-				title={tag.name}
-			>
+			<a href={tagFilterUrl(tag.id)} class="chip chip-sm" title={tag.name}>
 				{tagLabel(tag.name)}
 			</a>
 		{/each}

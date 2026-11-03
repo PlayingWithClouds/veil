@@ -1419,6 +1419,13 @@
 	color: var(--color-primary-content);
 }
 
+/* A smaller chip, for rows of many (tags, chapters). */
+.chip-sm {
+	height: 1.75rem;
+	padding: 0 0.75rem;
+	font-size: var(--text-xs);
+}
+
 /* A chip that excludes what it names (a "not" filter). */
 .chip-excluded,
 .chip-excluded:hover {
