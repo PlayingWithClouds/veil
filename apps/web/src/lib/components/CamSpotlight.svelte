@@ -4,7 +4,7 @@
 	name, audience, Watch and Follow; beside it every pick is listed, and
 	pointing at one for a moment, or clicking it, puts it in the player.
 	Clicking the playing pick, or the player, opens the room. The playing
-	room's picture, blurred, lights the page behind it.
+	room's picture lights the app's shared glow.
 -->
 <script lang="ts">
 	import dayjs from 'dayjs';
@@ -17,6 +17,7 @@
 	import { fadeInImage } from '$lib/fadeInImage';
 	import { cacheUrl } from '$lib/img';
 	import { impression } from '$lib/impression';
+	import { showAmbientGlow } from '$lib/ambientGlow.svelte';
 
 	interface Props {
 		// The picks, best first; each carries its reason.
@@ -41,6 +42,8 @@
 	let selected = $derived(rooms.find((room) => room.id === selectedId) ?? rooms[0]);
 	let picture = $derived(pictureOf(selected));
 	let followed = $derived($followedCams.has(selected.id));
+
+	showAmbientGlow(() => picture);
 
 	// The stream plays only while the player shows, so a scrolled-down page costs nothing.
 	$effect(() => {
@@ -99,17 +102,6 @@
 </script>
 
 <div class="relative">
-	{#key picture}
-		{#if picture}
-			<img
-				src={picture}
-				alt=""
-				aria-hidden="true"
-				class="spotlight-glow pointer-events-none absolute -inset-x-24 -top-48 -z-10 h-[150%] w-[calc(100%+12rem)] max-w-none scale-110 object-cover opacity-35 blur-[90px] saturate-150"
-				style:mask-image="radial-gradient(ellipse at 50% 40%, black 30%, transparent 70%)"
-			/>
-		{/if}
-	{/key}
 
 	<section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
 		<div
@@ -222,22 +214,5 @@
 	.spotlight-on {
 		background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
 		box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-base-content) 14%, transparent);
-	}
-
-	/* The glow changes with the playing pick instead of jumping. */
-	.spotlight-glow {
-		animation: spotlight-glow-in 600ms ease-out both;
-	}
-
-	@keyframes spotlight-glow-in {
-		from {
-			opacity: 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.spotlight-glow {
-			animation: none;
-		}
 	}
 </style>

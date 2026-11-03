@@ -1,6 +1,6 @@
 <!--
-	One cam room: its live stream, played as soon as the page opens, with the
-	room's picture glowing behind it; a header with the room, its audience,
+	One cam room: its live stream, played as soon as the page opens, its
+	picture lighting the app's shared glow; a header with the room, its audience,
 	performer and site, Follow, Record (or the running recording and Stop)
 	and a ⋮ menu (link a performer, block); its topic and tags; a recording
 	card (start from back in the live buffer, quality, auto-record); when
@@ -67,6 +67,7 @@
 	import { formatClock } from '$lib/time';
 	import { camUrl, camsUrl, performerUrl, videoUrl } from '$lib/routes';
 	import { isCompact } from '$lib/stores/viewport';
+	import { showAmbientGlow } from '$lib/ambientGlow.svelte';
 
 	const ROOM_WIDTH = 220;
 	// A running recording's length and size, and one just started or stopped.
@@ -110,6 +111,8 @@
 	let topic = $derived(roomTopic(cam?.live?.subject));
 	let picture = $derived(cacheUrl(cam?.live?.thumbnail?.uri ?? cam?.thumbnail?.uri));
 	let audience = $derived(cam ? audienceLine(cam) : '');
+
+	showAmbientGlow(() => picture);
 
 	// Reloads for a new room only: load reads state (the running search) it
 	// must not rerun on.
@@ -339,17 +342,8 @@
 <svelte:head><title>{cam?.displayName ?? 'Cam'} · Veil</title></svelte:head>
 
 <div
-	class="relative isolate mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]"
+	class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]"
 >
-	{#if picture}
-		<img
-			src={picture}
-			alt=""
-			aria-hidden="true"
-			class="pointer-events-none absolute -inset-x-24 -top-40 -z-10 h-[720px] w-[calc(100%+12rem)] max-w-none scale-110 object-cover opacity-30 blur-[90px] saturate-150"
-			style:mask-image="radial-gradient(ellipse at 40% 35%, black 25%, transparent 70%)"
-		/>
-	{/if}
 
 	<div class="flex min-w-0 flex-col gap-5">
 		{#if stream && cam}

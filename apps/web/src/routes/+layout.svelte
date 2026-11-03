@@ -1,6 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import '$lib/tv.css';
+	import AmbientGlow from '$lib/components/AmbientGlow.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
@@ -27,12 +28,22 @@
 	// jitter doesn't flicker it; it never hides within its own height of the top.
 	const CHROME_SCROLL_THRESHOLD = 8;
 	const CHROME_HIDE_AFTER = 56;
+	// Scrolled past this, the desktop top bar frosts over the page under it.
+	const HEADER_FROST_AFTER = 4;
 	let lastScrollTop = 0;
+	// How far the page has scrolled, for the glow and the top bar.
+	let mainScrollTop = $state(0);
 
-	/** Slides the phone top bar away while scrolling down and back on any scroll up. */
+	/**
+	 * Follows the page's scroll: the glow fades and the desktop top bar
+	 * frosts; the phone top bar slides away while scrolling down and back on
+	 * any scroll up.
+	 */
 	function onMainScroll(event: Event) {
-		if (!$isCompact || !(event.currentTarget instanceof HTMLElement)) return;
+		if (!(event.currentTarget instanceof HTMLElement)) return;
 		const scrollTop = event.currentTarget.scrollTop;
+		mainScrollTop = scrollTop;
+		if (!$isCompact) return;
 		const delta = scrollTop - lastScrollTop;
 		if (Math.abs(delta) < CHROME_SCROLL_THRESHOLD) return;
 		lastScrollTop = scrollTop;
@@ -56,9 +67,11 @@
 <svelte:window onkeydown={onWindowKeydown} />
 
 <div
-	class="app-shell bg-base-100 relative flex h-dvh flex-col overflow-hidden"
+	class="app-shell bg-base-100 relative isolate flex h-dvh flex-col overflow-hidden"
 	class:chrome-hidden={$chromeHidden}
+	class:scrolled={mainScrollTop > HEADER_FROST_AFTER}
 >
+	<AmbientGlow scrollTop={mainScrollTop} />
 	<TopBar />
 	<div class="flex min-h-0 flex-1">
 		{#if !$isCompact}

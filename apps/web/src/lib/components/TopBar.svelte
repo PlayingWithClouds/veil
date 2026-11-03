@@ -138,11 +138,26 @@
 {/if}
 
 <style>
-	/* See-through, so the page (and its glow) shows through as it scrolls under. */
-	.desktop-header {
+	/* Clear over the shared glow, joined with the sidebar; once the page
+	   scrolls under it, it frosts so what passes under stays readable. */
+	/* The frost starts where the sidebar (w-60) ends, so the logo and the
+	   sidebar stay one column. */
+	.desktop-header::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 0 15rem;
+		z-index: -1;
+		border-bottom: 1px solid transparent;
+		border-bottom-left-radius: 1rem;
+		transition:
+			background-color 250ms,
+			backdrop-filter 250ms,
+			border-color 250ms;
+	}
+	:global(.app-shell.scrolled) .desktop-header::before {
 		background-color: color-mix(in oklab, var(--color-base-100) 70%, transparent);
 		backdrop-filter: blur(20px) saturate(1.6);
-		border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 6%, transparent);
+		border-bottom-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
 	}
 
 	.search-box {
