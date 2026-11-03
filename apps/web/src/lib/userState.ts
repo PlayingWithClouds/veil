@@ -1,5 +1,5 @@
-// The user's state on records from a card's ⋮ menu: blocking, favourites and
-// "not interested". Hidden records also land in a local store so every card
+// The user's state on records from a card's ⋮ menu or a record's page:
+// blocking, favourites, ratings and "not interested". Hidden records also land in a local store so every card
 // on the page hides at once, before any list reloads.
 import { writable } from 'svelte/store';
 import type { RecordKind } from '@playingwithclouds/veil-sdk/generated';
@@ -39,6 +39,13 @@ export async function setBlocked(kind: RecordKind, id: string, blocked: boolean)
 export async function setFavorite(kind: RecordKind, id: string, favorite: boolean): Promise<void> {
 	await gqlClient.mutation({
 		setFavorite: { __args: { subject: { kind, id }, favorite }, favorite: true }
+	});
+}
+
+/** Rates a record from 0 to 10; null clears the rating. */
+export async function setRating(kind: RecordKind, id: string, rating: number | null): Promise<void> {
+	await gqlClient.mutation({
+		rate: { __args: { subject: { kind, id }, rating }, rating: true }
 	});
 }
 

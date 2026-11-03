@@ -14,6 +14,7 @@
 	import { goto } from '$app/navigation';
 	import PlayIcon from 'phosphor-svelte/lib/PlayIcon';
 	import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOutIcon';
+	import ImagesIcon from 'phosphor-svelte/lib/ImagesIcon';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon';
 	import VideoPlayer, { type PlayerSource } from '$lib/components/VideoPlayer.svelte';
 	import TagChips from '$lib/components/TagChips.svelte';
@@ -37,7 +38,7 @@
 	import { siteDisplayName } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
-	import { studioUrl, videoUrl } from '$lib/routes';
+	import { galleryUrl, studioUrl, videoUrl } from '$lib/routes';
 	import { isCompact } from '$lib/stores/viewport';
 	import { logEvent } from '$lib/events';
 	import { trackWatch } from '$lib/watchLog';
@@ -330,6 +331,31 @@
 						</button>
 					{/if}
 				</div>
+
+				{#if video.gallery}
+					<a
+						href={galleryUrl(video.gallery.id)}
+						class="bg-base-200 hover:bg-base-300 flex items-center gap-3 self-start rounded-xl p-2 pr-4 text-sm"
+					>
+						<span
+							class="bg-base-300 flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md"
+						>
+							{#if video.gallery.cover}
+								<img
+									src={cacheUrl(video.gallery.cover.uri)}
+									alt=""
+									class="h-full w-full object-cover"
+								/>
+							{:else}
+								<ImagesIcon size={20} class="text-base-content/40" />
+							{/if}
+						</span>
+						<span class="flex flex-col">
+							<span class="font-medium">Photos from this scene</span>
+							<span class="text-base-content/60 text-xs">{video.gallery.imageCount} photos</span>
+						</span>
+					</a>
+				{/if}
 
 				<div class="flex flex-wrap gap-x-4 gap-y-1">
 					{#each video.sources as source (source.url)}

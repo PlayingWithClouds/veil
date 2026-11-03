@@ -110,7 +110,8 @@ const VIDEO_DETAIL = {
 	sources: SOURCE,
 	streams: STREAM,
 	segments: { id: true, startSeconds: true, endSeconds: true, title: true, tag: NAMED },
-	comments: COMMENT
+	comments: COMMENT,
+	gallery: { id: true, imageCount: true, cover: { uri: true } }
 } as const;
 
 /** Everything the gallery page shows. */
