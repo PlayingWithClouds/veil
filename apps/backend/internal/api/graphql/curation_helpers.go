@@ -15,9 +15,20 @@ func categoryEdit(input model.CategoryInput) library.CategoryEdit {
 		Slug:        input.Slug,
 		ParentID:    input.ParentID,
 		MatchTagIDs: optionalList(input.MatchTagIds),
+		MatchTerms:  optionalList(input.MatchTerms),
 		CoverURI:    input.CoverURI,
 		Position:    input.Position,
 	}
+}
+
+// categoryTiles maps the library's category tiles to the API's.
+func categoryTiles(tiles []library.CategoryTile) []*model.CategoryTile {
+	out := make([]*model.CategoryTile, 0, len(tiles))
+	for _, tile := range tiles {
+		category := tile.Category
+		out = append(out, &model.CategoryTile{Category: &category, Count: tile.Count, Preview: tile.Preview})
+	}
+	return out
 }
 
 // childCategories lists the categories directly inside parentID.

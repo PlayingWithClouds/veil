@@ -78,6 +78,19 @@ func (r *mutationResolver) EditCategory(ctx context.Context, id string, input mo
 	return r.library.EditCategory(ctx, id, categoryEdit(input))
 }
 
+// DeleteCategory is the resolver for the deleteCategory field.
+func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (bool, error) {
+	if err := r.library.DeleteCategory(ctx, id); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// AddDefaultCategories is the resolver for the addDefaultCategories field.
+func (r *mutationResolver) AddDefaultCategories(ctx context.Context) (int, error) {
+	return r.library.AddDefaultCategories(ctx)
+}
+
 // ReorderCategories is the resolver for the reorderCategories field.
 func (r *mutationResolver) ReorderCategories(ctx context.Context, ids []string) ([]*schema.Category, error) {
 	if err := r.library.ReorderCategories(ctx, ids); err != nil {
@@ -159,6 +172,15 @@ func (r *queryResolver) Category(ctx context.Context, id *string, slug *string) 
 		return r.library.CategoryBySlug(ctx, *slug)
 	}
 	return nil, fmt.Errorf("a category is found by id or slug")
+}
+
+// CategoryTiles is the resolver for the categoryTiles field.
+func (r *queryResolver) CategoryTiles(ctx context.Context, kind schema.MediaKind) ([]*model.CategoryTile, error) {
+	tiles, err := r.library.CategoryTiles(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	return categoryTiles(tiles), nil
 }
 
 // Collections is the resolver for the collections field.

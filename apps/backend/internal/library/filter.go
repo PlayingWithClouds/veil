@@ -80,6 +80,23 @@ const notHiddenCopy = `NOT EXISTS (SELECT 1 FROM "Alike" AS "copy"
 	WHERE "copy"."subjectKind" = $mediaKind AND "copy"."secondId" = "media"."id"
 		AND "copy"."dismissed" = 0 AND "copy"."deletedAt" IS NULL)`
 
+// categoryCondition matches media in any category of $categoryIds or their
+// subcategories: carrying one of their match tags, or a tag whose folded
+// name is one of their terms.
+const categoryCondition = `EXISTS (
+	WITH RECURSIVE "tree"("id") AS (
+		SELECT value FROM json_each($categoryIds)
+		UNION SELECT "child"."id" FROM "Category" AS "child" JOIN "tree" ON "child"."parent" = "tree"."id"
+	),
+	"live"("id", "matchTags", "matchTerms") AS (
+		SELECT "id", "matchTags", "matchTerms" FROM "Category"
+		WHERE "id" IN (SELECT "id" FROM "tree") AND "deletedAt" IS NULL
+	)
+	SELECT 1 FROM json_each("media"."tags") AS "carried"
+	WHERE "carried".value IN (SELECT "match".value FROM "live", json_each("live"."matchTags") AS "match")
+		OR (SELECT "nameKey" FROM "Tag" WHERE "Tag"."id" = "carried".value)
+			IN (SELECT "term".value FROM "live", json_each("live"."matchTerms") AS "term"))`
+
 // conditionBuilder collects WHERE conditions and their parameters.
 type conditionBuilder struct {
 	conditions []string
@@ -113,14 +130,7 @@ func addCredits(builder *conditionBuilder, filter schema.Filter) {
 		builder.bind(`NOT EXISTS (SELECT 1 FROM json_each("media"."tags") WHERE value IN (SELECT value FROM json_each($excludeTagIds)))`, "excludeTagIds", filter.ExcludeTagIds)
 	}
 	if len(filter.CategoryIds) > 0 {
-		builder.bind(`EXISTS (
-			WITH RECURSIVE "tree"("id") AS (
-				SELECT value FROM json_each($categoryIds)
-				UNION SELECT "child"."id" FROM "Category" AS "child" JOIN "tree" ON "child"."parent" = "tree"."id"
-			)
-			SELECT 1 FROM "Category" AS "category", json_each("category"."matchTags") AS "match"
-			WHERE "category"."id" IN (SELECT "id" FROM "tree") AND "category"."deletedAt" IS NULL
-				AND "match".value IN (SELECT value FROM json_each("media"."tags")))`, "categoryIds", filter.CategoryIds)
+		builder.bind(categoryCondition, "categoryIds", filter.CategoryIds)
 	}
 	if len(filter.Sources) > 0 {
 		builder.bind(`EXISTS (SELECT 1 FROM "Source" AS "source" WHERE "source"."subjectKind" = $mediaKind

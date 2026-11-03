@@ -35,6 +35,7 @@ export interface Query {
     activeRecordings: ActiveRecording[]
     categories: Category[]
     category: (Category | null)
+    categoryTiles: CategoryTile[]
     collections: Collection[]
     collection: (Collection | null)
     builtInCollection: Collection
@@ -148,6 +149,8 @@ export interface Mutation {
     stopRecording: Scalars['Boolean']
     createCategory: Category
     editCategory: Category
+    deleteCategory: Scalars['Boolean']
+    addDefaultCategories: Scalars['Int']
     reorderCategories: Category[]
     createCollection: Collection
     editCollection: Collection
@@ -479,11 +482,19 @@ export interface Category {
     parent: (Category | null)
     children: Category[]
     matchTags: Tag[]
+    matchTerms: Scalars['String'][]
     cover: (Asset | null)
     position: Scalars['Int']
     videoCount: Scalars['Int']
     galleryCount: Scalars['Int']
     __typename: 'Category'
+}
+
+export interface CategoryTile {
+    category: Category
+    count: Scalars['Int']
+    preview: (Asset | null)
+    __typename: 'CategoryTile'
 }
 
 export type CollectionKind = 'user' | 'watchlist' | 'queue'
@@ -1420,6 +1431,7 @@ export interface QueryGenqlSelection{
     activeRecordings?: ActiveRecordingGenqlSelection
     categories?: CategoryGenqlSelection
     category?: (CategoryGenqlSelection & { __args?: {id?: (Scalars['ID'] | null), slug?: (Scalars['String'] | null)} })
+    categoryTiles?: (CategoryTileGenqlSelection & { __args: {kind: MediaKind} })
     collections?: CollectionGenqlSelection
     collection?: (CollectionGenqlSelection & { __args: {id: Scalars['ID']} })
     builtInCollection?: (CollectionGenqlSelection & { __args: {kind: CollectionKind} })
@@ -1534,6 +1546,8 @@ export interface MutationGenqlSelection{
     stopRecording?: { __args: {id: Scalars['ID']} }
     createCategory?: (CategoryGenqlSelection & { __args: {input: CategoryInput} })
     editCategory?: (CategoryGenqlSelection & { __args: {id: Scalars['ID'], input: CategoryInput} })
+    deleteCategory?: { __args: {id: Scalars['ID']} }
+    addDefaultCategories?: boolean | number
     reorderCategories?: (CategoryGenqlSelection & { __args: {ids: Scalars['ID'][]} })
     createCollection?: (CollectionGenqlSelection & { __args: {name: Scalars['String'], details?: (Scalars['String'] | null)} })
     editCollection?: (CollectionGenqlSelection & { __args: {id: Scalars['ID'], name?: (Scalars['String'] | null), details?: (Scalars['String'] | null), coverUri?: (Scalars['String'] | null)} })
@@ -1887,6 +1901,7 @@ export interface CategoryGenqlSelection{
     parent?: CategoryGenqlSelection
     children?: CategoryGenqlSelection
     matchTags?: TagGenqlSelection
+    matchTerms?: boolean | number
     cover?: AssetGenqlSelection
     position?: boolean | number
     videoCount?: boolean | number
@@ -1895,7 +1910,15 @@ export interface CategoryGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface CategoryInput {name?: (Scalars['String'] | null),slug?: (Scalars['String'] | null),parentId?: (Scalars['ID'] | null),matchTagIds?: (Scalars['ID'][] | null),coverUri?: (Scalars['String'] | null),position?: (Scalars['Int'] | null)}
+export interface CategoryTileGenqlSelection{
+    category?: CategoryGenqlSelection
+    count?: boolean | number
+    preview?: AssetGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface CategoryInput {name?: (Scalars['String'] | null),slug?: (Scalars['String'] | null),parentId?: (Scalars['ID'] | null),matchTagIds?: (Scalars['ID'][] | null),matchTerms?: (Scalars['String'][] | null),coverUri?: (Scalars['String'] | null),position?: (Scalars['Int'] | null)}
 
 export interface CollectionGenqlSelection{
     id?: boolean | number
@@ -3083,6 +3106,14 @@ export interface SavedFilterGenqlSelection{
     export const isCategory = (obj?: { __typename?: any } | null): obj is Category => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isCategory"')
       return Category_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const CategoryTile_possibleTypes: string[] = ['CategoryTile']
+    export const isCategoryTile = (obj?: { __typename?: any } | null): obj is CategoryTile => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isCategoryTile"')
+      return CategoryTile_possibleTypes.includes(obj.__typename)
     }
     
 

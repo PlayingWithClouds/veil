@@ -351,6 +351,9 @@ func main() {
 	registry, pluginStore := openPlugins(ctx, dataDir, runner, storeClient, settingsService)
 
 	lib := library.New(database)
+	if err := lib.SeedDefaultCategories(ctx); err != nil {
+		log.Printf("default categories: %v", err)
+	}
 	flow := pipeline.New(lib, registry, runner, cacheClient, queue)
 
 	// Stream cache: HLS segment + MP4 files in the blob store, indexed in the kv cache.

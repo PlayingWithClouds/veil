@@ -17,8 +17,9 @@ model Tag extends Entity {
 }
 
 /// Our own taxonomy, defined by us rather than any site. Media belongs to a
-/// category when it carries any of the category's tags, so new site tags only
-/// need mapping, never re-tagging.
+/// category when it carries any of the category's tags, or a tag whose
+/// folded name is one of its terms, so new site tags only need mapping,
+/// never re-tagging.
 model Category extends Entity {
   10 name: string
 
@@ -30,6 +31,10 @@ model Category extends Entity {
 
   14 cover: Asset?
   15 position: i32
+
+  /// Words a tag's name may fold to (internal/names.Key) to put its media
+  /// in the category: "big tits", "busty". Kept folded.
+  16 matchTerms: [string]
 }
 
 /// The value type of a custom field.

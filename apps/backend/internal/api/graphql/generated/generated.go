@@ -209,11 +209,18 @@ type ComplexityRoot struct {
 		GalleryCount func(childComplexity int) int
 		Id           func(childComplexity int) int
 		MatchTags    func(childComplexity int) int
+		MatchTerms   func(childComplexity int) int
 		Name         func(childComplexity int) int
 		Parent       func(childComplexity int) int
 		Position     func(childComplexity int) int
 		Slug         func(childComplexity int) int
 		VideoCount   func(childComplexity int) int
+	}
+
+	CategoryTile struct {
+		Category func(childComplexity int) int
+		Count    func(childComplexity int) int
+		Preview  func(childComplexity int) int
 	}
 
 	Clip struct {
@@ -570,6 +577,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddClip                   func(childComplexity int, videoID string, input model.ClipInput) int
+		AddDefaultCategories      func(childComplexity int) int
 		AddEmbedding              func(childComplexity int, input model.EmbeddingInput) int
 		AddFingerprint            func(childComplexity int, subject schema.RecordRef, fileID *string, algorithm schema.FingerprintAlgorithm, value string, durationSeconds *float64) int
 		AddLibraryRoot            func(childComplexity int, locationID string, path string, scanIntervalMinutes *int, organizeTemplate *string) int
@@ -598,6 +606,7 @@ type ComplexityRoot struct {
 		CreatePerformer           func(childComplexity int, name string) int
 		CreateStudio              func(childComplexity int, name string) int
 		DeleteAutomation          func(childComplexity int, id string) int
+		DeleteCategory            func(childComplexity int, id string) int
 		DeleteDownload            func(childComplexity int, jobID string) int
 		DeleteFieldDef            func(childComplexity int, id string) int
 		DeleteLimit               func(childComplexity int, id string) int
@@ -903,6 +912,7 @@ type ComplexityRoot struct {
 		CamRooms                 func(childComplexity int, query *model.CamQuery) int
 		Categories               func(childComplexity int) int
 		Category                 func(childComplexity int, id *string, slug *string) int
+		CategoryTiles            func(childComplexity int, kind schema.MediaKind) int
 		Clip                     func(childComplexity int, id string) int
 		Clips                    func(childComplexity int, videoID *string, limit *int, offset *int) int
 		Collecting               func(childComplexity int) int
@@ -1459,6 +1469,8 @@ type MutationResolver interface {
 	StopRecording(ctx context.Context, id string) (bool, error)
 	CreateCategory(ctx context.Context, input model.CategoryInput) (*schema.Category, error)
 	EditCategory(ctx context.Context, id string, input model.CategoryInput) (*schema.Category, error)
+	DeleteCategory(ctx context.Context, id string) (bool, error)
+	AddDefaultCategories(ctx context.Context) (int, error)
 	ReorderCategories(ctx context.Context, ids []string) ([]*schema.Category, error)
 	CreateCollection(ctx context.Context, name string, details *string) (*schema.Collection, error)
 	EditCollection(ctx context.Context, id string, name *string, details *string, coverURI *string) (*schema.Collection, error)
@@ -1608,6 +1620,7 @@ type QueryResolver interface {
 	ActiveRecordings(ctx context.Context) ([]*cams.ActiveRecording, error)
 	Categories(ctx context.Context) ([]*schema.Category, error)
 	Category(ctx context.Context, id *string, slug *string) (*schema.Category, error)
+	CategoryTiles(ctx context.Context, kind schema.MediaKind) ([]*model.CategoryTile, error)
 	Collections(ctx context.Context) ([]*schema.Collection, error)
 	Collection(ctx context.Context, id string) (*schema.Collection, error)
 	BuiltInCollection(ctx context.Context, kind schema.CollectionKind) (*schema.Collection, error)
@@ -2371,6 +2384,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.MatchTags(childComplexity), true
+	case "Category.matchTerms":
+		if e.ComplexityRoot.Category.MatchTerms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.MatchTerms(childComplexity), true
 	case "Category.name":
 		if e.ComplexityRoot.Category.Name == nil {
 			break
@@ -2401,6 +2420,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.VideoCount(childComplexity), true
+
+	case "CategoryTile.category":
+		if e.ComplexityRoot.CategoryTile.Category == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategoryTile.Category(childComplexity), true
+	case "CategoryTile.count":
+		if e.ComplexityRoot.CategoryTile.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategoryTile.Count(childComplexity), true
+	case "CategoryTile.preview":
+		if e.ComplexityRoot.CategoryTile.Preview == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategoryTile.Preview(childComplexity), true
 
 	case "Clip.cover":
 		if e.ComplexityRoot.Clip.Cover == nil {
@@ -3911,6 +3949,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddClip(childComplexity, args["videoId"].(string), args["input"].(model.ClipInput)), true
+	case "Mutation.addDefaultCategories":
+		if e.ComplexityRoot.Mutation.AddDefaultCategories == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Mutation.AddDefaultCategories(childComplexity), true
 	case "Mutation.addEmbedding":
 		if e.ComplexityRoot.Mutation.AddEmbedding == nil {
 			break
@@ -4209,6 +4253,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteAutomation(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteCategory":
+		if e.ComplexityRoot.Mutation.DeleteCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteCategory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteCategory(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteDownload":
 		if e.ComplexityRoot.Mutation.DeleteDownload == nil {
 			break
@@ -6229,6 +6284,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Category(childComplexity, args["id"].(*string), args["slug"].(*string)), true
+	case "Query.categoryTiles":
+		if e.ComplexityRoot.Query.CategoryTiles == nil {
+			break
+		}
+
+		args, err := ec.field_Query_categoryTiles_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CategoryTiles(childComplexity, args["kind"].(schema.MediaKind)), true
 	case "Query.clip":
 		if e.ComplexityRoot.Query.Clip == nil {
 			break
@@ -8977,6 +9043,9 @@ extend type Query {
   # Every category, by position; build the tree from parent.
   categories: [Category!]!
   category(id: ID, slug: String): Category
+  # Every category, by position, with how much media of a kind is in it
+  # (subcategories included) and a picture; build the tree from parent.
+  categoryTiles(kind: MediaKind!): [CategoryTile!]!
   # The collections, watchlist and queue first.
   collections: [Collection!]!
   collection(id: ID!): Collection
@@ -8991,6 +9060,10 @@ extend type Query {
 extend type Mutation {
   createCategory(input: CategoryInput!): Category!
   editCategory(id: ID!, input: CategoryInput!): Category!
+  # Removes a category for good; its subcategories move up to its parent.
+  deleteCategory(id: ID!): Boolean!
+  # Adds the default categories the library lacks; returns how many.
+  addDefaultCategories: Int!
   # Puts categories in this order.
   reorderCategories(ids: [ID!]!): [Category!]!
   createCollection(name: String!, details: String): Collection!
@@ -9011,7 +9084,8 @@ extend type Mutation {
 }
 
 # Our own taxonomy. Media is in a category when it has any of its match
-# tags, or is in one of its subcategories.
+# tags, a tag whose name folds to one of its terms, or is in one of its
+# subcategories.
 type Category {
   id: ID!
   name: String!
@@ -9019,19 +9093,30 @@ type Category {
   parent: Category
   children: [Category!]!
   matchTags: [Tag!]!
+  # Folded words: "big tits", "busty".
+  matchTerms: [String!]!
   cover: Asset
   position: Int!
   videoCount: Int!
   galleryCount: Int!
 }
 
+# A category with how much media of one kind is in it and a picture: its
+# cover, else the newest cover among that media.
+type CategoryTile {
+  category: Category!
+  count: Int!
+  preview: Asset
+}
+
 # Omitted fields stay (or take their default on create); an empty parentId
-# or coverUri clears it.
+# or coverUri clears it. Terms are folded as tag names are.
 input CategoryInput {
   name: String
   slug: String
   parentId: ID
   matchTagIds: [ID!]
+  matchTerms: [String!]
   coverUri: String
   position: Int
 }
@@ -11134,6 +11219,8 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_children(ctx, field)
 	case "matchTags":
 		return ec.fieldContext_Category_matchTags(ctx, field)
+	case "matchTerms":
+		return ec.fieldContext_Category_matchTerms(ctx, field)
 	case "cover":
 		return ec.fieldContext_Category_cover(ctx, field)
 	case "position":
@@ -11144,6 +11231,18 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_galleryCount(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+}
+
+func (ec *executionContext) childFields_CategoryTile(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "category":
+		return ec.fieldContext_CategoryTile_category(ctx, field)
+	case "count":
+		return ec.fieldContext_CategoryTile_count(ctx, field)
+	case "preview":
+		return ec.fieldContext_CategoryTile_preview(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CategoryTile", field.Name)
 }
 
 func (ec *executionContext) childFields_Clip(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -13686,6 +13785,20 @@ func (ec *executionContext) field_Mutation_deleteAutomation_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteDownload_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15823,6 +15936,20 @@ func (ec *executionContext) field_Query_camRooms_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["query"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_categoryTiles_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (schema.MediaKind, error) {
+			return ec.unmarshalNMediaKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐMediaKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
 	return args, nil
 }
 
@@ -19976,6 +20103,29 @@ func (ec *executionContext) fieldContext_Category_matchTags(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Category_matchTerms(ctx context.Context, field graphql.CollectedField, obj *schema.Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_matchTerms(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MatchTerms, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_matchTerms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Category_cover(ctx context.Context, field graphql.CollectedField, obj *schema.Category) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20075,6 +20225,93 @@ func (ec *executionContext) _Category_galleryCount(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_Category_galleryCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Category", field, true, true, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CategoryTile_category(ctx context.Context, field graphql.CollectedField, obj *model.CategoryTile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CategoryTile_category(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CategoryTile_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategoryTile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CategoryTile_count(ctx context.Context, field graphql.CollectedField, obj *model.CategoryTile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CategoryTile_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CategoryTile_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CategoryTile", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CategoryTile_preview(ctx context.Context, field graphql.CollectedField, obj *model.CategoryTile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CategoryTile_preview(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Preview, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Asset) graphql.Marshaler {
+			return ec.marshalOAsset2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAsset(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_CategoryTile_preview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategoryTile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Clip_id(ctx context.Context, field graphql.CollectedField, obj *schema.Clip) (ret graphql.Marshaler) {
@@ -27386,6 +27623,73 @@ func (ec *executionContext) fieldContext_Mutation_editCategory(ctx context.Conte
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteCategory(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteCategory(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addDefaultCategories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addDefaultCategories(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Mutation().AddDefaultCategories(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addDefaultCategories(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Mutation_reorderCategories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -35630,6 +35934,50 @@ func (ec *executionContext) fieldContext_Query_category(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_category_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_categoryTiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_categoryTiles(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CategoryTiles(ctx, fc.Args["kind"].(schema.MediaKind))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.CategoryTile) graphql.Marshaler {
+			return ec.marshalNCategoryTile2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCategoryTileᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_categoryTiles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CategoryTile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_categoryTiles_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -46150,7 +46498,7 @@ func (ec *executionContext) unmarshalInputCategoryInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "slug", "parentId", "matchTagIds", "coverUri", "position"}
+	fieldsInOrder := [...]string{"name", "slug", "parentId", "matchTagIds", "matchTerms", "coverUri", "position"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -46185,6 +46533,13 @@ func (ec *executionContext) unmarshalInputCategoryInput(ctx context.Context, obj
 				return it, err
 			}
 			it.MatchTagIds = data
+		case "matchTerms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("matchTerms"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MatchTerms = data
 		case "coverUri":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coverUri"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -49647,6 +50002,11 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "matchTerms":
+			out.Values[i] = ec._Category_matchTerms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "cover":
 			out.Values[i] = ec._Category_cover(ctx, field, obj)
 		case "position":
@@ -49726,6 +50086,52 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var categoryTileImplementors = []string{"CategoryTile"}
+
+func (ec *executionContext) _CategoryTile(ctx context.Context, sel ast.SelectionSet, obj *model.CategoryTile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, categoryTileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CategoryTile")
+		case "category":
+			out.Values[i] = ec._CategoryTile_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._CategoryTile_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "preview":
+			out.Values[i] = ec._CategoryTile_preview(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -53364,6 +53770,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "deleteCategory":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteCategory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addDefaultCategories":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addDefaultCategories(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "reorderCategories":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_reorderCategories(ctx, field)
@@ -56209,6 +56629,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_category(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "categoryTiles":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_categoryTiles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -62248,6 +62690,32 @@ func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋplayingwithclouds
 func (ec *executionContext) unmarshalNCategoryInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCategoryInput(ctx context.Context, v any) (model.CategoryInput, error) {
 	res, err := ec.unmarshalInputCategoryInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCategoryTile2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCategoryTileᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CategoryTile) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCategoryTile2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCategoryTile(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCategoryTile2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐCategoryTile(ctx context.Context, sel ast.SelectionSet, v *model.CategoryTile) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CategoryTile(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNChannelKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐChannelKind(ctx context.Context, v any) (schema.ChannelKind, error) {

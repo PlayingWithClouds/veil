@@ -45,8 +45,15 @@ type CategoryInput struct {
 	Slug        *string  `json:"slug,omitempty"`
 	ParentID    *string  `json:"parentId,omitempty"`
 	MatchTagIds []string `json:"matchTagIds,omitempty"`
+	MatchTerms  []string `json:"matchTerms,omitempty"`
 	CoverURI    *string  `json:"coverUri,omitempty"`
 	Position    *int     `json:"position,omitempty"`
+}
+
+type CategoryTile struct {
+	Category *schema.Category `json:"category"`
+	Count    int              `json:"count"`
+	Preview  *schema.Asset    `json:"preview,omitempty"`
 }
 
 type ClipInput struct {

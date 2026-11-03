@@ -811,8 +811,9 @@ type Tag struct {
 }
 
 // Our own taxonomy, defined by us rather than any site. Media belongs to a
-// category when it carries any of the category's tags, so new site tags only
-// need mapping, never re-tagging.
+// category when it carries any of the category's tags, or a tag whose
+// folded name is one of its terms, so new site tags only need mapping,
+// never re-tagging.
 type Category struct {
 	Entity
 	Name      string   `json:"name"`
@@ -821,6 +822,9 @@ type Category struct {
 	MatchTags []string `json:"matchTags"`
 	Cover     *Asset   `json:"cover,omitempty"`
 	Position  int32    `json:"position"`
+	// Words a tag's name may fold to (internal/names.Key) to put its media
+	// in the category: "big tits", "busty". Kept folded.
+	MatchTerms []string `json:"matchTerms"`
 }
 
 // A field the user added to some kinds of records. Values live in

@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/playingwithclouds/veil/internal/db"
@@ -22,12 +23,15 @@ type CategoryEdit struct {
 	Slug        *string
 	ParentID    *string
 	MatchTagIDs *[]string
-	CoverURI    *string
-	Position    *int
+	// Words a tag's name may fold to; stored folded, without repeats.
+	MatchTerms *[]string
+	CoverURI   *string
+	Position   *int
 }
 
 // CreateCategory adds a category of our own taxonomy. Media is in it when
-// it carries any of its match tags. The slug defaults to the folded name.
+// it carries any of its match tags, or a tag whose name folds to one of its
+// terms. The slug defaults to the folded name.
 func (l *Library) CreateCategory(ctx context.Context, edit CategoryEdit) (*schema.Category, error) {
 	if edit.Name == nil || strings.TrimSpace(*edit.Name) == "" {
 		return nil, fmt.Errorf("a category needs a name")
@@ -39,7 +43,7 @@ func (l *Library) CreateCategory(ctx context.Context, edit CategoryEdit) (*schem
 	if _, hasSlug := fields["slug"]; !hasSlug {
 		fields["slug"] = slugOf(*edit.Name)
 	}
-	fillListDefaults(fields, "matchTags")
+	fillListDefaults(fields, "matchTags", "matchTerms")
 	if _, hasPosition := fields["position"]; !hasPosition {
 		fields["position"] = 0
 	}
@@ -82,6 +86,9 @@ func (l *Library) categoryFields(ctx context.Context, id string, edit CategoryEd
 	}
 	if edit.MatchTagIDs != nil {
 		fields["matchTags"] = *edit.MatchTagIDs
+	}
+	if edit.MatchTerms != nil {
+		fields["matchTerms"] = foldedTerms(*edit.MatchTerms)
 	}
 	if edit.Position != nil {
 		fields["position"] = *edit.Position
@@ -127,6 +134,43 @@ func (l *Library) requireFreeSlug(ctx context.Context, id, slug string) error {
 	return nil
 }
 
+// foldedTerms folds match terms as tag names are folded, dropping blanks and
+// repeats.
+func foldedTerms(terms []string) []string {
+	out := []string{}
+	for _, term := range terms {
+		key := names.Key(term)
+		if key != "" && !slices.Contains(out, key) {
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// DeleteCategory removes a category for good, so its name and slug are free
+// again; its subcategories move up to its parent. Saved filters and follows
+// naming it then match nothing for it.
+func (l *Library) DeleteCategory(ctx context.Context, id string) error {
+	category, err := l.Category(ctx, id)
+	if err != nil {
+		return err
+	}
+	if category == nil {
+		return fmt.Errorf("no category %s", id)
+	}
+	// Trashed children too: they still reference it.
+	children, err := l.database.Strings(ctx, `SELECT "id" FROM "Category" WHERE "parent" = $id`, db.Vars{"id": id})
+	if err != nil {
+		return err
+	}
+	for _, child := range children {
+		if _, err := l.recorder.Update(ctx, schema.RecordKindCategory, child, db.Vars{"parent": category.Parent}, provenance.User()); err != nil {
+			return err
+		}
+	}
+	return l.database.Delete(ctx, tableCategory, id)
+}
+
 // slugOf folds a name into a URL slug: "Big Tits" → "big-tits".
 func slugOf(name string) string {
 	return strings.ReplaceAll(names.Key(name), " ", "-")
@@ -150,11 +194,14 @@ func (l *Library) CategoryBySlug(ctx context.Context, slug string) (*schema.Cate
 		`SELECT * FROM "Category" WHERE "slug" = $slug AND "deletedAt" IS NULL`, db.Vars{"slug": slug})
 }
 
-// CategoriesOfTags lists the categories media with these tags belongs to.
+// CategoriesOfTags lists the categories media with these tags belongs to:
+// by a match tag, or a term one of the tags' names folds to.
 func (l *Library) CategoriesOfTags(ctx context.Context, tagIDs []string) ([]schema.Category, error) {
 	return db.QueryAs[schema.Category](ctx, l.database,
 		`SELECT * FROM "Category" WHERE "deletedAt" IS NULL
-		 AND EXISTS (SELECT 1 FROM json_each("matchTags") WHERE value IN (SELECT value FROM json_each($tags)))
+		 AND (EXISTS (SELECT 1 FROM json_each("matchTags") WHERE value IN (SELECT value FROM json_each($tags)))
+		   OR EXISTS (SELECT 1 FROM json_each("matchTerms") WHERE value IN (
+		     SELECT "nameKey" FROM "Tag" WHERE "id" IN (SELECT value FROM json_each($tags)))))
 		 ORDER BY "position", "name" COLLATE NOCASE`,
 		db.Vars{"tags": tagIDs})
 }

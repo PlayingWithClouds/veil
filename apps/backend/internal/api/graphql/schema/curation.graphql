@@ -5,6 +5,9 @@ extend type Query {
   # Every category, by position; build the tree from parent.
   categories: [Category!]!
   category(id: ID, slug: String): Category
+  # Every category, by position, with how much media of a kind is in it
+  # (subcategories included) and a picture; build the tree from parent.
+  categoryTiles(kind: MediaKind!): [CategoryTile!]!
   # The collections, watchlist and queue first.
   collections: [Collection!]!
   collection(id: ID!): Collection
@@ -19,6 +22,10 @@ extend type Query {
 extend type Mutation {
   createCategory(input: CategoryInput!): Category!
   editCategory(id: ID!, input: CategoryInput!): Category!
+  # Removes a category for good; its subcategories move up to its parent.
+  deleteCategory(id: ID!): Boolean!
+  # Adds the default categories the library lacks; returns how many.
+  addDefaultCategories: Int!
   # Puts categories in this order.
   reorderCategories(ids: [ID!]!): [Category!]!
   createCollection(name: String!, details: String): Collection!
@@ -39,7 +46,8 @@ extend type Mutation {
 }
 
 # Our own taxonomy. Media is in a category when it has any of its match
-# tags, or is in one of its subcategories.
+# tags, a tag whose name folds to one of its terms, or is in one of its
+# subcategories.
 type Category {
   id: ID!
   name: String!
@@ -47,19 +55,30 @@ type Category {
   parent: Category
   children: [Category!]!
   matchTags: [Tag!]!
+  # Folded words: "big tits", "busty".
+  matchTerms: [String!]!
   cover: Asset
   position: Int!
   videoCount: Int!
   galleryCount: Int!
 }
 
+# A category with how much media of one kind is in it and a picture: its
+# cover, else the newest cover among that media.
+type CategoryTile {
+  category: Category!
+  count: Int!
+  preview: Asset
+}
+
 # Omitted fields stay (or take their default on create); an empty parentId
-# or coverUri clears it.
+# or coverUri clears it. Terms are folded as tag names are.
 input CategoryInput {
   name: String
   slug: String
   parentId: ID
   matchTagIds: [ID!]
+  matchTerms: [String!]
   coverUri: String
   position: Int
 }

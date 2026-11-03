@@ -21,6 +21,7 @@ type Query {
   activeRecordings: [ActiveRecording!]!
   categories: [Category!]!
   category(id: ID, slug: String): Category
+  categoryTiles(kind: MediaKind!): [CategoryTile!]!
   collections: [Collection!]!
   collection(id: ID!): Collection
   builtInCollection(kind: CollectionKind!): Collection!
@@ -133,6 +134,8 @@ type Mutation {
   stopRecording(id: ID!): Boolean!
   createCategory(input: CategoryInput!): Category!
   editCategory(id: ID!, input: CategoryInput!): Category!
+  deleteCategory(id: ID!): Boolean!
+  addDefaultCategories: Int!
   reorderCategories(ids: [ID!]!): [Category!]!
   createCollection(name: String!, details: String): Collection!
   editCollection(id: ID!, name: String, details: String, coverUri: String): Collection!
@@ -524,10 +527,17 @@ type Category {
   parent: Category
   children: [Category!]!
   matchTags: [Tag!]!
+  matchTerms: [String!]!
   cover: Asset
   position: Int!
   videoCount: Int!
   galleryCount: Int!
+}
+
+type CategoryTile {
+  category: Category!
+  count: Int!
+  preview: Asset
 }
 
 input CategoryInput {
@@ -535,6 +545,7 @@ input CategoryInput {
   slug: String
   parentId: ID
   matchTagIds: [ID!]
+  matchTerms: [String!]
   coverUri: String
   position: Int
 }

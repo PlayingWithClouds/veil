@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-02T23:33:12.593Z",
+  "updatedAt": "2026-11-03T01:22:30.394Z",
   "baseline": false,
-  "digest": "sha256-b4e6340098d3c2356b5808a2316182b383fd697ffb7fffba6f29304a7d6bb2a2",
+  "digest": "sha256-2518eaccac032175d023de7aed9049f31d0f882a2bfc358f0f8665d9af948c7e",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -1605,6 +1605,13 @@
           "type": "i32",
           "encoding": "singular:varint",
           "since": "2026-11-01T18:20:52.420Z"
+        },
+        "16": {
+          "state": "active",
+          "name": "matchTerms",
+          "type": "[string]",
+          "encoding": "repeated:len-element",
+          "since": "2026-11-03T01:22:30.394Z"
         }
       }
     },

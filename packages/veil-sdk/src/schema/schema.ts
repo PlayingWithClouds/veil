@@ -588,6 +588,7 @@ export interface Category extends Entity {
   matchTags: string[];
   cover?: Asset;
   position: number;
+  matchTerms: string[];
 }
 
 export interface FieldDef extends Entity {
