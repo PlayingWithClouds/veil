@@ -123,12 +123,16 @@ func TestFilters(t *testing.T) {
 	}
 	video, _ := library.Video(ctx, ref.Id)
 	text := "pool"
+	credited := `ada "sunny studio" -beach`
+	missingPhrase := `"lane ada"`
+	excluded := "pool -bea"
 	minimum := int32(300)
 	for name, filter := range map[string]schema.Filter{
 		"performer": {PerformerIds: video.Performers[:1]},
 		"tags":      {IncludeTagIds: video.Tags},
 		"studio":    {StudioIds: []string{*video.Studio}},
 		"text":      {Text: &text},
+		"credits":   {Text: &credited},
 		"duration":  {MinDurationSeconds: &minimum},
 		"site":      {Sources: []string{"site"}},
 	} {
@@ -143,6 +147,8 @@ func TestFilters(t *testing.T) {
 		"missing tag":  {IncludeTagIds: []string{video.Tags[0], "other"}},
 		"duration":     {MaxDurationSeconds: &maximum},
 		"other site":   {Sources: []string{"elsewhere"}},
+		"phrase":       {Text: &missingPhrase},
+		"excluded":     {Text: &excluded},
 	} {
 		videos, err := library.Videos(ctx, MediaQuery{Filter: filter})
 		if err != nil || len(videos) != 0 {

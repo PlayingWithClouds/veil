@@ -166,7 +166,9 @@
 	/** Starts a search over: empty results, page 0. */
 	async function start(searchText: string, searchFilter: FilterInput | null) {
 		activeFilter = searchFilter;
-		filterActive = searchFilter !== null && Object.keys(searchFilter).length > 0;
+		filterActive =
+			(searchFilter !== null && Object.keys(searchFilter).length > 0) ||
+			narrowsResults(searchText);
 		stop();
 		generation++;
 		resetShown('search');
@@ -223,6 +225,14 @@
 		show(layout.release());
 		searching = false;
 		finished = remainingSites().length === 0;
+	}
+
+	/**
+	 * Whether the search text has a "phrase" or -excluded word, which the
+	 * backend checks the sites' results against, so a page can come back empty.
+	 */
+	function narrowsResults(searchText: string): boolean {
+		return /"|(^|\s)-\S/.test(searchText);
 	}
 
 	/** Takes part of a site's answer. */

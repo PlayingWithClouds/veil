@@ -37,7 +37,7 @@ func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, d
 	builder.add(notBlocked)
 	builder.add(notHiddenCopy)
 	if filter.Text != nil && strings.TrimSpace(*filter.Text) != "" {
-		builder.bind(`"media"."title" LIKE $text`, "text", "%"+strings.TrimSpace(*filter.Text)+"%")
+		builder.bind(`veil_search(`+searchedText+`, $text, 1) = 1`, "text", *filter.Text)
 	}
 	addCredits(builder, filter)
 	addDates(builder, filter)
@@ -65,6 +65,13 @@ func MediaFrom(kind schema.RecordKind) string {
 func FilterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, db.Vars) {
 	return filterConditions(kind, filter)
 }
+
+// searchedText is what a search text is matched against: the title, the
+// studio's name and the names of the performers and tags a media credits.
+const searchedText = `"media"."title"
+	|| ' ' || coalesce((SELECT "name" FROM "Studio" WHERE "id" = "media"."studio"), '')
+	|| ' ' || coalesce((SELECT group_concat("name", ' ') FROM "Performer" WHERE "id" IN (SELECT value FROM json_each("media"."performers"))), '')
+	|| ' ' || coalesce((SELECT group_concat("name", ' ') FROM "Tag" WHERE "id" IN (SELECT value FROM json_each("media"."tags"))), '')`
 
 // notBlocked excludes blocked media and media crediting anything blocked.
 const notBlocked = `NOT EXISTS (SELECT 1 FROM "UserState" AS "blocked"

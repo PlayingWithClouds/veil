@@ -14,6 +14,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/cache"
 	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/schema"
+	"github.com/playingwithclouds/veil/internal/searchtext"
 )
 
 // searchFresh is how long a site's answer to a search page is shown again
@@ -56,10 +57,19 @@ type storedAnswer struct {
 // streams them. A site that answered the same page within searchFresh isn't
 // asked; its stored answer is sent instead. Only pluginNames are asked when
 // it's set. A filter, when given, narrows what's sent (the stored answers
-// stay whole) and its sites narrow who's asked. The channel closes once every
-// site answered, failed or timed out.
+// stay whole) and its sites narrow who's asked. The query is read by
+// searchtext: the sites are asked its words and phrases without quotes, and
+// only results with every "phrase" and no -excluded word are sent. The
+// channel closes once every site answered, failed or timed out.
 func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, search SearchPage, pluginNames []string, filter *schema.Filter) (<-chan SearchBatch, int) {
+	query := searchtext.Parse(search.Query)
+	siteSearch := search
+	siteSearch.Query = query.SiteText()
 	searchers := p.searchers(entity, pluginNames, search.Content)
+	if siteSearch.Query == "" {
+		// Only exclusions: nothing to ask the sites for.
+		searchers = nil
+	}
 	if filter != nil && len(filter.Sources) > 0 {
 		searchers = slices.DeleteFunc(searchers, func(plugin *plugins.Plugin) bool {
 			return !slices.Contains(filter.Sources, plugin.Meta.Name)
@@ -69,19 +79,20 @@ func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, s
 	var group sync.WaitGroup
 	for _, plugin := range searchers {
 		group.Go(func() {
-			p.searchPage(ctx, plugin, entity, search, answers)
+			p.searchPage(ctx, plugin, entity, siteSearch, answers)
 		})
 	}
 	go func() {
 		group.Wait()
 		close(answers)
 	}()
-	return p.filtered(ctx, answers, filter), len(searchers)
+	return p.filtered(ctx, answers, filter, query, search.Query), len(searchers)
 }
 
-// filtered passes the batches on with the results filter doesn't match
-// left out, each counting what its site returned.
-func (p *Pipeline) filtered(ctx context.Context, answers <-chan SearchBatch, filter *schema.Filter) <-chan SearchBatch {
+// filtered passes the batches on with the results filter doesn't match, and
+// those missing a phrase of the query or having an excluded word, left out;
+// each counts what its site returned.
+func (p *Pipeline) filtered(ctx context.Context, answers <-chan SearchBatch, filter *schema.Filter, query searchtext.Query, text string) <-chan SearchBatch {
 	batches := make(chan SearchBatch)
 	go func() {
 		defer close(batches)
@@ -91,6 +102,13 @@ func (p *Pipeline) filtered(ctx context.Context, answers <-chan SearchBatch, fil
 				matching, err := p.library.Matching(ctx, batch.Refs, *filter)
 				if err != nil {
 					log.Printf("search %s: filter: %v", batch.Plugin, err)
+				}
+				batch.Refs = matching
+			}
+			if query.Strict() && len(batch.Refs) > 0 {
+				matching, err := p.library.MatchingSearch(ctx, batch.Refs, text)
+				if err != nil {
+					log.Printf("search %s: phrases: %v", batch.Plugin, err)
 				}
 				batch.Refs = matching
 			}
