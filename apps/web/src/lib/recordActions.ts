@@ -1,4 +1,5 @@
-// The ⋮ menu entries video and gallery cards (and their pages) share:
+// The ⋮ menu entries video and gallery cards (and their pages) share: play
+// next and add to a collection,
 // favourite, not interested, blocking the record or what it credits, and
 // opening it on the site.
 import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
@@ -10,6 +11,11 @@ import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOutIcon';
 import type { RecordKind } from '@playingwithclouds/veil-sdk/generated';
 import type { SheetAction } from '$lib/components/ActionSheet.svelte';
 import { setBlocked, setFavorite, setHidden, logNotInterested } from '$lib/userState';
+import QueueIcon from 'phosphor-svelte/lib/QueueIcon';
+import StackPlusIcon from 'phosphor-svelte/lib/StackPlusIcon';
+import { playNext } from '$lib/curation';
+import { libraryUrl } from '$lib/routes';
+import { pickCollectionFor } from '$lib/stores/collectionPicker';
 import { showUndo } from '$lib/stores/undoToast';
 
 // Blockable credits listed in the menu; more performers are blocked from their page.
@@ -19,6 +25,7 @@ const MENU_PERFORMERS = 3;
 export interface MenuRecord {
 	kind: RecordKind;
 	id: string;
+	title: string;
 	favorite: boolean;
 	performers: { id: string; name: string }[];
 	studio: { id: string; name: string } | null;
@@ -30,13 +37,17 @@ function nounOf(kind: RecordKind): string {
 	return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-/** Favourite, not interested, the blocks and "Open on the site"; onfavorite gets the new value. */
+/**
+ * Play next and add to a collection, favourite, not interested, the blocks
+ * and "Open on the site"; onfavorite gets the new value.
+ */
 export function recordActions(
 	record: MenuRecord,
 	onfavorite: (favorite: boolean) => void
 ): SheetAction[] {
 	const noun = nounOf(record.kind);
 	const actions: SheetAction[] = [
+		...collectionActions(record),
 		{
 			label: record.favorite ? 'Remove from favourites' : 'Add to favourites',
 			icon: HeartIcon,
@@ -80,6 +91,32 @@ export function recordActions(
 		});
 	}
 	return actions;
+}
+
+/** "Play next" (videos) and "Add to collection…" (videos and galleries). */
+function collectionActions(record: MenuRecord): SheetAction[] {
+	if (record.kind !== 'video' && record.kind !== 'gallery') return [];
+	const subject = { kind: record.kind, id: record.id };
+	const actions: SheetAction[] = [];
+	if (record.kind === 'video') {
+		actions.push({
+			label: 'Play next',
+			icon: QueueIcon,
+			run: () => void queueNext(record.id)
+		});
+	}
+	actions.push({
+		label: 'Add to collection…',
+		icon: StackPlusIcon,
+		run: () => pickCollectionFor(subject, record.title)
+	});
+	return actions;
+}
+
+/** Puts a video first in the queue and says so. */
+async function queueNext(videoId: string): Promise<void> {
+	await playNext(videoId);
+	showUndo({ message: 'Plays next', link: { label: 'Queue', href: libraryUrl('queue') } });
 }
 
 /** Flips the record's favourite mark. */

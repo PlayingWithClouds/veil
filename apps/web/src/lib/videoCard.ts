@@ -36,6 +36,7 @@ export function videoCardActions(video: VideoCardRow, hooks: VideoCardHooks): Sh
 	const record = {
 		kind: 'video' as const,
 		id: video.id,
+		title: video.title,
 		favorite: video.userState.favorite,
 		performers: video.performers,
 		studio: video.studio,

@@ -47,6 +47,7 @@
 			{
 				kind: 'video',
 				id: video.id,
+				title: video.title,
 				favorite,
 				performers: video.performers,
 				studio: video.studio,

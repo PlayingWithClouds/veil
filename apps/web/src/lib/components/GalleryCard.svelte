@@ -12,6 +12,7 @@
 	import CardMenu from '$lib/components/CardMenu.svelte';
 	import CoverFrame from '$lib/components/CoverFrame.svelte';
 	import CardBadge from '$lib/components/CardBadge.svelte';
+	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
 	import { cacheUrl } from '$lib/img';
 	import { pluginForUrl } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
@@ -25,10 +26,12 @@
 		gallery: GalleryCardRow;
 		// Where the card is shown; logs it as shown there and, on click, chosen.
 		shown?: Shown | null;
+		// Entries the page adds to the top of the ⋮ menu, e.g. "Remove from Favourites".
+		actions?: SheetAction[];
 		onclick: () => void;
 	}
 
-	let { gallery, shown = null, onclick }: Props = $props();
+	let { gallery, shown = null, actions = [], onclick }: Props = $props();
 
 	let subject = $derived({ kind: 'gallery', id: gallery.id } as const);
 
@@ -37,11 +40,13 @@
 	let favorite = $derived(favoriteOverride ?? gallery.userState.favorite);
 	let rating = $derived(gallery.userState.rating);
 	let menuAnchor = $state<HTMLElement | null>(null);
-	let menuActions = $derived(
-		recordActions(
+	let menuActions = $derived([
+		...actions,
+		...recordActions(
 			{
 				kind: 'gallery',
 				id: gallery.id,
+				title: gallery.title,
 				favorite,
 				performers: gallery.performers,
 				studio: gallery.studio,
@@ -49,7 +54,7 @@
 			},
 			(value) => (favoriteOverride = value)
 		)
-	);
+	]);
 
 	let hidden = $derived.by(() => {
 		const keys = $hiddenRecords;

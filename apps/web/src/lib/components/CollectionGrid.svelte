@@ -1,5 +1,5 @@
 <!--
-	A collection's videos and galleries in its order, each video's ⋮ menu
+	A collection's videos and galleries in its order, each card's ⋮ menu
 	able to take it out again. Used by the watchlist, the queue and every
 	collection's page.
 -->
@@ -8,7 +8,13 @@
 	import XIcon from 'phosphor-svelte/lib/XIcon';
 	import GalleryCard from '$lib/components/GalleryCard.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
-	import { entryId, removeFromCollection, type CollectionPage } from '$lib/curation';
+	import type { SheetAction } from '$lib/components/ActionSheet.svelte';
+	import {
+		entryId,
+		removeFromCollection,
+		type CollectionEntry,
+		type CollectionPage
+	} from '$lib/curation';
 	import { galleryUrl, videoUrl } from '$lib/routes';
 
 	interface Props {
@@ -27,8 +33,15 @@
 
 	let entries = $derived(collection.entries.filter((entry) => !removed.has(entryId(entry))));
 
+	/** The ⋮ menu entry that takes an entry out of the collection. */
+	function removeAction(entry: CollectionEntry): SheetAction[] {
+		return [
+			{ label: `Remove from ${collection.name}`, icon: XIcon, run: () => void remove(entry) }
+		];
+	}
+
 	/** Takes an entry out of the collection, hiding it at once. */
-	async function remove(entry: (typeof entries)[number]) {
+	async function remove(entry: CollectionEntry) {
 		const id = entryId(entry);
 		removed = new Set([...removed, id]);
 		try {
@@ -53,15 +66,14 @@
 				<SceneCard
 					video={entry.video}
 					shown={{ surface, position }}
-					actions={[
-						{ label: `Remove from ${collection.name}`, icon: XIcon, run: () => remove(entry) }
-					]}
+					actions={removeAction(entry)}
 					onclick={() => goto(videoUrl(entry.video.id))}
 				/>
 			{:else}
 				<GalleryCard
 					gallery={entry.gallery}
 					shown={{ surface, position }}
+					actions={removeAction(entry)}
 					onclick={() => goto(galleryUrl(entry.gallery.id))}
 				/>
 			{/if}

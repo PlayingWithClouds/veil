@@ -74,6 +74,7 @@
 			{
 				kind: 'gallery',
 				id: shown.id,
+				title: shown.title,
 				favorite: shown.userState.favorite,
 				performers: shown.performers,
 				studio: shown.studio,

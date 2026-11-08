@@ -148,12 +148,7 @@ function toCollectionPage(collection: CollectionPageRow): CollectionPage {
 
 /** Takes one video or gallery out of a collection. */
 export async function removeFromCollection(collectionId: string, entry: CollectionEntry) {
-	await gqlClient.mutation({
-		removeFromCollection: {
-			__args: { collectionId, subjects: [{ kind: entry.kind, id: entryId(entry) }] },
-			id: true
-		}
-	});
+	await removeRecordFromCollection(collectionId, { kind: entry.kind, id: entryId(entry) });
 }
 
 /** The id of the record an entry shows. */
@@ -168,4 +163,53 @@ export async function createCollection(name: string): Promise<string> {
 		createCollection: { __args: { name }, id: true }
 	});
 	return data.createCollection.id;
+}
+
+/** A video or gallery a collection can hold. */
+export interface CollectableRef {
+	kind: 'video' | 'gallery';
+	id: string;
+}
+
+/** Adds a record to the end of a collection; one already in it moves there. */
+export async function addToCollection(collectionId: string, subject: CollectableRef) {
+	await gqlClient.mutation({
+		addToCollection: { __args: { collectionId, subjects: [subject] }, id: true }
+	});
+}
+
+/** Takes a record out of a collection. */
+export async function removeRecordFromCollection(collectionId: string, subject: CollectableRef) {
+	await gqlClient.mutation({
+		removeFromCollection: { __args: { collectionId, subjects: [subject] }, id: true }
+	});
+}
+
+/** The ids of the user's own collections a record is in. */
+export async function fetchCollectionIdsWith(subject: CollectableRef): Promise<Set<string>> {
+	const data = await gqlClient.query({
+		collectionsWith: { __args: { subject }, id: true, kind: true }
+	});
+	return new Set(
+		data.collectionsWith
+			.filter((collection) => collection.kind === 'user')
+			.map((collection) => collection.id)
+	);
+}
+
+/** Puts a video first in the queue, so it plays next. */
+export async function playNext(videoId: string): Promise<void> {
+	const data = await gqlClient.query({
+		builtInCollection: { __args: { kind: 'queue' }, id: true }
+	});
+	await gqlClient.mutation({
+		addToCollection: {
+			__args: {
+				collectionId: data.builtInCollection.id,
+				subjects: [{ kind: 'video', id: videoId }],
+				position: 0
+			},
+			id: true
+		}
+	});
 }

@@ -6,6 +6,8 @@
 	import TopBar from '$lib/components/TopBar.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
+	import CollectionPickerDialog from '$lib/components/CollectionPickerDialog.svelte';
+	import { collectionPick } from '$lib/stores/collectionPicker';
 	import { afterNavigate } from '$app/navigation';
 	import { chromeHidden, isCompact } from '$lib/stores/viewport';
 	import { isNativeApp } from '$lib/server';
@@ -96,6 +98,11 @@
 		<BottomNav />
 	{/if}
 	<UndoToast />
+	{#if $collectionPick}
+		{#key $collectionPick}
+			<CollectionPickerDialog pick={$collectionPick} />
+		{/key}
+	{/if}
 </div>
 
 <style>
