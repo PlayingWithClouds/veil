@@ -32,11 +32,22 @@ export function endlessFeed<Item extends { id: string }>(
 	sources: FeedSources<Item>,
 	leaveOut: string[] = []
 ): Feed<Item> {
-	const seen = new Set(leaveOut);
 	const phases: Source<Item>[] = [];
 	if (sources.ranked) phases.push(rankedSource(sources.ranked));
 	phases.push(offsetSource(sources.rest));
 	if (sources.sites) phases.push(sources.sites);
+	return chainFeed(phases, leaveOut);
+}
+
+/**
+ * A feed reading each source until it's through, then the next. Nothing
+ * shows twice, and the ids in leaveOut not at all.
+ */
+export function chainFeed<Item extends { id: string }>(
+	phases: Source<Item>[],
+	leaveOut: string[] = []
+): Feed<Item> {
+	const seen = new Set(leaveOut);
 
 	/** The next batch from the first phase that still has items; null once all are through. */
 	async function nextBatch(limit: number): Promise<Item[] | null> {
@@ -78,8 +89,18 @@ function rankedSource<Item>(
 	};
 }
 
+/** A list fetched once as a source: all of it the first time, through after. */
+export function onceSource<Item>(list: () => Promise<Item[]>): Source<Item> {
+	let read = false;
+	return async () => {
+		if (read) return null;
+		read = true;
+		return list();
+	};
+}
+
 /** An offset-paged list as a source: through once a page comes back empty. */
-function offsetSource<Item>(
+export function offsetSource<Item>(
 	list: (limit: number, offset: number) => Promise<Item[]>
 ): Source<Item> {
 	let offset = 0;

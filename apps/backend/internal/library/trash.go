@@ -197,6 +197,7 @@ func dependents(kind schema.RecordKind) []change {
 	changes := []change{
 		deleteRows("FieldSource", `(`+owned+`) OR "source" IN (SELECT "id" FROM "Source" WHERE `+owned+`)`),
 		deleteRows("Comment", `"source" IN (SELECT "id" FROM "Source" WHERE `+owned+`)`),
+		deleteRows("SiteRelated", `"source" IN (SELECT "id" FROM "Source" WHERE `+owned+`)`),
 		deleteRows("Alike", `"subjectKind" = $kind AND ("firstId" = $id OR "secondId" = $id)`),
 		// Performers' faces learned from the record's face scans go with them.
 		deleteRows("Embedding", `"scan" IN (SELECT "id" FROM "FaceScan" WHERE `+owned+`)`),
@@ -210,8 +211,11 @@ func dependents(kind schema.RecordKind) []change {
 
 // kindDependents are the rows only one kind of record has.
 var kindDependents = map[schema.RecordKind][]change{
-	schema.RecordKindGallery:    {deleteRows("Image", `"gallery" = $id`)},
-	schema.RecordKindVideo:      {deleteRows("GroupItem", `"video" = $id`), deleteRows("Clip", `"video" = $id`)},
+	schema.RecordKindGallery: {deleteRows("Image", `"gallery" = $id`)},
+	schema.RecordKindVideo: {
+		deleteRows("GroupItem", `"video" = $id`), deleteRows("Clip", `"video" = $id`),
+		deleteRows("SiteRelated", `"video" = $id`),
+	},
 	schema.RecordKindStory:      {deleteRows("StoryChapter", `"story" = $id`)},
 	schema.RecordKindGroup:      {deleteRows("GroupItem", `"group" = $id`)},
 	schema.RecordKindCollection: {deleteRows("CollectionItem", `"collection" = $id`)},

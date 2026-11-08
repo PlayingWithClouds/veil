@@ -85,6 +85,9 @@ type LookupResult {
 
 extend type Video {
   related(limit: Int): [Match!]!
+  # The videos the sites list as related on this video's pages, by their
+  # place in a site's list, the sites taking turns (filled when a page is read).
+  siteRelated(limit: Int, offset: Int): [Video!]!
 }
 
 extend type Gallery {

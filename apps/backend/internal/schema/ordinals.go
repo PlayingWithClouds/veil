@@ -517,6 +517,15 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"key":       11,
 		"value":     12,
 	},
+	"SiteRelated": {
+		"id":        1,
+		"createdAt": 2,
+		"updatedAt": 3,
+		"deletedAt": 4,
+		"source":    10,
+		"video":     11,
+		"position":  12,
+	},
 	"Source": {
 		"id":          1,
 		"createdAt":   2,

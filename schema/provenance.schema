@@ -6,6 +6,7 @@ namespace veil
 
 import { Entity, RecordKind, Actor, Source } from "./common"
 import { Performer } from "./people"
+import { Video } from "./content"
 
 /// Which source a field's value currently comes from. Re-scrapes only update
 /// fields their source owns; a locked field keeps the user's value forever.
@@ -152,4 +153,15 @@ model Comment extends Entity {
 
   /// Library performers named in the text.
   16 mentions: [ref<Performer>]
+}
+
+/// A video a site lists as related on a video's page, kept per source in the
+/// site's order and replaced each time the page is read.
+@index(fields: ["source", "position"])
+@index(fields: ["video"])
+model SiteRelated extends Entity {
+  10 source: ref<Source>
+  11 video: ref<Video>
+
+  12 position: i32
 }

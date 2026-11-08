@@ -84,6 +84,13 @@ func (r *videoResolver) Related(ctx context.Context, obj *schema.Video, limit *i
 	return r.related(ctx, refOf(schema.RecordKindVideo, obj.Id), limit)
 }
 
+// SiteRelated is the resolver for the siteRelated field.
+func (r *videoResolver) SiteRelated(ctx context.Context, obj *schema.Video, limit *int, offset *int) ([]*schema.Video, error) {
+	size, start := page(limit, offset)
+	videos, err := r.library.SiteRelated(ctx, obj.Id, size, start)
+	return pointers(videos), err
+}
+
 // Match returns generated.MatchResolver implementation.
 func (r *Resolver) Match() generated.MatchResolver { return &matchResolver{r} }
 

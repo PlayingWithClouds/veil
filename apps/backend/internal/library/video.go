@@ -28,12 +28,13 @@ func (l *Library) upsertVideo(ctx context.Context, plugin string, scene *plugins
 	if err != nil {
 		return "", err
 	}
-	return id, l.afterVideoWrite(ctx, id, sourceID, scene, fetched)
+	return id, l.afterVideoWrite(ctx, plugin, id, sourceID, scene, fetched)
 }
 
 // afterVideoWrite marks the source fetched and replaces what the page lists
-// with the video: streams, segments, subtitles, scripts and comments.
-func (l *Library) afterVideoWrite(ctx context.Context, id, sourceID string, scene *plugins.Scene, fetched bool) error {
+// with the video: streams, segments, subtitles, scripts, comments and the
+// site's related videos.
+func (l *Library) afterVideoWrite(ctx context.Context, plugin, id, sourceID string, scene *plugins.Scene, fetched bool) error {
 	page := pageExtras{
 		kind: schema.RecordKindVideo, id: id, sourceID: sourceID, fetched: fetched,
 		downloads: scene.Downloads, markers: scene.Markers, subtitles: scene.Subtitles,
@@ -41,6 +42,11 @@ func (l *Library) afterVideoWrite(ctx context.Context, id, sourceID string, scen
 	}
 	if err := l.storeExtras(ctx, page); err != nil {
 		return err
+	}
+	if fetched {
+		if err := l.replaceSiteRelated(ctx, plugin, sourceID, scene.Related); err != nil {
+			return err
+		}
 	}
 	if scene.Duration > 0 {
 		if err := l.DetectAlike(ctx, id); err != nil {

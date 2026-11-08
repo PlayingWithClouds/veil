@@ -1299,6 +1299,7 @@ type ComplexityRoot struct {
 		Revisions           func(childComplexity int, limit *int, offset *int) int
 		Scripts             func(childComplexity int) int
 		Segments            func(childComplexity int) int
+		SiteRelated         func(childComplexity int, limit *int, offset *int) int
 		Sources             func(childComplexity int) int
 		Status              func(childComplexity int) int
 		Streams             func(childComplexity int) int
@@ -1786,6 +1787,7 @@ type VideoResolver interface {
 	CamRooms(ctx context.Context, obj *schema.Video) ([]*schema.CamModel, error)
 	Categories(ctx context.Context, obj *schema.Video) ([]*schema.Category, error)
 	Related(ctx context.Context, obj *schema.Video, limit *int) ([]*schema.Match, error)
+	SiteRelated(ctx context.Context, obj *schema.Video, limit *int, offset *int) ([]*schema.Video, error)
 	Files(ctx context.Context, obj *schema.Video) ([]*schema.MediaFile, error)
 	Fingerprints(ctx context.Context, obj *schema.Video) ([]*schema.Fingerprint, error)
 	Groups(ctx context.Context, obj *schema.Video) ([]*schema.Group, error)
@@ -8467,6 +8469,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Video.Segments(childComplexity), true
+	case "Video.siteRelated":
+		if e.ComplexityRoot.Video.SiteRelated == nil {
+			break
+		}
+
+		args, err := ec.field_Video_siteRelated_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Video.SiteRelated(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
 	case "Video.sources":
 		if e.ComplexityRoot.Video.Sources == nil {
 			break
@@ -9478,6 +9491,9 @@ type LookupResult {
 
 extend type Video {
   related(limit: Int): [Match!]!
+  # The videos the sites list as related on this video's pages, by their
+  # place in a site's list, the sites taking turns (filled when a page is read).
+  siteRelated(limit: Int, offset: Int): [Video!]!
 }
 
 extend type Gallery {
@@ -13020,6 +13036,8 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 		return ec.fieldContext_Video_categories(ctx, field)
 	case "related":
 		return ec.fieldContext_Video_related(ctx, field)
+	case "siteRelated":
+		return ec.fieldContext_Video_siteRelated(ctx, field)
 	case "files":
 		return ec.fieldContext_Video_files(ctx, field)
 	case "fingerprints":
@@ -17675,6 +17693,28 @@ func (ec *executionContext) field_Video_related_args(ctx context.Context, rawArg
 }
 
 func (ec *executionContext) field_Video_revisions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Video_siteRelated_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
@@ -45164,6 +45204,50 @@ func (ec *executionContext) fieldContext_Video_related(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Video_siteRelated(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Video_siteRelated(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Video().SiteRelated(ctx, obj, fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Video) graphql.Marshaler {
+			return ec.marshalNVideo2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Video_siteRelated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Video_siteRelated_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Video_files(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62049,6 +62133,42 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Video_related(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "siteRelated":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_siteRelated(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

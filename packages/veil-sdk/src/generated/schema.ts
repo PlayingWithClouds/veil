@@ -450,6 +450,7 @@ export interface Video {
     camRooms: CamModel[]
     categories: Category[]
     related: Match[]
+    siteRelated: Video[]
     files: MediaFile[]
     fingerprints: Fingerprint[]
     id: Scalars['ID']
@@ -1879,6 +1880,7 @@ export interface VideoGenqlSelection{
     camRooms?: CamModelGenqlSelection
     categories?: CategoryGenqlSelection
     related?: (MatchGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
+    siteRelated?: (VideoGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     files?: MediaFileGenqlSelection
     fingerprints?: FingerprintGenqlSelection
     id?: boolean | number

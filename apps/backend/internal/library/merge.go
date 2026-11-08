@@ -198,7 +198,8 @@ func redirectReferences(kind schema.RecordKind) []change {
 			updateRows("Gallery", `"video" = $keep`, `"video" = $merge`),
 			updateRows("Clip", `"video" = $keep`, `"video" = $merge`),
 			deleteRows("GroupItem", `"video" = $merge AND "group" IN (SELECT "group" FROM "GroupItem" WHERE "video" = $keep)`),
-			updateRows("GroupItem", `"video" = $keep`, `"video" = $merge`))
+			updateRows("GroupItem", `"video" = $keep`, `"video" = $merge`),
+			updateRows("SiteRelated", `"video" = $keep`, `"video" = $merge`))
 	case schema.RecordKindGallery:
 		changes = append(changes, updateRows("Video", `"gallery" = $keep`, `"gallery" = $merge`))
 	case schema.RecordKindStudio:

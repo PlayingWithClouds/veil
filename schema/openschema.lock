@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-03T17:37:38.435Z",
+  "updatedAt": "2026-11-08T01:57:27.624Z",
   "baseline": false,
-  "digest": "sha256-8676d009aed8ee7760ada0c376922fa55f663d81c2803d30bb16e498134a2ac2",
+  "digest": "sha256-673aa496ea671969f31c5f443eca558eb0e0d71c8e1f37d5d9b9608e3c9ca1be",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -3689,6 +3689,32 @@
           "type": "json?",
           "encoding": "singular:len",
           "since": "2026-11-01T19:37:20.887Z"
+        }
+      }
+    },
+    "model:veil.SiteRelated": {
+      "kind": "model",
+      "ordinals": {
+        "10": {
+          "state": "active",
+          "name": "source",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-08T01:57:27.624Z"
+        },
+        "11": {
+          "state": "active",
+          "name": "video",
+          "type": "uuid",
+          "encoding": "singular:len",
+          "since": "2026-11-08T01:57:27.624Z"
+        },
+        "12": {
+          "state": "active",
+          "name": "position",
+          "type": "i32",
+          "encoding": "singular:varint",
+          "since": "2026-11-08T01:57:27.624Z"
         }
       }
     },

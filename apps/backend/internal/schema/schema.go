@@ -1151,3 +1151,12 @@ type Comment struct {
 	// Library performers named in the text.
 	Mentions []string `json:"mentions"`
 }
+
+// A video a site lists as related on a video's page, kept per source in the
+// site's order and replaced each time the page is read.
+type SiteRelated struct {
+	Entity
+	Source   string `json:"source"`
+	Video    string `json:"video"`
+	Position int32  `json:"position"`
+}

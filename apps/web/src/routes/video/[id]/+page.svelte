@@ -9,8 +9,8 @@
 	adding (VideoPeople; a background face scan adds face matches), their cam
 	rooms and whether they're live now, the description, the main tags,
 	sources and the
-	sites' comments. Videos like it run alongside on wide screens, below on
-	narrow ones.
+	sites' comments. Videos like it (relatedFeed, endless) run alongside on
+	wide screens, below on narrow ones.
 -->
 <script lang="ts">
 	import { page } from '$app/state';
@@ -31,9 +31,11 @@
 	import VideoCamRooms from '$lib/components/VideoCamRooms.svelte';
 	import { fetchVideoRooms, type CamRow } from '$lib/cams';
 	import { formatClock } from '$lib/time';
+	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
+	import type { Feed } from '$lib/feed';
+	import { relatedFeed } from '$lib/relatedFeed';
 	import {
 		createStudio,
-		fetchRelatedVideos,
 		fetchStudios,
 		openVideo,
 		play,
@@ -63,9 +65,15 @@
 
 	// Tags shown before "+N more": the rest is mostly the sites' keyword noise.
 	const MAIN_TAGS = 12;
+	// Related videos added each time the list's end comes near.
+	const RELATED_PAGE = 20;
 
 	let video = $state<VideoDetail | null>(null);
 	let related = $state<VideoCardRow[]>([]);
+	// The rest of the related list after what's shown, and whether it's loading or through.
+	let relatedNext: Feed<VideoCardRow> = async () => [];
+	let relatedLoading = $state(false);
+	let relatedDone = $state(false);
 	let camRooms = $state<CamRow[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -118,12 +126,14 @@
 		allTags = false;
 		fullDetails = false;
 		faces = null;
-		void fetchRelatedVideos(videoId).then((found) => {
-			if (videoId === id) related = found;
-		});
+		const opening = openVideo(videoId);
+		relatedNext = relatedFeed(videoId, opening);
+		relatedLoading = false;
+		relatedDone = false;
+		void loadMoreRelated();
 		void watchFaces(videoId);
 		try {
-			video = await openVideo(videoId);
+			video = await opening;
 			// After opening: reading the source pages credits the cam site
 			// (the studio) that names the room. Not awaited, as it asks the
 			// cam sites whether the rooms are live.
@@ -134,6 +144,24 @@
 			error = String(failure);
 		} finally {
 			loading = false;
+		}
+	}
+
+	/** Appends the next related videos, unless the page moved on to another video. */
+	async function loadMoreRelated() {
+		if (relatedLoading || relatedDone) return;
+		const feed = relatedNext;
+		relatedLoading = true;
+		try {
+			const found = await feed(RELATED_PAGE);
+			if (feed !== relatedNext) return;
+			related = [...related, ...found];
+			if (found.length === 0) relatedDone = true;
+		} catch (failure) {
+			console.warn('related videos', failure);
+			if (feed === relatedNext) relatedDone = true;
+		} finally {
+			if (feed === relatedNext) relatedLoading = false;
 		}
 	}
 
@@ -452,7 +480,7 @@
 		{/if}
 	</div>
 
-	{#if related.length > 0}
+	{#if related.length > 0 || relatedLoading}
 		<aside class="flex flex-col gap-3">
 			<h2 class="flex items-baseline gap-2 text-lg font-semibold">
 				Up next
@@ -462,7 +490,10 @@
 				class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
 			>
 				{#each related as relatedVideo, position (relatedVideo.id)}
-					<div class="rise-in" style:--rise-delay="{Math.min(position * 30, 300)}ms">
+					<div
+						class="rise-in"
+						style:--rise-delay="{Math.min((position % RELATED_PAGE) * 30, 300)}ms"
+					>
 						<VideoListRow
 							video={relatedVideo}
 							shown={{ surface: 'related', position }}
@@ -471,6 +502,7 @@
 					</div>
 				{/each}
 			</div>
+			<ScrollSentinel onvisible={loadMoreRelated} loading={relatedLoading} done={relatedDone} />
 		</aside>
 	{/if}
 </div>

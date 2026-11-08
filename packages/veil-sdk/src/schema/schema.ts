@@ -820,3 +820,9 @@ export interface Comment extends Entity {
   replyTo?: string;
   mentions: string[];
 }
+
+export interface SiteRelated extends Entity {
+  source: string;
+  video: string;
+  position: number;
+}

@@ -297,6 +297,18 @@ export async function fetchRelatedVideos(id: string, limit = 20): Promise<VideoC
 	});
 }
 
+/** A page of the videos the sites list as related on this video's pages, the sites taking turns. */
+export async function fetchSiteRelated(
+	id: string,
+	limit: number,
+	offset: number
+): Promise<VideoCardRow[]> {
+	const data = await gqlClient.query({
+		video: { __args: { id }, siteRelated: { __args: { limit, offset }, ...VIDEO_CARD } }
+	});
+	return data.video?.siteRelated ?? [];
+}
+
 /** Opens a gallery: reads its pages (they list the images) and returns it. */
 export async function openGallery(id: string): Promise<GalleryDetail | null> {
 	const data = await gqlClient.mutation({ fetchGallery: { __args: { id }, ...GALLERY_DETAIL } });

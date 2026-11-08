@@ -88,3 +88,16 @@ export function searchPage(
 	});
 	return { done, cancel };
 }
+
+/** One page of a video search, every site's answer together once the last one is in. */
+export async function collectSearchPage(
+	query: string,
+	page: number
+): Promise<SearchBatchRow['listed']['videos']> {
+	const videos: SearchBatchRow['listed']['videos'] = [];
+	const running = searchPage('VIDEO', query, page, null, null, null, (batch) => {
+		videos.push(...batch.listed.videos);
+	});
+	await running.done;
+	return videos;
+}

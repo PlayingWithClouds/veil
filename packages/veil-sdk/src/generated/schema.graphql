@@ -501,6 +501,7 @@ type Video {
   camRooms: [CamModel!]!
   categories: [Category!]!
   related(limit: Int): [Match!]!
+  siteRelated(limit: Int, offset: Int): [Video!]!
   files: [MediaFile!]!
   fingerprints: [Fingerprint!]!
   id: ID!
