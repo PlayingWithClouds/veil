@@ -4,6 +4,7 @@
 	loads the first time it's opened and stays, so switching back is instant.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import CollectionGrid from '$lib/components/CollectionGrid.svelte';
@@ -31,9 +32,12 @@
 	// The tabs opened so far; each stays in the page, hidden while another shows.
 	let opened = $state<Set<LibraryTab>>(new Set());
 
+	// Only the tab reruns this, not the set it adds to.
 	$effect(() => {
 		const current = tab;
-		if (!opened.has(current)) opened = new Set([...opened, current]);
+		untrack(() => {
+			if (!opened.has(current)) opened = new Set([...opened, current]);
+		});
 	});
 
 	/** The tab a ?tab= value names, the watchlist when it names none. */

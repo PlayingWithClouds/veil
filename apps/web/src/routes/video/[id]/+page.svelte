@@ -13,6 +13,7 @@
 	wide screens, below on narrow ones.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import PlayIcon from 'phosphor-svelte/lib/PlayIcon';
@@ -111,8 +112,11 @@
 
 	showAmbientGlow(() => poster);
 
+	// Only the id reruns this: load reads and writes page state (the related
+	// list's loading flags), which would otherwise rerun it in a loop.
 	$effect(() => {
-		void load(id);
+		const videoId = id;
+		untrack(() => void load(videoId));
 	});
 
 	/** Opens the video, starts its first stream and loads videos like it. */
