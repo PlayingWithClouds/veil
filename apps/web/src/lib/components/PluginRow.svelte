@@ -12,7 +12,8 @@
 		setPluginEnabled,
 		savePluginSettings,
 		uninstallPlugin,
-		type InstalledPlugin
+		type InstalledPlugin,
+		type PluginSettingField
 	} from '$lib/plugins';
 	import { browse, type Listed } from '$lib/library';
 	import { audiosUrl, galleriesUrl, storiesUrl } from '$lib/routes';
@@ -54,6 +55,9 @@
 	let canBrowseStories = $derived(plugin.capabilities.includes('story:list'));
 	// The site has a login, and this device has none that works.
 	let needsLogin = $derived(plugin.login !== null && plugin.account?.status !== 'ok');
+	// On/off settings show as switches that save at once; the rest as a form.
+	let switches = $derived(plugin.settings.filter((field) => field.type === 'boolean'));
+	let textFields = $derived(plugin.settings.filter((field) => field.type !== 'boolean'));
 
 	$effect(() => {
 		values = Object.fromEntries(plugin.settingValues.map((entry) => [entry.key, entry.value]));
@@ -68,11 +72,29 @@
 	/** Saves the settings form. */
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
+		await saveValues();
+	}
+
+	/** Stores every setting's value as shown. */
+	async function saveValues() {
 		await savePluginSettings(
 			plugin.name,
 			Object.entries(values).map(([key, value]) => ({ key, value }))
 		);
 		message = 'Saved.';
+	}
+
+	/** Whether a switch setting is on: its stored value, else its default. */
+	function isOn(field: PluginSettingField): boolean {
+		const value = values[field.key];
+		if (value === undefined || value === '') return field.default === 'true';
+		return value === 'true';
+	}
+
+	/** Flips a switch setting and saves at once, as a switch promises. */
+	async function flip(field: PluginSettingField, on: boolean) {
+		values[field.key] = String(on);
+		await saveValues();
 	}
 
 	/** Stores a page of the plugin's catalog and opens where it shows. */
@@ -185,9 +207,28 @@
 					>
 				{/if}
 			</div>
-			{#if plugin.settings.length > 0}
+			{#if switches.length > 0}
+				<div class="grid max-w-3xl gap-x-6 gap-y-2 sm:grid-cols-2">
+					{#each switches as field (field.key)}
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<span class="flex min-w-0 flex-col">
+								<span class="truncate">{field.label}</span>
+								{#if field.description}
+									<span class="text-base-content/50 truncate text-xs">{field.description}</span>
+								{/if}
+							</span>
+							<Toggle
+								checked={isOn(field)}
+								onchange={(on) => flip(field, on)}
+								ariaLabel={field.label}
+							/>
+						</div>
+					{/each}
+				</div>
+			{/if}
+			{#if textFields.length > 0}
 				<form class="flex max-w-md flex-col gap-2" onsubmit={save}>
-					{#each plugin.settings as field (field.key)}
+					{#each textFields as field (field.key)}
 						<label class="flex flex-col gap-1 text-sm">
 							<span>{field.label}{field.required ? ' *' : ''}</span>
 							<input
