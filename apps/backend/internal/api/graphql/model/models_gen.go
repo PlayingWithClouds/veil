@@ -264,6 +264,7 @@ type Plugin struct {
 	Settings       []*PluginSettingField `json:"settings"`
 	SettingValues  []*PluginSettingValue `json:"settingValues"`
 	Login          *PluginLogin          `json:"login,omitempty"`
+	Sites          []*PluginSite         `json:"sites"`
 	Contributions  []*PluginContribution `json:"contributions"`
 	Account        *schema.Account       `json:"account,omitempty"`
 }
@@ -306,6 +307,14 @@ type PluginSettingValue struct {
 type PluginSettingValueInput struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type PluginSite struct {
+	Name         string  `json:"name"`
+	Host         string  `json:"host"`
+	IconURL      *string `json:"iconUrl,omitempty"`
+	Content      *string `json:"content,omitempty"`
+	OffByDefault bool    `json:"offByDefault"`
 }
 
 type PluginView struct {

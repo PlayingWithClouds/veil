@@ -6,7 +6,8 @@
 -->
 <script lang="ts">
 	import EyeSlashIcon from 'phosphor-svelte/lib/EyeSlashIcon';
-	import type { SitePlugin } from '$lib/plugins';
+	import SiteIcon from '$lib/components/scene/SiteIcon.svelte';
+	import { siteChoices, type SitePlugin } from '$lib/plugins';
 	import {
 		LENGTH_OPTIONS,
 		RESOLUTION_OPTIONS,
@@ -30,17 +31,20 @@
 
 	let params = $derived(url.searchParams);
 	let chosenSites = $derived(params.getAll('site'));
+	// Every KVS tube on its own; sites off by default show only here, so picking one asks it.
+	let choices = $derived(siteChoices(sites));
 </script>
 
-{#snippet pill(href: string, label: string, active: boolean)}
+{#snippet pill(href: string, label: string, active: boolean, iconUrl: string | null = null)}
 	{#if active}
 		<a
 			{href}
 			data-sveltekit-noscroll
 			data-sveltekit-keepfocus
 			aria-current="true"
-			class="border-base-content bg-base-content text-base-100 rounded-full border px-3 py-1 text-sm whitespace-nowrap"
+			class="border-base-content bg-base-content text-base-100 flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap"
 		>
+			{#if iconUrl}<SiteIcon {iconUrl} />{/if}
 			{label}
 		</a>
 	{:else}
@@ -48,8 +52,9 @@
 			{href}
 			data-sveltekit-noscroll
 			data-sveltekit-keepfocus
-			class="border-base-content/10 hover:bg-base-300 rounded-full border px-3 py-1 text-sm whitespace-nowrap"
+			class="border-base-content/10 hover:bg-base-300 flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap"
 		>
+			{#if iconUrl}<SiteIcon {iconUrl} />{/if}
 			{label}
 		</a>
 	{/if}
@@ -88,15 +93,16 @@
 
 	{@render group('Sort by', 'sort', SORT_OPTIONS)}
 
-	{#if sites.length > 0}
-		<div class="flex flex-col gap-2">
+	{#if choices.length > 0}
+		<div class="flex flex-col gap-2 md:col-span-2 xl:col-span-3">
 			<h3 class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Sites</h3>
 			<div class="flex flex-wrap gap-2">
-				{#each sites as site (site.name)}
+				{#each choices as choice (choice.value)}
 					{@render pill(
-						toggledListParam(url, 'site', site.name),
-						site.displayName ?? site.name,
-						chosenSites.includes(site.name)
+						toggledListParam(url, 'site', choice.value),
+						choice.label,
+						chosenSites.includes(choice.value),
+						choice.iconUrl
 					)}
 				{/each}
 			</div>

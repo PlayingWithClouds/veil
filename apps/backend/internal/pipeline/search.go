@@ -43,6 +43,39 @@ type SearchPage struct {
 	// Content, when set, asks only the sites carrying that kind of content
 	// (plugins.Content*), and a plugin carrying several only its sites of it.
 	Content string
+	// Sites, when set, are the hosts of the plugin's sites to ask
+	// (plugins.ListArgs.Sites); set per plugin from a filter's sources.
+	Sites []string
+}
+
+// sourcePicks is what a filter's sources pick: whole plugins by name, and
+// single sites of a plugin as "plugin/host" ("kvs/cloudbate.com").
+type sourcePicks struct {
+	whole map[string]bool
+	sites map[string][]string
+}
+
+// pickSources reads a filter's sources.
+func pickSources(sources []string) sourcePicks {
+	picks := sourcePicks{whole: map[string]bool{}, sites: map[string][]string{}}
+	for _, source := range sources {
+		plugin, host, isSite := strings.Cut(source, "/")
+		if !isSite {
+			picks.whole[plugin] = true
+			continue
+		}
+		picks.sites[plugin] = append(picks.sites[plugin], host)
+	}
+	for plugin := range picks.whole {
+		// The whole plugin is asked, so none of its sites are singled out.
+		delete(picks.sites, plugin)
+	}
+	return picks
+}
+
+// picked reports whether the plugin, or any of its sites, is picked.
+func (picks sourcePicks) picked(plugin string) bool {
+	return picks.whole[plugin] || len(picks.sites[plugin]) > 0
 }
 
 // storedAnswer is a site's answer to a search page as the cache keeps it.
@@ -70,16 +103,20 @@ func (p *Pipeline) SearchStream(ctx context.Context, entity plugins.MediaType, s
 		// Only exclusions: nothing to ask the sites for.
 		searchers = nil
 	}
+	var picks sourcePicks
 	if filter != nil && len(filter.Sources) > 0 {
+		picks = pickSources(filter.Sources)
 		searchers = slices.DeleteFunc(searchers, func(plugin *plugins.Plugin) bool {
-			return !slices.Contains(filter.Sources, plugin.Meta.Name)
+			return !picks.picked(plugin.Meta.Name)
 		})
 	}
 	answers := make(chan SearchBatch)
 	var group sync.WaitGroup
 	for _, plugin := range searchers {
+		pluginSearch := siteSearch
+		pluginSearch.Sites = picks.sites[plugin.Meta.Name]
 		group.Go(func() {
-			p.searchPage(ctx, plugin, entity, siteSearch, answers)
+			p.searchPage(ctx, plugin, entity, pluginSearch, answers)
 		})
 	}
 	go func() {
@@ -163,7 +200,7 @@ func (p *Pipeline) searchPage(ctx context.Context, plugin *plugins.Plugin, entit
 	searchContext, cancel := context.WithTimeout(ctx, searchTimeout)
 	defer cancel()
 	answer := storedAnswer{Refs: []schema.RecordRef{}}
-	args := plugins.ListArgs{Query: search.Query, Limit: search.Limit, Offset: search.Page * search.Limit, Content: search.Content}
+	args := plugins.ListArgs{Query: search.Query, Limit: search.Limit, Offset: search.Page * search.Limit, Content: search.Content, Sites: search.Sites}
 	result, err := p.runner.ListStream(searchContext, plugin, entity, args, func(items []plugins.DiscoveredItem) {
 		refs := p.storeListed(ctx, name, items)
 		answer.Refs = append(answer.Refs, refs...)
@@ -219,13 +256,17 @@ func (p *Pipeline) storeSearch(ctx context.Context, key string, answer storedAns
 }
 
 // searchKey names a site's answer to a search page; queries differing only
-// in case or spacing share it. A content kind asks a plugin carrying several
-// for less, so it's part of the name.
+// in case or spacing share it. A content kind or picked sites ask a plugin
+// serving several for less, so they're part of the name.
 func searchKey(entity plugins.MediaType, pluginName string, search SearchPage) string {
 	folded := strings.Join(strings.Fields(strings.ToLower(search.Query)), " ")
 	key := fmt.Sprintf("search|%s|%s|%d|%d|%s", entity, pluginName, search.Page, search.Limit, folded)
-	if search.Content == "" {
-		return key
+	if search.Content != "" {
+		key += "|" + search.Content
 	}
-	return key + "|" + search.Content
+	if len(search.Sites) > 0 {
+		sites := slices.Sorted(slices.Values(search.Sites))
+		key += "|sites:" + strings.Join(sites, ",")
+	}
+	return key
 }

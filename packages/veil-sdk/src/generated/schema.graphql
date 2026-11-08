@@ -1321,6 +1321,7 @@ type Plugin {
   settings: [PluginSettingField!]!
   settingValues: [PluginSettingValue!]!
   login: PluginLogin
+  sites: [PluginSite!]!
 }
 
 enum SegmentOrigin {
@@ -1426,6 +1427,14 @@ type PluginPackage {
   version: String!
   description: String
   installedVersion: String
+}
+
+type PluginSite {
+  name: String!
+  host: String!
+  iconUrl: String
+  content: String
+  offByDefault: Boolean!
 }
 
 type PluginLogin {

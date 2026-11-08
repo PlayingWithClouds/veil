@@ -121,6 +121,15 @@ func (b *conditionBuilder) bind(condition, name string, value any) {
 	b.vars[name] = value
 }
 
+// sourcePicked matches a "source" to a filter's "picked" value: a plugin by
+// name, or one site of a plugin as "plugin/host" ("kvs/cloudbate.com"),
+// matched by the host of the source's URL, with or without "www.".
+const sourcePicked = `("source"."plugin" = "picked".value
+	OR (instr("picked".value, '/') > 0
+		AND "source"."plugin" = substr("picked".value, 1, instr("picked".value, '/') - 1)
+		AND ("source"."url" LIKE '%://' || substr("picked".value, instr("picked".value, '/') + 1) || '/%'
+			OR "source"."url" LIKE '%://www.' || substr("picked".value, instr("picked".value, '/') + 1) || '/%')))`
+
 // addCredits filters by performers, studios, tags, categories and sites.
 func addCredits(builder *conditionBuilder, filter schema.Filter) {
 	if len(filter.PerformerIds) > 0 {
@@ -140,9 +149,9 @@ func addCredits(builder *conditionBuilder, filter schema.Filter) {
 		builder.bind(categoryCondition, "categoryIds", filter.CategoryIds)
 	}
 	if len(filter.Sources) > 0 {
-		builder.bind(`EXISTS (SELECT 1 FROM "Source" AS "source" WHERE "source"."subjectKind" = $mediaKind
-			AND "source"."subjectId" = "media"."id" AND "source"."deletedAt" IS NULL
-			AND "source"."plugin" IN (SELECT value FROM json_each($sources)))`, "sources", filter.Sources)
+		builder.bind(`EXISTS (SELECT 1 FROM "Source" AS "source", json_each($sources) AS "picked"
+			WHERE "source"."subjectKind" = $mediaKind AND "source"."subjectId" = "media"."id"
+			AND "source"."deletedAt" IS NULL AND `+sourcePicked+`)`, "sources", filter.Sources)
 	}
 }
 

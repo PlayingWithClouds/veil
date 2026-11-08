@@ -1169,6 +1169,7 @@ export interface Plugin {
     settings: PluginSettingField[]
     settingValues: PluginSettingValue[]
     login: (PluginLogin | null)
+    sites: PluginSite[]
     __typename: 'Plugin'
 }
 
@@ -1239,6 +1240,15 @@ export interface PluginPackage {
     description: (Scalars['String'] | null)
     installedVersion: (Scalars['String'] | null)
     __typename: 'PluginPackage'
+}
+
+export interface PluginSite {
+    name: Scalars['String']
+    host: Scalars['String']
+    iconUrl: (Scalars['String'] | null)
+    content: (Scalars['String'] | null)
+    offByDefault: Scalars['Boolean']
+    __typename: 'PluginSite'
 }
 
 export interface PluginLogin {
@@ -2668,6 +2678,7 @@ export interface PluginGenqlSelection{
     settings?: PluginSettingFieldGenqlSelection
     settingValues?: PluginSettingValueGenqlSelection
     login?: PluginLoginGenqlSelection
+    sites?: PluginSiteGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2745,6 +2756,16 @@ export interface PluginPackageGenqlSelection{
     version?: boolean | number
     description?: boolean | number
     installedVersion?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface PluginSiteGenqlSelection{
+    name?: boolean | number
+    host?: boolean | number
+    iconUrl?: boolean | number
+    content?: boolean | number
+    offByDefault?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3667,6 +3688,14 @@ export interface SavedFilterGenqlSelection{
     export const isPluginPackage = (obj?: { __typename?: any } | null): obj is PluginPackage => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isPluginPackage"')
       return PluginPackage_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const PluginSite_possibleTypes: string[] = ['PluginSite']
+    export const isPluginSite = (obj?: { __typename?: any } | null): obj is PluginSite => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isPluginSite"')
+      return PluginSite_possibleTypes.includes(obj.__typename)
     }
     
 

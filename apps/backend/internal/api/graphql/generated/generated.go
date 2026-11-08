@@ -802,6 +802,7 @@ type ComplexityRoot struct {
 		RequiresSolver func(childComplexity int) int
 		SettingValues  func(childComplexity int) int
 		Settings       func(childComplexity int) int
+		Sites          func(childComplexity int) int
 		Version        func(childComplexity int) int
 	}
 
@@ -838,6 +839,14 @@ type ComplexityRoot struct {
 	PluginSettingValue struct {
 		Key   func(childComplexity int) int
 		Value func(childComplexity int) int
+	}
+
+	PluginSite struct {
+		Content      func(childComplexity int) int
+		Host         func(childComplexity int) int
+		IconURL      func(childComplexity int) int
+		Name         func(childComplexity int) int
+		OffByDefault func(childComplexity int) int
 	}
 
 	PluginView struct {
@@ -5755,6 +5764,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Plugin.Settings(childComplexity), true
+	case "Plugin.sites":
+		if e.ComplexityRoot.Plugin.Sites == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Plugin.Sites(childComplexity), true
 	case "Plugin.version":
 		if e.ComplexityRoot.Plugin.Version == nil {
 			break
@@ -5886,6 +5901,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PluginSettingValue.Value(childComplexity), true
+
+	case "PluginSite.content":
+		if e.ComplexityRoot.PluginSite.Content == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginSite.Content(childComplexity), true
+	case "PluginSite.host":
+		if e.ComplexityRoot.PluginSite.Host == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginSite.Host(childComplexity), true
+	case "PluginSite.iconUrl":
+		if e.ComplexityRoot.PluginSite.IconURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginSite.IconURL(childComplexity), true
+	case "PluginSite.name":
+		if e.ComplexityRoot.PluginSite.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginSite.Name(childComplexity), true
+	case "PluginSite.offByDefault":
+		if e.ComplexityRoot.PluginSite.OffByDefault == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PluginSite.OffByDefault(childComplexity), true
 
 	case "PluginView.actions":
 		if e.ComplexityRoot.PluginView.Actions == nil {
@@ -10624,6 +10670,21 @@ type Plugin {
   settingValues: [PluginSettingValue!]!
   # How the site is logged into; null for sites without accounts.
   login: PluginLogin
+  # The separate sites the plugin serves (e.g. every KVS tube), so a search
+  # filter can pick them one by one as "plugin/host"; empty for one site.
+  sites: [PluginSite!]!
+}
+
+# One of the sites a plugin serves.
+type PluginSite {
+  name: String!
+  # Hostname without "www.", as the site's source URLs carry it.
+  host: String!
+  iconUrl: String
+  # videos, cam-shows, jav, …
+  content: String
+  # Left out of searches that don't pick it.
+  offByDefault: Boolean!
 }
 
 # A site's login: a form (loginAccount), imported browser cookies
@@ -12254,6 +12315,8 @@ func (ec *executionContext) childFields_Plugin(ctx context.Context, field graphq
 		return ec.fieldContext_Plugin_settingValues(ctx, field)
 	case "login":
 		return ec.fieldContext_Plugin_login(ctx, field)
+	case "sites":
+		return ec.fieldContext_Plugin_sites(ctx, field)
 	case "contributions":
 		return ec.fieldContext_Plugin_contributions(ctx, field)
 	case "account":
@@ -12330,6 +12393,22 @@ func (ec *executionContext) childFields_PluginSettingValue(ctx context.Context, 
 		return ec.fieldContext_PluginSettingValue_value(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PluginSettingValue", field.Name)
+}
+
+func (ec *executionContext) childFields_PluginSite(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_PluginSite_name(ctx, field)
+	case "host":
+		return ec.fieldContext_PluginSite_host(ctx, field)
+	case "iconUrl":
+		return ec.fieldContext_PluginSite_iconUrl(ctx, field)
+	case "content":
+		return ec.fieldContext_PluginSite_content(ctx, field)
+	case "offByDefault":
+		return ec.fieldContext_PluginSite_offByDefault(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PluginSite", field.Name)
 }
 
 func (ec *executionContext) childFields_PluginView(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -33799,6 +33878,38 @@ func (ec *executionContext) fieldContext_Plugin_login(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Plugin_sites(ctx context.Context, field graphql.CollectedField, obj *model.Plugin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Plugin_sites(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sites, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PluginSite) graphql.Marshaler {
+			return ec.marshalNPluginSite2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSiteᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Plugin_sites(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Plugin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PluginSite(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Plugin_contributions(ctx context.Context, field graphql.CollectedField, obj *model.Plugin) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -34330,6 +34441,121 @@ func (ec *executionContext) _PluginSettingValue_value(ctx context.Context, field
 }
 func (ec *executionContext) fieldContext_PluginSettingValue_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PluginSettingValue", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginSite_name(ctx context.Context, field graphql.CollectedField, obj *model.PluginSite) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginSite_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PluginSite_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginSite", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginSite_host(ctx context.Context, field graphql.CollectedField, obj *model.PluginSite) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginSite_host(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Host, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PluginSite_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginSite", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginSite_iconUrl(ctx context.Context, field graphql.CollectedField, obj *model.PluginSite) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginSite_iconUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IconURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PluginSite_iconUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginSite", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginSite_content(ctx context.Context, field graphql.CollectedField, obj *model.PluginSite) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginSite_content(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Content, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PluginSite_content(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginSite", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PluginSite_offByDefault(ctx context.Context, field graphql.CollectedField, obj *model.PluginSite) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PluginSite_offByDefault(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OffByDefault, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PluginSite_offByDefault(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PluginSite", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _PluginView_kind(ctx context.Context, field graphql.CollectedField, obj *model.PluginView) (ret graphql.Marshaler) {
@@ -55728,6 +55954,11 @@ func (ec *executionContext) _Plugin(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "login":
 			out.Values[i] = ec._Plugin_login(ctx, field, obj)
+		case "sites":
+			out.Values[i] = ec._Plugin_sites(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "contributions":
 			field := field
 
@@ -56049,6 +56280,59 @@ func (ec *executionContext) _PluginSettingValue(ctx context.Context, sel ast.Sel
 			}
 		case "value":
 			out.Values[i] = ec._PluginSettingValue_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pluginSiteImplementors = []string{"PluginSite"}
+
+func (ec *executionContext) _PluginSite(ctx context.Context, sel ast.SelectionSet, obj *model.PluginSite) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginSiteImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginSite")
+		case "name":
+			out.Values[i] = ec._PluginSite_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "host":
+			out.Values[i] = ec._PluginSite_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iconUrl":
+			out.Values[i] = ec._PluginSite_iconUrl(ctx, field, obj)
+		case "content":
+			out.Values[i] = ec._PluginSite_content(ctx, field, obj)
+		case "offByDefault":
+			out.Values[i] = ec._PluginSite_offByDefault(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -65128,6 +65412,32 @@ func (ec *executionContext) unmarshalNPluginSettingValueInput2ᚕᚖgithubᚗcom
 func (ec *executionContext) unmarshalNPluginSettingValueInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSettingValueInput(ctx context.Context, v any) (*model.PluginSettingValueInput, error) {
 	res, err := ec.unmarshalInputPluginSettingValueInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPluginSite2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSiteᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PluginSite) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPluginSite2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSite(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPluginSite2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginSite(ctx context.Context, sel ast.SelectionSet, v *model.PluginSite) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PluginSite(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPluginView2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐPluginView(ctx context.Context, sel ast.SelectionSet, v model.PluginView) graphql.Marshaler {

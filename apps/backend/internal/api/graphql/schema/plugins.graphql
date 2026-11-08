@@ -51,6 +51,21 @@ type Plugin {
   settingValues: [PluginSettingValue!]!
   # How the site is logged into; null for sites without accounts.
   login: PluginLogin
+  # The separate sites the plugin serves (e.g. every KVS tube), so a search
+  # filter can pick them one by one as "plugin/host"; empty for one site.
+  sites: [PluginSite!]!
+}
+
+# One of the sites a plugin serves.
+type PluginSite {
+  name: String!
+  # Hostname without "www.", as the site's source URLs carry it.
+  host: String!
+  iconUrl: String
+  # videos, cam-shows, jav, …
+  content: String
+  # Left out of searches that don't pick it.
+  offByDefault: Boolean!
 }
 
 # A site's login: a form (loginAccount), imported browser cookies

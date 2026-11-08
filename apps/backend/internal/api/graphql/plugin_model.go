@@ -32,7 +32,23 @@ func pluginToModel(plugin *plugins.Plugin, enabled, available bool, values map[s
 		Settings:       settingFields(plugin.Meta.Settings),
 		SettingValues:  settingValues(values),
 		Login:          loginOf(plugin),
+		Sites:          pluginSites(plugin.Meta.Sites),
 	}
+}
+
+// pluginSites describes the separate sites a plugin serves.
+func pluginSites(sites []plugins.PluginSite) []*model.PluginSite {
+	result := make([]*model.PluginSite, 0, len(sites))
+	for _, site := range sites {
+		result = append(result, &model.PluginSite{
+			Name:         site.Name,
+			Host:         site.Host,
+			IconURL:      optionalText(site.Icon),
+			Content:      optionalText(site.Content),
+			OffByDefault: site.OffByDefault,
+		})
+	}
+	return result
 }
 
 // loginOf describes how the plugin's site is logged into; nil without a login.

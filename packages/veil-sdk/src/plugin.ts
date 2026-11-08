@@ -130,6 +130,11 @@ function parseListArgs(args: Record<string, unknown> | undefined): ListArgs {
   if (typeof args?.offset === "number") parsed.offset = args.offset;
   const content = args?.content;
   if (isContentKind(content)) parsed.content = content;
+  const sites = args?.sites;
+  if (Array.isArray(sites)) {
+    const hosts = sites.filter((site): site is string => typeof site === "string" && site !== "");
+    if (hosts.length > 0) parsed.sites = hosts;
+  }
   return parsed;
 }
 

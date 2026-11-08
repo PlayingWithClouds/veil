@@ -1,5 +1,6 @@
 import { gqlClient } from '$lib/veil';
 import { pluginIconUrl } from '$lib/server';
+import { cacheUrl } from '$lib/img';
 
 /** A loaded plugin as cards and pickers need it. */
 export interface SitePlugin {
@@ -11,6 +12,18 @@ export interface SitePlugin {
 	available: boolean;
 	// Hostnames the plugin serves, used to label cards with their site.
 	domains: string[];
+	// The separate sites it serves (e.g. every KVS tube); empty for one site.
+	sites: PluginSiteRow[];
+}
+
+/** One of the sites a plugin serves. */
+export interface PluginSiteRow {
+	name: string;
+	// Hostname without "www.".
+	host: string;
+	iconUrl: string | null;
+	// Left out of searches that don't pick it.
+	offByDefault: boolean;
 }
 
 /** A plugin with everything the plugins page shows and edits. */
@@ -96,6 +109,7 @@ export async function fetchPlugins(): Promise<InstalledPlugin[]> {
 			enabled: true,
 			available: true,
 			domains: true,
+			sites: { name: true, host: true, iconUrl: true, offByDefault: true },
 			packageName: true,
 			localBuild: true,
 			description: true,
@@ -111,6 +125,7 @@ export async function fetchPlugins(): Promise<InstalledPlugin[]> {
 	return data.plugins.map((plugin) => ({
 		...plugin,
 		iconUrl: pluginIconUrl(plugin.iconUrl ?? null),
+		sites: plugin.sites.map((site) => ({ ...site, iconUrl: cacheUrl(site.iconUrl) })),
 		login: plugin.login ?? null,
 		account: plugin.account ?? null
 	}));
@@ -220,6 +235,34 @@ export async function uninstallPlugin(name: string): Promise<void> {
 export async function updatePlugins(): Promise<string[]> {
 	const data = await gqlClient.mutation({ updatePlugins: true });
 	return data.updatePlugins;
+}
+
+/** A site the search filter offers: a whole plugin, or one site of a plugin serving several. */
+export interface SiteChoice {
+	// The filter's site value: the plugin's name, or "plugin/host".
+	value: string;
+	label: string;
+	iconUrl: string | null;
+}
+
+/**
+ * The sites a filter offers, by name: each site of a plugin serving several
+ * (picked as "plugin/host"), the other plugins whole.
+ */
+export function siteChoices(plugins: SitePlugin[]): SiteChoice[] {
+	const choices = plugins.flatMap((plugin): SiteChoice[] => {
+		if (plugin.sites.length === 0) {
+			return [
+				{ value: plugin.name, label: plugin.displayName ?? plugin.name, iconUrl: plugin.iconUrl }
+			];
+		}
+		return plugin.sites.map((site) => ({
+			value: `${plugin.name}/${site.host}`,
+			label: site.name,
+			iconUrl: site.iconUrl
+		}));
+	});
+	return choices.toSorted((first, second) => first.label.localeCompare(second.label));
 }
 
 /** A plugin's display name, else its name. */

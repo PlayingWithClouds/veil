@@ -122,6 +122,11 @@ export interface PluginMeta {
    */
   content?: ContentKind[];
   /**
+   * The separate sites one plugin serves (e.g. every KVS tube), so a search
+   * filter can pick them one by one. Omitted for a plugin of one site.
+   */
+  sites?: PluginSite[];
+  /**
    * What the plugin adds beyond its capabilities: views, feeds, automation
    * triggers and actions, custom fields. Sources, lookups, streams, cams and
    * login follow from capabilities.
@@ -584,6 +589,24 @@ export interface ListArgs {
    * (meta.content) then searches only the sites of that one.
    */
   content?: ContentKind;
+  /**
+   * Hosts of the plugin's sites to ask (PluginSite.host), even ones off by
+   * default; omitted asks its usual sites.
+   */
+  sites?: string[];
+}
+
+/** One of the sites a plugin serves. */
+export interface PluginSite {
+  name: string;
+  /** The site's hostname without "www.", as its source URLs carry it. */
+  host: string;
+  /** URL of the site's logo or favicon. */
+  icon?: string;
+  /** The kind of content the site carries. */
+  content?: ContentKind;
+  /** Keeps the site out of searches that don't pick it. */
+  off_by_default?: boolean;
 }
 
 /** Result of every list capability. */

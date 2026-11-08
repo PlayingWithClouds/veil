@@ -135,6 +135,7 @@ func TestFilters(t *testing.T) {
 		"credits":   {Text: &credited},
 		"duration":  {MinDurationSeconds: &minimum},
 		"site":      {Sources: []string{"site"}},
+		"site host": {Sources: []string{"site/site.test"}},
 	} {
 		videos, err := library.Videos(ctx, MediaQuery{Filter: filter})
 		if err != nil || len(videos) != 1 {
@@ -147,6 +148,7 @@ func TestFilters(t *testing.T) {
 		"missing tag":  {IncludeTagIds: []string{video.Tags[0], "other"}},
 		"duration":     {MaxDurationSeconds: &maximum},
 		"other site":   {Sources: []string{"elsewhere"}},
+		"other host":   {Sources: []string{"site/other.test"}},
 		"phrase":       {Text: &missingPhrase},
 		"excluded":     {Text: &excluded},
 	} {

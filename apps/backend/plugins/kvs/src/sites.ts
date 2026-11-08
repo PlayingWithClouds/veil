@@ -5,7 +5,7 @@
 // blocks holding a video's credits and related list. Adding a KVS tube is
 // adding an entry to SITES.
 
-import type { ContentKind } from "@playingwithclouds/veil-sdk";
+import type { ContentKind, ListArgs, PluginSite } from "@playingwithclouds/veil-sdk";
 
 export interface SiteConfig {
   /** Short stable key; namespaces external ids as kvs-<key>-<video>. */
@@ -619,6 +619,32 @@ export function sitesCarrying(content: ContentKind | undefined): SiteConfig[] {
   const sites = enabledSites();
   if (!content) return sites;
   return sites.filter((site) => site.content === content);
+}
+
+/**
+ * The sites a list call spans: the ones args.sites picks by host (even
+ * those off by default), else the enabled ones; only those carrying
+ * args.content when set. Sites needing FlareSolverr drop out without one.
+ */
+export function sitesFor(args: ListArgs): SiteConfig[] {
+  const picked = args.sites ?? [];
+  if (picked.length === 0) return sitesCarrying(args.content);
+  const hosts = picked.map((host) => bareHost(host));
+  const solverAvailable = Boolean((process.env.FLARESOLVERR_URL ?? "").trim());
+  return SITES.filter((site) => hosts.includes(siteHost(site)))
+    .filter((site) => solverAvailable || !site.requiresSolver)
+    .filter((site) => !args.content || site.content === args.content);
+}
+
+/** The sites as meta.sites lists them, so a search filter can pick them one by one. */
+export function pluginSites(): PluginSite[] {
+  return SITES.map((site) => ({
+    name: site.name,
+    host: siteHost(site),
+    icon: `${site.origin}/favicon.ico`,
+    content: site.content,
+    off_by_default: site.enabledByDefault === false,
+  }));
 }
 
 /** Every kind of content the sites carry (meta.content). */

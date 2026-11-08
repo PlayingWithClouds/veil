@@ -304,6 +304,9 @@ type PluginMeta struct {
 	// constants), so a search can be aimed at the sites that have what the user
 	// looks for. Empty means what its list capabilities suggest (ContentKinds).
 	Content []string `json:"content,omitempty"`
+	// Sites are the separate sites one plugin serves (e.g. every KVS tube),
+	// so a search filter can pick them one by one. Empty for a plugin of one site.
+	Sites []PluginSite `json:"sites,omitempty"`
 	// Contributions are what the plugin adds beyond its capabilities: views,
 	// feeds, automation triggers and actions, custom fields. The backend
 	// derives the rest (sources, lookups, streams, cams, login) from
@@ -810,6 +813,22 @@ type ListArgs struct {
 	// Content is the kind of content a search asks for (Content* constants);
 	// a plugin carrying several kinds then searches only the sites of that one.
 	Content string `json:"content,omitempty"`
+	// Sites, when set, are the hosts of the plugin's sites (PluginSite.Host)
+	// to ask, even ones off by default; empty asks its usual sites.
+	Sites []string `json:"sites,omitempty"`
+}
+
+// PluginSite is one of the sites a plugin serves.
+type PluginSite struct {
+	Name string `json:"name"`
+	// Host is the site's hostname without "www.", as its source URLs carry it.
+	Host string `json:"host"`
+	// Icon is the URL of the site's logo or favicon.
+	Icon string `json:"icon,omitempty"`
+	// Content is the kind of content the site carries (Content* constants).
+	Content string `json:"content,omitempty"`
+	// OffByDefault keeps the site out of searches that don't pick it.
+	OffByDefault bool `json:"off_by_default,omitempty"`
 }
 
 // ItemsResult is returned by every find/list capability.

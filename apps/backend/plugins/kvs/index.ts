@@ -5,7 +5,7 @@ import { identifyPerformer } from "./src/identify.ts";
 import { sceneList } from "./src/scenes.ts";
 import { performerList, tagList } from "./src/catalog.ts";
 import { resolve } from "./src/resolve.ts";
-import { SITES, contentKinds, supportedDomains } from "./src/sites.ts";
+import { SITES, contentKinds, pluginSites, supportedDomains } from "./src/sites.ts";
 
 runPlugin({
   meta: {
@@ -27,6 +27,7 @@ runPlugin({
     // find/resolve derive the site from the URL, so every site routes here.
     domains: supportedDomains(),
     content: contentKinds(),
+    sites: pluginSites(),
     settings: [
       {
         key: "KVS_SITES",
