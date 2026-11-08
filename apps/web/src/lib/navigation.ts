@@ -7,6 +7,7 @@ import UsersIcon from 'phosphor-svelte/lib/UsersIcon';
 import FilmSlateIcon from 'phosphor-svelte/lib/FilmSlateIcon';
 import PlugsIcon from 'phosphor-svelte/lib/PlugsIcon';
 import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+import BookmarksSimpleIcon from 'phosphor-svelte/lib/BookmarksSimpleIcon';
 import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFourIcon';
 import VideoCameraIcon from 'phosphor-svelte/lib/VideoCameraIcon';
 import {
@@ -14,6 +15,7 @@ import {
 	camsUrl,
 	categoriesUrl,
 	galleriesUrl,
+	libraryUrl,
 	pluginsUrl,
 	storiesUrl
 } from '$lib/routes';
@@ -43,6 +45,7 @@ export const navLinks: NavLink[] = [
 	{ label: 'Stories', icon: BookOpenTextIcon, href: storiesUrl(), group: 'Watch' },
 	{ label: 'Performers', icon: UsersIcon, href: '/performers', group: 'Library' },
 	{ label: 'Studios', icon: FilmSlateIcon, href: '/studios', group: 'Library' },
+	{ label: 'Library', icon: BookmarksSimpleIcon, href: libraryUrl(), group: 'You' },
 	{ label: 'Taste', icon: HeartIcon, href: '/taste', group: 'You' },
 	{ label: 'Plugins', icon: PlugsIcon, href: pluginsUrl(), group: 'You' }
 ];

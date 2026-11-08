@@ -1,8 +1,12 @@
 // The user's own organisation: collections and the built-in watchlist
 // (categories are in categories.ts).
-import type { Collection, FieldsSelection } from '@playingwithclouds/veil-sdk/generated';
+import type {
+	Collection,
+	CollectionKind,
+	FieldsSelection
+} from '@playingwithclouds/veil-sdk/generated';
 import { gqlClient } from '$lib/veil';
-import { VIDEO_CARD, type VideoCardRow } from '$lib/library';
+import { GALLERY_CARD, VIDEO_CARD, type GalleryCardRow, type VideoCardRow } from '$lib/library';
 
 /** The collection fields its tile shows; the stacked covers come from its items. */
 const COLLECTION_TILE = { id: true, name: true, cover: { uri: true }, itemCount: true } as const;
@@ -77,4 +81,91 @@ export async function addToWatchlist(videoId: string): Promise<void> {
 			id: true
 		}
 	});
+}
+
+/** What a collection's page shows of it, with its videos and galleries. */
+const COLLECTION_PAGE = {
+	id: true,
+	name: true,
+	kind: true,
+	details: true,
+	itemCount: true,
+	items: {
+		record: {
+			on_Video: { __typename: true, ...VIDEO_CARD },
+			on_Gallery: { __typename: true, ...GALLERY_CARD }
+		}
+	}
+} as const;
+
+/** One video or gallery in a collection; other kinds of records aren't shown. */
+export type CollectionEntry =
+	{ kind: 'video'; video: VideoCardRow } | { kind: 'gallery'; gallery: GalleryCardRow };
+
+/** A collection with its videos and galleries, in its order. */
+export interface CollectionPage {
+	id: string;
+	name: string;
+	kind: CollectionKind;
+	details: string | null;
+	itemCount: number;
+	entries: CollectionEntry[];
+}
+
+type CollectionPageRow = FieldsSelection<Collection, typeof COLLECTION_PAGE>;
+
+/** A collection by id, with its items; null when it's gone. */
+export async function fetchCollection(id: string): Promise<CollectionPage | null> {
+	const data = await gqlClient.query({ collection: { __args: { id }, ...COLLECTION_PAGE } });
+	if (!data.collection) return null;
+	return toCollectionPage(data.collection);
+}
+
+/** The watchlist or the queue, with its items. */
+export async function fetchBuiltInCollection(kind: CollectionKind): Promise<CollectionPage> {
+	const data = await gqlClient.query({
+		builtInCollection: { __args: { kind }, ...COLLECTION_PAGE }
+	});
+	return toCollectionPage(data.builtInCollection);
+}
+
+/** A collection as its page shows it: only the videos and galleries of its items. */
+function toCollectionPage(collection: CollectionPageRow): CollectionPage {
+	return {
+		id: collection.id,
+		name: collection.name,
+		kind: collection.kind,
+		details: collection.details ?? null,
+		itemCount: collection.itemCount,
+		entries: collection.items.flatMap((item): CollectionEntry[] => {
+			const record = item.record;
+			if (record?.__typename === 'Video') return [{ kind: 'video', video: record }];
+			if (record?.__typename === 'Gallery') return [{ kind: 'gallery', gallery: record }];
+			return [];
+		})
+	};
+}
+
+/** Takes one video or gallery out of a collection. */
+export async function removeFromCollection(collectionId: string, entry: CollectionEntry) {
+	await gqlClient.mutation({
+		removeFromCollection: {
+			__args: { collectionId, subjects: [{ kind: entry.kind, id: entryId(entry) }] },
+			id: true
+		}
+	});
+}
+
+/** The id of the record an entry shows. */
+export function entryId(entry: CollectionEntry): string {
+	if (entry.kind === 'video') return entry.video.id;
+	return entry.gallery.id;
+}
+
+/** Creates an empty collection and returns its id. */
+export async function createCollection(name: string): Promise<string> {
+	const data = await gqlClient.mutation({
+		createCollection: { __args: { name }, id: true }
+	});
+	return data.createCollection.id;
 }

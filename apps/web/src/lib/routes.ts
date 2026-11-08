@@ -102,6 +102,15 @@ export function categoryUrl(id: string, kind?: string): string {
 	return `${path}?${new URLSearchParams({ kind })}`;
 }
 
+/** The library's tabs: the watchlist, the queue, the collections and the downloads. */
+export type LibraryTab = 'watchlist' | 'queue' | 'collections' | 'downloads';
+
+/** The user's library, on one of its tabs (the watchlist when omitted). */
+export function libraryUrl(tab?: LibraryTab): string {
+	if (!tab || tab === 'watchlist') return '/library';
+	return `/library?${new URLSearchParams({ tab })}`;
+}
+
 /** One collection's page. */
 export function collectionUrl(id: string): string {
 	return `/collections/${encodeURIComponent(id)}`;
