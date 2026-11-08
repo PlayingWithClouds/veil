@@ -47,6 +47,11 @@ export class SearchLayout<Item extends Identified> {
 	/** Takes each site's preference score; sites without one count as average. */
 	constructor(private preference: ReadonlyMap<string, number> = new Map()) {}
 
+	/** Takes preference scores that arrived after the search started; places already given stay. */
+	prefer(preference: ReadonlyMap<string, number>) {
+		this.preference = preference;
+	}
+
 	/** Whether an item is already on screen or waiting for its place. */
 	has(id: string): boolean {
 		return this.seen.has(id);

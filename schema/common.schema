@@ -91,6 +91,7 @@ model Asset {
 /// Where a record came from: one entry per site it was scraped or merged
 /// from. Merging two records moves their sources onto the survivor.
 @index(fields: ["plugin", "externalId"], unique: true)
+@index(fields: ["subjectKind", "subjectId"])
 model Source extends Entity {
   10 subjectKind: RecordKind
   11 subjectId: uuid

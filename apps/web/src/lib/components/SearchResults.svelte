@@ -172,9 +172,11 @@
 		resetShown('search');
 		logEvent({ kind: 'search', data: { text: searchText } });
 		const started = generation;
-		const preference = await sitePreferences();
-		if (started !== generation) return;
-		layout = new SearchLayout<VideoCardRow>(preference);
+		layout = new SearchLayout<VideoCardRow>();
+		// The sites are asked at once; their preference applies from when it arrives.
+		void sitePreferences().then((preference) => {
+			if (started === generation) layout.prefer(preference);
+		});
 		section = sectionSize();
 		videos = [];
 		rows = [];
