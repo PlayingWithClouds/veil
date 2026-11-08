@@ -58,8 +58,6 @@ export interface SiteConfig {
   maxTags?: number;
   /** The kind of content the site carries; a search asking for another kind skips it. */
   content: ContentKind;
-  /** Whether search and browse span the site when KVS_SITES is empty; true when absent. */
-  enabledByDefault?: boolean;
 }
 
 /** Path prefixes most KVS themes use; sites override what differs. */
@@ -541,22 +539,6 @@ export const SITES: SiteConfig[] = [
     camPlatforms: CAM_PLATFORMS,
     content: "cam-shows",
   }),
-  kvsSite({
-    ...STOCK_THEME,
-    key: "scatporno",
-    name: "ScatPorno",
-    origin: "https://scatporno.org",
-    // Video pages are /porno-scat/<slug>, with or without a trailing slash;
-    // older ones end in ".html" (/porno-scat/18740-<slug>.html).
-    videoPath: /^\/porno-scat\/([a-z0-9][a-z0-9-]*)(?:\.html)?(?:\/|$)/,
-    // Credits are the tags row above the player; models, when a video has any, sit beside it.
-    infoSelector: ".top-options",
-    // Most videos are download pages without a player (a file host sells the
-    // file), so they yield no downloads; the live check picks a playable hit.
-    membersOnlyVideos: true,
-    // A niche site: off until the user switches it on.
-    enabledByDefault: false,
-  }),
 ];
 
 /** The hostname without a leading "www.". */
@@ -600,11 +582,11 @@ export function siteByKey(key: string): SiteConfig | undefined {
 
 /**
  * The sites search and browse span: KVS_SITES (comma-separated keys or
- * hosts) when set, else every site not marked `enabledByDefault: false`.
- * Sites needing FlareSolverr drop out when no solver is configured.
+ * hosts) when set, else every site. Sites needing FlareSolverr drop out
+ * when no solver is configured.
  */
 export function enabledSites(): SiteConfig[] {
-  let sites = SITES.filter((site) => site.enabledByDefault !== false);
+  let sites = SITES;
   const selection = (process.env.KVS_SITES ?? "").trim();
   if (selection) {
     const wanted = selection.split(",").map((entry) => bareHost(entry.trim()));
@@ -623,7 +605,7 @@ export function sitesCarrying(content: ContentKind | undefined): SiteConfig[] {
 
 /**
  * The sites a list call spans: the ones args.sites picks by host (even
- * those off by default), else the enabled ones; only those carrying
+ * those KVS_SITES leaves out), else the enabled ones; only those carrying
  * args.content when set. Sites needing FlareSolverr drop out without one.
  */
 export function sitesFor(args: ListArgs): SiteConfig[] {
@@ -643,7 +625,6 @@ export function pluginSites(): PluginSite[] {
     host: siteHost(site),
     icon: `${site.origin}/favicon.ico`,
     content: site.content,
-    off_by_default: site.enabledByDefault === false,
   }));
 }
 
