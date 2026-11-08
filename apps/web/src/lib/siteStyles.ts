@@ -1,5 +1,5 @@
 // Styles of video the search filter can pick all sites of at once: cams,
-// studio productions, amateur uploads, JAV, fetish. A site is named by its
+// studio productions, amateur uploads, exotic, fetish. A site is named by its
 // filter value (siteChoices: a plugin's name, or "plugin/host" for one site
 // of a plugin serving several). "Tubes" is every site no other style claims.
 import type { SiteChoice } from '$lib/plugins';
