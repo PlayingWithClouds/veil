@@ -49,7 +49,8 @@ const STYLES: { key: string; label: string; sites: string[] }[] = [
 			'kvs/xozilla.com'
 		]
 	},
-	{ key: 'jav', label: 'JAV', sites: ['missav', 'kvs/javbangers.com'] },
+	// Ebony, Latina, Asian and the like; only JAV sites are installed so far.
+	{ key: 'exotic', label: 'Exotic', sites: ['missav', 'kvs/javbangers.com'] },
 	{
 		key: 'fetish',
 		label: 'Fetish',
