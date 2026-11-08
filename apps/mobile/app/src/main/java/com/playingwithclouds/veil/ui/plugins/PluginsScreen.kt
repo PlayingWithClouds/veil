@@ -32,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.PluginInfo
 import com.playingwithclouds.veil.data.PluginPackage
-import com.playingwithclouds.veil.data.PluginSettingField
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.ConfirmDialog
 import com.playingwithclouds.veil.ui.components.EmptyMessage
@@ -206,14 +205,6 @@ private fun PluginSettingsDialog(plugin: PluginInfo, onSave: (Map<String, String
     ) {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
             for (field in plugin.settings) {
-                if (field.type == "boolean") {
-                    SettingSwitch(
-                        field = field,
-                        checked = values.value[field.key] == "true",
-                        onCheckedChange = { on -> values.value = values.value + (field.key to on.toString()) },
-                    )
-                    continue
-                }
                 VeilTextField(
                     value = values.value[field.key].orEmpty(),
                     onValueChange = { text -> values.value = values.value + (field.key to text) },
@@ -223,20 +214,6 @@ private fun PluginSettingsDialog(plugin: PluginInfo, onSave: (Map<String, String
                 )
             }
         }
-    }
-}
-
-/** An on/off setting: its label and description beside a switch. */
-@Composable
-private fun SettingSwitch(field: PluginSettingField, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
-        Column(Modifier.weight(1f)) {
-            Text(field.label, style = MaterialTheme.typography.bodyMedium)
-            field.description?.let { description ->
-                Text(description, style = MaterialTheme.typography.bodySmall, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        VeilSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
