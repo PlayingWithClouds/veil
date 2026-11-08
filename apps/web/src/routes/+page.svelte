@@ -10,6 +10,7 @@
 	site's catalog.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import SceneCard from '$lib/components/SceneCard.svelte';
@@ -65,9 +66,13 @@
 		return 'Latest videos';
 	});
 
-	// A new search or filter starts the grid over.
+	// A new search or filter starts the grid over. Only those rerun it:
+	// loading reads and writes the grid's state, which would restart it in a loop.
 	$effect(() => {
-		void loadFirst(query, JSON.parse(filterKey), savedId);
+		const searchText = query;
+		const filter = JSON.parse(filterKey);
+		const savedFilterId = savedId;
+		untrack(() => void loadFirst(searchText, filter, savedFilterId));
 	});
 
 	/** How long a card waits before rising in, so a page of cards cascades. */
