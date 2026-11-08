@@ -16,7 +16,7 @@ const LIVE_TIMEOUT_MS = 90_000;
 // Cloudflare answers Bun's TLS fingerprint with a challenge on these sites,
 // while the backend's embedded (Go) runtime gets through; they are checked
 // with the EmbeddedBundlesLive test instead.
-const BUN_BLOCKED = new Set(["fapnado"]);
+const BUN_BLOCKED = new Set(["fapnado", "streamleak"]);
 
 /** Runs `body` with KVS_SITES limited to one site. */
 async function withSite<T>(key: string, body: () => Promise<T>): Promise<T> {

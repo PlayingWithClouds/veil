@@ -46,7 +46,7 @@ describe("site config", () => {
 
   test("a search for cam shows spans only the cam archives", () => {
     const camSites = sitesCarrying("cam-shows").map((entry) => entry.key);
-    expect(camSites.sort()).toEqual(["camstreams", "cloudbate"]);
+    expect(camSites.sort()).toEqual(["camgirlsleak", "camstreams", "cloudbate", "streamleak"]);
     expect(sitesCarrying("videos").some((entry) => entry.key === "cloudbate")).toBe(false);
     expect(sitesCarrying(undefined).length).toBe(enabledSites().length);
     expect(contentKinds().sort()).toEqual(["cam-shows", "videos"]);
@@ -447,6 +447,8 @@ describe("cam show archives", () => {
   test("a category naming a cam site credits it as the studio", () => {
     expect(camPlatformStudio(site("camstreams"), ["MyFreeCams", "fingering"])).toEqual({ name: "MyFreeCams" });
     expect(camPlatformStudio(site("cloudbate"), ["girls", "chaturbate"])).toEqual({ name: "Chaturbate" });
+    expect(camPlatformStudio(site("streamleak"), ["Chaturbate-2025-01"])).toEqual({ name: "Chaturbate" });
+    expect(camPlatformStudio(site("streamleak"), ["Myfreecams-1"])).toEqual({ name: "MyFreeCams" });
     expect(camPlatformStudio(site("camstreams"), ["fingering"])).toBeUndefined();
     expect(camPlatformStudio(site("okxxx"), ["Chaturbate"])).toBeUndefined();
   });

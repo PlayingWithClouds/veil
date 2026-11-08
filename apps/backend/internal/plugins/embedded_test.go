@@ -213,6 +213,8 @@ const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 
 // TestEmbeddedBundlesLive runs the real plugin bundles against the live sites.
 // Opt-in: VEIL_EMBEDDED_BUNDLES=<dir from apps/backend/scripts/bundle-plugins.ts>.
+// VEIL_EMBEDDED_ENV optionally gives plugin settings as space-separated
+// NAME=value pairs, e.g. "KVS_SITES=streamleak".
 func TestEmbeddedBundlesLive(t *testing.T) {
 	bundles := os.Getenv("VEIL_EMBEDDED_BUNDLES")
 	if bundles == "" {
@@ -225,7 +227,7 @@ func TestEmbeddedBundlesLive(t *testing.T) {
 	netdns.Configure(os.Getenv("DNS_SERVERS"), "")
 	runner := NewEmbeddedRunner()
 	// The test is the owner here: FaceDigger needs its agreement accepted in settings.
-	runner.SetEnv([]string{"FACEDIGGER_ACCEPT_AGREEMENT=true"})
+	runner.SetEnv(append([]string{"FACEDIGGER_ACCEPT_AGREEMENT=true"}, strings.Fields(os.Getenv("VEIL_EMBEDDED_ENV"))...))
 	entries, err := os.ReadDir(bundles)
 	if err != nil {
 		t.Fatal(err)
@@ -383,6 +385,10 @@ func compareWithBun(t *testing.T, ctx context.Context, plugin *Plugin, entity Me
 	source := &Plugin{Dir: sourceDir, EntryPoint: "index.ts", Meta: plugin.Meta}
 
 	bunItems, err := bun.List(ctx, source, entity, ListArgs{Query: query, Limit: 5})
+	if blockedForBun(err) {
+		t.Logf("skipping the Bun comparison: %v", err)
+		return
+	}
 	if err != nil {
 		t.Fatalf("bun list: %v", err)
 	}
@@ -398,12 +404,22 @@ func compareWithBun(t *testing.T, ctx context.Context, plugin *Plugin, entity Me
 	}
 
 	bunResults, err := bun.Find(ctx, source, entity, items.Items[0].SourceURL)
+	if blockedForBun(err) {
+		t.Logf("skipping the Bun find comparison: %v", err)
+		return
+	}
 	if err != nil {
 		t.Fatalf("bun find: %v", err)
 	}
 	if got, want := mustJSON(t, results), mustJSON(t, bunResults); got != want {
 		t.Errorf("find differs\n bun:      %s\n embedded: %s", want, got)
 	}
+}
+
+// blockedForBun reports whether a site refused Bun's fetch with a 403, which
+// Cloudflare does to Bun's TLS fingerprint on some sites while Go's gets through.
+func blockedForBun(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "HTTP 403")
 }
 
 // mustJSON marshals value for comparison.

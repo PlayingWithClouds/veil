@@ -31,7 +31,7 @@ runPlugin({
       {
         key: "KVS_SITES",
         label: "Sites",
-        description: `Comma-separated sites that search and browse span (keys or hosts, e.g. "okxxx, analdin.com"). Empty = all: ${SITES.map((site) => site.key).join(", ")}. Opening and playing videos works on every site regardless.`,
+        description: `Comma-separated sites that search and browse span (keys or hosts, e.g. "okxxx, analdin.com"). Empty = every site except ${SITES.filter((site) => site.enabledByDefault === false).map((site) => site.key).join(", ")}, which are off unless named. Available: ${SITES.map((site) => site.key).join(", ")}. Opening and playing videos works on every site regardless.`,
         type: "string",
         default: "",
       },

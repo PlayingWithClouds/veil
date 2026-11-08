@@ -27,6 +27,12 @@ import {
 
 const MAX_RELATED = 40;
 
+/** The numbering archives append to a cam site's category: "-1", "-2025-01". */
+const ARCHIVE_BATCH_SUFFIX = /-\d[\d-]*$/;
+
+/** The start of a credit item that lists models: "Models: …". */
+const MODELS_LABEL = /^\s*Models?\s*:/i;
+
 /** What a video page's credit block links: models, tags and its channel. */
 interface Credits {
   performers: ScenePerformer[];
@@ -340,9 +346,23 @@ function channelUnder(site: SiteConfig, anchors: HTMLElement[], prefix: string):
   return undefined;
 }
 
-/** Performers named by JSON-LD actors when the credit block links none. */
+/** Performers named by JSON-LD actors, else by the unlinked names under the credit block's "Models:" label. */
 function fallbackPerformers(page: VideoPage): ScenePerformer[] {
-  return uniqueNames(jsonLdNames(page.videoObject.actor)).map((name, order) => ({ name, order }));
+  let names = jsonLdNames(page.videoObject.actor);
+  if (names.length === 0) names = labelledModelNames(page);
+  return uniqueNames(names).map((name, order) => ({ name, order }));
+}
+
+/**
+ * The model names a credit block lists under "Models:" without linking them:
+ * camgirlsleak.com links only models it has a page for, the rest are plain
+ * `<a>` tags without href.
+ */
+function labelledModelNames(page: VideoPage): string[] {
+  const items = page.info.flatMap((block) => block.querySelectorAll(".item"));
+  return items
+    .filter((item) => MODELS_LABEL.test(item.text))
+    .flatMap((item) => item.querySelectorAll("a").map((anchor) => entityName(anchor)));
 }
 
 /** Tags from JSON-LD, kt_player's flashvars or video:tag meta when the credit block links none. */
@@ -366,11 +386,13 @@ function namedStudio(page: VideoPage): StudioRef | undefined {
 
 /**
  * The cam site a recorded show came from, when the site lists its
- * `camPlatforms` and one of the video's categories or tags names it.
+ * `camPlatforms` and one of the video's categories or tags names it, plain or
+ * as an archive batch ("Chaturbate-2025-01", "Myfreecams-1").
  */
 export function camPlatformStudio(site: SiteConfig, tags: string[]): StudioRef | undefined {
+  const names = tags.map((tag) => tag.toLowerCase().replace(ARCHIVE_BATCH_SUFFIX, ""));
   for (const platform of site.camPlatforms ?? []) {
-    if (tags.some((tag) => tag.toLowerCase() === platform.toLowerCase())) return { name: platform };
+    if (names.includes(platform.toLowerCase())) return { name: platform };
   }
   return undefined;
 }

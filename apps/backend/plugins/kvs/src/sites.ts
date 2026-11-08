@@ -58,6 +58,8 @@ export interface SiteConfig {
   maxTags?: number;
   /** The kind of content the site carries; a search asking for another kind skips it. */
   content: ContentKind;
+  /** Whether search and browse span the site when KVS_SITES is empty; true when absent. */
+  enabledByDefault?: boolean;
 }
 
 /** Path prefixes most KVS themes use; sites override what differs. */
@@ -517,6 +519,44 @@ export const SITES: SiteConfig[] = [
     // Pages list up to ~80 keywords such as "<model> nude" after the category.
     maxTags: 5,
   }),
+  // stream-leak.com and camgirlsleak.com are two catalogs of one operator on
+  // the stock theme: separate video ids and uploads (the same models appear
+  // on both), so they are two sites, not mirrors. Videos are cam recordings
+  // filed under batch categories such as "Chaturbate-2025-01".
+  kvsSite({
+    ...STOCK_THEME,
+    key: "streamleak",
+    name: "Stream-Leak",
+    origin: "https://stream-leak.com",
+    videoPath: /^\/videos\/(\d+)\//,
+    camPlatforms: CAM_PLATFORMS,
+    content: "cam-shows",
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "camgirlsleak",
+    name: "CamGirlsLeak",
+    origin: "https://camgirlsleak.com",
+    videoPath: /^\/videos\/(\d+)\//,
+    camPlatforms: CAM_PLATFORMS,
+    content: "cam-shows",
+  }),
+  kvsSite({
+    ...STOCK_THEME,
+    key: "scatporno",
+    name: "ScatPorno",
+    origin: "https://scatporno.org",
+    // Video pages are /porno-scat/<slug>, with or without a trailing slash;
+    // older ones end in ".html" (/porno-scat/18740-<slug>.html).
+    videoPath: /^\/porno-scat\/([a-z0-9][a-z0-9-]*)(?:\.html)?(?:\/|$)/,
+    // Credits are the tags row above the player; models, when a video has any, sit beside it.
+    infoSelector: ".top-options",
+    // Most videos are download pages without a player (a file host sells the
+    // file), so they yield no downloads; the live check picks a playable hit.
+    membersOnlyVideos: true,
+    // A niche site: off until the user switches it on.
+    enabledByDefault: false,
+  }),
 ];
 
 /** The hostname without a leading "www.". */
@@ -560,11 +600,11 @@ export function siteByKey(key: string): SiteConfig | undefined {
 
 /**
  * The sites search and browse span: KVS_SITES (comma-separated keys or
- * hosts) when set, else every site. Sites needing FlareSolverr drop out when
- * no solver is configured.
+ * hosts) when set, else every site not marked `enabledByDefault: false`.
+ * Sites needing FlareSolverr drop out when no solver is configured.
  */
 export function enabledSites(): SiteConfig[] {
-  let sites = SITES;
+  let sites = SITES.filter((site) => site.enabledByDefault !== false);
   const selection = (process.env.KVS_SITES ?? "").trim();
   if (selection) {
     const wanted = selection.split(",").map((entry) => bareHost(entry.trim()));
