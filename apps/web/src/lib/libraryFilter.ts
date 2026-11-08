@@ -166,6 +166,25 @@ export function toggledListParam(url: URL, name: string, value: string): string 
 	return pathAndQuery(next);
 }
 
+/**
+ * The URL with every value of a group in a multi-value param, or with all of
+ * them taken out when every one is there already.
+ */
+export function toggledListGroup(url: URL, name: string, group: string[]): string {
+	const next = new URL(url);
+	const values = next.searchParams.getAll(name);
+	const allThere = group.every((value) => values.includes(value));
+	next.searchParams.delete(name);
+	let kept = values.filter((value) => !group.includes(value));
+	if (!allThere) {
+		kept = [...kept, ...group];
+	}
+	for (const keptValue of kept) {
+		next.searchParams.append(name, keptValue);
+	}
+	return pathAndQuery(next);
+}
+
 /** The URL with a tag moved between required and excluded (or added excluded). */
 export function excludedTagUrl(url: URL, tagId: string): string {
 	const next = new URL(url);

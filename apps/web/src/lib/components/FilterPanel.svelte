@@ -1,13 +1,14 @@
 <!--
 	The library grid's advanced filters, opened from the chip row: length,
-	quality, the user's rating, unwatched and favourites, sites, sort, and tags
-	to hide. Every choice is a link that changes the URL (libraryFilter), so the
+	quality, the user's rating, unwatched and favourites, sites (all of a
+	style at once, or one by one, with their logos), sort, and tags to hide. Every choice is a link that changes the URL (libraryFilter), so the
 	grid reloads from it.
 -->
 <script lang="ts">
 	import EyeSlashIcon from 'phosphor-svelte/lib/EyeSlashIcon';
 	import SiteIcon from '$lib/components/scene/SiteIcon.svelte';
 	import { siteChoices, type SitePlugin } from '$lib/plugins';
+	import { siteStyles, type SiteStyle } from '$lib/siteStyles';
 	import {
 		LENGTH_OPTIONS,
 		RESOLUTION_OPTIONS,
@@ -15,6 +16,7 @@
 		SORT_OPTIONS,
 		toggledParam,
 		toggledListParam,
+		toggledListGroup,
 		excludedTagUrl,
 		type FilterOption,
 		type TagCountRow
@@ -31,8 +33,14 @@
 
 	let params = $derived(url.searchParams);
 	let chosenSites = $derived(params.getAll('site'));
-	// Every KVS tube on its own; sites off by default show only here, so picking one asks it.
+	// Every KVS tube on its own, beside the other plugins.
 	let choices = $derived(siteChoices(sites));
+	let styles = $derived(siteStyles(choices));
+
+	/** Whether every site of a style is picked. */
+	function styleOn(style: SiteStyle): boolean {
+		return style.sites.every((site) => chosenSites.includes(site));
+	}
 </script>
 
 {#snippet pill(href: string, label: string, active: boolean, iconUrl: string | null = null)}
@@ -96,6 +104,15 @@
 	{#if choices.length > 0}
 		<div class="flex flex-col gap-2 md:col-span-2 xl:col-span-3">
 			<h3 class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Sites</h3>
+			<div class="flex flex-wrap gap-2" aria-label="Styles">
+				{#each styles as style (style.key)}
+					{@render pill(
+						toggledListGroup(url, 'site', style.sites),
+						`${style.label} · ${style.sites.length}`,
+						styleOn(style)
+					)}
+				{/each}
+			</div>
 			<div class="flex flex-wrap gap-2">
 				{#each choices as choice (choice.value)}
 					{@render pill(
