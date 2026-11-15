@@ -1,5 +1,5 @@
 <!--
-	Galleries: the top recommended galleries in a spotlight, recently viewed,
+	Galleries: the top recommended galleries as a row of large cards, recently viewed,
 	favourites, newest releases, performers and the most common tags, then the
 	rest of an endless feed (recommended, then the rest of the library); a top
 	bar search asks the gallery sites.
