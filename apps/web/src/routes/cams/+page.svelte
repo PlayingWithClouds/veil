@@ -1,6 +1,6 @@
 <!--
-	Cams: the top recommended rooms in a spotlight (one plays, the rest are
-	listed beside it), the user's rooms (being recorded, followed or
+	Cams: the top recommended rooms as a row of large cards (the first one's
+	picture lights the glow), the user's rooms (being recorded, followed or
 	auto-recorded) as round pictures, more live rooms picked by their taste
 	and finished recordings, then every room
 	live now on the cam sites, sorted by viewers or show start and narrowed by
@@ -18,7 +18,6 @@
 	import Shelf from '$lib/components/Shelf.svelte';
 	import CamAvatar from '$lib/components/CamAvatar.svelte';
 	import CamCard from '$lib/components/CamCard.svelte';
-	import CamSpotlight from '$lib/components/CamSpotlight.svelte';
 	import Segmented from '$lib/components/Segmented.svelte';
 	import SceneCard from '$lib/components/SceneCard.svelte';
 	import ScrollSentinel from '$lib/components/ScrollSentinel.svelte';
@@ -40,9 +39,13 @@
 	import type { VideoCardRow } from '$lib/library';
 	import { sites } from '$lib/stores/sites';
 	import { camUrl, camsUrl, videoUrl } from '$lib/routes';
+	import { showAmbientGlow } from '$lib/ambientGlow.svelte';
+	import { cacheUrl } from '$lib/img';
 
 	const PAGE_SIZE = 48;
 	const CARD_WIDTH = 220;
+	// The top picks' cards: about three across a desktop window.
+	const SPOTLIGHT_WIDTH = 440;
 	const VIDEO_WIDTH = 280;
 	// The live grid's columns at most, however wide the window; its gap (gap-x-4).
 	const MAX_COLUMNS = 5;
@@ -50,7 +53,7 @@
 	// Cards at least CARD_WIDTH wide, and never narrower than a fifth of the row.
 	const GRID_COLUMNS = `repeat(auto-fill, minmax(max(${CARD_WIDTH}px, calc((100% - ${(MAX_COLUMNS - 1) * COLUMN_GAP}px) / ${MAX_COLUMNS})), 1fr))`;
 	const AVATAR_WIDTH = 96;
-	// Picks in the spotlight; the rest of the recommendations follow in a row.
+	// Picks in the top row of large cards; the rest of the recommendations follow in a row.
 	const SPOTLIGHT_COUNT = 5;
 	// Tags shown instead of a reason an earlier pick already gave.
 	const REASON_TAG_COUNT = 3;
@@ -98,6 +101,11 @@
 	let moreForYou = $derived(forYou.slice(SPOTLIGHT_COUNT));
 	let shownReasons = $derived(distinctReasons(forYou));
 	let roomStrip = $derived(stripOf(recordings, yourRooms));
+
+	// The top pick's live picture, else its last one, lights the glow.
+	showAmbientGlow(() =>
+		cacheUrl(spotlight[0]?.live?.thumbnail?.uri ?? spotlight[0]?.thumbnail?.uri)
+	);
 	let liveCount = $derived(yourRooms.filter((room) => room.live).length);
 
 	$effect(() => {
@@ -344,21 +352,25 @@
 
 	{#if showOverview}
 		{#if spotlight.length > 0}
-			<div class="rise-in">
-				<CamSpotlight
-					rooms={spotlight}
-					surface={CAMS_SURFACE}
-					onopen={(room) => goto(camUrl(room.id))}
-				/>
-			</div>
+			<Shelf
+				title="Top picks for you"
+				items={spotlight}
+				key={(room) => room.id}
+				itemWidth={SPOTLIGHT_WIDTH}
+			>
+				{#snippet card(room, position)}
+					<div class="rise-in" style:--rise-delay={riseDelay(position)}>
+						{@render roomCard(room, false, position, shownReasons[room.id] ?? null)}
+					</div>
+				{/snippet}
+			</Shelf>
 		{:else if !forYouLoaded}
-			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]" aria-hidden="true">
-				<div class="skeleton aspect-video rounded-2xl"></div>
-				<div class="flex flex-col gap-2 max-lg:hidden">
-					{#each { length: SPOTLIGHT_COUNT }, position (position)}
-						<div class="skeleton flex-1 rounded-xl"></div>
-					{/each}
-				</div>
+			<div class="flex gap-4 overflow-hidden" aria-hidden="true">
+				{#each { length: SPOTLIGHT_COUNT }, position (position)}
+					<div class="shrink-0" style:width="{SPOTLIGHT_WIDTH}px">
+						{@render skeletonCard()}
+					</div>
+				{/each}
 			</div>
 		{/if}
 
