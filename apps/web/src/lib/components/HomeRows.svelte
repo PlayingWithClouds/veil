@@ -69,7 +69,7 @@
 	const AUDIO_WIDTH = 180;
 	const SITE_WIDTH = 150;
 	// Picks in the spotlight; For you fills three rows of five after them.
-	const SPOTLIGHT_COUNT = 5;
+	const SPOTLIGHT_COUNT = 4;
 	const FOR_YOU_COUNT = 15;
 	// Cards of For you rise in this far apart, up to RISE_MAX_DELAY_MS.
 	const RISE_STEP_MS = 30;

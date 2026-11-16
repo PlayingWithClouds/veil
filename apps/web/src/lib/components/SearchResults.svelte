@@ -41,7 +41,7 @@
 	const GRID_GAP = 16;
 	const MAX_COLUMNS = 5;
 	// Results in the spotlight, before the grid.
-	const SPOTLIGHT_COUNT = 5;
+	const SPOTLIGHT_COUNT = 4;
 	// Placeholder cards while the sites are asked.
 	const SKELETON_COUNT = 10;
 	// Cards rise in this far apart, up to RISE_MAX_DELAY_MS.
@@ -167,8 +167,7 @@
 	async function start(searchText: string, searchFilter: FilterInput | null) {
 		activeFilter = searchFilter;
 		filterActive =
-			(searchFilter !== null && Object.keys(searchFilter).length > 0) ||
-			narrowsResults(searchText);
+			(searchFilter !== null && Object.keys(searchFilter).length > 0) || narrowsResults(searchText);
 		stop();
 		generation++;
 		resetShown('search');
@@ -472,13 +471,10 @@
 		</div>
 	{:else if searching && videos.length === 0}
 		<div class="flex flex-col gap-8" aria-hidden="true">
-			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
-				<div class="skeleton aspect-video rounded-2xl"></div>
-				<div class="flex flex-col gap-2 max-lg:hidden">
-					{#each { length: SPOTLIGHT_COUNT }, position (position)}
-						<div class="skeleton flex-1 rounded-xl"></div>
-					{/each}
-				</div>
+			<div class="grid grid-cols-4 gap-4 max-xl:grid-cols-2 max-md:grid-cols-1">
+				{#each { length: SPOTLIGHT_COUNT }, position (position)}
+					<div class="skeleton aspect-video rounded-xl"></div>
+				{/each}
 			</div>
 			<div class="card-grid">
 				{#each { length: SKELETON_COUNT }, position (position)}
