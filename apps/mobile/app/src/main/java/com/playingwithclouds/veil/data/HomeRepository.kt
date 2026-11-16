@@ -11,10 +11,8 @@ import com.playingwithclouds.veil.graphql.HomeRecommendationsQuery
 import com.playingwithclouds.veil.graphql.HomeStoriesQuery
 import com.playingwithclouds.veil.graphql.HomeStoryHistoryQuery
 import com.playingwithclouds.veil.graphql.HomeVideoHistoryQuery
-import com.playingwithclouds.veil.graphql.fragment.AudioCardFields
 import com.playingwithclouds.veil.graphql.fragment.CamCardFields
 import com.playingwithclouds.veil.graphql.fragment.PerformerCardFields
-import com.playingwithclouds.veil.graphql.fragment.StoryCardFields
 
 /** The rows of Home, read the way the web home reads them (`apps/web/src/lib/home.ts`). */
 object HomeRepository {
@@ -44,7 +42,7 @@ object HomeRepository {
         val query = HomeStoryHistoryQuery(Optional.present(limit * 2))
         val data = VeilApi.client.query(query).execute().dataOrThrow()
         val started = data.history.filter { state -> state.progress != null }
-        return started.mapNotNull { state -> state.record?.onStory?.storyCardFields?.let(::storyOf) }.take(limit)
+        return started.mapNotNull { state -> state.record?.onStory?.storyCardFields?.toStory() }.take(limit)
     }
 
     /** Rooms being recorded now, then the rooms live now with the most viewers, each room once. */
@@ -59,13 +57,13 @@ object HomeRepository {
     /** The newest stories. */
     suspend fun stories(limit: Int): List<StorySummary> {
         val data = VeilApi.client.query(HomeStoriesQuery(Optional.present(limit))).execute().dataOrThrow()
-        return data.stories.map { story -> storyOf(story.storyCardFields) }
+        return data.stories.map { story -> story.storyCardFields.toStory() }
     }
 
     /** The newest audio. */
     suspend fun audios(limit: Int): List<AudioSummary> {
         val data = VeilApi.client.query(HomeAudiosQuery(Optional.present(limit))).execute().dataOrThrow()
-        return data.audios.map { audio -> audioOf(audio.audioCardFields) }
+        return data.audios.map { audio -> audio.audioCardFields.toAudio() }
     }
 
     /** The user's favourite performers, else the library's first ones. */
@@ -92,15 +90,6 @@ object HomeRepository {
         )
     }
 
-    /** A story card from its fragment; the first performer is the author. */
-    private fun storyOf(story: StoryCardFields): StorySummary {
-        return StorySummary(story.id, story.title, story.cover?.url, story.performers.firstOrNull()?.name, story.chapterCount)
-    }
-
-    /** An audio card from its fragment; the first performer is the voice. */
-    private fun audioOf(audio: AudioCardFields): AudioSummary {
-        return AudioSummary(audio.id, audio.title, audio.cover?.url, audio.performers.firstOrNull()?.name, audio.durationSeconds)
-    }
 
     /** A performer card from its fragment. */
     private fun performerOf(performer: PerformerCardFields): PerformerSummary {

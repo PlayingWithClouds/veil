@@ -36,6 +36,11 @@ import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
 import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryScreen
 import com.playingwithclouds.veil.ui.home.HomeScreen
+import com.playingwithclouds.veil.ui.media.AudioScreen
+import com.playingwithclouds.veil.ui.media.AudiosScreen
+import com.playingwithclouds.veil.ui.media.StoriesScreen
+import com.playingwithclouds.veil.ui.media.StoryReaderScreen
+import com.playingwithclouds.veil.ui.media.StoryScreen
 import com.playingwithclouds.veil.ui.library.CollectionScreen
 import com.playingwithclouds.veil.ui.library.LibraryScreen
 import com.playingwithclouds.veil.ui.pending.PendingScreen
@@ -177,6 +182,13 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
+    composable(Routes.STORIES) { StoriesScreen(navigator) }
+    composable(Routes.STORY) { entry -> StoryScreen(entry.argument("id"), navigator) }
+    composable(Routes.STORY_READER) { entry ->
+        StoryReaderScreen(entry.argument("id"), entry.argument("position").toIntOrNull() ?: 0, navigator)
+    }
+    composable(Routes.AUDIOS) { AudiosScreen(navigator) }
+    composable(Routes.AUDIO) { entry -> AudioScreen(entry.argument("id"), navigator) }
     composable(Routes.GALLERIES) { GalleriesScreen(navigator) }
     composable(Routes.GALLERY) { entry -> GalleryScreen(entry.argument("id"), navigator) }
     composable(Routes.PERFORMERS) { MembersScreen(MemberKind.PERFORMERS, navigator) }

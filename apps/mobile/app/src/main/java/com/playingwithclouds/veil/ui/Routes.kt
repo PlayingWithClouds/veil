@@ -19,6 +19,11 @@ object Routes {
     const val STUDIO = "studio/{id}"
     const val GALLERIES = "galleries"
     const val GALLERY = "gallery/{id}"
+    const val STORIES = "stories"
+    const val STORY = "story/{id}"
+    const val STORY_READER = "story/{id}/read/{position}"
+    const val AUDIOS = "audio"
+    const val AUDIO = "audio/{id}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
@@ -44,6 +49,12 @@ object Routes {
     fun studio(id: String): String = "studio/${Uri.encode(id)}"
 
     fun gallery(id: String): String = "gallery/${Uri.encode(id)}"
+
+    fun story(id: String): String = "story/${Uri.encode(id)}"
+
+    fun storyReader(id: String, position: Int): String = "story/${Uri.encode(id)}/read/$position"
+
+    fun audio(id: String): String = "audio/${Uri.encode(id)}"
 }
 
 /**
@@ -75,6 +86,8 @@ class AppNavigator(private val controller: NavHostController, private val select
             Destination.PERFORMERS -> controller.navigate(Routes.PERFORMERS)
             Destination.STUDIOS -> controller.navigate(Routes.STUDIOS)
             Destination.GALLERIES -> controller.navigate(Routes.GALLERIES)
+            Destination.STORIES -> controller.navigate(Routes.STORIES)
+            Destination.AUDIO -> controller.navigate(Routes.AUDIOS)
             else -> openPending(destination.label)
         }
     }
@@ -100,9 +113,12 @@ class AppNavigator(private val controller: NavHostController, private val select
     /** The live rooms with [tag]. */
     fun openCamsTagged(tag: String) = controller.navigate(Routes.camsTagged(tag))
 
-    fun openStory(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Story")
+    fun openStory(id: String) = controller.navigate(Routes.story(id))
 
-    fun openAudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Audio")
+    /** The reader at the chapter at [position]. */
+    fun openStoryReader(id: String, position: Int) = controller.navigate(Routes.storyReader(id, position))
+
+    fun openAudio(id: String) = controller.navigate(Routes.audio(id))
 
     fun openPerformer(id: String) = controller.navigate(Routes.performer(id))
 

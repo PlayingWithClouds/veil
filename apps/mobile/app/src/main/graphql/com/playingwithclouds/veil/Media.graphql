@@ -1,0 +1,98 @@
+# Stories and audio, as the web's apps/web/src/lib/media.ts reads them.
+
+fragment ChapterFields on StoryChapter {
+  id
+  position
+  title
+  wordCount
+  parent
+  choice
+}
+
+# Stories, most recently added first.
+query StoryListing($limit: Int, $offset: Int) {
+  stories(limit: $limit, offset: $offset) {
+    ...StoryCardFields
+  }
+}
+
+# Audio, most recently added first.
+query AudioListing($limit: Int, $offset: Int) {
+  audios(limit: $limit, offset: $offset) {
+    ...AudioCardFields
+  }
+}
+
+# Audio listened to partway, most recently first; finished ones have no resume point.
+query AudioHistory($limit: Int) {
+  history(kind: audio, limit: $limit) {
+    progress
+    record {
+      __typename
+      ... on Audio {
+        ...AudioCardFields
+      }
+    }
+  }
+}
+
+# Opens a story: reads the pages behind its sources not read yet (chapters, credits).
+mutation OpenStory($id: ID!) {
+  fetchMedia(subject: { kind: story, id: $id }) {
+    __typename
+    ... on Story {
+      ...StoryCardFields
+      details
+      wordCount
+      tags {
+        id
+        name
+      }
+      chapters {
+        ...ChapterFields
+      }
+      userState {
+        progress
+      }
+    }
+  }
+}
+
+# A story's chapters again: reading a chapter of a branching story can add the ones its choices lead to.
+query StoryChapters($id: ID!) {
+  story(id: $id) {
+    chapters {
+      ...ChapterFields
+    }
+  }
+}
+
+# A chapter with its text, read from the site the first time.
+mutation ReadChapter($storyId: ID!, $position: Int!) {
+  readChapter(storyId: $storyId, position: $position) {
+    ...ChapterFields
+    text
+  }
+}
+
+# Opens an audio: reads the pages behind its sources not read yet (credits, streams).
+mutation OpenAudio($id: ID!) {
+  fetchMedia(subject: { kind: audio, id: $id }) {
+    __typename
+    ... on Audio {
+      ...AudioCardFields
+      details
+      tags {
+        id
+        name
+      }
+      streams {
+        id
+        url
+      }
+      userState {
+        progress
+      }
+    }
+  }
+}
