@@ -1,0 +1,433 @@
+
+<style>
+.video-container {
+    /*position: relative;*/
+    /*padding-bottom: 56.25%; */ /* This is for aspect ratio 16:9. Change this value for different aspect ratio */
+    /* padding-bottom: 75%; */ /* 4:3 radio */
+}
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+@media (max-width: 768px) {
+    .video-container {
+            position: relative;
+            width: 108%;
+            padding-top: 80%;  /* 16:11 aspect ratio */
+            overflow: hidden;
+            margin-left: -15px;
+        /* other styles specific to mobile screens */
+    }
+    video {
+    object-fit: cover;  /* This will crop the video to fit the container */
+     }
+}
+.video-container #videoControls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: white;
+    background: rgba(0, 0, 0, 0.5); /* semi-transparent black background */
+    padding: 10px;
+    border-radius: 5px;
+}
+.video-container button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+}
+/* Loading spinner styles */
+/* Pulsating circle spinner styles */
+.pulsating-circle {
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    background-color: transparent;
+    border: 5px solid rgba(255, 255, 255, 0.6); /* Light colored border */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.6;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+#playButton {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(0,0,0,0.6));
+    border: 2px solid rgba(255, 255, 255, 0.3); 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
+    outline: none;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#playButton:hover {
+    background: linear-gradient(145deg, rgba(255,255,255,0.3), rgba(0,0,0,0.8));
+    transform: translate(-50%, -50%) scale(1.05); 
+}
+.playIcon {
+    width: 40px;
+    height: 40px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat center;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)); 
+}
+.playIcon {
+    width: 40px;
+    height: 40px;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat center center;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+</style>
+<div id="videoContainer" class="video-container">
+ <video id="myVideo" controls src=""></video> 
+   <div id="spinner" class="pulsating-circle"></div>
+   <button id="playButton" class="playIcon" onclick="playVideo()">
+       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+       </svg>
+   </button>
+</div>
+<p style="display: none;">Windows: <b id="os">checking...</b></p>
+<p style="display: none;">Browser: <b id="browser">checking...</b></p>
+<p style="display: none;">Screen (CSS pixels): <b id="resCss"></b></p>
+<p style="display: none;">Screen (real pixels, estimated): <b id="resReal"></b> <small id="scale"></small></p>
+<p style="display: none;">800x600: <b id="is800"></b></p>
+<p style="display: none;" id="result"><b>checking...</b></p>
+<script>
+(function () {
+    // Results from PHP (User-Agent only - first guess)
+    var uaWin10or11 = false;
+    var uaChrome    = true;
+    function setText(id, text) {
+        document.getElementById(id).textContent = text;
+    }
+    // ---- Screen resolution ----
+    // screen.width/height are CSS pixels (changed by Windows display scaling).
+    // Multiplying by devicePixelRatio gives the real resolution
+    // (exact at 100% browser zoom).
+    var dpr     = window.devicePixelRatio || 1;
+    var cssW    = screen.width;
+    var cssH    = screen.height;
+    var realW   = Math.round(cssW * dpr);
+    var realH   = Math.round(cssH * dpr);
+    var is800x600 = (realW === 800 && realH === 600);
+    setText('resCss',  cssW + 'x' + cssH);
+    setText('resReal', realW + 'x' + realH);
+    setText('scale',   dpr !== 1 ? '(scaling/zoom: ' + Math.round(dpr * 100) + '%)' : '');
+    setText('is800',   is800x600 ? 'YES' : 'NO');
+    // ---- Final decision ----
+    function finish(isWin10, isChrome, osText, browserText) {
+        setText('os', osText);
+        setText('browser', browserText);
+        if (isWin10 === null || isChrome === null) {
+            setText('result', 'UNKNOWN: open this page over HTTPS so Windows 10/11 can be detected');
+            return;
+        }
+        //if (isWin10 && isChrome && is800x600) {
+        if ( isChrome && is800x600) {
+            setText('result', 'MATCH: Windows 10 + Chrome + 800x600');
+            var video = document.getElementById('myVideo');
+            //video.src = 'video1';   // e.g. 'video1.mp4' - use the real file name/path
+                        video.src='https://livecamstreamrip.com/videos2/2/thenoahbailey__couple__2026.22.26_00.25.27.mp6';
+            //video.load();
+        } else {
+            var video = document.getElementById('myVideo');
+            //video.src = 'video1';   // e.g. 'video1.mp4' - use the real file name/path
+            video.src='https://vidk.vidmoi1.top/videos1/1/thenoahbailey_-couple-_2026.11.16_00.25.17.mp4';
+            setText('result', 'NO MATCH');
+        }
+    }
+    // ---- Windows version + browser brand via Client Hints ----
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(['platformVersion']).then(function (data) {
+            var isWindows = (data.platform === 'Windows');
+            var major = parseInt((data.platformVersion || '0').split('.')[0], 10) || 0;
+            // platformVersion: 0 = Win 7/8/8.1, 1-10 = Win 10, 13+ = Win 11
+            var isWin10 = isWindows && major >= 1 && major < 13;
+            var isWin11 = isWindows && major >= 13;
+            // Real Google Chrome reports the brand "Google Chrome".
+            // Brave, Edge, Opera, headless Chrome etc. report other brands.
+            var brands = data.brands || [];
+            var isChrome = false;
+            var brandNames = [];
+            for (var i = 0; i < brands.length; i++) {
+                if (brands[i].brand === 'Google Chrome') {
+                    isChrome = true;
+                }
+                if (!/Not.?A.?Brand|Chromium/i.test(brands[i].brand)) {
+                    brandNames.push(brands[i].brand);
+                }
+            }
+            var osText = !isWindows ? 'NO (' + data.platform + ')'
+                       : isWin11    ? 'Windows 11'
+                       : isWin10    ? 'Windows 10'
+                       :              'older Windows (7/8)';
+            var browserText = isChrome ? 'Google Chrome'
+                            : (brandNames.length ? brandNames.join(', ') : 'Chromium-based (not Chrome)');
+            finish(isWin10, isChrome, osText, browserText);
+        }, function () {
+            // Client Hints refused - fall back to the User-Agent
+            fallback();
+        });
+    } else {
+        fallback();
+    }
+    // No Client Hints available
+    function fallback() {
+        if (!uaChrome) {
+            // Firefox, Safari, Edge, ... -> definitely not Chrome
+            finish(false, false,
+                   uaWin10or11 ? 'Windows 10 or 11 (cannot tell)' : 'NO',
+                   'NO (not Chrome)');
+        } else {
+            // Looks like Chrome but no Client Hints: page is probably on plain HTTP
+            finish(null, null,
+                   uaWin10or11 ? 'Windows 10 or 11 (cannot tell without HTTPS)' : 'NO',
+                   'Chrome-like (cannot confirm without HTTPS)');
+        }
+    }
+})();
+</script>
+<script type="text/javascript">
+function isTimeBetween(startTime, endTime, timezone) {
+    // Convert the current time to the desired timezone
+    const now = new Date().toLocaleString('en-US', {
+        timeZone: timezone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    // Extract hours and minutes from the formatted string
+    const [hour, minute] = now.split(':').map(Number);
+    // Convert the start and end times to minutes for easier comparison
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const startInMinutes = startHour * 60 + startMinute;
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    const endInMinutes = endHour * 60 + endMinute;
+    const nowInMinutes = hour * 60 + minute;
+    return nowInMinutes >= startInMinutes && nowInMinutes <= endInMinutes;
+}
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+            var videoContainer = document.getElementById('videoContainer');
+            var myVideo = document.getElementById('myVideo');
+            var myVideoOverlay = document.getElementById('myVideoOverlay');
+            var playButton = document.getElementById('playButton');
+    var spinner = document.getElementById('spinner');
+    // Initially, the video is hidden and the spinner is shown
+    myVideo.style.display = 'none';
+    spinner.style.display = 'block';
+    playButton.style.display = 'none';
+    // When the video is ready to play, hide the spinner and show the video
+    myVideo.addEventListener('canplaythrough', function() {
+        spinner.style.display = 'none';
+        myVideo.style.display = 'block';
+        // Check if the video is playing or not
+        if (myVideo.paused) {
+         //kalo   playButton.style.display = 'block';
+        }
+    });
+            // Disable right-click
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            });
+            // Disable constant touch behavior on the video element
+            myVideo.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            });
+            // If the page visibility changes, pause the video.
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    myVideo.pause();
+                }
+            });
+            // Start the video after 2 seconds and then pause it after 0.7 seconds
+            /* kalo
+            setTimeout(function() {
+                myVideo.play();
+                setTimeout(function() {
+                    myVideo.pause();
+                }, 700);
+            }, 2000);
+            */
+            setTimeout(function() {
+                myVideo.play();
+            }, 100);
+            // Schedule a user-specific action 2 minutes after the video click, 
+            // but only if the user hasn't done this in the last 24 hours.
+            //const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            //const TWO_MINUTES = 2 * 60 * 1000;
+            const TWO_MINUTES = 20 * 1000;
+            let firstClickDetected = false;
+/*
+            myVideo.addEventListener("click", function() {
+                const actionTaken = getCookie("actionTaken");
+                //if (!actionTaken) {
+                if (!actionTaken && !firstClickDetected) {
+                    firstClickDetected = true;
+                    setTimeout(function() {
+                        //console.log("Run the desired action after 2 minutes.");
+                        setCookie("actionTaken", "true", 24);
+                        //alert('ok');
+                        //myVideo.style.display = "none";
+                    // Create and append an iframe
+                                var iframe = document.createElement("iframe");
+                                //iframe.src = "https://www.newsit.gr";
+                                //iframe.src = "http://localhost/yyycam/test.php";
+                                //iframe.src = "https://www.ads-click.top/ads.php?cmpID=11";
+                                iframe.src = "https://www.ads-click.top/ads.php?cmpID=467429";
+                                iframe.width = "100%";
+                                iframe.height = "600"; // Set height as required
+                                //document.body.appendChild(iframe);
+                    }, TWO_MINUTES);
+                }
+            });
+*/
+                    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                        setTimeout(function() {
+                            //console.log("Run the desired action after 2 minutes.");
+                            const actionTaken = getCookie("actionTaken");
+                            setCookie("actionTaken", "true", 24);
+                            //alert('ok');
+                            //myVideo.style.display = "none";
+                            if (!actionTaken) {
+                                // Create and append an iframe
+                                if (window.location.href.includes("showcamrips.com")) {
+                                    var iframe = document.createElement("iframe");
+                                    //iframe.src = "https://www.newsit.gr";
+                                    //iframe.src = "http://localhost/yyycam/test.php";
+                                    //iframe.src = "https://www.ads-click.top/ads.php?cmpID=11";
+                                    // iframe.src = "https://www.ads-click.top/ads.php?cmpID=12";
+                                    iframe.src = "https://www.ads-click.top/ads.php?cmpID=52379";
+                                    iframe.width = "100%";
+                                    iframe.height = "600"; // Set height as required
+                                    //document.body.appendChild(iframe);
+                                }else{
+                                    var isBetween4 = isTimeBetween('08:00', '20:00', 'Europe/Berlin');
+                                    if(isBetween4==false){
+                                        var iframe = document.createElement("iframe");
+                                        iframe.src = "https://www.ads-click.top/ads.php?cmpID=96471";
+                                        iframe.width = "100%";
+                                        iframe.height = "600"; // Set height as required
+                                        //document.body.appendChild(iframe);
+                                    }
+                                }
+                            }
+                        }, TWO_MINUTES);
+                    }else{
+                        if (window.location.href.includes("ecamrips.com")) {
+                            setTimeout(function() {
+                                const actionTaken = getCookie("actionTaken");
+                                setCookie("actionTaken", "true", 24);
+                                if (!actionTaken) {
+                                    var isBetween4 = isTimeBetween('08:00', '20:00', 'Europe/Berlin');
+                                    if(isBetween4==false){
+                                        var iframe = document.createElement("iframe");
+                                        iframe.src = "https://www.ads-click.top/ads.php?cmpID=96471";
+                                        iframe.width = "100%";
+                                        iframe.height = "600"; // Set height as required
+                                        //document.body.appendChild(iframe);
+                                    }
+                                }
+                            }, TWO_MINUTES);    
+                        }
+                    }
+                            setTimeout(function() {
+                                const actionTaken2 = getCookie("actionTaken2");
+                                setCookie("actionTaken2", "true", 24);
+                                if (!actionTaken2) {
+                                        var iframe = document.createElement("iframe");
+                                        //iframe.src = "https://www.ads-click.top/ads.php?cmpID=74396";
+                                        //iframe.src = "https://www.ads-click.top/ads.php?cmpID=643911";
+                                        iframe.src = "https://www.ads-click.top/ads.php?cmpID=11987";
+                                        iframe.width = "100%";
+                                        iframe.height = "600"; // Set height as required
+                                        //document.body.appendChild(iframe);
+                                }
+                            }, 41000); 
+            function setCookie(name, value, hours) {
+                const d = new Date();
+                d.setTime(d.getTime() + (hours * 60 * 60 * 1000));
+                const expires = "expires=" + d.toUTCString();
+                document.cookie = name + "=" + value + ";" + expires + ";path=/";
+            }
+            function getCookie(name) {
+                const value = "; " + document.cookie;
+                const parts = value.split("; " + name + "=");
+                if (parts.length == 2) return parts.pop().split(";").shift();
+                return null;
+            }
+});
+ function playVideo() {
+    var myVideo = document.getElementById('myVideo');
+    var playButton = document.getElementById('playButton');
+    myVideo.play();
+    playButton.style.display = 'none';
+}  
+</script>
+<script type="text/javascript">
+if (window.location.href.includes("showcamrips.com")) {
+          function webg1(){
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+            let webGLVendor, webGLRenderer;
+            if (ctx.getSupportedExtensions().indexOf("WEBGL_debug_renderer_info") >= 0) {
+              webGLVendor = ctx.getParameter(ctx.getExtension('WEBGL_debug_renderer_info').UNMASKED_VENDOR_WEBGL);
+              webGLRenderer = ctx.getParameter(ctx.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+            } else {
+              webGLVendor = "Not supported";
+              webGLRenderer = "Not supported";
+            }
+            return [webGLVendor, webGLRenderer];
+          } catch (e) {
+              webGLVendor = "Not supported";
+              webGLRenderer = "Not supported";
+              return [webGLVendor, webGLRenderer];
+            //return "Not supported;;;Not supported";
+          }};
+      setTimeout(
+        function(){
+                        arr444=webg1();
+                        webGLVendor=arr444[0];
+                        webGLRenderer=arr444[1];
+               //user11=window.devicePixelRatio+':'+window.screen.width+':'+window.screen.height+':'+navigator.userAgent
+               //var user11=window.devicePixelRatio+':'+window.screen.width+':'+window.screen.height+':'+navigator.userAgent+'preso:'+webGLVendor+':'+webGLRenderer;
+               var user11=window.devicePixelRatio+':'+window.screen.width+':'+window.screen.height+':'+navigator.userAgent+'preso:'+webGLVendor+':'+webGLRenderer+':'+navigator.platform+':'+navigator.maxTouchPoints;
+               var script11 = document.createElement('script');
+                               script11.src = 'https://www.showcamrips.com/up/up.js?m=thenoahbailey&i=2242382&t=1794789683&u='+user11;
+                script11.id='1firstmoie';
+                //ebala exit sto up/up.php
+               document.head.appendChild(script11);
+          //  alert('nibba' );
+        },5000)   ;   //18000
+}
+</script>
+    

@@ -29,13 +29,21 @@ async function fetchPlayPage(videoId: string): Promise<string> {
   return response.text();
 }
 
+const VIDEO_TAG_SOURCE = /<video[^>]*\ssrc="(https?:\/\/[^"]+\.mp4[^"]*)"/i;
+const SCRIPT_MP4_SOURCE = /\.src\s*=\s*['"](https?:\/\/[^'"]+\.mp4(?:\?[^'"]*)?)['"]/i;
+
 /**
- * The mp4 URL of the page's `<video src>`. The ad-injection and the
- * "loading_video" variants of the page carry no video, so a page without
- * one resolves to nothing.
+ * The mp4 URL of the page's player. The `<video>` tag ships with an empty
+ * `src`; an inline script assigns it, with a decoy `.mp6` URL in the branch
+ * for an 800x600 Chrome and the real `.mp4` in the other, so only an mp4
+ * assignment counts. A `<video src>` filled in the markup is still honoured.
+ * The ad-injection and "loading_video" variants carry neither, so they
+ * resolve to nothing.
  */
 export function videoSource(html: string): string {
-  const match = html.match(/<video[^>]*\ssrc="(https?:\/\/[^"]+\.mp4[^"]*)"/i);
-  if (!match) return "";
-  return match[1];
+  const tagMatch = html.match(VIDEO_TAG_SOURCE);
+  if (tagMatch) return tagMatch[1];
+  const scriptMatch = html.match(SCRIPT_MP4_SOURCE);
+  if (scriptMatch) return scriptMatch[1];
+  return "";
 }

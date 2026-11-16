@@ -18,6 +18,7 @@ import { resolve, videoSource } from "../src/resolve.ts";
 
 const modelPage = await Bun.file(`${import.meta.dir}/fixtures/model.html`).text();
 const videoPage = await Bun.file(`${import.meta.dir}/fixtures/scene.html`).text();
+const playPage = await Bun.file(`${import.meta.dir}/fixtures/play.html`).text();
 const VIDEO_URL =
   "https://www.showcamrips.com/show-cam-sex-movies/2210361-cosmictandem-chaturbate-webcam-rip-20261028-210524.html";
 
@@ -160,6 +161,13 @@ describe("resolve", () => {
     expect(videoSource("<html>loading</html>")).toBe("");
   });
 
+  test("videoSource reads the mp4 a script assigns to the empty player and skips the decoy", () => {
+    expect(playPage).toContain('<video id="myVideo" controls src="">');
+    expect(videoSource(playPage)).toBe(
+      "https://vidk.vidmoi1.top/videos1/1/thenoahbailey_-couple-_2026.11.16_00.25.17.mp4"
+    );
+  });
+
   test("resolves the play page with the site referer and returns the playback headers", async () => {
     let seenReferer = "";
     globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
@@ -171,6 +179,12 @@ describe("resolve", () => {
     expect(result.url).toBe("https://vidi.suzavido.top/videos4/1/a_.mp4");
     expect(result.mime_type).toBe("video/mp4");
     expect(result.headers?.Referer).toBe("https://www.showcamrips.com/");
+  });
+
+  test("resolves a play page whose player is filled in by a script", async () => {
+    mockFetch({ "https://www.showcamrips.com/play.php?idd=2242382": playPage });
+    const result = await resolve("https://www.showcamrips.com/play.php?idd=2242382");
+    expect(result.url).toEndWith("thenoahbailey_-couple-_2026.11.16_00.25.17.mp4");
   });
 
   test("a play page without a video is an error", async () => {

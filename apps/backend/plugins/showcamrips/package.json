@@ -1,6 +1,6 @@
 {
   "name": "@playingwithclouds/veil-plugin-showcamrips",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Veil plugin for showcamrips.com, recordings of live cam shows",
   "private": true,
   "type": "module",
