@@ -11,6 +11,7 @@ object Routes {
     const val DESIGN_KIT = "design-kit"
     const val VIDEO = "video/{id}"
     const val CAM = "cam/{id}"
+    const val COLLECTION = "collection/{id}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
@@ -23,6 +24,8 @@ object Routes {
     fun video(id: String): String = "video/${Uri.encode(id)}"
 
     fun cam(id: String): String = "cam/${Uri.encode(id)}"
+
+    fun collection(id: String): String = "collection/${Uri.encode(id)}"
 
     fun camsTagged(tag: String): String = "cams/tag/${Uri.encode(tag)}"
 }
@@ -64,6 +67,10 @@ class AppNavigator(private val controller: NavHostController, private val select
     fun openVideo(id: String) = controller.navigate(Routes.video(id))
 
     fun openStudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Studio")
+
+    fun openCollection(id: String) = controller.navigate(Routes.collection(id))
+
+    fun openGallery(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Gallery")
 
     fun openTag(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Tag")
 

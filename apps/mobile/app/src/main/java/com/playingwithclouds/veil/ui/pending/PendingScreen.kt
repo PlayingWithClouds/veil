@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import com.playingwithclouds.veil.ui.AppNavigator
-import com.playingwithclouds.veil.ui.components.TabTopBar
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -23,15 +22,6 @@ import com.playingwithclouds.veil.ui.theme.VeilSpacing
 fun PendingScreen(title: String, navigator: AppNavigator) {
     Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
         PendingNotice(title, Modifier.padding(padding))
-    }
-}
-
-/** A tab whose screen isn't rebuilt yet: its top bar over the notice. */
-@Composable
-fun PendingTab(title: String, navigator: AppNavigator) {
-    Column(Modifier.fillMaxSize()) {
-        TabTopBar(navigator, title)
-        PendingNotice(title, Modifier.weight(1f))
     }
 }
 

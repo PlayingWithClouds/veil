@@ -1,0 +1,116 @@
+# What the user keeps: the watchlist, the queue, collections and downloads, as the web's
+# apps/web/src/lib/curation.ts and downloads.ts read them.
+
+fragment GalleryCardFields on Gallery {
+  id
+  title
+  imageCount
+  cover {
+    url
+  }
+  performers {
+    name
+  }
+}
+
+fragment CollectionPageFields on Collection {
+  id
+  name
+  kind
+  details
+  itemCount
+  items {
+    record {
+      __typename
+      ... on Video {
+        ...VideoCardFields
+      }
+      ... on Gallery {
+        ...GalleryCardFields
+      }
+    }
+  }
+}
+
+# The watchlist or the queue, with its items.
+query BuiltInCollection($kind: CollectionKind!) {
+  builtInCollection(kind: $kind) {
+    ...CollectionPageFields
+  }
+}
+
+query Collection($id: ID!) {
+  collection(id: $id) {
+    ...CollectionPageFields
+  }
+}
+
+# Every collection with its first covers; the user's own are those of kind user.
+query Collections {
+  collections {
+    id
+    name
+    kind
+    itemCount
+    cover {
+      url
+    }
+    items(limit: 3) {
+      record {
+        __typename
+        ... on Video {
+          cover {
+            url
+          }
+        }
+        ... on Gallery {
+          cover {
+            url
+          }
+        }
+      }
+    }
+  }
+}
+
+mutation CreateCollection($name: String!) {
+  createCollection(name: $name) {
+    id
+  }
+}
+
+mutation RemoveFromCollection($collectionId: ID!, $subjects: [RecordRefInput!]!) {
+  removeFromCollection(collectionId: $collectionId, subjects: $subjects) {
+    id
+  }
+}
+
+query Downloads {
+  downloads {
+    job {
+      id
+      status
+      progress
+      error
+      createdAt
+      subject {
+        kind
+        id
+      }
+    }
+    file {
+      sizeBytes
+    }
+  }
+}
+
+query VideoCard($id: ID!) {
+  video(id: $id) {
+    ...VideoCardFields
+  }
+}
+
+# Stops a download and deletes it with its file.
+mutation DeleteDownload($jobId: ID!) {
+  deleteDownload(jobId: $jobId)
+}

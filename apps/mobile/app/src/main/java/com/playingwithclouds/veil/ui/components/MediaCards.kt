@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.data.AudioSummary
 import com.playingwithclouds.veil.data.CamSummary
+import com.playingwithclouds.veil.data.GallerySummary
 import com.playingwithclouds.veil.data.PerformerSummary
 import com.playingwithclouds.veil.data.StorySummary
 import com.playingwithclouds.veil.data.VideoSummary
@@ -53,7 +54,7 @@ private val ResumeBarHeight = 3.dp
  * creator's avatar beside the title, who it's from and when, and a [note] in the accent (why it's
  * recommended). While [previewing], its preview clip plays muted over the cover. [edgeToEdge] runs
  * the cover across the full width without rounded corners and gives the caption the gutter, for a
- * full-width feed.
+ * full-width feed. A long press calls [onLongClick], e.g. for a sheet of actions.
  */
 @Composable
 fun VideoCard(
@@ -63,6 +64,7 @@ fun VideoCard(
     note: String? = null,
     previewing: Boolean = false,
     edgeToEdge: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     var coverShape: Shape = VeilShapes.card
     var captionModifier = Modifier.padding(top = VeilSpacing.medium, bottom = VeilSpacing.small)
@@ -70,7 +72,7 @@ fun VideoCard(
         coverShape = RectangleShape
         captionModifier = Modifier.padding(start = VeilSpacing.gutter, top = VeilSpacing.medium, end = VeilSpacing.gutter, bottom = VeilSpacing.large)
     }
-    Column(modifier.fillMaxWidth().pressClickable(onClick)) {
+    Column(modifier.fillMaxWidth().pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(coverShape)) {
             RemoteImage(video.coverUrl, Modifier.matchParentSize())
             val previewUrl = video.previewUrl
@@ -145,6 +147,29 @@ fun CamCard(cam: CamSummary, onClick: () -> Unit, modifier: Modifier = Modifier)
         }
     }
 }
+
+/** A gallery as a portrait cover with its photo count, then its title and who's in it. */
+@Composable
+fun GalleryCard(gallery: GallerySummary, onClick: () -> Unit, modifier: Modifier = Modifier, onLongClick: (() -> Unit)? = null) {
+    Column(modifier.fillMaxWidth().pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(GALLERY_RATIO).clip(VeilShapes.card)) {
+            RemoteImage(gallery.coverUrl, Modifier.matchParentSize())
+            if (gallery.imageCount > 0) {
+                Badge("${gallery.imageCount} photos", Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.small))
+            }
+        }
+        Column(Modifier.padding(top = VeilSpacing.small, bottom = VeilSpacing.small)) {
+            CardTitle(gallery.title)
+            val byline = gallery.byline
+            if (byline != null) {
+                CardMeta(byline)
+            }
+        }
+    }
+}
+
+/** Gallery covers are portrait photos. */
+private const val GALLERY_RATIO = 3f / 4f
 
 /** A story as a portrait cover with its chapter count, then its title and author. */
 @Composable
