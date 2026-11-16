@@ -1,249 +1,254 @@
 package com.playingwithclouds.veil.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
-import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.ImpressionSurface
-import com.playingwithclouds.veil.data.RecommendedScene
-import com.playingwithclouds.veil.data.SceneSummary
+import com.playingwithclouds.veil.data.RecommendedVideo
 import com.playingwithclouds.veil.ui.AppNavigator
-import com.playingwithclouds.veil.ui.FloatingBarInset
+import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.LocalFloatingBarInset
-import com.playingwithclouds.veil.ui.components.AvatarShelf
-import com.playingwithclouds.veil.ui.components.PagedGrid
-import com.playingwithclouds.veil.ui.components.SceneCard
-import com.playingwithclouds.veil.ui.components.SceneQuickActionsSheet
-import com.playingwithclouds.veil.ui.components.SceneShelf
-import com.playingwithclouds.veil.ui.components.SearchButton
-import com.playingwithclouds.veil.ui.components.SettingsMenuButton
-import com.playingwithclouds.veil.ui.components.fullWidthItem
-import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
-import com.playingwithclouds.veil.ui.rememberHideOnScrollState
+import com.playingwithclouds.veil.ui.components.AudioCard
+import com.playingwithclouds.veil.ui.components.CamCard
+import com.playingwithclouds.veil.ui.components.FailedMessage
+import com.playingwithclouds.veil.ui.components.PerformerBubble
+import com.playingwithclouds.veil.ui.components.Shelf
+import com.playingwithclouds.veil.ui.components.StoryCard
+import com.playingwithclouds.veil.ui.components.TabTopBar
+import com.playingwithclouds.veil.ui.components.TrackShown
+import com.playingwithclouds.veil.ui.components.VideoCard
+import com.playingwithclouds.veil.ui.design.GutterRowPadding
+import com.playingwithclouds.veil.ui.design.SectionHeading
+import com.playingwithclouds.veil.ui.design.gutterPadding
 import com.playingwithclouds.veil.ui.theme.VeilColors
+import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
-import com.playingwithclouds.veil.ui.theme.VeilType
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
-/** How long the feed has to rest before the card in focus starts its preview. */
-private const val PREVIEW_SETTLE_MILLISECONDS = 250L
+/** Card widths of the rows; the next card peeks in at the edge. */
+private val VideoCardWidth = 260.dp
+private val LiveCardWidth = 220.dp
+private val StoryCardWidth = 130.dp
+private val AudioCardWidth = 150.dp
+private val PerformerWidth = 88.dp
 
-/** Feed cards between two shelves. */
-private const val CARDS_PER_SHELF = 5
+/** Share of the screen a top pick takes, so the next one peeks in. */
+private const val TOP_PICK_WIDTH_FRACTION = 0.86f
 
-/** Height of the top bar under the status bar. */
-private val TopBarHeight = 48.dp
+/** The list key of a More for you card, apart from the same video in another row. */
+private fun forYouKey(videoId: String): String = "for-you:$videoId"
 
 /**
- * The Home tab: a slim top bar (wordmark, search, menu) that always stays, a chip row under it that
- * hides while scrolling down, then the personalized feed with shelves between runs of cards,
- * impression logging and a preview playing on the card in focus. Pull down to re-rank; swipe a
- * card right for "not interested"; a long press or the ⋮ opens a scene's quick actions.
+ * The Home tab, after the web home: the slim top bar (menu, wordmark, search), then the top picks
+ * as a row of large cards (the one in front plays its preview), Continue watching, Live now, More
+ * for you as full-width cards, Continue reading, Stories, Audio and Performers. Empty rows hide;
+ * pull down to load everything again. Recommendation cards log impressions on "home", Continue
+ * watching on "continue".
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navigator: AppNavigator) {
     val viewModel = viewModel { HomeViewModel() }
-    val gridState = rememberLazyGridState()
-    val chipRowVisibility = rememberHideOnScrollState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var quickActionsFor by remember { mutableStateOf<SceneSummary?>(null) }
+    val picks by viewModel.picks.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshProgress() }
-
-    Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState, Modifier.padding(bottom = FloatingBarInset)) }) { padding ->
-        Column(Modifier.padding(padding).nestedScroll(chipRowVisibility.connection)) {
-            HomeTopBar(navigator)
-            AnimatedVisibility(chipRowVisibility.visible, enter = expandVertically(), exit = shrinkVertically()) {
-                HomeFilterRow(viewModel)
+    Column(Modifier.fillMaxSize()) {
+        TabTopBar(navigator)
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = viewModel::refresh, modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(bottom = VeilSpacing.large + LocalFloatingBarInset.current),
+            ) {
+                item("top-picks") { TopPicks(picks, viewModel, navigator) }
+                item("continue-watching") { ContinueWatchingRow(viewModel, navigator) }
+                item("live") { LiveRow(viewModel, navigator) }
+                forYou(picks, viewModel, navigator)
+                item("more-rows") { MoreRows(viewModel, navigator) }
             }
-            VideoFeed(
-                viewModel,
-                gridState,
-                navigator,
-                onMenu = { scene -> quickActionsFor = scene },
-                onNotInterested = { scene ->
-                    viewModel.notInterested(scene)
-                    scope.launch { snackbarHostState.showSnackbar("Not interested. You will see less like this.") }
-                },
-            )
+            ForYouImpressions(listState, picks, viewModel)
         }
     }
-
-    val selected = quickActionsFor
-    if (selected != null) {
-        SceneQuickActionsSheet(
-            scene = selected,
-            onDismiss = { quickActionsFor = null },
-            onNotInterested = { viewModel.dropFromFeed(selected.id) },
-        )
-    }
-}
-
-/** The compact bar: the wordmark on the left, search and the menu on the right. */
-@Composable
-private fun HomeTopBar(navigator: AppNavigator) {
-    Row(
-        Modifier.fillMaxWidth().height(TopBarHeight).padding(start = VeilSpacing.gutter, end = VeilSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("Veil", Modifier.weight(1f), style = VeilType.wordmark, color = VeilColors.content, maxLines = 1)
-        SearchButton(navigator, bare = true)
-        SettingsMenuButton(navigator, bare = true)
-    }
-}
-
-/** The recommendation feed as full-width cards with shelves between them, logging impressions and previewing the card in focus. */
-@Composable
-private fun VideoFeed(
-    viewModel: HomeViewModel,
-    gridState: LazyGridState,
-    navigator: AppNavigator,
-    onMenu: (SceneSummary) -> Unit,
-    onNotInterested: (SceneSummary) -> Unit,
-) {
-    val state by viewModel.feed.state.collectAsStateWithLifecycle()
-    val shelves by viewModel.shelves.collectAsStateWithLifecycle()
-    var previewSceneId by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(gridState) {
-        snapshotFlow { feedExtents(gridState.layoutInfo, state.items) }.collect { extents ->
-            for (index in VisibleImpressions.shownIndices(extents, gridState.layoutInfo.viewportStartOffset, gridState.layoutInfo.viewportEndOffset)) {
-                val item = state.items.getOrNull(index) ?: continue
-                viewModel.recordShown(item, index)
-            }
-        }
-    }
-    LaunchedEffect(gridState) {
-        snapshotFlow { feedIndexInFocus(gridState.layoutInfo, state.items) }.collectLatest { index ->
-            delay(PREVIEW_SETTLE_MILLISECONDS)
-            previewSceneId = index?.let { position -> state.items.getOrNull(position)?.scene?.id }
-        }
-    }
-
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
-    var shownShelves = shelves
-    if (filter.isActive) {
-        shownShelves = emptyList()
-    }
-
-    PagedGrid(
-        paged = viewModel.feed,
-        keyOf = { item -> item.scene.id },
-        emptyText = "Nothing to show. Search for something to get started.",
-        gridState = gridState,
-        contentPadding = PaddingValues(bottom = VeilSpacing.large + LocalFloatingBarInset.current),
-        listContent = { items ->
-            feedWithShelves(
-                items,
-                shownShelves,
-                feedCard = { position, item ->
-                    SwipeToDismissCard(onDismiss = { onNotInterested(item.scene) }) {
-                        SceneCard(
-                            scene = item.scene,
-                            onClick = {
-                                viewModel.recordClicked(item, position)
-                                navigator.openScene(item.scene.id)
-                            },
-                            onLongClick = { onMenu(item.scene) },
-                            onMenu = { onMenu(item.scene) },
-                            previewing = item.scene.id == previewSceneId,
-                            edgeToEdge = true,
-                        )
-                    }
-                },
-                shelfRow = { shelf -> HomeShelfRow(shelf, navigator, onMenu) },
-            )
-        },
-        itemContent = { _, _ -> },
-    )
 }
 
 /**
- * Lays the feed out as runs of [CARDS_PER_SHELF] cards, each followed by the next shelf while there
- * are any left. Cards are keyed by scene id so impressions and previews can find them again.
+ * The top picks: a heading over a row of large cards that snaps to each, the one in front playing
+ * its preview once the row rests. A placeholder while loading, the failure with Retry when they
+ * didn't load, nothing when there are none.
  */
-private fun LazyGridScope.feedWithShelves(
-    items: List<RecommendedScene>,
-    shelves: List<HomeShelf>,
-    feedCard: @Composable (position: Int, item: RecommendedScene) -> Unit,
-    shelfRow: @Composable (HomeShelf) -> Unit,
-) {
-    items.chunked(CARDS_PER_SHELF).forEachIndexed { runIndex, run ->
-        itemsIndexed(run, key = { _, item -> item.scene.id }) { indexInRun, item ->
-            Box(Modifier.animateItem()) { feedCard(runIndex * CARDS_PER_SHELF + indexInRun, item) }
-        }
-        val shelf = shelves.getOrNull(runIndex)
-        if (shelf != null && run.size == CARDS_PER_SHELF) {
-            fullWidthItem("shelf-${shelf.key}") { shelfRow(shelf) }
-        }
-    }
-}
-
-/** One shelf: scene rows open the scene, performer and studio rows their page. */
 @Composable
-private fun HomeShelfRow(shelf: HomeShelf, navigator: AppNavigator, onMenu: (SceneSummary) -> Unit) {
-    when (shelf) {
-        is HomeShelf.Scenes -> SceneShelf(
-            title = shelf.title,
-            scenes = shelf.scenes,
-            onOpen = { scene -> navigator.openScene(scene.id) },
-            onLongPress = onMenu,
-            edgeToEdge = true,
-            impressionSurface = ImpressionSurface.ROW,
-            sources = shelf.sources,
-        )
-        is HomeShelf.Performers -> AvatarShelf("Performers for you", shelf.performers, onOpen = { performer -> navigator.openPerformer(performer.id) })
-        is HomeShelf.Studios -> AvatarShelf("Studios for you", shelf.studios, onOpen = { studio -> navigator.openStudio(studio.id) })
+private fun TopPicks(picks: LoadState<HomePicks>, viewModel: HomeViewModel, navigator: AppNavigator) {
+    when (picks) {
+        is LoadState.Loading -> TopPicksPlaceholder()
+        is LoadState.Failed -> FailedMessage(picks.message, onRetry = viewModel::retryPicks)
+        is LoadState.Loaded -> TopPicksRow(picks.value.top, viewModel, navigator)
     }
 }
 
-/** Feed positions of the cards laid out on screen; shelves and the footer have none and are skipped. */
-private fun feedExtents(layoutInfo: LazyGridLayoutInfo, items: List<RecommendedScene>): List<ItemExtent> {
-    val positionBySceneId = items.withIndex().associate { (position, item) -> item.scene.id to position }
-    return layoutInfo.visibleItemsInfo.mapNotNull { cell ->
-        val position = positionBySceneId[cell.key]
-        if (position == null) {
-            null
-        } else {
-            ItemExtent(position, cell.offset.y, cell.size.height)
+/** The loaded top picks; see [TopPicks]. */
+@Composable
+private fun TopPicksRow(top: List<RecommendedVideo>, viewModel: HomeViewModel, navigator: AppNavigator) {
+    if (top.isEmpty()) {
+        return
+    }
+    val rowState = rememberLazyListState()
+    val inFront by remember { derivedStateOf { pickInFront(rowState) } }
+    TrackShown(rowState, top.map { pick -> pick.video.id }) { position ->
+        viewModel.recordShown(top[position].video.id, ImpressionSurface.HOME, position)
+    }
+    Column(Modifier.fillMaxWidth()) {
+        SectionHeading("Top picks for you", modifier = Modifier.gutterPadding())
+        LazyRow(
+            Modifier.fillMaxWidth(),
+            state = rowState,
+            contentPadding = GutterRowPadding,
+            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
+            flingBehavior = rememberSnapFlingBehavior(rowState, SnapPosition.Start),
+        ) {
+            itemsIndexed(top, key = { _, pick -> pick.video.id }) { position, pick ->
+                VideoCard(
+                    pick.video,
+                    onClick = {
+                        viewModel.recordClicked(pick.video.id, ImpressionSurface.HOME, position)
+                        navigator.openVideo(pick.video.id)
+                    },
+                    modifier = Modifier.fillParentMaxWidth(TOP_PICK_WIDTH_FRACTION),
+                    note = pick.reason,
+                    previewing = position == inFront && !rowState.isScrollInProgress,
+                )
+            }
         }
     }
 }
 
-/** Feed position of the card whose preview should play, or null. */
-private fun feedIndexInFocus(layoutInfo: LazyGridLayoutInfo, items: List<RecommendedScene>): Int? {
-    return VisibleImpressions.previewIndex(feedExtents(layoutInfo, items), layoutInfo.viewportStartOffset, layoutInfo.viewportEndOffset)
+/** The pick most in front: the first one, or the next once the first is scrolled more than halfway out. */
+private fun pickInFront(rowState: LazyListState): Int {
+    val first = rowState.layoutInfo.visibleItemsInfo.firstOrNull() ?: return 0
+    if (rowState.firstVisibleItemScrollOffset > first.size / 2) {
+        return first.index + 1
+    }
+    return first.index
+}
+
+/** The shape of the top picks while they load: a heading's room over one large card. */
+@Composable
+private fun TopPicksPlaceholder() {
+    Column(Modifier.fillMaxWidth().padding(top = VeilSpacing.huge).gutterPadding()) {
+        Column(
+            Modifier
+                .fillMaxWidth(TOP_PICK_WIDTH_FRACTION)
+                .aspectRatio(16f / 9f)
+                .clip(VeilShapes.card)
+                .background(VeilColors.surface),
+        ) {}
+    }
+}
+
+/** Videos stopped partway, logged as shown on "continue". */
+@Composable
+private fun ContinueWatchingRow(viewModel: HomeViewModel, navigator: AppNavigator) {
+    val videos by viewModel.continueWatching.collectAsStateWithLifecycle()
+    val rowState = rememberLazyListState()
+    TrackShown(rowState, videos.map { video -> video.id }) { position ->
+        viewModel.recordShown(videos[position].id, ImpressionSurface.CONTINUE, position)
+    }
+    Shelf("Continue watching", videos, key = { video -> video.id }, itemWidth = VideoCardWidth, state = rowState) { video, position ->
+        VideoCard(video, onClick = {
+            viewModel.recordClicked(video.id, ImpressionSurface.CONTINUE, position)
+            navigator.openVideo(video.id)
+        })
+    }
+}
+
+/** Rooms being recorded, then rooms live now. */
+@Composable
+private fun LiveRow(viewModel: HomeViewModel, navigator: AppNavigator) {
+    val rooms by viewModel.live.collectAsStateWithLifecycle()
+    Shelf("Live now", rooms, key = { room -> room.id }, itemWidth = LiveCardWidth) { room, _ ->
+        CamCard(room, onClick = { navigator.openCam(room.id) })
+    }
+}
+
+/** More for you: a heading, then the recommendations after the top picks as full-width cards. */
+private fun LazyListScope.forYou(picks: LoadState<HomePicks>, viewModel: HomeViewModel, navigator: AppNavigator) {
+    if (picks !is LoadState.Loaded) {
+        return
+    }
+    val forYou = picks.value.forYou
+    if (forYou.isEmpty()) {
+        return
+    }
+    val firstPosition = picks.value.top.size
+    item("for-you-heading") { SectionHeading("More for you", modifier = Modifier.gutterPadding()) }
+    itemsIndexed(forYou, key = { _, pick -> forYouKey(pick.video.id) }) { index, pick ->
+        VideoCard(
+            pick.video,
+            onClick = {
+                viewModel.recordClicked(pick.video.id, ImpressionSurface.HOME, firstPosition + index)
+                navigator.openVideo(pick.video.id)
+            },
+            note = pick.reason,
+            edgeToEdge = true,
+        )
+    }
+}
+
+/** Logs the More for you cards seen in the page list; positions continue after the top picks. */
+@Composable
+private fun ForYouImpressions(listState: LazyListState, picks: LoadState<HomePicks>, viewModel: HomeViewModel) {
+    if (picks !is LoadState.Loaded) {
+        return
+    }
+    val forYou = picks.value.forYou
+    val firstPosition = picks.value.top.size
+    TrackShown(listState, forYou.map { pick -> forYouKey(pick.video.id) }) { index ->
+        viewModel.recordShown(forYou[index].video.id, ImpressionSurface.HOME, firstPosition + index)
+    }
+}
+
+/** The rows after More for you: Continue reading, Stories, Audio, Performers. */
+@Composable
+private fun MoreRows(viewModel: HomeViewModel, navigator: AppNavigator) {
+    val continueReading by viewModel.continueReading.collectAsStateWithLifecycle()
+    val stories by viewModel.stories.collectAsStateWithLifecycle()
+    val audios by viewModel.audios.collectAsStateWithLifecycle()
+    val performers by viewModel.performers.collectAsStateWithLifecycle()
+    Column {
+        Shelf("Continue reading", continueReading, key = { story -> story.id }, itemWidth = StoryCardWidth) { story, _ ->
+            StoryCard(story, onClick = { navigator.openStory(story.id) })
+        }
+        Shelf("Stories", stories, key = { story -> story.id }, itemWidth = StoryCardWidth) { story, _ ->
+            StoryCard(story, onClick = { navigator.openStory(story.id) })
+        }
+        Shelf("Audio", audios, key = { audio -> audio.id }, itemWidth = AudioCardWidth) { audio, _ ->
+            AudioCard(audio, onClick = { navigator.openAudio(audio.id) })
+        }
+        Shelf("Performers", performers, key = { performer -> performer.id }, itemWidth = PerformerWidth) { performer, _ ->
+            PerformerBubble(performer, onClick = { navigator.openPerformer(performer.id) })
+        }
+    }
 }

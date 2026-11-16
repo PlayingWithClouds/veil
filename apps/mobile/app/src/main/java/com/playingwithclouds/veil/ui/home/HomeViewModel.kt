@@ -1,230 +1,157 @@
 package com.playingwithclouds.veil.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.playingwithclouds.veil.AppScope
 import com.playingwithclouds.veil.data.AppServices
-import com.playingwithclouds.veil.data.EntityRef
-import com.playingwithclouds.veil.data.FeedRepository
-import com.playingwithclouds.veil.data.FilterPreset
+import com.playingwithclouds.veil.data.AudioSummary
+import com.playingwithclouds.veil.data.CamSummary
+import com.playingwithclouds.veil.data.HomeRepository
 import com.playingwithclouds.veil.data.ImpressionSurface
-import com.playingwithclouds.veil.data.RecommendedScene
-import com.playingwithclouds.veil.data.SavedFilterRepository
-import com.playingwithclouds.veil.data.SceneRepository
-import com.playingwithclouds.veil.data.SceneSummary
-import com.playingwithclouds.veil.data.SearchRepository
-import com.playingwithclouds.veil.data.SearchSite
-import com.playingwithclouds.veil.data.Verdict
-import com.playingwithclouds.veil.data.WatchProgressStore
-import com.playingwithclouds.veil.ui.paging.PagedList
+import com.playingwithclouds.veil.data.PerformerSummary
+import com.playingwithclouds.veil.data.RecommendedVideo
+import com.playingwithclouds.veil.data.StorySummary
+import com.playingwithclouds.veil.data.VideoSummary
+import com.playingwithclouds.veil.graphql.type.RecordKind
+import com.playingwithclouds.veil.ui.LoadState
+import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** Picks in the top row; More for you lists the next [FOR_YOU_COUNT]. */
+private const val TOP_PICK_COUNT = 5
+private const val FOR_YOU_COUNT = 15
+
+/** Asked for beyond what's shown, to make up for videos being watched (they have their own row). */
+private const val RECOMMENDATION_SLACK = 20
+
+/** Cards in each of the other rows. */
+private const val ROW_LIMIT = 20
+
+/** Log tag of rows that failed to load. */
+private const val TAG = "VeilHome"
+
+/** The recommendations Home shows: the top picks row, then the More for you list. */
+data class HomePicks(val top: List<RecommendedVideo>, val forYou: List<RecommendedVideo>)
+
 /**
- * The Home tab's feed: the recommendation ranking, or a plain listing once a tag is picked, narrowed
- * by the filter row (sites, runtime, tag, saved presets), with shelves to interleave.
+ * Home's rows, as the web home has them: top picks and More for you from the recommendations,
+ * Continue watching, Live now, Continue reading, Stories, Audio and Performers. Each row loads on
+ * its own and stays empty (hidden) when it fails; only the recommendations report failure. Videos
+ * being watched are never recommended here: they have their own row.
  */
 class HomeViewModel : ViewModel() {
 
-    private var firstPageLoaded = false
+    private val recommended = MutableStateFlow<LoadState<List<RecommendedVideo>>>(LoadState.Loading)
+    private val continueWatchingRow = MutableStateFlow(emptyList<VideoSummary>())
+    private val liveRow = MutableStateFlow(emptyList<CamSummary>())
+    private val continueReadingRow = MutableStateFlow(emptyList<StorySummary>())
+    private val storiesRow = MutableStateFlow(emptyList<StorySummary>())
+    private val audiosRow = MutableStateFlow(emptyList<AudioSummary>())
+    private val performersRow = MutableStateFlow(emptyList<PerformerSummary>())
+    private val refreshingState = MutableStateFlow(false)
 
-    private var filterChanged = false
+    /** The recommendations without the videos being watched, split into top picks and More for you. */
+    val picks: StateFlow<LoadState<HomePicks>> = combine(recommended, continueWatchingRow) { state, watching ->
+        picksOf(state, watching.map { video -> video.id }.toSet())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, LoadState.Loading)
 
-    private val mutableFilter = MutableStateFlow(HomeFilter())
+    val continueWatching: StateFlow<List<VideoSummary>> = continueWatchingRow.asStateFlow()
+    val live: StateFlow<List<CamSummary>> = liveRow.asStateFlow()
+    val continueReading: StateFlow<List<StorySummary>> = continueReadingRow.asStateFlow()
+    val stories: StateFlow<List<StorySummary>> = storiesRow.asStateFlow()
+    val audios: StateFlow<List<AudioSummary>> = audiosRow.asStateFlow()
+    val performers: StateFlow<List<PerformerSummary>> = performersRow.asStateFlow()
 
-    /** What the feed is narrowed to right now. */
-    val filter: StateFlow<HomeFilter> = mutableFilter
-
-    private val mutableSites = MutableStateFlow<List<SearchSite>>(emptyList())
-
-    /** The sites that list scenes, for the site picker. */
-    val sites: StateFlow<List<SearchSite>> = mutableSites
-
-    private val mutablePresets = MutableStateFlow<List<FilterPreset>>(emptyList())
-
-    /** The saved filter presets, shown as chips. */
-    val presets: StateFlow<List<FilterPreset>> = mutablePresets
-
-    private val mutableTagChips = MutableStateFlow<List<EntityRef>>(emptyList())
-
-    /** The tags most present in the ranked feed, as content-type chips. */
-    val tagChips: StateFlow<List<EntityRef>> = mutableTagChips
-
-    private val mutableShelves = MutableStateFlow<List<HomeShelf>>(emptyList())
-
-    /** The rows interleaved into the unfiltered feed. */
-    val shelves: StateFlow<List<HomeShelf>> = mutableShelves
-
-    /**
-     * The feed. The first load re-uses a recent ranking; every later load of the first page is a
-     * user refresh and asks the engine to re-rank, except when it only follows a filter change.
-     */
-    val feed: PagedList<RecommendedScene> = PagedList(viewModelScope, PAGE_SIZE, { item -> item.scene.id }) { offset -> loadPage(offset) }
+    /** Whether a pull-to-refresh is running. */
+    val refreshing: StateFlow<Boolean> = refreshingState.asStateFlow()
 
     init {
-        feed.loadMore()
-        viewModelScope.launch { loadSites() }
-        viewModelScope.launch { loadPresets() }
+        viewModelScope.launch { loadAll() }
     }
 
-    /** Reloads the resume positions shown on cards, e.g. after coming back from a scene. */
-    fun refreshProgress() {
-        viewModelScope.launch { WatchProgressStore.refresh() }
-    }
-
-    /** Replaces the filter and reloads the feed from the stored ranking. */
-    fun applyFilter(newFilter: HomeFilter) {
-        if (newFilter == mutableFilter.value) {
+    /** Loads every row again, e.g. on pull-to-refresh; shown cards may be logged again. */
+    fun refresh() {
+        if (refreshingState.value) {
             return
         }
-        mutableFilter.value = newFilter
-        filterChanged = true
-        feed.refresh()
-    }
-
-    /** Toggles one site in the filter. */
-    fun toggleSource(name: String) {
-        applyFilter(mutableFilter.value.toggleSource(name))
-    }
-
-    /** Stores the current filter as a preset chip. */
-    fun saveCurrentAsPreset(name: String) {
-        val current = mutableFilter.value
+        AppServices.impressions.resetShown(ImpressionSurface.HOME)
+        AppServices.impressions.resetShown(ImpressionSurface.CONTINUE)
         viewModelScope.launch {
-            try {
-                val preset = SavedFilterRepository.create(name, current.tagId, current.sources.toList(), current.runtime)
-                mutablePresets.update { presets -> listOf(preset) + presets }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                // The chip simply does not appear; the filter itself stays applied.
-            }
+            refreshingState.value = true
+            loadAll()
+            refreshingState.value = false
         }
     }
 
-    /** Deletes a preset. */
-    fun deletePreset(preset: FilterPreset) {
-        mutablePresets.update { presets -> presets.filter { saved -> saved.id != preset.id } }
-        AppScope.launch { runCatching { SavedFilterRepository.delete(preset.id) } }
+    /** Loads the recommendations again after they failed. */
+    fun retryPicks() {
+        viewModelScope.launch { loadRecommendations() }
     }
 
-    /** Removes a scene from the loaded feed, e.g. after the user marked it not interested. */
-    fun dropFromFeed(sceneId: String) {
-        feed.update { items -> items.filter { item -> item.scene.id != sceneId } }
-        mutableShelves.update { shelves -> shelves.map { shelf -> withoutScene(shelf, sceneId) } }
+    /** Logs a video card as shown on a surface at a position. */
+    fun recordShown(videoId: String, surface: String, position: Int) {
+        AppServices.impressions.recordShown(videoId, RecordKind.video, surface, position)
     }
 
-    /** Swipe-away: removes the scene and records a dislike, which the recommender weighs negatively. */
-    fun notInterested(scene: SceneSummary) {
-        dropFromFeed(scene.id)
-        AppScope.launch { runCatching { SceneRepository.setVerdict(scene.id, Verdict.DOWN) } }
+    /** Logs a video card as opened from a surface at a position. */
+    fun recordClicked(videoId: String, surface: String, position: Int) {
+        AppServices.impressions.recordClicked(videoId, RecordKind.video, surface, position)
     }
 
-    /** Logs that a recommendation was shown; plain tag listings are not recommendations. */
-    fun recordShown(item: RecommendedScene, position: Int) {
-        if (item.source == LISTING_SOURCE) {
-            return
+    /** Loads every row side by side and returns once all have answered. */
+    private suspend fun loadAll() = coroutineScope {
+        launch { loadRecommendations() }
+        launch { loadRow("continue watching", continueWatchingRow) { HomeRepository.continueWatching(ROW_LIMIT) } }
+        launch { loadRow("live", liveRow) { HomeRepository.live(ROW_LIMIT) } }
+        launch { loadRow("continue reading", continueReadingRow) { HomeRepository.continueReading(ROW_LIMIT) } }
+        launch { loadRow("stories", storiesRow) { HomeRepository.stories(ROW_LIMIT) } }
+        launch { loadRow("audio", audiosRow) { HomeRepository.audios(ROW_LIMIT) } }
+        launch { loadRow("performers", performersRow) { HomeRepository.performers(ROW_LIMIT) } }
+    }
+
+    /** Loads the recommendations; while a refresh runs the shown ones stay until the new arrive. */
+    private suspend fun loadRecommendations() {
+        if (recommended.value !is LoadState.Loaded) {
+            recommended.value = LoadState.Loading
         }
-        AppServices.impressions.recordShown(item.scene.id, item.source, SURFACE, position)
-    }
-
-    /** Logs that a recommendation was opened. */
-    fun recordClicked(item: RecommendedScene, position: Int) {
-        if (item.source == LISTING_SOURCE) {
-            return
-        }
-        AppServices.impressions.recordClicked(item.scene.id, item.source, SURFACE, position)
-    }
-
-    /** Fetches one page for the current filter and, for the first page, refreshes what hangs off it. */
-    private suspend fun loadPage(offset: Int): List<RecommendedScene> {
-        val current = mutableFilter.value
-        val forceRanking = offset == 0 && firstPageLoaded && !filterChanged
-        val page = fetchPage(current, offset, forceRanking)
-        if (offset == 0) {
-            firstPageLoaded = true
-            filterChanged = false
-            AppServices.impressions.resetShown(ImpressionSurface.HOME)
-            AppServices.impressions.resetShown(ImpressionSurface.ROW)
-            refreshAroundFirstPage(current, page)
-        }
-        return page
-    }
-
-    /** One page from the ranking, or from the tag listing once a tag is picked. */
-    private suspend fun fetchPage(current: HomeFilter, offset: Int, forceRanking: Boolean): List<RecommendedScene> {
-        val sources = current.sources.toList()
-        if (current.tagId == null) {
-            return FeedRepository.recommendations(PAGE_SIZE, offset, forceRanking, sources, current.runtime)
-        }
-        val scenes = FeedRepository.filteredScenes(PAGE_SIZE, offset, current.tagId, sources, current.runtime)
-        return scenes.map { scene -> RecommendedScene(scene, LISTING_SOURCE, "") }
-    }
-
-    /** Derives the tag chips and shelves from an unfiltered first page; a filtered feed shows no shelves. */
-    private fun refreshAroundFirstPage(current: HomeFilter, page: List<RecommendedScene>) {
-        if (current.isActive) {
-            mutableShelves.value = emptyList()
-            return
-        }
-        val scenes = page.map { item -> item.scene }
-        mutableTagChips.value = topTags(scenes, TAG_CHIP_COUNT)
-        viewModelScope.launch { loadShelves(scenes) }
-    }
-
-    /** Builds the shelves from the recommender's rows and the feed's credits; a failure leaves none. */
-    private suspend fun loadShelves(feedScenes: List<SceneSummary>) {
         try {
-            val rows = FeedRepository.recommendedRows(ROW_LIMIT, ROW_SIZE)
-            mutableShelves.value = buildShelves(rows, feedScenes)
+            val wanted = TOP_PICK_COUNT + FOR_YOU_COUNT + RECOMMENDATION_SLACK
+            recommended.value = LoadState.Loaded(HomeRepository.recommendedVideos(wanted))
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            mutableShelves.value = buildShelves(emptyList(), feedScenes)
+            recommended.value = LoadState.Failed(error.displayMessage())
         }
     }
 
-    /** Loads the site picker's sites; without them it simply offers none. */
-    private suspend fun loadSites() {
+    /** Fills a row when its data arrives; a row that fails keeps what it showed and logs why. */
+    private suspend fun <T> loadRow(name: String, row: MutableStateFlow<List<T>>, load: suspend () -> List<T>) {
         try {
-            mutableSites.value = SearchRepository.searchSites().filter { site -> site.listsScenes }
+            row.value = load()
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            // The picker is optional.
+            Log.w(TAG, "home row $name failed to load", error)
         }
     }
+}
 
-    /** Loads the saved presets; without them no preset chips show. */
-    private suspend fun loadPresets() {
-        try {
-            mutablePresets.value = SavedFilterRepository.list()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            // Presets are optional.
+/** Splits the loaded recommendations, minus [watchingIds], into top picks and More for you. */
+private fun picksOf(state: LoadState<List<RecommendedVideo>>, watchingIds: Set<String>): LoadState<HomePicks> {
+    return when (state) {
+        is LoadState.Loading -> LoadState.Loading
+        is LoadState.Failed -> state
+        is LoadState.Loaded -> {
+            val fresh = state.value.filter { pick -> pick.video.id !in watchingIds }
+            LoadState.Loaded(HomePicks(fresh.take(TOP_PICK_COUNT), fresh.drop(TOP_PICK_COUNT).take(FOR_YOU_COUNT)))
         }
-    }
-
-    /** A scene shelf without [sceneId]; other shelves unchanged. */
-    private fun withoutScene(shelf: HomeShelf, sceneId: String): HomeShelf {
-        if (shelf !is HomeShelf.Scenes) {
-            return shelf
-        }
-        return shelf.copy(scenes = shelf.scenes.filter { scene -> scene.id != sceneId })
-    }
-
-    companion object {
-        private const val PAGE_SIZE = 24
-        private const val SURFACE = ImpressionSurface.HOME
-
-        /** Source label of cards from the tag listing, which the recommender never served. */
-        private const val LISTING_SOURCE = "listing"
-        private const val TAG_CHIP_COUNT = 10
-        private const val ROW_LIMIT = 4
-        private const val ROW_SIZE = 10
     }
 }

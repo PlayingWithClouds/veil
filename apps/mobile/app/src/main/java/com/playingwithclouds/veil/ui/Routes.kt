@@ -5,64 +5,21 @@ import androidx.navigation.NavHostController
 
 /** Route patterns of every destination, plus builders that fill in the arguments. */
 object Routes {
-    /** The swipeable tab pager: Home, Following, Galleries, Library. */
+    /** The tab screens under the bottom bar: Home, Cams, Library. */
     const val TABS = "tabs"
-    const val COLLECTIONS = "collections"
-    const val HISTORY = "history"
-    const val LIBRARY_SECTION = "library/{section}"
-    const val SEARCH = "search?query={query}"
-    const val SCENE = "scene/{id}"
-    const val PERFORMERS = "performers"
-    const val PERFORMER = "performer/{id}"
-    const val STUDIOS = "studios"
-    const val STUDIO = "studio/{id}"
-    const val TAGS = "tags"
-    const val TAG = "tag/{id}"
-    const val COLLECTION = "collection/{id}"
-    const val GALLERY_CATEGORY = "galleries/category/{name}"
-    const val GALLERY = "gallery/{id}"
-    const val PLUGINS = "plugins"
     const val SETTINGS = "settings"
-    const val RANDOM = "random"
     const val DESIGN_KIT = "design-kit"
-    const val SUBSCRIPTION = "subscription/{id}"
-    const val PREVIEW_FEED = "previews"
-    const val TASTE = "taste"
-    const val CAMS = "cams?tag={tag}"
-    const val CAM = "cam/{id}"
 
-    /** Search, optionally with a query to run right away. */
-    fun search(query: String = ""): String {
-        return "search?query=${Uri.encode(query)}"
-    }
+    /** A screen not rebuilt for the new backend yet, by its title. */
+    const val PENDING = "pending/{title}"
 
-    fun librarySection(section: String): String = "library/${Uri.encode(section)}"
-
-    fun scene(id: String): String = "scene/${Uri.encode(id)}"
-
-    fun performer(id: String): String = "performer/${Uri.encode(id)}"
-
-    fun studio(id: String): String = "studio/${Uri.encode(id)}"
-
-    fun tag(id: String): String = "tag/${Uri.encode(id)}"
-
-    fun collection(id: String): String = "collection/${Uri.encode(id)}"
-
-    fun galleryCategory(name: String): String = "galleries/category/${Uri.encode(name)}"
-
-    fun gallery(id: String): String = "gallery/${Uri.encode(id)}"
-
-    fun subscription(id: String): String = "subscription/${Uri.encode(id)}"
-
-    /** The live cam rooms, optionally narrowed to a tag. */
-    fun cams(tag: String = ""): String = "cams?tag=${Uri.encode(tag)}"
-
-    fun cam(id: String): String = "cam/${Uri.encode(id)}"
+    fun pending(title: String): String = "pending/${Uri.encode(title)}"
 }
 
 /**
  * Navigation actions that screens call, so they never touch route strings. [selectTab] turns the
- * tab pager to a page.
+ * tab pager to a page. Destinations not rebuilt yet open the placeholder screen; porting one only
+ * changes its function here.
  */
 class AppNavigator(private val controller: NavHostController, private val selectTab: (Tab) -> Unit) {
 
@@ -77,65 +34,32 @@ class AppNavigator(private val controller: NavHostController, private val select
         selectTab(tab)
     }
 
-    fun openSearch(query: String = "") = controller.navigate(Routes.search(query))
-
-    fun openScene(id: String) = controller.navigate(Routes.scene(id))
-
-    /** Opens a scene in place of the scene page on top, so playing through a queue does not stack pages. */
-    fun replaceWithScene(id: String) {
-        controller.navigate(Routes.scene(id)) {
-            val current = controller.currentDestination?.id
-            if (current != null) {
-                popUpTo(current) { inclusive = true }
-            }
+    /** Opens a drawer entry: a tab when it has one, else its screen. */
+    fun openDestination(destination: Destination) {
+        val tab = destination.tab
+        if (tab != null) {
+            openTab(tab)
+            return
         }
+        openPending(destination.label)
     }
-
-    fun openCollections() = controller.navigate(Routes.COLLECTIONS)
-
-    fun openHistory() = controller.navigate(Routes.HISTORY)
-
-    /** Downloads, queue or watchlist, by [com.playingwithclouds.veil.ui.library.LibrarySection] name. */
-    fun openLibrarySection(section: String) = controller.navigate(Routes.librarySection(section))
-
-    fun openPerformers() = controller.navigate(Routes.PERFORMERS)
-
-    fun openPerformer(id: String) = controller.navigate(Routes.performer(id))
-
-    fun openStudios() = controller.navigate(Routes.STUDIOS)
-
-    fun openStudio(id: String) = controller.navigate(Routes.studio(id))
-
-    fun openTags() = controller.navigate(Routes.TAGS)
-
-    fun openTag(id: String) = controller.navigate(Routes.tag(id))
-
-    fun openCollection(id: String) = controller.navigate(Routes.collection(id))
-
-
-    fun openGalleryCategory(name: String) = controller.navigate(Routes.galleryCategory(name))
-
-    fun openGallery(id: String) = controller.navigate(Routes.gallery(id))
-
-    fun openPlugins() = controller.navigate(Routes.PLUGINS)
 
     fun openSettings() = controller.navigate(Routes.SETTINGS)
 
-    fun openRandom() = controller.navigate(Routes.RANDOM)
-
     fun openDesignKit() = controller.navigate(Routes.DESIGN_KIT)
 
-    fun openSubscription(id: String) = controller.navigate(Routes.subscription(id))
+    fun openSearch() = openPending("Search")
 
-    /** The vertical swipe feed of preview clips. */
-    fun openPreviewFeed() = controller.navigate(Routes.PREVIEW_FEED)
+    fun openVideo(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Video")
 
-    /** The taste dashboard: what the recommender has learned. */
-    fun openTaste() = controller.navigate(Routes.TASTE)
+    fun openCam(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Cam room")
 
-    /** Live cam rooms, narrowed to [tag] when it is set. */
-    fun openCams(tag: String = "") = controller.navigate(Routes.cams(tag))
+    fun openStory(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Story")
 
-    /** A live cam room. */
-    fun openCam(id: String) = controller.navigate(Routes.cam(id))
+    fun openAudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Audio")
+
+    fun openPerformer(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Performer")
+
+    /** The placeholder of a screen not rebuilt yet. */
+    private fun openPending(title: String) = controller.navigate(Routes.pending(title))
 }

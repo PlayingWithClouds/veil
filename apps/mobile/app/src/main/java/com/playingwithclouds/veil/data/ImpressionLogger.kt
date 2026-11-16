@@ -3,64 +3,46 @@ package com.playingwithclouds.veil.data
 import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
-import com.playingwithclouds.veil.graphql.RecordImpressionsMutation
-import com.playingwithclouds.veil.graphql.type.ImpressionInput
+import com.playingwithclouds.veil.graphql.RecordEventsMutation
+import com.playingwithclouds.veil.graphql.type.EventInput
+import com.playingwithclouds.veil.graphql.type.EventKind
+import com.playingwithclouds.veil.graphql.type.RecordKind
+import com.playingwithclouds.veil.graphql.type.RecordRefInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The surfaces impressions are logged under. The engine learns from [HOME], [ROW] and
- * [PREVIEW_FEED], whose sources are the candidate sources of a ranking; the others are logged for
- * analysis and never change a ranking.
+ * The surfaces impressions are logged under, named as the web logs them so the engine reads both
+ * clients alike.
  */
 object ImpressionSurface {
 
-    /** The Home feed. */
+    /** Home's recommendations: the top picks, then More for you. */
     const val HOME = "home"
 
-    /** A titled shelf between the Home cards. */
-    const val ROW = "row"
-
-    /** The Shorts-style preview feed. */
-    const val PREVIEW_FEED = "preview-feed"
-
-    /** The related scenes of a scene page, inline and over the fullscreen video. */
-    const val RELATED = "related"
-
-    /** The scenes of a performer page. */
-    const val PERFORMER = "performer"
-
-    /** The scenes of a studio page. */
-    const val STUDIO = "studio"
-
-    /** The scenes of a tag page. */
-    const val TAG = "tag"
-
-    /** Search results. */
-    const val SEARCH = "search"
+    /** Home's Continue watching row. */
+    const val CONTINUE = "continue"
 }
 
 /**
- * One shown (or opened) scene, as the recordImpressions mutation takes it. [position] is the
- * 0-based place in the list the user sees: the feed rank on Home, the index within a shelf or list
- * elsewhere.
+ * One record shown (or opened) on a surface. [position] is the 0-based place in the list the user
+ * sees.
  */
 data class Impression(
-    val mediaId: String,
-    val source: String?,
+    val subjectId: String,
+    val subjectKind: RecordKind,
     val surface: String,
     val position: Int,
     val clicked: Boolean,
 )
 
 /**
- * Impression logging: what was shown and what was opened, on which surface and at which position.
- * The engine learns from the recommendation surfaces (see [ImpressionSurface]): source priors,
- * position bias and the "shown but not clicked" fatigue. Impressions go out in batches:
- * after a short quiet period, or at once when the batch fills up or something was opened.
- * Sending is best-effort; failures are dropped.
+ * Impression logging into the event log the recommendation engine learns from: what was shown
+ * ("impression") and what was opened ("choice"), on which surface and at which position. Events go
+ * out in batches: after a short quiet period, or at once when the batch fills up or something was
+ * opened. Sending is best-effort; failures are dropped.
  */
 class ImpressionLogger(
     private val scope: CoroutineScope,
@@ -73,28 +55,28 @@ class ImpressionLogger(
     private var pending = mutableListOf<Impression>()
     private var flushJob: Job? = null
 
-    /** Surface and media id pairs already logged as shown, so re-renders don't count twice. */
+    /** Surface and record pairs already logged as shown, so re-renders don't count twice. */
     private val shownKeys = mutableSetOf<String>()
 
-    /** Queues a "shown" impression, once per scene and surface until [resetShown]. */
+    /** Queues a "shown" impression, once per record and surface until [resetShown]. */
     @Synchronized
-    fun recordShown(mediaId: String, source: String?, surface: String, position: Int) {
-        val key = "$surface|$mediaId"
+    fun recordShown(subjectId: String, subjectKind: RecordKind, surface: String, position: Int) {
+        val key = "$surface|${subjectKind.rawValue}|$subjectId"
         if (!shownKeys.add(key)) {
             return
         }
-        enqueue(Impression(mediaId, source, surface, position, clicked = false))
+        enqueue(Impression(subjectId, subjectKind, surface, position, clicked = false))
     }
 
-    /** Logs that the user opened a recommendation, sending the batch right away. */
+    /** Logs that the user opened a record, sending the batch right away. */
     @Synchronized
-    fun recordClicked(mediaId: String, source: String?, surface: String, position: Int) {
-        enqueue(Impression(mediaId, source, surface, position, clicked = true))
+    fun recordClicked(subjectId: String, subjectKind: RecordKind, surface: String, position: Int) {
+        enqueue(Impression(subjectId, subjectKind, surface, position, clicked = true))
         flushNow()
     }
 
     /**
-     * Forgets which scenes were logged as shown on [surface], or on every surface without one,
+     * Forgets which records were logged as shown on [surface], or on every surface without one,
      * e.g. when the list is reloaded or the screen is opened again.
      */
     @Synchronized
@@ -107,15 +89,15 @@ class ImpressionLogger(
     }
 
     /**
-     * Adds an impression to the batch and schedules or triggers the send. Impressions without a
-     * media id are dropped: one invalid id would fail the whole batch. Nothing is queued while
-     * [enabled] says no (incognito).
+     * Adds an impression to the batch and schedules or triggers the send. Impressions without an
+     * id are dropped: one invalid id would fail the whole batch. Nothing is queued while [enabled]
+     * says no (incognito).
      */
     private fun enqueue(impression: Impression) {
         if (!enabled()) {
             return
         }
-        if (impression.mediaId.isEmpty()) {
+        if (impression.subjectId.isEmpty()) {
             return
         }
         pending.add(impression)
@@ -154,20 +136,27 @@ class ImpressionLogger(
 
     companion object {
         const val FLUSH_DELAY_MILLISECONDS = 3000L
-        const val BATCH_LIMIT = 500
 
-        /** Sends a batch to the backend. */
+        /** The most events the backend takes in one call, as the web sends them. */
+        const val BATCH_LIMIT = 200
+
+        /** Sends a batch to the backend's event log. */
         suspend fun sendToBackend(batch: List<Impression>) {
-            val inputs = batch.map { impression ->
-                ImpressionInput(
-                    mediaId = impression.mediaId,
-                    source = Optional.presentIfNotNull(impression.source),
-                    surface = Optional.present(impression.surface),
-                    position = Optional.present(impression.position),
-                    clicked = Optional.present(impression.clicked),
-                )
+            val events = batch.map { impression -> eventOf(impression) }
+            VeilApi.client.mutation(RecordEventsMutation(events)).execute().dataOrThrow()
+        }
+
+        /** An impression as the event log takes it: a choice when opened, else an impression. */
+        private fun eventOf(impression: Impression): EventInput {
+            var kind = EventKind.impression
+            if (impression.clicked) {
+                kind = EventKind.choice
             }
-            VeilApi.client.mutation(RecordImpressionsMutation(inputs)).execute().dataOrThrow()
+            return EventInput(
+                kind = kind,
+                subject = Optional.present(RecordRefInput(impression.subjectKind, impression.subjectId)),
+                data = Optional.present(mapOf("surface" to impression.surface, "position" to impression.position)),
+            )
         }
     }
 }

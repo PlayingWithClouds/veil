@@ -1,28 +1,31 @@
 package com.playingwithclouds.veil.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import com.playingwithclouds.veil.ui.theme.VeilType
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.playingwithclouds.veil.ui.AppNavigator
+import com.playingwithclouds.veil.ui.LocalOpenDrawer
 import com.playingwithclouds.veil.ui.design.DetailBar
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.NoticeDot
-import com.playingwithclouds.veil.ui.design.RoundIconButton
-import com.playingwithclouds.veil.update.UpdateChecker
 import com.playingwithclouds.veil.ui.design.VeilIcons
-import com.playingwithclouds.veil.ui.design.VeilMenu
-import com.playingwithclouds.veil.ui.design.VeilMenuItem
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
+import com.playingwithclouds.veil.update.UpdateChecker
 
 /** The bar of every detail screen: a round back button, the title and round actions. */
 @Composable
@@ -34,58 +37,45 @@ fun VeilTopBar(
     DetailBar(title, onBack, Modifier.statusBarsPadding(), actions)
 }
 
-/** The magnifier in the headers of the tab screens; opens the search screen. */
-@Composable
-fun SearchButton(navigator: AppNavigator, bare: Boolean = false) {
-    if (bare) {
-        IconTap(VeilIcons.Search, contentDescription = "Search", onClick = { navigator.openSearch() }, tint = VeilColors.content)
-        return
-    }
-    RoundIconButton(VeilIcons.Search, contentDescription = "Search", onClick = { navigator.openSearch() })
-}
+/** Height of a tab screen's top bar under the status bar. */
+private val TabTopBarHeight = 52.dp
 
 /**
- * The gear of the tab screens: a menu with Cams, Random, Previews, Taste, Plugins and Settings. [bare] draws just the
- * icon, for the compact Home bar. A dot on the gear and on Settings marks an update the user hasn't skipped.
+ * The slim bar of the tab screens: ☰, then the wordmark on Home or the tab's [title], then search.
+ * Draws under the status bar on its own.
  */
 @Composable
-fun SettingsMenuButton(navigator: AppNavigator, bare: Boolean = false) {
-    var open by remember { mutableStateOf(false) }
+fun TabTopBar(navigator: AppNavigator, title: String? = null) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().height(TabTopBarHeight).padding(horizontal = VeilSpacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall),
+    ) {
+        MenuButton()
+        if (title == null) {
+            Text("Veil", Modifier.weight(1f), style = VeilType.wordmark, color = VeilColors.content, maxLines = 1)
+        } else {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = VeilColors.content, maxLines = 1)
+        }
+        SearchButton(navigator)
+    }
+}
+
+/** The magnifier in the tab screens' top bars; opens search. */
+@Composable
+fun SearchButton(navigator: AppNavigator) {
+    IconTap(VeilIcons.Search, contentDescription = "Search", onClick = navigator::openSearch, tint = VeilColors.content)
+}
+
+/** The ☰ at the start of the tab screens' top bars; opens the side menu. A dot marks an update the user hasn't skipped. */
+@Composable
+fun MenuButton() {
+    val openDrawer = LocalOpenDrawer.current
     val updateMarked by UpdateChecker.hasUnseenUpdate.collectAsStateWithLifecycle()
     Box {
-        if (bare) {
-            IconTap(VeilIcons.Settings, contentDescription = "More", onClick = { open = true }, tint = VeilColors.content)
-        } else {
-            RoundIconButton(VeilIcons.Settings, contentDescription = "More", onClick = { open = true })
-        }
+        IconTap(VeilIcons.Menu, contentDescription = "Menu", onClick = openDrawer, tint = VeilColors.content)
         if (updateMarked) {
             NoticeDot(Modifier.align(Alignment.TopEnd).padding(VeilSpacing.extraSmall))
-        }
-        VeilMenu(expanded = open, onDismissRequest = { open = false }) {
-            VeilMenuItem("Cams", icon = VeilIcons.Cams, onClick = {
-                open = false
-                navigator.openCams()
-            })
-            VeilMenuItem("Random", icon = VeilIcons.Random, onClick = {
-                open = false
-                navigator.openRandom()
-            })
-            VeilMenuItem("Previews", icon = VeilIcons.Play, onClick = {
-                open = false
-                navigator.openPreviewFeed()
-            })
-            VeilMenuItem("Taste", icon = VeilIcons.Like, onClick = {
-                open = false
-                navigator.openTaste()
-            })
-            VeilMenuItem("Plugins", icon = VeilIcons.Plugins, onClick = {
-                open = false
-                navigator.openPlugins()
-            })
-            VeilMenuItem("Settings", icon = VeilIcons.Settings, marked = updateMarked, onClick = {
-                open = false
-                navigator.openSettings()
-            })
         }
     }
 }

@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -16,54 +19,40 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavBackStackEntry
-import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.playingwithclouds.veil.ui.cams.CamRoomScreen
-import com.playingwithclouds.veil.ui.cams.CamsScreen
-import com.playingwithclouds.veil.ui.collections.CollectionScreen
-import com.playingwithclouds.veil.ui.collections.CollectionsScreen
+import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
-import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
-import com.playingwithclouds.veil.ui.galleries.GalleryCategoryScreen
-import com.playingwithclouds.veil.ui.galleries.GalleryScreen
-import com.playingwithclouds.veil.ui.history.HistoryScreen
 import com.playingwithclouds.veil.ui.home.HomeScreen
-import com.playingwithclouds.veil.ui.library.LibraryHubScreen
-import com.playingwithclouds.veil.ui.library.LibraryScreen
-import com.playingwithclouds.veil.ui.performers.PerformerScreen
-import com.playingwithclouds.veil.ui.performers.PerformersScreen
-import com.playingwithclouds.veil.ui.plugins.PluginsScreen
-import com.playingwithclouds.veil.ui.previews.PreviewFeedScreen
-import com.playingwithclouds.veil.ui.taste.TasteScreen
-import com.playingwithclouds.veil.ui.random.RandomScreen
-import com.playingwithclouds.veil.ui.scene.SceneScreen
-import com.playingwithclouds.veil.ui.search.SearchScreen
+import com.playingwithclouds.veil.ui.pending.PendingScreen
+import com.playingwithclouds.veil.ui.pending.PendingTab
 import com.playingwithclouds.veil.ui.settings.SettingsScreen
-import com.playingwithclouds.veil.ui.studios.StudioScreen
-import com.playingwithclouds.veil.ui.studios.StudiosScreen
-import com.playingwithclouds.veil.ui.subscriptions.SubscriptionScreen
-import com.playingwithclouds.veil.ui.subscriptions.SubscriptionsScreen
-import com.playingwithclouds.veil.ui.tags.TagScreen
-import com.playingwithclouds.veil.ui.tags.TagsScreen
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.launch
 
-/** The screens with the floating tab bar and system back. */
+/** Opens the side menu; the tab screens' top bars call it from their menu button. */
+val LocalOpenDrawer = staticCompositionLocalOf<() -> Unit> { {} }
+
+/**
+ * The app's frame: the side menu with every top-level page, over the tab screens (Home, Cams,
+ * Library) with their floating bar and the screens opened from them. The menu opens from the menu
+ * button or a swipe from the left edge while a tab shows; the tabs change only by tapping, so the
+ * swipe stays the menu's.
+ */
 @Composable
 fun VeilShell() {
     val navController = rememberNavController()
     val pagerState = rememberPagerState { Tab.entries.size }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navigator = remember(navController) {
         AppNavigator(navController) { tab -> scope.launch { pagerState.animateScrollToPage(tab.ordinal) } }
@@ -72,53 +61,83 @@ fun VeilShell() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val onTabs = currentRoute == Routes.TABS
-
     val glassBackdrop = rememberHazeState()
 
+    var currentDestination: Destination? = null
+    if (onTabs) {
+        currentDestination = Destination.entries.first { destination -> destination.tab == Tab.entries[pagerState.currentPage] }
+    }
+
     LaunchedEffect(currentRoute, pagerState.currentPage) { hideOnScroll.show() }
-    BackHandler(enabled = onTabs && pagerState.currentPage != Tab.HOME.ordinal) {
+    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+    BackHandler(enabled = onTabs && drawerState.isClosed && pagerState.currentPage != Tab.HOME.ordinal) {
         navigator.openTab(Tab.HOME)
     }
 
-    Scaffold { innerPadding ->
-        Box(Modifier.fillMaxSize()) {
-            NavHost(
-                navController = navController,
-                startDestination = Routes.TABS,
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding)
-                    .nestedScroll(hideOnScroll.connection)
-                    .hazeSource(glassBackdrop),
-                enterTransition = { PageTransitions.enter(initialState, targetState) },
-                exitTransition = { PageTransitions.exit(initialState, targetState) },
-                popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
-                popExitTransition = { PageTransitions.popExit(initialState, targetState) },
-            ) {
-                composable(Routes.TABS) { TabPager(pagerState, navigator) }
-                detailScreens(navigator)
-            }
-            CompositionLocalProvider(LocalGlassBackdrop provides glassBackdrop) {
-                FloatingNavBar(
-                    pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-                    selected = Tab.entries[pagerState.currentPage],
-                    visible = onTabs && hideOnScroll.visible,
-                    onTab = navigator::openTab,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = onTabs || drawerState.isOpen,
+        drawerContent = {
+            MainDrawer(
+                current = currentDestination,
+                onDestination = { destination ->
+                    scope.launch { drawerState.close() }
+                    navigator.openDestination(destination)
+                },
+                onSettings = {
+                    scope.launch { drawerState.close() }
+                    navigator.openSettings()
+                },
+            )
+        },
+    ) {
+        CompositionLocalProvider(LocalOpenDrawer provides { scope.launch { drawerState.open() } }) {
+            Scaffold { innerPadding ->
+                Box(Modifier.fillMaxSize()) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = Routes.TABS,
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
+                            .nestedScroll(hideOnScroll.connection)
+                            .hazeSource(glassBackdrop),
+                        enterTransition = { PageTransitions.enter(initialState, targetState) },
+                        exitTransition = { PageTransitions.exit(initialState, targetState) },
+                        popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
+                        popExitTransition = { PageTransitions.popExit(initialState, targetState) },
+                    ) {
+                        composable(Routes.TABS) { TabPager(pagerState, navigator) }
+                        detailScreens(navigator)
+                    }
+                    CompositionLocalProvider(LocalGlassBackdrop provides glassBackdrop) {
+                        FloatingNavBar(
+                            pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                            selected = Tab.entries[pagerState.currentPage],
+                            visible = onTabs && hideOnScroll.visible,
+                            onTab = navigator::openTab,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 /**
- * The tab screens side by side: swipe sideways to move between them. Each page keeps its saved
- * state (scroll position) while swiped away, and has room at the bottom for the floating bar.
+ * The tab screens side by side, changed by the bar only. Each page keeps its saved state (scroll
+ * position) while another shows, and has room at the bottom for the floating bar.
  */
 @Composable
 private fun TabPager(pagerState: PagerState, navigator: AppNavigator) {
     val savedStates = rememberSaveableStateHolder()
-    HorizontalPager(pagerState, Modifier.fillMaxSize(), key = { page -> Tab.entries[page].name }) { page ->
+    HorizontalPager(
+        pagerState,
+        Modifier.fillMaxSize(),
+        userScrollEnabled = false,
+        key = { page -> Tab.entries[page].name },
+    ) { page ->
         val tab = Tab.entries[page]
         savedStates.SaveableStateProvider(tab.name) {
             CompositionLocalProvider(LocalFloatingBarInset provides FloatingBarInset) {
@@ -133,43 +152,16 @@ private fun TabPager(pagerState: PagerState, navigator: AppNavigator) {
 private fun TabScreen(tab: Tab, navigator: AppNavigator) {
     when (tab) {
         Tab.HOME -> HomeScreen(navigator)
-        Tab.FOLLOWING -> SubscriptionsScreen(navigator)
-        Tab.GALLERIES -> GalleriesScreen(navigator)
-        Tab.LIBRARY -> LibraryHubScreen(navigator)
+        Tab.CAMS -> PendingTab(tab.label, navigator)
+        Tab.LIBRARY -> PendingTab(tab.label, navigator)
     }
 }
 
-/** Every destination opened from a tab, the Library hub or a card. */
+/** Every destination opened from a tab, the menu or a card. */
 private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
-    composable(
-        Routes.SEARCH,
-        arguments = listOf(navArgument("query") { type = NavType.StringType; defaultValue = "" }),
-    ) { entry -> SearchScreen(entry.argument("query"), navigator) }
-    composable(Routes.COLLECTIONS) { CollectionsScreen(navigator) }
-    composable(Routes.HISTORY) { HistoryScreen(navigator) }
-    composable(Routes.LIBRARY_SECTION) { entry -> LibraryScreen(entry.argument("section"), navigator) }
-    composable(Routes.SCENE) { entry -> SceneScreen(entry.argument("id"), navigator) }
-    composable(Routes.PERFORMERS) { PerformersScreen(navigator) }
-    composable(Routes.PERFORMER) { entry -> PerformerScreen(entry.argument("id"), navigator) }
-    composable(Routes.STUDIOS) { StudiosScreen(navigator) }
-    composable(Routes.STUDIO) { entry -> StudioScreen(entry.argument("id"), navigator) }
-    composable(Routes.TAGS) { TagsScreen(navigator) }
-    composable(Routes.TAG) { entry -> TagScreen(entry.argument("id"), navigator) }
-    composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
-    composable(Routes.GALLERY_CATEGORY) { entry -> GalleryCategoryScreen(entry.argument("name"), navigator) }
-    composable(Routes.GALLERY) { entry -> GalleryScreen(entry.argument("id"), navigator) }
-    composable(Routes.PLUGINS) { PluginsScreen(navigator) }
     composable(Routes.SETTINGS) { SettingsScreen(navigator) }
-    composable(Routes.RANDOM) { RandomScreen(navigator) }
     composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
-    composable(Routes.SUBSCRIPTION) { entry -> SubscriptionScreen(entry.argument("id"), navigator) }
-    composable(Routes.PREVIEW_FEED) { PreviewFeedScreen(navigator) }
-    composable(Routes.TASTE) { TasteScreen(navigator) }
-    composable(
-        Routes.CAMS,
-        arguments = listOf(navArgument("tag") { type = NavType.StringType; defaultValue = "" }),
-    ) { entry -> CamsScreen(entry.argument("tag"), navigator) }
-    composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
+    composable(Routes.PENDING) { entry -> PendingScreen(entry.argument("title"), navigator) }
 }
 
 /** A string argument of the destination; empty when missing. */

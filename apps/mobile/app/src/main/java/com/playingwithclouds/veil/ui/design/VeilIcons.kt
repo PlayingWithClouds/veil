@@ -16,6 +16,11 @@ import com.adamglin.phosphoricons.fill.Rss as RssFill
 import com.adamglin.phosphoricons.fill.Stop as StopFill
 import com.adamglin.phosphoricons.fill.ThumbsDown as ThumbsDownFill
 import com.adamglin.phosphoricons.fill.ThumbsUp as ThumbsUpFill
+import com.adamglin.phosphoricons.fill.Webcam as WebcamFill
+import com.adamglin.phosphoricons.regular.BookOpenText
+import com.adamglin.phosphoricons.regular.Headphones
+import com.adamglin.phosphoricons.regular.List as ListIcon
+import com.adamglin.phosphoricons.regular.SquaresFour
 import com.adamglin.phosphoricons.regular.ArrowClockwise
 import com.adamglin.phosphoricons.regular.ArrowLeft
 import com.adamglin.phosphoricons.regular.ArrowsMerge
@@ -83,6 +88,11 @@ object VeilIcons {
     val Back: ImageVector get() = PhosphorIcons.Regular.ArrowLeft
     val Block: ImageVector get() = PhosphorIcons.Regular.Prohibit
     val Cams: ImageVector get() = PhosphorIcons.Regular.Webcam
+    val CamsFilled: ImageVector get() = PhosphorIcons.Fill.WebcamFill
+    val Audio: ImageVector get() = PhosphorIcons.Regular.Headphones
+    val Stories: ImageVector get() = PhosphorIcons.Regular.BookOpenText
+    val Categories: ImageVector get() = PhosphorIcons.Regular.SquaresFour
+    val Menu: ImageVector get() = PhosphorIcons.Regular.ListIcon
     val FindVideo: ImageVector get() = PhosphorIcons.Regular.FilmStrip
     val Identify: ImageVector get() = PhosphorIcons.Regular.UserFocus
     val Merge: ImageVector get() = PhosphorIcons.Regular.ArrowsMerge

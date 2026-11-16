@@ -1,71 +1,171 @@
-query HomeFeed(
-  $limit: Int
-  $offset: Int
-  $refresh: Boolean
-  $sources: [String!]
-  $minDuration: Int
-  $maxDuration: Int
-) {
-  recommendations(
-    limit: $limit
-    offset: $offset
-    refresh: $refresh
-    sources: $sources
-    minDuration: $minDuration
-    maxDuration: $maxDuration
-  ) {
-    source
-    reason {
-      kind
-      text
+# What Home shows: the same rows as the web home (apps/web/src/lib/home.ts).
+
+fragment VideoCardFields on Video {
+  id
+  title
+  date
+  durationSeconds
+  cover {
+    url
+  }
+  preview {
+    url
+  }
+  studio {
+    id
+    name
+    image {
+      url
     }
-    scene {
-      ...SceneCardFields
+  }
+  performers {
+    id
+    name
+    image {
+      url
+    }
+  }
+  userState {
+    progress
+    viewCount
+  }
+}
+
+fragment CamCardFields on CamModel {
+  id
+  plugin
+  displayName
+  thumbnail {
+    url
+  }
+  live {
+    viewers
+    thumbnail {
+      url
     }
   }
 }
 
-# Home with a tag chip or preset picked: a plain listing instead of the ranked feed.
-query HomeScenes(
-  $limit: Int
-  $offset: Int
-  $tagId: ID
-  $sources: [String!]
-  $minDuration: Int
-  $maxDuration: Int
-) {
-  scenes(
-    limit: $limit
-    offset: $offset
-    tagId: $tagId
-    sources: $sources
-    minDuration: $minDuration
-    maxDuration: $maxDuration
-  ) {
-    ...SceneCardFields
+fragment StoryCardFields on Story {
+  id
+  title
+  chapterCount
+  cover {
+    url
+  }
+  performers {
+    id
+    name
   }
 }
 
-# The titled shelves interleaved into the feed.
-query HomeRows($rowLimit: Int, $perRow: Int) {
-  recommendedRows(rowLimit: $rowLimit, perRow: $perRow) {
-    key
-    title
-    items {
-      source
-      scene {
-        ...SceneCardFields
+fragment AudioCardFields on Audio {
+  id
+  title
+  durationSeconds
+  cover {
+    url
+  }
+  performers {
+    id
+    name
+  }
+}
+
+fragment PerformerCardFields on Performer {
+  id
+  name
+  image {
+    url
+  }
+}
+
+# Recommended videos, each with the first piece of evidence for it.
+query HomeRecommendations($limit: Int) {
+  recommendations(limit: $limit) {
+    record {
+      __typename
+      ... on Video {
+        ...VideoCardFields
+      }
+    }
+    evidence {
+      detail
+    }
+  }
+}
+
+# Recently watched videos; those with a resume point are being watched.
+query HomeVideoHistory($limit: Int) {
+  history(kind: video, limit: $limit) {
+    progress
+    record {
+      __typename
+      ... on Video {
+        ...VideoCardFields
       }
     }
   }
 }
 
-mutation RecordImpressions($impressions: [ImpressionInput!]!) {
-  recordImpressions(impressions: $impressions)
+# Recently read stories; those with a resume point are being read.
+query HomeStoryHistory($limit: Int) {
+  history(kind: story, limit: $limit) {
+    progress
+    record {
+      __typename
+      ... on Story {
+        ...StoryCardFields
+      }
+    }
+  }
 }
 
-query RandomScenes($limit: Int) {
-  randomScenes(limit: $limit) {
-    ...SceneCardFields
+# Recordings running now and the rooms live now, most viewers first.
+query HomeLive($limit: Int) {
+  activeRecordings {
+    camModel {
+      ...CamCardFields
+    }
   }
+  camRooms(query: { limit: $limit }) {
+    rooms {
+      ...CamCardFields
+    }
+  }
+}
+
+query HomeStories($limit: Int) {
+  stories(limit: $limit) {
+    ...StoryCardFields
+  }
+}
+
+query HomeAudios($limit: Int) {
+  audios(limit: $limit) {
+    ...AudioCardFields
+  }
+}
+
+# Favourite performers, most recently marked first.
+query HomeFavoritePerformers($limit: Int) {
+  userStates(filter: { kind: performer, favorite: true }, limit: $limit) {
+    record {
+      __typename
+      ... on Performer {
+        ...PerformerCardFields
+      }
+    }
+  }
+}
+
+# The library's performers, for when there are no favourites yet.
+query HomePerformers($limit: Int) {
+  performers(limit: $limit) {
+    ...PerformerCardFields
+  }
+}
+
+mutation RecordEvents($events: [EventInput!]!) {
+  recordEvents(events: $events)
 }

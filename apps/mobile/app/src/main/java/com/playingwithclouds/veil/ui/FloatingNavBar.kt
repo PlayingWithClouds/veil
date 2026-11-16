@@ -17,7 +17,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -74,11 +73,10 @@ val LocalFloatingBarInset = compositionLocalOf { 0.dp }
 /** The inset a tab screen provides through [LocalFloatingBarInset]. */
 val FloatingBarInset: Dp = FloatingBarHeight + FloatingBarGap * 2
 
-/** A page of the tab pager, in swipe order. */
+/** A page of the tab pager, in bar order; everything else is in the drawer. */
 enum class Tab(val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
     HOME("Home", VeilIcons.HomeFilled, VeilIcons.Home),
-    FOLLOWING("Following", VeilIcons.FollowingFilled, VeilIcons.Following),
-    GALLERIES("Galleries", VeilIcons.GalleriesFilled, VeilIcons.Galleries),
+    CAMS("Cams", VeilIcons.CamsFilled, VeilIcons.Cams),
     LIBRARY("Library", VeilIcons.LibraryFilled, VeilIcons.Library),
 }
 
@@ -148,25 +146,30 @@ fun FloatingNavBar(
         enter = slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) { height -> height } + fadeIn(),
         exit = slideOutVertically { height -> height } + fadeOut(),
     ) {
-        Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = FloatingBarGap, vertical = FloatingBarGap)) {
+        Box(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = FloatingBarGap, vertical = FloatingBarGap),
+            contentAlignment = Alignment.Center,
+        ) {
             TabPill(pagerPosition, selected, onTab)
         }
     }
 }
 
+/** Width of one tab slot; the pill is as wide as its slots, centred. */
+private val TabSlotWidth = 84.dp
+
 /** The tab slots over a selection pill that sits at the pager's position. */
 @Composable
 private fun TabPill(pagerPosition: () -> Float, selected: Tab, onTab: (Tab) -> Unit) {
-    BoxWithConstraints(
+    val tabWidth = TabSlotWidth
+    Box(
         Modifier
-            .fillMaxWidth()
             .height(FloatingBarHeight)
             .clip(VeilShapes.capsule)
             .background(VeilColors.surface)
             .border(1.dp, VeilColors.glassEdge, VeilShapes.capsule)
             .padding(PillPadding),
     ) {
-        val tabWidth = maxWidth / Tab.entries.size
         Box(
             Modifier
                 .offset { IntOffset((tabWidth.toPx() * pagerPosition()).roundToInt(), 0) }
