@@ -12,6 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -54,6 +57,23 @@ fun Modifier.glass(shape: Shape): Modifier {
         clipped.background(VeilColors.glassFallback)
     }
     return surface.border(1.dp, VeilColors.glassEdge, shape)
+}
+
+/**
+ * A frosted bar across the screen's width (a top bar): the page scrolling under it, blurred and
+ * tinted, with a hairline along its bottom edge. Without a backdrop it falls back to a translucent fill.
+ */
+@Composable
+fun Modifier.glassBar(): Modifier {
+    val backdrop = LocalGlassBackdrop.current
+    var surface = this.background(VeilColors.glassFallback)
+    if (backdrop != null) {
+        surface = this.hazeBlur(HazeInput.Sources(backdrop), glassStyle)
+    }
+    return surface.drawBehind {
+        val edge = 1.dp.toPx()
+        drawRect(VeilColors.glassEdge, topLeft = Offset(0f, size.height - edge), size = Size(size.width, edge))
+    }
 }
 
 /** Glass for controls in the page (buttons, pills, switches): a translucent sheen with the hairline glass edge. */

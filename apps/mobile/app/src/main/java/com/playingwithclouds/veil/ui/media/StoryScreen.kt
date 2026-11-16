@@ -36,6 +36,7 @@ import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SectionHeading
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -76,6 +77,7 @@ fun StoryScreen(storyId: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "story-$storyId") { StoryViewModel(storyId) }
     val state by viewModel.story.collectAsStateWithLifecycle()
     val title = (state as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
+    ShowAmbientGlow((state as? LoadState.Loaded)?.value?.summary?.coverUrl)
     Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
         LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { story ->
             val contents = StoryReading.contentsOf(story.chapters)

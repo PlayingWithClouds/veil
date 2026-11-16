@@ -26,7 +26,9 @@ import com.playingwithclouds.veil.data.CamRecording
 import com.playingwithclouds.veil.data.CamRepository
 import com.playingwithclouds.veil.data.CamSource
 import com.playingwithclouds.veil.ui.AppNavigator
+import com.playingwithclouds.veil.ui.components.GlassTopBarLayout
 import com.playingwithclouds.veil.ui.components.PagedGrid
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.TabTopBar
@@ -185,9 +187,9 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
     PollWhileStarted(CAM_POLL_MILLISECONDS) { viewModel.refreshLive() }
 
     if (initialTag == null) {
-        Column(Modifier.fillMaxSize()) {
-            TabTopBar(navigator, "Cams")
-            CamsGrid(state, viewModel, navigator, showOverview = true, Modifier.weight(1f))
+        ShowAmbientGlow(state.topPicks.firstOrNull()?.thumbnailUrl)
+        GlassTopBarLayout(bar = { TabTopBar(navigator, "Cams") }) {
+            CamsGrid(state, viewModel, navigator, showOverview = true, Modifier.fillMaxSize())
         }
         return
     }

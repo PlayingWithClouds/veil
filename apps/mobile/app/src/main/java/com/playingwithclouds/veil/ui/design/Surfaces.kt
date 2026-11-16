@@ -22,7 +22,14 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import android.os.Build
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,21 +90,61 @@ fun VeilDialog(
 /** Top corners of a bottom sheet, matching [VeilShapes.sheet]. */
 private val SheetTopShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 
-/** A bottom sheet with large top corners, a slim handle and the dark surface. */
+/**
+ * A bottom sheet with large top corners and a slim handle, as frosted glass: where the phone can
+ * blur across windows (Android 12+), the page behind is blurred and the sheet is a dark tint over
+ * it; elsewhere the sheet is the near-opaque glass fill.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VeilBottomSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val blurs = crossWindowBlurAvailable()
+    var container = VeilColors.glassFallback
+    if (blurs) {
+        container = VeilColors.glassTint
+    }
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = rememberModalBottomSheetState(),
         shape = SheetTopShape,
-        containerColor = VeilColors.surface,
+        containerColor = container,
         contentColor = VeilColors.content,
         tonalElevation = 0.dp,
         scrimColor = VeilColors.scrim,
         dragHandle = { SheetHandle() },
     ) {
+        if (blurs) {
+            BlurBehindWindow()
+        }
         Column(Modifier.navigationBarsPadding(), content = content)
+    }
+}
+
+/** How strongly a sheet blurs the page behind it. */
+private val SheetBlurRadius = 24.dp
+
+/** Whether this phone blurs behind windows: Android 12+ with cross-window blur on (not in battery saver, say). */
+@Composable
+private fun crossWindowBlurAvailable(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        return false
+    }
+    val windowManager = LocalContext.current.getSystemService(WindowManager::class.java) ?: return false
+    return windowManager.isCrossWindowBlurEnabled
+}
+
+/** Blurs what's behind the window this is composed in (a sheet's or a dialog's). */
+@Composable
+private fun BlurBehindWindow() {
+    val view = LocalView.current
+    val radius = with(LocalDensity.current) { SheetBlurRadius.roundToPx() }
+    DisposableEffect(view) {
+        val window = ((view as? DialogWindowProvider) ?: (view.parent as? DialogWindowProvider))?.window
+        if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            window.attributes = window.attributes.also { attributes -> attributes.blurBehindRadius = radius }
+        }
+        onDispose {}
     }
 }
 

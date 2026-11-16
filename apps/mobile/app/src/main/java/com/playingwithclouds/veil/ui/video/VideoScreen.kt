@@ -30,6 +30,7 @@ import com.playingwithclouds.veil.ui.components.FailedMessage
 import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.theme.VeilColors
@@ -75,6 +76,7 @@ fun VideoScreen(videoId: String, navigator: AppNavigator) {
     }
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
     val title = (detail as? LoadState.Loaded)?.value?.title.orEmpty()
+    ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
     Scaffold(
         topBar = {
             if (!immersive) {

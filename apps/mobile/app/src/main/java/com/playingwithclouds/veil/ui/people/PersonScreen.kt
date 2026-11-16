@@ -45,6 +45,7 @@ import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.SectionHeading
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
@@ -141,6 +142,7 @@ fun PersonScreen(kind: MemberKind, personId: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "${kind.name}-$personId") { PersonViewModel(kind, personId) }
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val title = (detail as? LoadState.Loaded)?.value?.name.orEmpty()
+    ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.imageUrl)
     Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { person ->
             PersonContent(person, viewModel, navigator)

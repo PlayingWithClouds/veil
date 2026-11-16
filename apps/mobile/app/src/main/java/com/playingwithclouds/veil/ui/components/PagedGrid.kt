@@ -71,7 +71,7 @@ fun <T> PagedGrid(
     gridState: LazyGridState = rememberLazyGridState(),
     contentPadding: PaddingValues = PaddingValues(
         start = VeilSpacing.gutter,
-        top = VeilSpacing.small,
+        top = VeilSpacing.small + LocalTopBarInset.current,
         end = VeilSpacing.gutter,
         bottom = VeilSpacing.large + LocalFloatingBarInset.current,
     ),

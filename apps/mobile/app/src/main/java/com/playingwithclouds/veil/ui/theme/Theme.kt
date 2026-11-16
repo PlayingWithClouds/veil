@@ -76,7 +76,8 @@ private val veilColorScheme = darkColorScheme(
     onSecondary = VeilColors.contentMuted,
     tertiary = VeilColors.accent,
     onTertiary = VeilColors.canvas,
-    background = VeilColors.canvas,
+    // Screens (Scaffold) are see-through so the shell's glow shows behind them; the app's root paints the canvas.
+    background = Color.Transparent,
     onBackground = VeilColors.content,
     surface = VeilColors.elevated,
     onSurface = VeilColors.content,

@@ -27,6 +27,7 @@ import com.playingwithclouds.veil.data.GallerySummary
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.EmptyMessage
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.components.pressClickable
@@ -50,10 +51,12 @@ private val GalleryThumbHeight = 96.dp
 fun CollectionEntries(page: CollectionPage, emptyText: String, navigator: AppNavigator, onRemove: (CollectionEntry) -> Unit) {
     var removing by remember { mutableStateOf<CollectionEntry?>(null) }
     if (page.entries.isEmpty()) {
-        EmptyMessage(emptyText)
+        EmptyMessage(emptyText, Modifier.padding(top = LocalTopBarInset.current))
         return
     }
-    LazyColumn(contentPadding = PaddingValues(top = VeilSpacing.small, bottom = VeilSpacing.large + LocalFloatingBarInset.current)) {
+    LazyColumn(
+        contentPadding = PaddingValues(top = VeilSpacing.small + LocalTopBarInset.current, bottom = VeilSpacing.large + LocalFloatingBarInset.current),
+    ) {
         items(page.entries, key = { entry -> entry.id }) { entry ->
             when (entry) {
                 is CollectionEntry.Video -> VideoCard(

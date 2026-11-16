@@ -55,6 +55,7 @@ import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.SheetAction
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilBottomSheet
@@ -140,6 +141,7 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
         return
     }
     val room = (model as? LoadState.Loaded)?.value
+    ShowAmbientGlow(room?.thumbnailUrl)
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
     Scaffold(
         topBar = {

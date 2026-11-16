@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.glass
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -128,7 +129,7 @@ fun rememberHideOnScrollState(): HideOnScrollState {
 private val PillPadding = 4.dp
 
 /**
- * The detached solid pill with the tabs (no glass, so it stays calm over busy thumbnails).
+ * The detached frosted-glass pill with the tabs, blurring what scrolls under it.
  * [pagerPosition] is the tab pager's position in pages (fractional mid-swipe), so the selection
  * pill follows the finger.
  */
@@ -165,9 +166,7 @@ private fun TabPill(pagerPosition: () -> Float, selected: Tab, onTab: (Tab) -> U
     Box(
         Modifier
             .height(FloatingBarHeight)
-            .clip(VeilShapes.capsule)
-            .background(VeilColors.surface)
-            .border(1.dp, VeilColors.glassEdge, VeilShapes.capsule)
+            .glass(VeilShapes.capsule)
             .padding(PillPadding),
     ) {
         Box(

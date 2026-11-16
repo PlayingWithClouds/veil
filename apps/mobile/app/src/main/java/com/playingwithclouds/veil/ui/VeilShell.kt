@@ -31,7 +31,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.playingwithclouds.veil.ui.cams.CamRoomScreen
 import com.playingwithclouds.veil.ui.cams.CamsScreen
+import com.playingwithclouds.veil.ui.design.AmbientGlow
+import com.playingwithclouds.veil.ui.design.AmbientGlowState
+import com.playingwithclouds.veil.ui.design.LocalAmbientGlow
 import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
 import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
 import com.playingwithclouds.veil.ui.galleries.GalleryScreen
@@ -83,13 +91,18 @@ fun VeilShell() {
     val currentRoute = backStackEntry?.destination?.route
     val onTabs = currentRoute == Routes.TABS
     val glassBackdrop = rememberHazeState()
+    val ambientGlow = remember { AmbientGlowState() }
+    val glowScroll = remember { GlowScrollState() }
 
     var currentDestination: Destination? = null
     if (onTabs) {
         currentDestination = Destination.entries.first { destination -> destination.tab == Tab.entries[pagerState.currentPage] }
     }
 
-    LaunchedEffect(currentRoute, pagerState.currentPage) { hideOnScroll.show() }
+    LaunchedEffect(currentRoute, pagerState.currentPage) {
+        hideOnScroll.show()
+        glowScroll.reset()
+    }
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
     BackHandler(enabled = onTabs && drawerState.isClosed && pagerState.currentPage != Tab.HOME.ordinal) {
         navigator.openTab(Tab.HOME)
@@ -112,24 +125,31 @@ fun VeilShell() {
             )
         },
     ) {
-        CompositionLocalProvider(LocalOpenDrawer provides { scope.launch { drawerState.open() } }) {
+        CompositionLocalProvider(
+            LocalOpenDrawer provides { scope.launch { drawerState.open() } },
+            LocalAmbientGlow provides ambientGlow,
+        ) {
             Scaffold { innerPadding ->
                 Box(Modifier.fillMaxSize()) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = Routes.TABS,
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .consumeWindowInsets(innerPadding)
-                            .nestedScroll(hideOnScroll.connection)
-                            .hazeSource(glassBackdrop),
-                        enterTransition = { PageTransitions.enter(initialState, targetState) },
-                        exitTransition = { PageTransitions.exit(initialState, targetState) },
-                        popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
-                        popExitTransition = { PageTransitions.popExit(initialState, targetState) },
-                    ) {
-                        composable(Routes.TABS) { TabPager(pagerState, navigator) }
-                        detailScreens(navigator)
+                    // The glow and the pages are one backdrop, so glass over them blurs both.
+                    Box(Modifier.fillMaxSize().hazeSource(glassBackdrop)) {
+                        AmbientGlow(ambientGlow, visibility = glowScroll::visibility)
+                        NavHost(
+                            navController = navController,
+                            startDestination = Routes.TABS,
+                            modifier = Modifier
+                                .padding(innerPadding)
+                                .consumeWindowInsets(innerPadding)
+                                .nestedScroll(hideOnScroll.connection)
+                                .nestedScroll(glowScroll.connection),
+                            enterTransition = { PageTransitions.enter(initialState, targetState) },
+                            exitTransition = { PageTransitions.exit(initialState, targetState) },
+                            popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
+                            popExitTransition = { PageTransitions.popExit(initialState, targetState) },
+                        ) {
+                            composable(Routes.TABS) { TabPager(pagerState, navigator) }
+                            detailScreens(navigator)
+                        }
                     }
                     CompositionLocalProvider(LocalGlassBackdrop provides glassBackdrop) {
                         FloatingNavBar(
@@ -209,6 +229,36 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.STUDIO) { entry -> PersonScreen(MemberKind.STUDIOS, entry.argument("id"), navigator) }
     composable(Routes.SEARCH, arguments = listOf(optionalText("query"))) { entry -> SearchScreen(entry.argument("query"), navigator) }
     composable(Routes.CAMS_TAGGED) { entry -> CamsScreen(entry.argument("tag"), navigator) }
+}
+
+/** Scrolled this far, in pixels, the glow is gone (the web fades it over 700 px). */
+private const val GLOW_FADE_PIXELS = 1600f
+
+/**
+ * How far the page in front has scrolled, roughly: what its lists consumed, from where it opened.
+ * The glow fades out as it grows; a new page starts at the top again.
+ */
+private class GlowScrollState {
+    var scrolled by mutableFloatStateOf(0f)
+        private set
+
+    /** Follows every list of the page through the shell's nested scroll. */
+    val connection = object : NestedScrollConnection {
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+            scrolled = (scrolled - consumed.y).coerceIn(0f, GLOW_FADE_PIXELS)
+            return Offset.Zero
+        }
+    }
+
+    /** 1 at the top of a page, 0 once it scrolled the fade distance. */
+    fun visibility(): Float {
+        return 1f - scrolled / GLOW_FADE_PIXELS
+    }
+
+    /** A new page opens at the top. */
+    fun reset() {
+        scrolled = 0f
+    }
 }
 
 /** A text query argument that may be left out; it's empty then. */

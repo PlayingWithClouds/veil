@@ -41,6 +41,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.EmptyMessage
+import com.playingwithclouds.veil.ui.components.GlassTopBarLayout
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.TabTopBar
@@ -87,21 +89,23 @@ fun LibraryScreen(navigator: AppNavigator) {
         viewModel.messageShown()
     }
     Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            TabTopBar(navigator, "Library")
-            SegmentedControl(
-                LibraryTab.entries.map { entry -> entry.label },
-                selectedIndex = tab.ordinal,
-                onSelect = { index -> viewModel.select(LibraryTab.entries[index]) },
-                modifier = Modifier.gutterPadding().padding(bottom = VeilSpacing.small),
-            )
-            Box(Modifier.weight(1f)) {
-                when (tab) {
-                    LibraryTab.WATCHLIST -> BuiltInTab(viewModel, navigator, watchlist = true)
-                    LibraryTab.QUEUE -> BuiltInTab(viewModel, navigator, watchlist = false)
-                    LibraryTab.COLLECTIONS -> CollectionsTab(viewModel, navigator)
-                    LibraryTab.DOWNLOADS -> DownloadsTab(viewModel, navigator)
-                }
+        GlassTopBarLayout(
+            bar = {
+                TabTopBar(navigator, "Library")
+                SegmentedControl(
+                    LibraryTab.entries.map { entry -> entry.label },
+                    selectedIndex = tab.ordinal,
+                    onSelect = { index -> viewModel.select(LibraryTab.entries[index]) },
+                    modifier = Modifier.gutterPadding().padding(bottom = VeilSpacing.small),
+                )
+            },
+            modifier = Modifier.padding(padding),
+        ) {
+            when (tab) {
+                LibraryTab.WATCHLIST -> BuiltInTab(viewModel, navigator, watchlist = true)
+                LibraryTab.QUEUE -> BuiltInTab(viewModel, navigator, watchlist = false)
+                LibraryTab.COLLECTIONS -> CollectionsTab(viewModel, navigator)
+                LibraryTab.DOWNLOADS -> DownloadsTab(viewModel, navigator)
             }
         }
     }
@@ -144,7 +148,12 @@ private fun CollectionsTab(viewModel: LibraryViewModel, navigator: AppNavigator)
     LoadStateContent(state, onRetry = viewModel::reload) { collections ->
         LazyVerticalGrid(
             GridCells.Fixed(COLLECTION_COLUMNS),
-            contentPadding = PaddingValues(start = VeilSpacing.gutter, end = VeilSpacing.gutter, bottom = VeilSpacing.large + LocalFloatingBarInset.current),
+            contentPadding = PaddingValues(
+                start = VeilSpacing.gutter,
+                top = LocalTopBarInset.current,
+                end = VeilSpacing.gutter,
+                bottom = VeilSpacing.large + LocalFloatingBarInset.current,
+            ),
             horizontalArrangement = Arrangement.spacedBy(VeilSpacing.cardGap),
             verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         ) {
@@ -189,10 +198,10 @@ private fun DownloadsTab(viewModel: LibraryViewModel, navigator: AppNavigator) {
     }
     LoadStateContent(state, onRetry = viewModel::reload) { downloads ->
         if (downloads.isEmpty()) {
-            EmptyMessage("No downloads. Download a video from its page to keep it.")
+            EmptyMessage("No downloads. Download a video from its page to keep it.", Modifier.padding(top = LocalTopBarInset.current))
             return@LoadStateContent
         }
-        LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.large + LocalFloatingBarInset.current)) {
+        LazyColumn(contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = VeilSpacing.large + LocalFloatingBarInset.current)) {
             items(downloads, key = { item -> item.jobId }) { item ->
                 DownloadRow(item, onOpen = { navigator.openVideo(item.video.id) }, onDelete = { viewModel.deleteDownload(item) })
             }

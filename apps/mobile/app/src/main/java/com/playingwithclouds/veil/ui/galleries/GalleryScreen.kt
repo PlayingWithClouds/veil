@@ -50,6 +50,7 @@ import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.GutterRowPadding
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.Pill
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -133,6 +134,7 @@ fun GalleryScreen(galleryId: String, navigator: AppNavigator) {
     val related by viewModel.related.collectAsStateWithLifecycle()
     var viewing by remember { mutableStateOf<Int?>(null) }
     val title = (detail as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
+    ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
     Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { gallery ->
             LazyVerticalStaggeredGrid(

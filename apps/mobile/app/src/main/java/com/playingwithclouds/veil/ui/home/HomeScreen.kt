@@ -35,6 +35,9 @@ import com.playingwithclouds.veil.ui.LocalFloatingBarInset
 import com.playingwithclouds.veil.ui.components.AudioCard
 import com.playingwithclouds.veil.ui.components.CamCard
 import com.playingwithclouds.veil.ui.components.FailedMessage
+import com.playingwithclouds.veil.ui.components.GlassTopBarLayout
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.components.PerformerBubble
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.StoryCard
@@ -76,13 +79,13 @@ fun HomeScreen(navigator: AppNavigator) {
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    Column(Modifier.fillMaxSize()) {
-        TabTopBar(navigator)
-        PullToRefreshBox(isRefreshing = refreshing, onRefresh = viewModel::refresh, modifier = Modifier.weight(1f)) {
+    ShowAmbientGlow((picks as? LoadState.Loaded)?.value?.top?.firstOrNull()?.video?.coverUrl)
+    GlassTopBarLayout(bar = { TabTopBar(navigator) }) {
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = viewModel::refresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(bottom = VeilSpacing.large + LocalFloatingBarInset.current),
+                contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = VeilSpacing.large + LocalFloatingBarInset.current),
             ) {
                 item("top-picks") { TopPicks(picks, viewModel, navigator) }
                 item("continue-watching") { ContinueWatchingRow(viewModel, navigator) }

@@ -43,6 +43,7 @@ import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -153,6 +154,7 @@ fun AudioScreen(audioId: String, navigator: AppNavigator) {
     }
     WatchTracking(player, onEvent = viewModel::onWatchEvent)
     val title = (detail as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
+    ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
     Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
         LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { audio ->
             Column(
