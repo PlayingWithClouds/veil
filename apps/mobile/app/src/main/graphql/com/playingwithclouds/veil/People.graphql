@@ -1,0 +1,102 @@
+# Performers and studios, as the web's apps/web/src/lib/performers.ts and library.ts read them.
+
+fragment MemberFields on Performer {
+  id
+  name
+  image {
+    url
+  }
+  videoCount
+  galleryCount
+}
+
+fragment PerformerDetailFields on Performer {
+  ...MemberFields
+  aliases
+  details
+  attributes {
+    gender
+    birthdate
+    country
+    ethnicity
+    hairColor
+    heightCm
+    measurements
+    careerStart
+    careerEnd
+  }
+  tags {
+    id
+    name
+  }
+  userState {
+    favorite
+  }
+}
+
+fragment StudioDetailFields on Studio {
+  id
+  name
+  image {
+    url
+  }
+  videoCount
+  galleryCount
+  aliases
+  details
+  parent {
+    id
+    name
+  }
+  tags {
+    id
+    name
+  }
+  userState {
+    favorite
+  }
+}
+
+query Performers($text: String, $limit: Int, $offset: Int) {
+  performers(text: $text, limit: $limit, offset: $offset) {
+    ...MemberFields
+  }
+}
+
+query Studios($text: String, $limit: Int, $offset: Int) {
+  studios(text: $text, limit: $limit, offset: $offset) {
+    id
+    name
+    image {
+      url
+    }
+    videoCount
+    galleryCount
+  }
+}
+
+# Reads the performer's pages on the sites they came from that weren't read yet, then returns them.
+mutation ReadPerformer($id: ID!) {
+  fetchPerformer(id: $id) {
+    ...PerformerDetailFields
+  }
+}
+
+query Studio($id: ID!) {
+  studio(id: $id) {
+    ...StudioDetailFields
+  }
+}
+
+# Newest videos matching a filter, e.g. one performer's or studio's.
+query FilteredVideos($filter: FilterInput, $limit: Int, $offset: Int) {
+  videos(filter: $filter, limit: $limit, offset: $offset) {
+    ...VideoCardFields
+  }
+}
+
+query FilteredGalleries($filter: FilterInput, $limit: Int, $offset: Int) {
+  galleries(filter: $filter, limit: $limit, offset: $offset) {
+    ...GalleryCardFields
+  }
+}

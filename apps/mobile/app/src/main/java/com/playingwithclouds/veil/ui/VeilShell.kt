@@ -37,6 +37,9 @@ import com.playingwithclouds.veil.ui.home.HomeScreen
 import com.playingwithclouds.veil.ui.library.CollectionScreen
 import com.playingwithclouds.veil.ui.library.LibraryScreen
 import com.playingwithclouds.veil.ui.pending.PendingScreen
+import com.playingwithclouds.veil.ui.people.MemberKind
+import com.playingwithclouds.veil.ui.people.MembersScreen
+import com.playingwithclouds.veil.ui.people.PersonScreen
 import com.playingwithclouds.veil.ui.search.SearchScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -172,6 +175,10 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
+    composable(Routes.PERFORMERS) { MembersScreen(MemberKind.PERFORMERS, navigator) }
+    composable(Routes.STUDIOS) { MembersScreen(MemberKind.STUDIOS, navigator) }
+    composable(Routes.PERFORMER) { entry -> PersonScreen(MemberKind.PERFORMERS, entry.argument("id"), navigator) }
+    composable(Routes.STUDIO) { entry -> PersonScreen(MemberKind.STUDIOS, entry.argument("id"), navigator) }
     composable(
         Routes.SEARCH,
         arguments = listOf(navArgument("query") { type = NavType.StringType; defaultValue = "" }),

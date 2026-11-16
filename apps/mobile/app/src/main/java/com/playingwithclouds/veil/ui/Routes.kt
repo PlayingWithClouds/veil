@@ -13,6 +13,10 @@ object Routes {
     const val CAM = "cam/{id}"
     const val COLLECTION = "collection/{id}"
     const val SEARCH = "search?query={query}"
+    const val PERFORMERS = "performers"
+    const val PERFORMER = "performer/{id}"
+    const val STUDIOS = "studios"
+    const val STUDIO = "studio/{id}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
@@ -32,6 +36,10 @@ object Routes {
     fun search(query: String): String = "search?query=${Uri.encode(query)}"
 
     fun camsTagged(tag: String): String = "cams/tag/${Uri.encode(tag)}"
+
+    fun performer(id: String): String = "performer/${Uri.encode(id)}"
+
+    fun studio(id: String): String = "studio/${Uri.encode(id)}"
 }
 
 /**
@@ -59,7 +67,11 @@ class AppNavigator(private val controller: NavHostController, private val select
             openTab(tab)
             return
         }
-        openPending(destination.label)
+        when (destination) {
+            Destination.PERFORMERS -> controller.navigate(Routes.PERFORMERS)
+            Destination.STUDIOS -> controller.navigate(Routes.STUDIOS)
+            else -> openPending(destination.label)
+        }
     }
 
     fun openSettings() = controller.navigate(Routes.SETTINGS)
@@ -70,7 +82,7 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openVideo(id: String) = controller.navigate(Routes.video(id))
 
-    fun openStudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Studio")
+    fun openStudio(id: String) = controller.navigate(Routes.studio(id))
 
     fun openCollection(id: String) = controller.navigate(Routes.collection(id))
 
@@ -87,7 +99,7 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openAudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Audio")
 
-    fun openPerformer(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Performer")
+    fun openPerformer(id: String) = controller.navigate(Routes.performer(id))
 
     /** The placeholder of a screen not rebuilt yet. */
     private fun openPending(title: String) = controller.navigate(Routes.pending(title))
