@@ -17,6 +17,9 @@ import com.adamglin.phosphoricons.fill.Stop as StopFill
 import com.adamglin.phosphoricons.fill.ThumbsDown as ThumbsDownFill
 import com.adamglin.phosphoricons.fill.ThumbsUp as ThumbsUpFill
 import com.adamglin.phosphoricons.fill.Webcam as WebcamFill
+import com.adamglin.phosphoricons.fill.Star as StarFill
+import com.adamglin.phosphoricons.regular.Drop
+import com.adamglin.phosphoricons.regular.Star
 import com.adamglin.phosphoricons.regular.BookOpenText
 import com.adamglin.phosphoricons.regular.Headphones
 import com.adamglin.phosphoricons.regular.List as ListIcon
@@ -93,6 +96,9 @@ object VeilIcons {
     val Stories: ImageVector get() = PhosphorIcons.Regular.BookOpenText
     val Categories: ImageVector get() = PhosphorIcons.Regular.SquaresFour
     val Menu: ImageVector get() = PhosphorIcons.Regular.ListIcon
+    val O: ImageVector get() = PhosphorIcons.Regular.Drop
+    val Star: ImageVector get() = PhosphorIcons.Regular.Star
+    val StarFilled: ImageVector get() = PhosphorIcons.Fill.StarFill
     val FindVideo: ImageVector get() = PhosphorIcons.Regular.FilmStrip
     val Identify: ImageVector get() = PhosphorIcons.Regular.UserFocus
     val Merge: ImageVector get() = PhosphorIcons.Regular.ArrowsMerge

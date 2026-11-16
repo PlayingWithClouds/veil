@@ -9,11 +9,14 @@ object Routes {
     const val TABS = "tabs"
     const val SETTINGS = "settings"
     const val DESIGN_KIT = "design-kit"
+    const val VIDEO = "video/{id}"
 
     /** A screen not rebuilt for the new backend yet, by its title. */
     const val PENDING = "pending/{title}"
 
     fun pending(title: String): String = "pending/${Uri.encode(title)}"
+
+    fun video(id: String): String = "video/${Uri.encode(id)}"
 }
 
 /**
@@ -50,7 +53,11 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openSearch() = openPending("Search")
 
-    fun openVideo(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Video")
+    fun openVideo(id: String) = controller.navigate(Routes.video(id))
+
+    fun openStudio(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Studio")
+
+    fun openTag(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Tag")
 
     fun openCam(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Cam room")
 

@@ -35,6 +35,7 @@ import com.playingwithclouds.veil.ui.home.HomeScreen
 import com.playingwithclouds.veil.ui.pending.PendingScreen
 import com.playingwithclouds.veil.ui.pending.PendingTab
 import com.playingwithclouds.veil.ui.settings.SettingsScreen
+import com.playingwithclouds.veil.ui.video.VideoScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
@@ -162,6 +163,7 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.SETTINGS) { SettingsScreen(navigator) }
     composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
     composable(Routes.PENDING) { entry -> PendingScreen(entry.argument("title"), navigator) }
+    composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
 }
 
 /** A string argument of the destination; empty when missing. */

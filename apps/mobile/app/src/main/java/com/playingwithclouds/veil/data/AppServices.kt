@@ -6,10 +6,13 @@ import com.playingwithclouds.veil.privacy.PrivacyPreferences
 /** Process-wide services that screens share. */
 object AppServices {
 
-    /** Logs which recommendations were shown and opened. */
-    val impressions = ImpressionLogger(
+    /** The event log the recommendation engine learns from; silent while incognito. */
+    val events = EventLog(
         AppScope,
-        { batch -> ImpressionLogger.sendToBackend(batch) },
+        { batch -> EventLog.sendToBackend(batch) },
         enabled = { !PrivacyPreferences.incognito.value },
     )
+
+    /** Logs which recommendations were shown and opened. */
+    val impressions = ImpressionLogger(events)
 }

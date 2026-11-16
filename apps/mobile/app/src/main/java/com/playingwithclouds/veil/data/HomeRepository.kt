@@ -15,7 +15,6 @@ import com.playingwithclouds.veil.graphql.fragment.AudioCardFields
 import com.playingwithclouds.veil.graphql.fragment.CamCardFields
 import com.playingwithclouds.veil.graphql.fragment.PerformerCardFields
 import com.playingwithclouds.veil.graphql.fragment.StoryCardFields
-import com.playingwithclouds.veil.graphql.fragment.VideoCardFields
 
 /** The rows of Home, read the way the web home reads them (`apps/web/src/lib/home.ts`). */
 object HomeRepository {
@@ -25,7 +24,7 @@ object HomeRepository {
         val data = VeilApi.client.query(HomeRecommendationsQuery(Optional.present(limit))).execute().dataOrThrow()
         return data.recommendations.mapNotNull { match ->
             val video = match.record?.onVideo?.videoCardFields ?: return@mapNotNull null
-            RecommendedVideo(videoOf(video), match.evidence.firstOrNull()?.detail)
+            RecommendedVideo(video.toSummary(), match.evidence.firstOrNull()?.detail)
         }
     }
 
@@ -37,7 +36,7 @@ object HomeRepository {
         val query = HomeVideoHistoryQuery(Optional.present(limit * 2))
         val data = VeilApi.client.query(query).execute().dataOrThrow()
         val started = data.history.filter { state -> state.progress != null }
-        return started.mapNotNull { state -> state.record?.onVideo?.videoCardFields?.let(::videoOf) }.take(limit)
+        return started.mapNotNull { state -> state.record?.onVideo?.videoCardFields?.toSummary() }.take(limit)
     }
 
     /** Stories stopped partway, most recently read first. */
@@ -79,29 +78,6 @@ object HomeRepository {
         }
         val data = VeilApi.client.query(HomePerformersQuery(Optional.present(limit))).execute().dataOrThrow()
         return data.performers.map { performer -> performerOf(performer.performerCardFields) }
-    }
-
-    /** A video card from its fragment: the studio is the byline, else the first performer. */
-    private fun videoOf(video: VideoCardFields): VideoSummary {
-        val firstPerformer = video.performers.firstOrNull()
-        var byline = firstPerformer?.name
-        var avatarUrl = video.performers.firstNotNullOfOrNull { performer -> performer.image?.url }
-        val studio = video.studio
-        if (studio != null) {
-            byline = studio.name
-            avatarUrl = studio.image?.url ?: avatarUrl
-        }
-        return VideoSummary(
-            id = video.id,
-            title = video.title,
-            coverUrl = video.cover?.url,
-            previewUrl = video.preview?.url,
-            durationSeconds = video.durationSeconds,
-            progressSeconds = video.userState.progress,
-            byline = byline,
-            avatarUrl = avatarUrl,
-            date = video.date,
-        )
     }
 
     /** A cam card from its fragment: the live picture while live, else the last one. */

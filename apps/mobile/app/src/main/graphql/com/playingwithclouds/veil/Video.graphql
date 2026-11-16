@@ -1,0 +1,116 @@
+# The video page, as the web's apps/web/src/lib/library.ts reads it.
+
+fragment VideoDetailFields on Video {
+  ...VideoCardFields
+  details
+  width
+  height
+  oCount
+  tags {
+    id
+    name
+  }
+  sources {
+    plugin
+    url
+  }
+  streams {
+    id
+    url
+    quality
+    source {
+      plugin
+    }
+  }
+  files {
+    id
+    url
+    mimeType
+    quality
+    missing
+  }
+  segments {
+    id
+    startSeconds
+    endSeconds
+    title
+    tag {
+      name
+    }
+  }
+  userState {
+    favorite
+    rating
+  }
+  gallery {
+    id
+  }
+}
+
+# Opens a video: reads the pages behind its sources not read yet (credits, description, streams).
+mutation OpenVideo($id: ID!) {
+  fetchVideo(id: $id) {
+    ...VideoDetailFields
+  }
+}
+
+# Resolves a stream to a URL the player can load.
+query Play($url: String!) {
+  play(url: $url) {
+    url
+    mimeType
+  }
+}
+
+# Videos in the library like this one, most alike first.
+query RelatedVideos($id: ID!, $limit: Int) {
+  related(subject: { kind: video, id: $id }, limit: $limit) {
+    record {
+      __typename
+      ... on Video {
+        ...VideoCardFields
+      }
+    }
+  }
+}
+
+# A page of what the sites list as related on this video's pages.
+query SiteRelatedVideos($id: ID!, $limit: Int, $offset: Int) {
+  video(id: $id) {
+    siteRelated(limit: $limit, offset: $offset) {
+      ...VideoCardFields
+    }
+  }
+}
+
+mutation SetFavorite($subject: RecordRefInput!, $favorite: Boolean!) {
+  setFavorite(subject: $subject, favorite: $favorite) {
+    favorite
+  }
+}
+
+# Rating on 0..10; null clears it.
+mutation Rate($subject: RecordRefInput!, $rating: Float) {
+  rate(subject: $subject, rating: $rating) {
+    rating
+  }
+}
+
+query BuiltInCollectionId($kind: CollectionKind!) {
+  builtInCollection(kind: $kind) {
+    id
+  }
+}
+
+mutation AddToCollection($collectionId: ID!, $subjects: [RecordRefInput!]!, $position: Int) {
+  addToCollection(collectionId: $collectionId, subjects: $subjects, position: $position) {
+    id
+  }
+}
+
+# Downloads the subject's best stream for keeps, as a background job.
+mutation Download($subject: RecordRefInput!) {
+  download(subject: $subject) {
+    id
+  }
+}
