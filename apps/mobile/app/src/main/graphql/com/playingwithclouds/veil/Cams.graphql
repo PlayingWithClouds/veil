@@ -1,0 +1,132 @@
+# Cam rooms, as the web's apps/web/src/lib/cams.ts reads them.
+
+fragment CamRoomFields on CamModel {
+  id
+  plugin
+  username
+  displayName
+  tags
+  autoRecord
+  recordQuality
+  lastSeenOnlineAt
+  thumbnail {
+    url
+  }
+  live {
+    viewers
+    subject
+    thumbnail {
+      url
+    }
+  }
+}
+
+# A page of the rooms live now matching the query, with why each is listed when ranked by taste.
+query CamRooms($query: CamQuery) {
+  camRooms(query: $query) {
+    rooms {
+      ...CamRoomFields
+    }
+    total
+    reasons
+  }
+}
+
+query CamRecommendations($limit: Int) {
+  camRecommendations(limit: $limit) {
+    rooms {
+      ...CamRoomFields
+    }
+    reasons
+  }
+}
+
+query CamRoom($id: ID!) {
+  camModel(id: $id) {
+    ...CamRoomFields
+  }
+}
+
+# A room's finished recordings, as the videos they became, newest first.
+query CamRoomRecordings($id: ID!) {
+  camModel(id: $id) {
+    recordings {
+      ...VideoCardFields
+    }
+  }
+}
+
+# The rooms recorded whenever they go live.
+query AutoRecordedRooms {
+  camModels(autoRecord: true, limit: 200) {
+    ...CamRoomFields
+  }
+}
+
+query ActiveRecordings {
+  activeRecordings {
+    camModel {
+      ...CamRoomFields
+    }
+    startedAt
+    durationSeconds
+    sizeBytes
+    quality
+  }
+}
+
+# Every follow; those of a camModel are followed rooms.
+query Follows {
+  follows {
+    id
+    enabled
+    targetKind
+    targetId
+  }
+}
+
+# The sites, for the site filter of the live rooms.
+query CamSites {
+  plugins {
+    name
+    displayName
+    iconUrl
+    capabilities
+    enabled
+    available
+  }
+}
+
+# A playable URL for a room's live stream; the site's token runs out within about a minute.
+mutation WatchCam($id: ID!) {
+  watchCam(id: $id) {
+    url
+    mimeType
+  }
+}
+
+mutation FollowRecord($subject: RecordRefInput!) {
+  followRecord(subject: $subject, notify: true) {
+    id
+  }
+}
+
+mutation Unfollow($id: ID!) {
+  unfollow(id: $id)
+}
+
+mutation SetCamAutoRecord($id: ID!, $on: Boolean!, $quality: String) {
+  setCamAutoRecord(id: $id, on: $on, quality: $quality) {
+    ...CamRoomFields
+  }
+}
+
+mutation StartRecording($id: ID!, $quality: String, $fromSecondsAgo: Int) {
+  startRecording(id: $id, quality: $quality, fromSecondsAgo: $fromSecondsAgo) {
+    id
+  }
+}
+
+mutation StopRecording($id: ID!) {
+  stopRecording(id: $id)
+}

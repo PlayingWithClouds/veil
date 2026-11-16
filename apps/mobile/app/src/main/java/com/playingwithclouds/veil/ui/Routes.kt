@@ -10,6 +10,10 @@ object Routes {
     const val SETTINGS = "settings"
     const val DESIGN_KIT = "design-kit"
     const val VIDEO = "video/{id}"
+    const val CAM = "cam/{id}"
+
+    /** The live rooms with one tag; the Cams tab lists them all. */
+    const val CAMS_TAGGED = "cams/tag/{tag}"
 
     /** A screen not rebuilt for the new backend yet, by its title. */
     const val PENDING = "pending/{title}"
@@ -17,6 +21,10 @@ object Routes {
     fun pending(title: String): String = "pending/${Uri.encode(title)}"
 
     fun video(id: String): String = "video/${Uri.encode(id)}"
+
+    fun cam(id: String): String = "cam/${Uri.encode(id)}"
+
+    fun camsTagged(tag: String): String = "cams/tag/${Uri.encode(tag)}"
 }
 
 /**
@@ -59,7 +67,10 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openTag(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Tag")
 
-    fun openCam(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Cam room")
+    fun openCam(id: String) = controller.navigate(Routes.cam(id))
+
+    /** The live rooms with [tag]. */
+    fun openCamsTagged(tag: String) = controller.navigate(Routes.camsTagged(tag))
 
     fun openStory(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Story")
 

@@ -29,6 +29,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.playingwithclouds.veil.ui.cams.CamRoomScreen
+import com.playingwithclouds.veil.ui.cams.CamsScreen
 import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
 import com.playingwithclouds.veil.ui.home.HomeScreen
@@ -153,7 +155,7 @@ private fun TabPager(pagerState: PagerState, navigator: AppNavigator) {
 private fun TabScreen(tab: Tab, navigator: AppNavigator) {
     when (tab) {
         Tab.HOME -> HomeScreen(navigator)
-        Tab.CAMS -> PendingTab(tab.label, navigator)
+        Tab.CAMS -> CamsScreen("", navigator)
         Tab.LIBRARY -> PendingTab(tab.label, navigator)
     }
 }
@@ -164,6 +166,8 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
     composable(Routes.PENDING) { entry -> PendingScreen(entry.argument("title"), navigator) }
     composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
+    composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
+    composable(Routes.CAMS_TAGGED) { entry -> CamsScreen(entry.argument("tag"), navigator) }
 }
 
 /** A string argument of the destination; empty when missing. */
