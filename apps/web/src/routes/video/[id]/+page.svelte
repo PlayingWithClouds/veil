@@ -291,7 +291,7 @@
 
 <svelte:head><title>{video?.title ?? 'Video'} · Veil</title></svelte:head>
 
-<div class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]">
+<div class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_440px]">
 	<div class="flex min-w-0 flex-col gap-4">
 		{#if active && video}
 			<div class="overflow-hidden rounded-2xl shadow-2xl ring-1 shadow-black/50 ring-white/10">
@@ -491,7 +491,7 @@
 				<span class="text-base-content/45 text-sm font-normal">like this one</span>
 			</h2>
 			<div
-				class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
+				class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(400px,1fr))]"
 			>
 				{#each related as relatedVideo, position (relatedVideo.id)}
 					<div

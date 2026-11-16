@@ -47,7 +47,7 @@
 	onclick={open}
 >
 	<span
-		class="bg-base-300 relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/5"
+		class="bg-base-300 relative aspect-video w-56 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/5"
 	>
 		{#if cover}
 			<img

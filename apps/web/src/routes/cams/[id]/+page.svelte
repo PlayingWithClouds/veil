@@ -342,7 +342,7 @@
 <svelte:head><title>{cam?.displayName ?? 'Cam'} · Veil</title></svelte:head>
 
 <div
-	class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_380px]"
+	class="mx-auto grid w-full max-w-[1700px] gap-6 pt-2 xl:grid-cols-[minmax(0,1fr)_440px]"
 >
 
 	<div class="flex min-w-0 flex-col gap-5">
@@ -611,7 +611,7 @@
 			{/if}
 			{#if videos.length > 0}
 				<div
-					class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
+					class="flex flex-col gap-1 max-xl:grid max-xl:grid-cols-[repeat(auto-fill,minmax(400px,1fr))]"
 				>
 					{#each videos as video, position (video.id)}
 						<div class="rise-in" style:--rise-delay="{Math.min(position * 30, 300)}ms">
