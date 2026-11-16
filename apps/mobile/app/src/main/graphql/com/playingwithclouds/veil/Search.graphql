@@ -1,0 +1,23 @@
+# Searching the sites, as the web's apps/web/src/lib/search.ts does it.
+
+# One page of a video search: each site's answer as it comes, then the subscription completes.
+subscription SearchResults($query: String!, $page: Int) {
+  searchResults(kind: VIDEO, query: $query, page: $page) {
+    plugin
+    sites
+    final
+    exhausted
+    listed {
+      videos {
+        ...VideoCardFields
+      }
+      performers {
+        ...PerformerCardFields
+      }
+    }
+  }
+}
+
+query RecentSearches($limit: Int) {
+  recentSearches(limit: $limit)
+}

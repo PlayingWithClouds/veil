@@ -17,6 +17,9 @@ object ImpressionSurface {
 
     /** A video page's Up next list and the related panel over the fullscreen video. */
     const val RELATED = "related"
+
+    /** Search results. */
+    const val SEARCH = "search"
 }
 
 /**

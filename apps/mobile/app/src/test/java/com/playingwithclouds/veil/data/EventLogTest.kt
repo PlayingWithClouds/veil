@@ -78,6 +78,14 @@ class EventLogTest {
     }
 
     @Test
+    fun searchesAreLoggedWithoutASubject() = runTest {
+        val log = log()
+        log.log(LoggedEvent(EventKind.search, null, null, mapOf("text" to "redhead")), flush = true)
+        runCurrent()
+        assertEquals(listOf(EventKind.search), batches.single().map { event -> event.kind })
+    }
+
+    @Test
     fun failedSendsDoNotBreakTheLog() = runTest {
         var attempts = 0
         val failing = EventLog(this, { attempts++; error("offline") }, flushDelayMilliseconds = 1000)

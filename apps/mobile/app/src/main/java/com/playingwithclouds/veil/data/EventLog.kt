@@ -15,13 +15,13 @@ import kotlinx.coroutines.launch
 
 /**
  * One event for the log the recommendation engine learns from (see the backend's
- * internal/recommend/events.go for what [data] each [kind] carries). [sessionId] ties the events
- * of one playback together.
+ * internal/recommend/events.go for what [data] each [kind] carries). It's about a record unless
+ * it's a search, whose subject is null. [sessionId] ties the events of one playback together.
  */
 data class LoggedEvent(
     val kind: EventKind,
-    val subjectKind: RecordKind,
-    val subjectId: String,
+    val subjectKind: RecordKind?,
+    val subjectId: String?,
     val data: Map<String, Any> = emptyMap(),
     val sessionId: String? = null,
 )
@@ -43,12 +43,12 @@ class EventLog(
     private var flushJob: Job? = null
 
     /**
-     * Queues an event, sending the batch right away when [flush] is set. Events without a subject
-     * id are dropped: one invalid id would fail the whole batch.
+     * Queues an event, sending the batch right away when [flush] is set. Events with an empty
+     * subject id are dropped: one invalid id would fail the whole batch.
      */
     @Synchronized
     fun log(event: LoggedEvent, flush: Boolean = false) {
-        if (!enabled() || event.subjectId.isEmpty()) {
+        if (!enabled() || event.subjectId?.isEmpty() == true) {
             return
         }
         pending.add(event)
@@ -96,12 +96,19 @@ class EventLog(
             val events = batch.map { event ->
                 EventInput(
                     kind = event.kind,
-                    subject = Optional.present(RecordRefInput(event.subjectKind, event.subjectId)),
+                    subject = Optional.presentIfNotNull(subjectOf(event)),
                     data = Optional.present(event.data),
                     sessionId = Optional.presentIfNotNull(event.sessionId),
                 )
             }
             VeilApi.client.mutation(RecordEventsMutation(events)).execute().dataOrThrow()
+        }
+
+        /** The record an event is about; null for a search. */
+        private fun subjectOf(event: LoggedEvent): RecordRefInput? {
+            val kind = event.subjectKind ?: return null
+            val id = event.subjectId ?: return null
+            return RecordRefInput(kind, id)
         }
     }
 }

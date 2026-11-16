@@ -12,6 +12,7 @@ object Routes {
     const val VIDEO = "video/{id}"
     const val CAM = "cam/{id}"
     const val COLLECTION = "collection/{id}"
+    const val SEARCH = "search?query={query}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
@@ -26,6 +27,9 @@ object Routes {
     fun cam(id: String): String = "cam/${Uri.encode(id)}"
 
     fun collection(id: String): String = "collection/${Uri.encode(id)}"
+
+    /** Search, with a query to run right away when it isn't empty. */
+    fun search(query: String): String = "search?query=${Uri.encode(query)}"
 
     fun camsTagged(tag: String): String = "cams/tag/${Uri.encode(tag)}"
 }
@@ -62,7 +66,7 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openDesignKit() = controller.navigate(Routes.DESIGN_KIT)
 
-    fun openSearch() = openPending("Search")
+    fun openSearch(query: String = "") = controller.navigate(Routes.search(query))
 
     fun openVideo(id: String) = controller.navigate(Routes.video(id))
 
