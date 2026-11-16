@@ -1,0 +1,77 @@
+# Galleries, as the web's apps/web/src/lib/galleries.ts and library.ts read them.
+
+# One page of recommended galleries.
+query RecommendedGalleries($limit: Int, $offset: Int) {
+  recommendations(filter: { kinds: [gallery] }, limit: $limit, offset: $offset) {
+    record {
+      __typename
+      ... on Gallery {
+        ...GalleryCardFields
+      }
+    }
+  }
+}
+
+# Galleries the user opened, most recently viewed first.
+query RecentlyViewedGalleries($limit: Int) {
+  history(kind: gallery, limit: $limit) {
+    record {
+      __typename
+      ... on Gallery {
+        ...GalleryCardFields
+      }
+    }
+  }
+}
+
+# Opens a gallery: reads its pages, which list the images.
+mutation OpenGallery($id: ID!) {
+  fetchGallery(id: $id) {
+    ...GalleryCardFields
+    details
+    date
+    studio {
+      id
+      name
+    }
+    performers {
+      id
+      name
+      image {
+        url
+      }
+    }
+    tags {
+      id
+      name
+    }
+    images {
+      id
+      position
+      width
+      height
+      asset {
+        url
+      }
+    }
+    video {
+      id
+    }
+    userState {
+      favorite
+      rating
+    }
+  }
+}
+
+# Galleries like one, most alike first.
+query RelatedGalleries($id: ID!, $limit: Int) {
+  related(subject: { kind: gallery, id: $id }, limit: $limit) {
+    record {
+      __typename
+      ... on Gallery {
+        ...GalleryCardFields
+      }
+    }
+  }
+}

@@ -33,6 +33,8 @@ import com.playingwithclouds.veil.ui.cams.CamRoomScreen
 import com.playingwithclouds.veil.ui.cams.CamsScreen
 import com.playingwithclouds.veil.ui.design.LocalGlassBackdrop
 import com.playingwithclouds.veil.ui.designkit.DesignKitScreen
+import com.playingwithclouds.veil.ui.galleries.GalleriesScreen
+import com.playingwithclouds.veil.ui.galleries.GalleryScreen
 import com.playingwithclouds.veil.ui.home.HomeScreen
 import com.playingwithclouds.veil.ui.library.CollectionScreen
 import com.playingwithclouds.veil.ui.library.LibraryScreen
@@ -175,6 +177,8 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
+    composable(Routes.GALLERIES) { GalleriesScreen(navigator) }
+    composable(Routes.GALLERY) { entry -> GalleryScreen(entry.argument("id"), navigator) }
     composable(Routes.PERFORMERS) { MembersScreen(MemberKind.PERFORMERS, navigator) }
     composable(Routes.STUDIOS) { MembersScreen(MemberKind.STUDIOS, navigator) }
     composable(Routes.PERFORMER) { entry -> PersonScreen(MemberKind.PERFORMERS, entry.argument("id"), navigator) }

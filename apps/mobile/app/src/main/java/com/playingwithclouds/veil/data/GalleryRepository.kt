@@ -1,0 +1,106 @@
+package com.playingwithclouds.veil.data
+
+import com.apollographql.apollo.api.Optional
+import com.playingwithclouds.veil.api.VeilApi
+import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
+import com.playingwithclouds.veil.graphql.OpenGalleryMutation
+import com.playingwithclouds.veil.graphql.RateMutation
+import com.playingwithclouds.veil.graphql.RecentlyViewedGalleriesQuery
+import com.playingwithclouds.veil.graphql.RecommendedGalleriesQuery
+import com.playingwithclouds.veil.graphql.RelatedGalleriesQuery
+import com.playingwithclouds.veil.graphql.SetFavoriteMutation
+import com.playingwithclouds.veil.graphql.type.FilterInput
+import com.playingwithclouds.veil.graphql.type.RecordKind
+import com.playingwithclouds.veil.graphql.type.RecordRefInput
+
+/** One photo of a gallery; its size is known for most, for laying out the grid. */
+data class GalleryImage(val id: String, val url: String, val width: Int?, val height: Int?)
+
+/** Everything the gallery page shows; [rating] is 0..10, [videoId] the video it belongs to. */
+data class GalleryDetail(
+    val summary: GallerySummary,
+    val details: String?,
+    val date: String?,
+    val studio: PerformerSummary?,
+    val performers: List<PerformerSummary>,
+    val tags: List<TagSummary>,
+    val images: List<GalleryImage>,
+    val videoId: String?,
+    val favorite: Boolean,
+    val rating: Double?,
+)
+
+/** Galleries: the overview's rows, the endless feed and one gallery (`apps/web/src/lib/galleries.ts`). */
+object GalleryRepository {
+
+    /** A page of galleries recommended to the user. */
+    suspend fun recommended(limit: Int, offset: Int): List<GallerySummary> {
+        val query = RecommendedGalleriesQuery(Optional.present(limit), Optional.present(offset))
+        return VeilApi.client.query(query).execute().dataOrThrow().recommendations.mapNotNull { match ->
+            match.record?.onGallery?.galleryCardFields?.toSummary()
+        }
+    }
+
+    /** Galleries the user opened, most recently viewed first. */
+    suspend fun recentlyViewed(limit: Int): List<GallerySummary> {
+        val data = VeilApi.client.query(RecentlyViewedGalleriesQuery(Optional.present(limit))).execute().dataOrThrow()
+        return data.history.mapNotNull { state -> state.record?.onGallery?.galleryCardFields?.toSummary() }
+    }
+
+    /** The favourite galleries, most recently added first. */
+    suspend fun favorites(limit: Int): List<GallerySummary> {
+        return filtered(FilterInput(favorite = Optional.present(true)), limit, 0)
+    }
+
+    /** The library's galleries, most recently added first. */
+    suspend fun listing(limit: Int, offset: Int): List<GallerySummary> {
+        return filtered(FilterInput(), limit, offset)
+    }
+
+    /** Opens a gallery: reads its pages (they list the images); null when it's gone. */
+    suspend fun open(id: String): GalleryDetail? {
+        val gallery = VeilApi.client.mutation(OpenGalleryMutation(id)).execute().dataOrThrow().fetchGallery ?: return null
+        return GalleryDetail(
+            summary = gallery.galleryCardFields.toSummary(),
+            details = gallery.details,
+            date = gallery.date,
+            studio = gallery.studio?.let { studio -> PerformerSummary(studio.id, studio.name, null) },
+            performers = gallery.performers.map { performer -> PerformerSummary(performer.id, performer.name, performer.image?.url) },
+            tags = gallery.tags.map { tag -> TagSummary(tag.id, tag.name) },
+            images = gallery.images.sortedBy { image -> image.position }.map { image ->
+                GalleryImage(image.id, image.asset.url, image.width, image.height)
+            },
+            videoId = gallery.video?.id,
+            favorite = gallery.userState.favorite,
+            rating = gallery.userState.rating,
+        )
+    }
+
+    /** Galleries like one, most alike first. */
+    suspend fun related(id: String, limit: Int): List<GallerySummary> {
+        val data = VeilApi.client.query(RelatedGalleriesQuery(id, Optional.present(limit))).execute().dataOrThrow()
+        return data.related.mapNotNull { match -> match.record?.onGallery?.galleryCardFields?.toSummary() }
+    }
+
+    /** Marks a gallery as a favourite, or not. */
+    suspend fun setFavorite(id: String, favorite: Boolean) {
+        VeilApi.client.mutation(SetFavoriteMutation(galleryRef(id), favorite)).execute().dataOrThrow()
+    }
+
+    /** Rates a gallery 0..10; null clears the rating. */
+    suspend fun rate(id: String, rating: Double?) {
+        VeilApi.client.mutation(RateMutation(galleryRef(id), Optional.present(rating))).execute().dataOrThrow()
+    }
+
+    /** Galleries matching a filter, newest first. */
+    private suspend fun filtered(filter: FilterInput, limit: Int, offset: Int): List<GallerySummary> {
+        val query = FilteredGalleriesQuery(Optional.present(filter), Optional.present(limit), Optional.present(offset))
+        return VeilApi.client.query(query).execute().dataOrThrow().galleries.map { gallery -> gallery.galleryCardFields.toSummary() }
+    }
+
+    /** A reference to a gallery, as the user-state mutations take it. */
+    private fun galleryRef(id: String): RecordRefInput {
+        return RecordRefInput(RecordKind.gallery, id)
+    }
+}

@@ -17,6 +17,8 @@ object Routes {
     const val PERFORMER = "performer/{id}"
     const val STUDIOS = "studios"
     const val STUDIO = "studio/{id}"
+    const val GALLERIES = "galleries"
+    const val GALLERY = "gallery/{id}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
@@ -40,6 +42,8 @@ object Routes {
     fun performer(id: String): String = "performer/${Uri.encode(id)}"
 
     fun studio(id: String): String = "studio/${Uri.encode(id)}"
+
+    fun gallery(id: String): String = "gallery/${Uri.encode(id)}"
 }
 
 /**
@@ -70,6 +74,7 @@ class AppNavigator(private val controller: NavHostController, private val select
         when (destination) {
             Destination.PERFORMERS -> controller.navigate(Routes.PERFORMERS)
             Destination.STUDIOS -> controller.navigate(Routes.STUDIOS)
+            Destination.GALLERIES -> controller.navigate(Routes.GALLERIES)
             else -> openPending(destination.label)
         }
     }
@@ -86,7 +91,7 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openCollection(id: String) = controller.navigate(Routes.collection(id))
 
-    fun openGallery(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Gallery")
+    fun openGallery(id: String) = controller.navigate(Routes.gallery(id))
 
     fun openTag(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Tag")
 

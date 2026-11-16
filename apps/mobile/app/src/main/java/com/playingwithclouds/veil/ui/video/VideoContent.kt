@@ -39,6 +39,7 @@ import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
+import com.playingwithclouds.veil.ui.components.RatingStars
 import com.playingwithclouds.veil.ui.components.TrackShown
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.components.pressClickable
@@ -61,9 +62,6 @@ private const val LOAD_MORE_DISTANCE = 5
 
 /** Lines of the description before it's tapped open. */
 private const val DETAILS_COLLAPSED_LINES = 3
-
-/** Stars of the rating row; each is two points of the 0..10 rating. */
-private const val STAR_COUNT = 5
 
 /** Width of a person in the people row. */
 private val PersonWidth = 72.dp
@@ -108,7 +106,7 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
 private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator) {
     item("title") { TitleBlock(detail) }
     item("actions") { ActionsRow(state, viewModel, player) }
-    item("rating") { RatingRow(state.rating, onRate = viewModel::rate) }
+    item("rating") { RatingStars(state.rating, onRate = viewModel::rate, modifier = Modifier.gutterPadding().padding(top = VeilSpacing.small)) }
     if (detail.sources.size > 1) {
         item("sources") { SourcesRow(detail, state, viewModel) }
     }
@@ -244,29 +242,6 @@ private fun ActionsRow(state: VideoState, viewModel: VideoViewModel, player: Pla
 }
 
 private const val MILLISECONDS_PER_SECOND = 1000.0
-
-/** Five stars for the 0..10 rating; tapping the star that's already the rating clears it. */
-@Composable
-private fun RatingRow(rating: Double?, onRate: (Double?) -> Unit) {
-    val stars = ((rating ?: 0.0) / 2).toInt()
-    Row(Modifier.gutterPadding().padding(top = VeilSpacing.small), verticalAlignment = Alignment.CenterVertically) {
-        for (star in 1..STAR_COUNT) {
-            var icon = VeilIcons.Star
-            var tint = VeilColors.contentFaint
-            if (star <= stars) {
-                icon = VeilIcons.StarFilled
-                tint = VeilColors.accent
-            }
-            IconTap(icon, contentDescription = "Rate $star of $STAR_COUNT", tint = tint, onClick = {
-                if (star == stars) {
-                    onRate(null)
-                } else {
-                    onRate(star * 2.0)
-                }
-            })
-        }
-    }
-}
 
 /** The video's sources as pills, the playing one selected; picking one plays it from here. */
 @Composable
