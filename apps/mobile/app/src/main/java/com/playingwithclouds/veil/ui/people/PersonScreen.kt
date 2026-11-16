@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.GallerySummary
 import com.playingwithclouds.veil.data.PeopleRepository
 import com.playingwithclouds.veil.data.PersonDetail
+import com.playingwithclouds.veil.data.TagSummary
 import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
@@ -164,7 +165,7 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
         }
     }
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
-        item("header") { PersonHeader(person, onFavorite = viewModel::toggleFavorite, onTag = { tag -> navigator.openTag(tag) }) }
+        item("header") { PersonHeader(person, onFavorite = viewModel::toggleFavorite, onTag = navigator::openTag) }
         if (galleries.isNotEmpty()) {
             item("galleries") {
                 Shelf("Galleries", galleries, key = { gallery -> gallery.id }, itemWidth = GalleryWidth) { gallery, _ ->
@@ -186,7 +187,7 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
 
 /** Picture, name, counts and facts, Favourite, the bio and the tags. */
 @Composable
-private fun PersonHeader(person: PersonDetail, onFavorite: () -> Unit, onTag: (String) -> Unit) {
+private fun PersonHeader(person: PersonDetail, onFavorite: () -> Unit, onTag: (TagSummary) -> Unit) {
     var bioOpen by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.gutterPadding().padding(top = VeilSpacing.large), verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
         Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.large), verticalAlignment = Alignment.CenterVertically) {
@@ -227,7 +228,7 @@ private fun PersonHeader(person: PersonDetail, onFavorite: () -> Unit, onTag: (S
         if (person.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                 for (tag in person.tags) {
-                    TagPill(tag.name, onClick = { onTag(tag.id) })
+                    TagPill(tag.name, onClick = { onTag(tag) })
                 }
             }
         }

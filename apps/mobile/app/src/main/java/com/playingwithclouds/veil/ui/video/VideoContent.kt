@@ -295,7 +295,7 @@ private fun TagsBlock(detail: VideoDetail, navigator: AppNavigator) {
         verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         for (tag in detail.tags) {
-            TagPill(tag.name, onClick = { navigator.openTag(tag.id) })
+            TagPill(tag.name, onClick = { navigator.openTag(tag) })
         }
     }
 }

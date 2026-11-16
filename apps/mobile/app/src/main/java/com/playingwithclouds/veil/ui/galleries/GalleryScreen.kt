@@ -203,7 +203,7 @@ private fun GalleryHeader(gallery: GalleryDetail, viewModel: GalleryViewModel, n
         if (gallery.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                 for (tag in gallery.tags) {
-                    TagPill(tag.name, onClick = { navigator.openTag(tag.id) })
+                    TagPill(tag.name, onClick = { navigator.openTag(tag) })
                 }
             }
         }

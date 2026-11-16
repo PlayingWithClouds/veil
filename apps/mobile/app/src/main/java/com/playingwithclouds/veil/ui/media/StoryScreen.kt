@@ -124,7 +124,7 @@ private fun StoryHeader(story: StoryDetail, navigator: AppNavigator) {
         if (story.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                 for (tag in story.tags) {
-                    TagPill(tag.name, onClick = { navigator.openTag(tag.id) })
+                    TagPill(tag.name, onClick = { navigator.openTag(tag) })
                 }
             }
         }

@@ -43,7 +43,11 @@ import com.playingwithclouds.veil.ui.media.StoryReaderScreen
 import com.playingwithclouds.veil.ui.media.StoryScreen
 import com.playingwithclouds.veil.ui.library.CollectionScreen
 import com.playingwithclouds.veil.ui.library.LibraryScreen
-import com.playingwithclouds.veil.ui.pending.PendingScreen
+import com.playingwithclouds.veil.data.VideoScope
+import com.playingwithclouds.veil.ui.categories.CategoriesScreen
+import com.playingwithclouds.veil.ui.categories.ScopedVideosScreen
+import com.playingwithclouds.veil.ui.plugins.PluginsScreen
+import com.playingwithclouds.veil.ui.taste.TasteScreen
 import com.playingwithclouds.veil.ui.people.MemberKind
 import com.playingwithclouds.veil.ui.people.MembersScreen
 import com.playingwithclouds.veil.ui.people.PersonScreen
@@ -178,7 +182,15 @@ private fun TabScreen(tab: Tab, navigator: AppNavigator) {
 private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.SETTINGS) { SettingsScreen(navigator) }
     composable(Routes.DESIGN_KIT) { DesignKitScreen(navigator) }
-    composable(Routes.PENDING) { entry -> PendingScreen(entry.argument("title"), navigator) }
+    composable(Routes.CATEGORIES) { CategoriesScreen(navigator) }
+    composable(Routes.CATEGORY, arguments = listOf(optionalText("name"))) { entry ->
+        ScopedVideosScreen(VideoScope.Category(entry.argument("id")), entry.argument("name"), navigator)
+    }
+    composable(Routes.TAG, arguments = listOf(optionalText("name"))) { entry ->
+        ScopedVideosScreen(VideoScope.Tag(entry.argument("id")), entry.argument("name"), navigator)
+    }
+    composable(Routes.TASTE) { TasteScreen(navigator) }
+    composable(Routes.PLUGINS) { PluginsScreen(navigator) }
     composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
@@ -195,11 +207,14 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.STUDIOS) { MembersScreen(MemberKind.STUDIOS, navigator) }
     composable(Routes.PERFORMER) { entry -> PersonScreen(MemberKind.PERFORMERS, entry.argument("id"), navigator) }
     composable(Routes.STUDIO) { entry -> PersonScreen(MemberKind.STUDIOS, entry.argument("id"), navigator) }
-    composable(
-        Routes.SEARCH,
-        arguments = listOf(navArgument("query") { type = NavType.StringType; defaultValue = "" }),
-    ) { entry -> SearchScreen(entry.argument("query"), navigator) }
+    composable(Routes.SEARCH, arguments = listOf(optionalText("query"))) { entry -> SearchScreen(entry.argument("query"), navigator) }
     composable(Routes.CAMS_TAGGED) { entry -> CamsScreen(entry.argument("tag"), navigator) }
+}
+
+/** A text query argument that may be left out; it's empty then. */
+private fun optionalText(name: String) = navArgument(name) {
+    type = NavType.StringType
+    defaultValue = ""
 }
 
 /** A string argument of the destination; empty when missing. */

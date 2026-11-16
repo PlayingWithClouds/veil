@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.ui
 
 import android.net.Uri
 import androidx.navigation.NavHostController
+import com.playingwithclouds.veil.data.TagSummary
 
 /** Route patterns of every destination, plus builders that fill in the arguments. */
 object Routes {
@@ -24,14 +25,18 @@ object Routes {
     const val STORY_READER = "story/{id}/read/{position}"
     const val AUDIOS = "audio"
     const val AUDIO = "audio/{id}"
+    const val CATEGORIES = "categories"
+    const val TASTE = "taste"
+    const val PLUGINS = "plugins"
+
+    /** A category's videos; the name is the title. */
+    const val CATEGORY = "category/{id}?name={name}"
+
+    /** A tag's videos; the name is the title. */
+    const val TAG = "tag/{id}?name={name}"
 
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
-
-    /** A screen not rebuilt for the new backend yet, by its title. */
-    const val PENDING = "pending/{title}"
-
-    fun pending(title: String): String = "pending/${Uri.encode(title)}"
 
     fun video(id: String): String = "video/${Uri.encode(id)}"
 
@@ -55,13 +60,13 @@ object Routes {
     fun storyReader(id: String, position: Int): String = "story/${Uri.encode(id)}/read/$position"
 
     fun audio(id: String): String = "audio/${Uri.encode(id)}"
+
+    fun category(id: String, name: String): String = "category/${Uri.encode(id)}?name=${Uri.encode(name)}"
+
+    fun tag(id: String, name: String): String = "tag/${Uri.encode(id)}?name=${Uri.encode(name)}"
 }
 
-/**
- * Navigation actions that screens call, so they never touch route strings. [selectTab] turns the
- * tab pager to a page. Destinations not rebuilt yet open the placeholder screen; porting one only
- * changes its function here.
- */
+/** Navigation actions that screens call, so they never touch route strings. [selectTab] turns the tab pager to a page. */
 class AppNavigator(private val controller: NavHostController, private val selectTab: (Tab) -> Unit) {
 
     /** Goes one screen back. */
@@ -82,14 +87,7 @@ class AppNavigator(private val controller: NavHostController, private val select
             openTab(tab)
             return
         }
-        when (destination) {
-            Destination.PERFORMERS -> controller.navigate(Routes.PERFORMERS)
-            Destination.STUDIOS -> controller.navigate(Routes.STUDIOS)
-            Destination.GALLERIES -> controller.navigate(Routes.GALLERIES)
-            Destination.STORIES -> controller.navigate(Routes.STORIES)
-            Destination.AUDIO -> controller.navigate(Routes.AUDIOS)
-            else -> openPending(destination.label)
-        }
+        controller.navigate(routeOf(destination))
     }
 
     fun openSettings() = controller.navigate(Routes.SETTINGS)
@@ -106,7 +104,11 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openGallery(id: String) = controller.navigate(Routes.gallery(id))
 
-    fun openTag(@Suppress("UNUSED_PARAMETER") id: String) = openPending("Tag")
+    /** A tag's videos. */
+    fun openTag(tag: TagSummary) = controller.navigate(Routes.tag(tag.id, tag.name))
+
+    /** A category's videos. */
+    fun openCategory(id: String, name: String) = controller.navigate(Routes.category(id, name))
 
     fun openCam(id: String) = controller.navigate(Routes.cam(id))
 
@@ -122,6 +124,18 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openPerformer(id: String) = controller.navigate(Routes.performer(id))
 
-    /** The placeholder of a screen not rebuilt yet. */
-    private fun openPending(title: String) = controller.navigate(Routes.pending(title))
+    /** The route of a drawer entry without a tab. */
+    private fun routeOf(destination: Destination): String {
+        return when (destination) {
+            Destination.GALLERIES -> Routes.GALLERIES
+            Destination.AUDIO -> Routes.AUDIOS
+            Destination.STORIES -> Routes.STORIES
+            Destination.CATEGORIES -> Routes.CATEGORIES
+            Destination.PERFORMERS -> Routes.PERFORMERS
+            Destination.STUDIOS -> Routes.STUDIOS
+            Destination.TASTE -> Routes.TASTE
+            Destination.PLUGINS -> Routes.PLUGINS
+            Destination.HOME, Destination.CAMS, Destination.LIBRARY -> Routes.TABS
+        }
+    }
 }

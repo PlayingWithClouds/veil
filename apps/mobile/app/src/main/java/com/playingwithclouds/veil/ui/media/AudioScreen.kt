@@ -177,7 +177,7 @@ fun AudioScreen(audioId: String, navigator: AppNavigator) {
                 if (audio.tags.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
                         for (tag in audio.tags) {
-                            TagPill(tag.name, onClick = { navigator.openTag(tag.id) })
+                            TagPill(tag.name, onClick = { navigator.openTag(tag) })
                         }
                     }
                 }
