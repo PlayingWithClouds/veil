@@ -6,7 +6,12 @@ import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.PerformerSummary
 import com.playingwithclouds.veil.data.SearchBatch
+import com.playingwithclouds.veil.data.SearchFilter
 import com.playingwithclouds.veil.data.SearchRepository
+import com.playingwithclouds.veil.data.SiteChoice
+import com.playingwithclouds.veil.data.SiteStyle
+import com.playingwithclouds.veil.data.SiteStyles
+import com.playingwithclouds.veil.data.TagSummary
 import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -35,7 +40,16 @@ data class SearchState(
     val sitesAnswered: Int = 0,
     val done: Boolean = false,
     val error: String? = null,
+    val filter: SearchFilter = SearchFilter(),
+    /** The sites the filter offers, and their styles. */
+    val siteChoices: List<SiteChoice> = emptyList(),
+    val siteStyles: List<SiteStyle> = emptyList(),
+    /** The tags most common among the library's videos matching the filter, offered for hiding. */
+    val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
 )
+
+/** Tags offered for hiding. */
+private const val TAG_COUNT_LIMIT = 24
 
 /**
  * Searches the sites a page at a time, as the web's search page does: each site's results join
@@ -55,8 +69,31 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
             val recent = runCatching { SearchRepository.recent(RECENT_LIMIT) }.getOrDefault(emptyList())
             mutableState.update { state -> state.copy(recent = recent) }
         }
+        viewModelScope.launch {
+            val choices = runCatching { SearchRepository.siteChoices() }.getOrDefault(emptyList())
+            mutableState.update { state -> state.copy(siteChoices = choices, siteStyles = SiteStyles.of(choices)) }
+        }
+        loadTagCounts()
         if (initialQuery.isNotBlank()) {
             submit()
+        }
+    }
+
+    /** Takes a changed filter and searches again with it when a search is shown. */
+    fun setFilter(filter: SearchFilter) {
+        mutableState.update { state -> state.copy(filter = filter) }
+        loadTagCounts()
+        if (state.value.query != null) {
+            submit()
+        }
+    }
+
+    /** The tags offered for hiding, under the current filter. */
+    private fun loadTagCounts() {
+        val filter = state.value.filter
+        viewModelScope.launch {
+            val counts = runCatching { SearchRepository.tagCounts(filter, TAG_COUNT_LIMIT) }.getOrDefault(emptyList())
+            mutableState.update { state -> state.copy(tagCounts = counts.filter { (tag, _) -> tag.id !in state.filter.hiddenTags }) }
         }
     }
 
@@ -101,12 +138,13 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
     /** Asks every site for the current page, adding each answer as it comes. */
     private fun askPage() {
         val query = state.value.query ?: return
+        val filter = state.value.filter
         val asked = page
         var found = 0
         mutableState.update { state -> state.copy(searching = true, sitesAsked = 0, sitesAnswered = 0) }
         pageJob = viewModelScope.launch {
             try {
-                SearchRepository.page(query, asked).collect { batch ->
+                SearchRepository.page(query, asked, filter).collect { batch ->
                     found += batch.videos.size
                     add(batch)
                 }

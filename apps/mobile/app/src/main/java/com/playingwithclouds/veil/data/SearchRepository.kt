@@ -5,6 +5,8 @@ import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.RecentSearchesQuery
 import com.playingwithclouds.veil.graphql.SearchResultsSubscription
+import com.playingwithclouds.veil.graphql.VideoSitesQuery
+import com.playingwithclouds.veil.graphql.VideoTagCountsQuery
 import com.playingwithclouds.veil.graphql.type.EventKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -25,9 +27,15 @@ data class SearchBatch(
 /** Searching the sites and what the user searched before (`apps/web/src/lib/search.ts`). */
 object SearchRepository {
 
-    /** One page (0 first) of a video search: each site's answer as it comes; completes when all answered. */
-    fun page(query: String, page: Int): Flow<SearchBatch> {
-        val subscription = SearchResultsSubscription(query, Optional.present(page))
+    /** Capability of the plugins that list videos. */
+    private const val VIDEO_LIST_CAPABILITY = "scene:list"
+
+    /**
+     * One page (0 first) of a video search: each site's answer as it comes; completes when all
+     * answered. The filter narrows the results, and its sites are the ones asked.
+     */
+    fun page(query: String, page: Int, filter: SearchFilter): Flow<SearchBatch> {
+        val subscription = SearchResultsSubscription(query, Optional.present(page), Optional.present(filter.toInput()))
         return VeilApi.client.subscription(subscription).toFlow().map { response ->
             val batch = response.dataOrThrow().searchResults
             SearchBatch(
@@ -41,6 +49,30 @@ object SearchRepository {
                     PerformerSummary(card.id, card.name, card.image?.url)
                 },
             )
+        }
+    }
+
+    /**
+     * The sites the filter offers, by name: each site of a plugin serving several ("plugin/host"),
+     * the other video plugins whole. Only enabled plugins that can run here; sites needing a
+     * Cloudflare solver the phone doesn't have are left out.
+     */
+    suspend fun siteChoices(): List<SiteChoice> {
+        val data = VeilApi.client.query(VideoSitesQuery()).execute().dataOrThrow()
+        val listers = data.plugins.filter { plugin -> plugin.enabled && plugin.available && VIDEO_LIST_CAPABILITY in plugin.capabilities }
+        return listers.flatMap { plugin ->
+            if (plugin.sites.isEmpty()) {
+                return@flatMap listOf(SiteChoice(plugin.name, plugin.displayName ?: plugin.name, plugin.iconUrl))
+            }
+            plugin.sites.map { site -> SiteChoice("${plugin.name}/${site.host}", site.name, site.iconUrl) }
+        }.sortedBy { choice -> choice.label.lowercase() }
+    }
+
+    /** The tags most common among the videos matching the filter, most common first, for hiding. */
+    suspend fun tagCounts(filter: SearchFilter, limit: Int): List<Pair<TagSummary, Int>> {
+        val query = VideoTagCountsQuery(Optional.present(filter.toInput()), Optional.present(limit))
+        return VeilApi.client.query(query).execute().dataOrThrow().videoTagCounts.map { entry ->
+            TagSummary(entry.tag.id, entry.tag.name) to entry.count
         }
     }
 

@@ -19,7 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,8 +60,9 @@ private val PerformerWidth = 88.dp
 private fun resultKey(videoId: String): String = "result:$videoId"
 
 /**
- * Search: the box on top (focused when opened empty), the recent searches while nothing is asked,
- * else the performers named so and the videos the sites found, filling in as each site answers.
+ * Search: the box on top (focused when opened empty) with the filter chips under it, the recent
+ * searches while nothing is asked, else the performers named so and the videos the sites found,
+ * filling in as each site answers. Changing the filter searches again with it.
  */
 @Composable
 fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
@@ -67,6 +70,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    var filtersOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (initialQuery.isEmpty()) {
             focusRequester.requestFocus()
@@ -86,6 +90,17 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
                 focusRequester = focusRequester,
                 modifier = Modifier.weight(1f),
             )
+        }
+        var chipState = state
+        if (state.query == null) {
+            chipState = state.copy(recent = emptyList())
+        }
+        FilterChipRow(chipState, onOpenFilters = { filtersOpen = true }, onFilter = viewModel::setFilter, onRecent = { text ->
+            focusManager.clearFocus()
+            viewModel.searchFor(text)
+        })
+        if (filtersOpen) {
+            FilterSheet(state, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false })
         }
         if (state.query == null) {
             RecentSearches(state.recent, onSearch = { text ->

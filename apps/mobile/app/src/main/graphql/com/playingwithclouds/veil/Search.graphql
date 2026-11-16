@@ -1,8 +1,9 @@
-# Searching the sites, as the web's apps/web/src/lib/search.ts does it.
+# Searching the sites, as the web's apps/web/src/lib/search.ts and libraryFilter.ts do it.
 
 # One page of a video search: each site's answer as it comes, then the subscription completes.
-subscription SearchResults($query: String!, $page: Int) {
-  searchResults(kind: VIDEO, query: $query, page: $page) {
+# The filter narrows the results, and its sources the sites asked.
+subscription SearchResults($query: String!, $page: Int, $filter: FilterInput) {
+  searchResults(kind: VIDEO, query: $query, page: $page, filter: $filter) {
     plugin
     sites
     final
@@ -20,4 +21,32 @@ subscription SearchResults($query: String!, $page: Int) {
 
 query RecentSearches($limit: Int) {
   recentSearches(limit: $limit)
+}
+
+# The plugins, with the separate sites of those serving several, for the filter's site choices.
+query VideoSites {
+  plugins {
+    name
+    displayName
+    iconUrl
+    capabilities
+    enabled
+    available
+    sites {
+      name
+      host
+      iconUrl
+    }
+  }
+}
+
+# The tags most common among the videos matching a filter, for hiding.
+query VideoTagCounts($filter: FilterInput, $limit: Int) {
+  videoTagCounts(filter: $filter, limit: $limit) {
+    count
+    tag {
+      id
+      name
+    }
+  }
 }

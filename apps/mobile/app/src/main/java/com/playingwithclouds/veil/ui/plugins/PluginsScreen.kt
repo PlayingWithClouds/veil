@@ -82,7 +82,9 @@ class PluginsViewModel : ViewModel() {
                 val installed = async { PluginRepository.installed() }
                 val packages = async { runCatching { PluginRepository.packages() }.getOrDefault(emptyList()) }
                 val available = packages.await().filter { found -> found.installedVersion == null }
-                pageState.value = LoadState.Loaded(PluginsPage(installed.await(), available))
+                // Sites that need a Cloudflare solver can't run on the phone; they're left out rather than shown broken.
+                val runnable = installed.await().filter { plugin -> plugin.available }
+                pageState.value = LoadState.Loaded(PluginsPage(runnable, available))
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -201,12 +203,9 @@ fun PluginsScreen(navigator: AppNavigator) {
     }
 }
 
-/** "v1.2.0 · unavailable here · what it is": the version, whether it can run here, its description. */
+/** "v1.2.0 · what it is": the version and the description. */
 private fun pluginFacts(plugin: InstalledPlugin): String {
     val parts = mutableListOf("v${plugin.version}")
-    if (!plugin.available) {
-        parts.add("unavailable here")
-    }
     val description = plugin.description
     if (description != null) {
         parts.add(description)
