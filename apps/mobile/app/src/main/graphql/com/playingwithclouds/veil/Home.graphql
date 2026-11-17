@@ -86,8 +86,8 @@ fragment PerformerCardFields on Performer {
 }
 
 # Recommended videos, each with the first piece of evidence for it.
-query HomeRecommendations($limit: Int) {
-  recommendations(limit: $limit) {
+query HomeRecommendations($limit: Int, $offset: Int) {
+  recommendations(filter: { kinds: [video] }, limit: $limit, offset: $offset) {
     record {
       __typename
       ... on Video {

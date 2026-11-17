@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.data
 import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.FilteredVideosQuery
 import com.playingwithclouds.veil.graphql.HomeAudiosQuery
 import com.playingwithclouds.veil.graphql.HomeFavoritePerformersQuery
 import com.playingwithclouds.veil.graphql.HomeLiveQuery
@@ -17,9 +18,16 @@ import com.playingwithclouds.veil.graphql.fragment.PerformerCardFields
 /** The rows of Home, read the way the web home reads them (`apps/web/src/lib/home.ts`). */
 object HomeRepository {
 
-    /** Recommended videos with their first reason, best first. */
-    suspend fun recommendedVideos(limit: Int): List<RecommendedVideo> {
-        val data = VeilApi.client.query(HomeRecommendationsQuery(Optional.present(limit))).execute().dataOrThrow()
+    /** A page of the library's videos, newest first: what Home's endless list goes on with once the recommendations run out. */
+    suspend fun newestVideos(limit: Int, offset: Int): List<VideoSummary> {
+        val query = FilteredVideosQuery(Optional.absent(), Optional.present(limit), Optional.present(offset))
+        return VeilApi.client.query(query).execute().dataOrThrow().videos.map { video -> video.videoCardFields.toSummary() }
+    }
+
+    /** A page of recommended videos with their first reason, best first. */
+    suspend fun recommendedVideos(limit: Int, offset: Int = 0): List<RecommendedVideo> {
+        val query = HomeRecommendationsQuery(Optional.present(limit), Optional.present(offset))
+        val data = VeilApi.client.query(query).execute().dataOrThrow()
         return data.recommendations.mapNotNull { match ->
             val video = match.record?.onVideo?.videoCardFields ?: return@mapNotNull null
             RecommendedVideo(video.toSummary(), match.evidence.firstOrNull()?.detail)

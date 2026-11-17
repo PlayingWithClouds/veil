@@ -19,6 +19,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.layout.Row
+import com.playingwithclouds.veil.ui.design.Spinner
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -66,8 +70,9 @@ private fun forYouKey(videoId: String): String = "for-you:$videoId"
 
 /**
  * The Home tab, after the web home: the slim top bar (menu, wordmark, search), then the top picks
- * as a row of large cards (the one in front plays its preview), Continue watching, Live now, More
- * for you as full-width cards, Continue reading, Stories, Audio and Performers. Empty rows hide;
+ * as a row of large cards (the one in front plays its preview), Continue watching, Live now,
+ * Continue reading, Stories, Audio, Performers, and last More for you as full-width cards that go
+ * on endlessly (recommendations, then the library newest first). Empty rows hide;
  * pull down to load everything again. Recommendation cards log impressions on "home", Continue
  * watching on "continue".
  */
@@ -77,6 +82,7 @@ fun HomeScreen(navigator: AppNavigator) {
     val viewModel = viewModel { HomeViewModel() }
     val picks by viewModel.picks.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
+    val loadingMore by viewModel.loadingMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     ShowAmbientGlow((picks as? LoadState.Loaded)?.value?.top?.firstOrNull()?.video?.coverUrl)
@@ -90,10 +96,16 @@ fun HomeScreen(navigator: AppNavigator) {
                 item("top-picks") { TopPicks(picks, viewModel, navigator) }
                 item("continue-watching") { ContinueWatchingRow(viewModel, navigator) }
                 item("live") { LiveRow(viewModel, navigator) }
-                forYou(picks, viewModel, navigator)
                 item("more-rows") { MoreRows(viewModel, navigator) }
+                forYou(picks, viewModel, navigator)
+                if (loadingMore) {
+                    item("for-you-loading") {
+                        Row(Modifier.fillMaxWidth().padding(VeilSpacing.large), horizontalArrangement = Arrangement.Center) { Spinner() }
+                    }
+                }
             }
             ForYouImpressions(listState, picks, viewModel)
+            LoadMoreNearEnd(listState, onLoadMore = viewModel::loadMoreForYou)
         }
     }
 }
@@ -233,7 +245,25 @@ private fun ForYouImpressions(listState: LazyListState, picks: LoadState<HomePic
     }
 }
 
-/** The rows after More for you: Continue reading, Stories, Audio, Performers. */
+/** Asks for more when the list is scrolled this close to its end. */
+private const val LOAD_MORE_DISTANCE = 5
+
+/** Calls [onLoadMore] whenever the list's last visible card comes near its end. */
+@Composable
+private fun LoadMoreNearEnd(listState: LazyListState, onLoadMore: () -> Unit) {
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= listState.layoutInfo.totalItemsCount - LOAD_MORE_DISTANCE
+        }.collect { nearEnd ->
+            if (nearEnd) {
+                onLoadMore()
+            }
+        }
+    }
+}
+
+/** The rows before More for you (which never ends): Continue reading, Stories, Audio, Performers. */
 @Composable
 private fun MoreRows(viewModel: HomeViewModel, navigator: AppNavigator) {
     val continueReading by viewModel.continueReading.collectAsStateWithLifecycle()

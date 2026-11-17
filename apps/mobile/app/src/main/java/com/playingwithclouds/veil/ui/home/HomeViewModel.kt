@@ -25,12 +25,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Picks in the top row; More for you lists the next [FOR_YOU_COUNT]. */
+/** Picks in the top row; More for you starts with the rest of the first load and goes on endlessly. */
 private const val TOP_PICK_COUNT = 5
-private const val FOR_YOU_COUNT = 15
 
-/** Asked for beyond what's shown, to make up for videos being watched (they have their own row). */
-private const val RECOMMENDATION_SLACK = 20
+/** Recommendations in the first load. */
+private const val FIRST_LOAD = 40
+
+/** Videos per page More for you loads as it's scrolled to its end. */
+private const val FOR_YOU_PAGE = 20
+
+/** Where More for you goes on: more recommendations, then the library newest first, then it ends. */
+private enum class ForYouStage { RANKED, LIBRARY, DONE }
 
 /** Cards in each of the other rows. */
 private const val ROW_LIMIT = 20
@@ -57,11 +62,22 @@ class HomeViewModel : ViewModel() {
     private val audiosRow = MutableStateFlow(emptyList<AudioSummary>())
     private val performersRow = MutableStateFlow(emptyList<PerformerSummary>())
     private val refreshingState = MutableStateFlow(false)
+    private val moreForYou = MutableStateFlow(emptyList<RecommendedVideo>())
+    private val loadingMoreState = MutableStateFlow(false)
+    private var forYouStage = ForYouStage.RANKED
+    private var rankedOffset = FIRST_LOAD
+    private var libraryOffset = 0
 
-    /** The recommendations without the videos being watched, split into top picks and More for you. */
-    val picks: StateFlow<LoadState<HomePicks>> = combine(recommended, continueWatchingRow) { state, watching ->
-        picksOf(state, watching.map { video -> video.id }.toSet())
+    /**
+     * The recommendations without the videos being watched, split into top picks and More for you,
+     * which goes on with what [loadMoreForYou] adds.
+     */
+    val picks: StateFlow<LoadState<HomePicks>> = combine(recommended, continueWatchingRow, moreForYou) { state, watching, more ->
+        picksOf(state, more, watching.map { video -> video.id }.toSet())
     }.stateIn(viewModelScope, SharingStarted.Eagerly, LoadState.Loading)
+
+    /** Whether More for you is loading its next page. */
+    val loadingMore: StateFlow<Boolean> = loadingMoreState.asStateFlow()
 
     val continueWatching: StateFlow<List<VideoSummary>> = continueWatchingRow.asStateFlow()
     val live: StateFlow<List<CamSummary>> = liveRow.asStateFlow()
@@ -89,6 +105,55 @@ class HomeViewModel : ViewModel() {
             loadAll()
             refreshingState.value = false
         }
+    }
+
+    /**
+     * Adds the next page to More for you: further recommendations, and once they run out the
+     * library's videos newest first. Does nothing while a page loads or after the end.
+     */
+    fun loadMoreForYou() {
+        if (loadingMoreState.value || forYouStage == ForYouStage.DONE || recommended.value !is LoadState.Loaded) {
+            return
+        }
+        loadingMoreState.value = true
+        viewModelScope.launch {
+            try {
+                val page = nextForYouPage()
+                moreForYou.value = moreForYou.value + page
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "more for you failed to load", error)
+            } finally {
+                loadingMoreState.value = false
+            }
+        }
+    }
+
+    /** The next page of More for you, moving on to the next stage when one runs out. */
+    private suspend fun nextForYouPage(): List<RecommendedVideo> {
+        while (forYouStage != ForYouStage.DONE) {
+            val page = when (forYouStage) {
+                ForYouStage.RANKED -> HomeRepository.recommendedVideos(FOR_YOU_PAGE, rankedOffset).also { rankedOffset += FOR_YOU_PAGE }
+                ForYouStage.LIBRARY -> HomeRepository.newestVideos(FOR_YOU_PAGE, libraryOffset)
+                    .also { libraryOffset += FOR_YOU_PAGE }
+                    .map { video -> RecommendedVideo(video, null) }
+                ForYouStage.DONE -> emptyList()
+            }
+            if (page.isNotEmpty()) {
+                return page
+            }
+            forYouStage = ForYouStage.entries[forYouStage.ordinal + 1]
+        }
+        return emptyList()
+    }
+
+    /** Starts More for you over, after the first load came back again. */
+    private fun resetMoreForYou() {
+        moreForYou.value = emptyList()
+        forYouStage = ForYouStage.RANKED
+        rankedOffset = FIRST_LOAD
+        libraryOffset = 0
     }
 
     /** Loads the recommendations again after they failed. */
@@ -123,8 +188,9 @@ class HomeViewModel : ViewModel() {
             recommended.value = LoadState.Loading
         }
         try {
-            val wanted = TOP_PICK_COUNT + FOR_YOU_COUNT + RECOMMENDATION_SLACK
-            recommended.value = LoadState.Loaded(HomeRepository.recommendedVideos(wanted))
+            val loaded = HomeRepository.recommendedVideos(FIRST_LOAD)
+            resetMoreForYou()
+            recommended.value = LoadState.Loaded(loaded)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -144,14 +210,17 @@ class HomeViewModel : ViewModel() {
     }
 }
 
-/** Splits the loaded recommendations, minus [watchingIds], into top picks and More for you. */
-private fun picksOf(state: LoadState<List<RecommendedVideo>>, watchingIds: Set<String>): LoadState<HomePicks> {
+/**
+ * Splits the loaded recommendations, then the pages loaded since ([more]), minus [watchingIds] and
+ * repeats, into top picks and More for you.
+ */
+private fun picksOf(state: LoadState<List<RecommendedVideo>>, more: List<RecommendedVideo>, watchingIds: Set<String>): LoadState<HomePicks> {
     return when (state) {
         is LoadState.Loading -> LoadState.Loading
         is LoadState.Failed -> state
         is LoadState.Loaded -> {
-            val fresh = state.value.filter { pick -> pick.video.id !in watchingIds }
-            LoadState.Loaded(HomePicks(fresh.take(TOP_PICK_COUNT), fresh.drop(TOP_PICK_COUNT).take(FOR_YOU_COUNT)))
+            val fresh = (state.value + more).filter { pick -> pick.video.id !in watchingIds }.distinctBy { pick -> pick.video.id }
+            LoadState.Loaded(HomePicks(fresh.take(TOP_PICK_COUNT), fresh.drop(TOP_PICK_COUNT)))
         }
     }
 }
