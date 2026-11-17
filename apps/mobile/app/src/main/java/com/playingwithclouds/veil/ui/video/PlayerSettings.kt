@@ -14,7 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.ui.compose.state.rememberPlaybackSpeedState
-import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.OverlayIconButton
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilMenu
 import com.playingwithclouds.veil.ui.design.VeilMenuItem
@@ -54,7 +54,7 @@ fun PlayerSettingsButton(
         }
     }
     Box(modifier) {
-        RoundIconButton(VeilIcons.Settings, contentDescription = "Playback settings", onClick = { setOpen(true) }, size = buttonSize)
+        OverlayIconButton(VeilIcons.Settings, contentDescription = "Playback settings", onClick = { setOpen(true) }, size = buttonSize)
         VeilMenu(expanded = open, onDismissRequest = { setOpen(false) }) {
             when (page) {
                 SettingsPage.MAIN -> MainSettings(player, options, tracks, live, onPage = { chosen -> page = chosen }, onDone = { setOpen(false) })

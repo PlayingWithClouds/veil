@@ -58,7 +58,6 @@ private val HeatmapHeight = 22.dp
 private val HeatmapGap = 4.dp
 private const val LOOP_TICK_SCALE = 2.4f
 private const val LOOP_SPAN_SCALE = 1.8f
-private const val MARKER_TICK_SCALE = 1.6f
 
 /** The most-replayed graph, and its part already played. */
 private val HeatmapColor = VeilColors.content.copy(alpha = 0.16f)
@@ -67,15 +66,12 @@ private val HeatmapPlayedColor = VeilColors.accent.copy(alpha = 0.4f)
 /** The span of an A–B loop on the track. */
 private val LoopColor = VeilColors.content.copy(alpha = 0.7f)
 
-/** A marker's notch on the track. */
-private val MarkerTickColor = VeilColors.content.copy(alpha = 0.85f)
-
 /** Buffered but not yet played. */
 private val BufferedColor = VeilColors.content.copy(alpha = 0.45f)
 
 /**
- * A thin accent seek bar: played part in accent, buffered part lighter, a small thumb that grows
- * while dragged with the drag time floating above it. Dragging only previews; the player seeks on
+ * A thin seek bar, split into chapters at the markers: played part in accent, buffered part
+ * lighter, a small thumb that grows while dragged with the drag time floating above it. Dragging only previews; the player seeks on
  * release (or on a tap), so HLS streams are not asked for every position on the way.
  */
 @Composable
@@ -149,9 +145,13 @@ fun PlayerSeekBar(
         Canvas(Modifier.fillMaxWidth().height(SeekBarTouchHeight + heatHeight)) {
             val trackCenterY = size.height - SeekBarTouchHeight.toPx() / 2f
             drawHeatmap(heatmap, shownFraction, trackCenterY, thickness, heatHeight)
-            drawTrack(shownFraction, bufferedFraction, thickness, thumb, seekable, trackCenterY)
+            drawChapters(markerFractions) {
+                drawTrackLines(shownFraction, bufferedFraction, thickness, trackCenterY)
+            }
             drawLoop(loop, durationMilliseconds, thickness, trackCenterY)
-            drawMarkerTicks(markerFractions, thickness, trackCenterY)
+            if (seekable) {
+                drawCircle(VeilColors.accent, radius = thumb.toPx() / 2f, center = Offset(size.width * shownFraction, trackCenterY))
+            }
         }
         if (dragged != null) {
             ScrubTimeLabel(positionAt(dragged, durationMilliseconds), dragged, maxWidth, Modifier.align(Alignment.TopStart))
@@ -175,21 +175,41 @@ private fun thumbDiameter(scrubbing: Boolean): Dp {
     return ThumbDiameter
 }
 
-/** Draws the track, buffered and played parts and, when seekable, the thumb at [played]. */
-private fun DrawScope.drawTrack(played: Float, buffered: Float, thickness: Dp, thumb: Dp, seekable: Boolean, centerY: Float) {
+/** Draws the track with its buffered and played parts up to [played]. */
+private fun DrawScope.drawTrackLines(played: Float, buffered: Float, thickness: Dp, centerY: Float) {
     val stroke = thickness.toPx()
     val start = Offset(0f, centerY)
-    drawLine(TrackColor, start, Offset(size.width, centerY), stroke, StrokeCap.Round)
+    drawLine(TrackColor, start, Offset(size.width, centerY), stroke, StrokeCap.Butt)
     if (buffered > 0f) {
-        drawLine(BufferedColor, start, Offset(size.width * buffered, centerY), stroke, StrokeCap.Round)
+        drawLine(BufferedColor, start, Offset(size.width * buffered, centerY), stroke, StrokeCap.Butt)
     }
     if (played > 0f) {
-        drawLine(VeilColors.accent, start, Offset(size.width * played, centerY), stroke, StrokeCap.Round)
-    }
-    if (seekable) {
-        drawCircle(VeilColors.accent, radius = thumb.toPx() / 2f, center = Offset(size.width * played, centerY))
+        drawLine(VeilColors.accent, start, Offset(size.width * played, centerY), stroke, StrokeCap.Butt)
     }
 }
+
+/**
+ * Runs [drawTrack] once per chapter, clipped to it, so the track shows a small gap where each marker
+ * starts a chapter, as YouTube's does; one piece without markers.
+ */
+private fun DrawScope.drawChapters(fractions: List<Float>, drawTrack: DrawScope.() -> Unit) {
+    val bounds = (listOf(0f) + fractions.filter { fraction -> fraction > 0f && fraction < 1f }.sorted() + 1f).distinct()
+    val halfGap = ChapterGap.toPx() / 2f
+    for (index in 0 until bounds.size - 1) {
+        var left = size.width * bounds[index]
+        var right = size.width * bounds[index + 1]
+        if (index > 0) {
+            left += halfGap
+        }
+        if (index < bounds.size - 2) {
+            right -= halfGap
+        }
+        clipRect(left = left, right = right) { drawTrack() }
+    }
+}
+
+/** The gap between two chapters on the track. */
+private val ChapterGap = 3.dp
 
 /** The room the most-replayed graph takes above the track; none without data. */
 private fun heatmapHeight(heatmap: List<Float>): Dp {
@@ -244,15 +264,6 @@ private fun DrawScope.drawLoop(loop: AbLoop, durationMilliseconds: Long, thickne
     for (point in listOfNotNull(start, end)) {
         val x = size.width * fractionOf(point, durationMilliseconds)
         drawLine(VeilColors.content, Offset(x, centerY - tickHalfHeight), Offset(x, centerY + tickHalfHeight), thickness.toPx() * 0.8f)
-    }
-}
-
-/** A small notch on the track at each marker. */
-private fun DrawScope.drawMarkerTicks(fractions: List<Float>, thickness: Dp, centerY: Float) {
-    val halfHeight = thickness.toPx() * MARKER_TICK_SCALE
-    for (fraction in fractions) {
-        val x = size.width * fraction
-        drawLine(MarkerTickColor, Offset(x, centerY - halfHeight), Offset(x, centerY + halfHeight), thickness.toPx() * 0.6f)
     }
 }
 

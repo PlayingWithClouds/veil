@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +37,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -44,8 +48,8 @@ import androidx.media3.ui.compose.state.rememberProgressStateWithTickInterval
 import com.playingwithclouds.veil.data.VideoSegment
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.Badge
-import com.playingwithclouds.veil.ui.design.GlassIconButton
-import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.OverlayIconButton
+import com.playingwithclouds.veil.ui.design.OverlayRoundButton
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.glass
@@ -71,8 +75,6 @@ private val ControlButtonSize = 36.dp
 /** How far a swipe up has to travel to open the related panel. */
 private val PanelSwipeDistance = 48.dp
 
-private val TopScrim = Brush.verticalGradient(listOf(VeilColors.scrim, Color.Transparent))
-private val BottomScrim = Brush.verticalGradient(listOf(Color.Transparent, VeilColors.scrim))
 
 /** Whether the player is playing, and whether it is waiting for data while it should be. */
 @Stable
@@ -120,9 +122,11 @@ data class PlayerExtras(
 )
 
 /**
- * The controls drawn over the video. A tap shows or hides them (they hide by themselves after a few
- * seconds of playback), a double tap on the left or right half jumps 10 s, and in fullscreen a swipe
- * up from the lower half asks for the related panel through [onOpenRelated].
+ * The controls drawn over the video, laid out like YouTube's. A tap shows or hides them (they hide
+ * by themselves after a few seconds of playback), a double tap on the left or right half jumps 10 s,
+ * holding plays at 2× until let go, a swipe up goes fullscreen and a swipe down leaves it; in
+ * fullscreen a swipe up from the lower half asks for the related panel through [onOpenRelated].
+ * While hidden, a thin line along the bottom shows how far the video is.
  */
 @Composable
 fun PlayerControls(
@@ -141,6 +145,7 @@ fun PlayerControls(
     var menuOpen by remember { mutableStateOf(false) }
     var touches by remember { mutableIntStateOf(0) }
     var seekFeedback by remember { mutableStateOf<SeekFeedback?>(null) }
+    val boost = remember(player) { SpeedBoost(player) }
 
     LaunchedEffect(visible, status.isPlaying, scrubbing, menuOpen, touches) {
         if (!shouldAutoHide(visible, status.isPlaying, scrubbing, menuOpen)) {
@@ -170,6 +175,7 @@ fun PlayerControls(
             onOpenRelated()
         }
     }
+    val swipe = VerticalSwipeActions(isFullscreen, onToggleFullscreen, openRelated)
 
     Box(
         modifier
@@ -177,10 +183,17 @@ fun PlayerControls(
             .playerGestures(
                 onTap = { visible = !visible },
                 onDoubleTap = seekByDoubleTap,
-                onSwipeUp = openRelated,
+                onHoldChange = { holding -> boost.hold(holding && !extras.live) },
+                onVerticalSwipe = swipe::onSwipe,
             ),
     ) {
         SeekFeedbackOverlay(seekFeedback)
+        if (boost.active) {
+            SpeedBoostLabel(Modifier.align(Alignment.TopCenter).padding(top = VeilSpacing.medium))
+        }
+        if (!visible && !isFullscreen && !extras.live) {
+            HiddenProgressLine(player, Modifier.align(Alignment.BottomCenter))
+        }
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
             ControlsLayer(
                 player = player,
@@ -202,24 +215,34 @@ fun PlayerControls(
     }
 }
 
-/** Taps, double taps (with the side they landed on) and, when [onSwipeUp] is set, a swipe up from the lower half. */
+/**
+ * Taps, double taps (with the side they landed on), holds (true on a long press, false when let
+ * go) and vertical swipes (where they started, the player's height, how far they went).
+ */
 @Composable
-private fun Modifier.playerGestures(onTap: () -> Unit, onDoubleTap: (direction: Int) -> Unit, onSwipeUp: (() -> Unit)?): Modifier {
+private fun Modifier.playerGestures(
+    onTap: () -> Unit,
+    onDoubleTap: (direction: Int) -> Unit,
+    onHoldChange: (Boolean) -> Unit,
+    onVerticalSwipe: (startY: Float, height: Float, dragY: Float, threshold: Float) -> Unit,
+): Modifier {
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
-    val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
-    val swipeEnabled = onSwipeUp != null
+    val currentOnHoldChange by rememberUpdatedState(onHoldChange)
+    val currentOnVerticalSwipe by rememberUpdatedState(onVerticalSwipe)
     return this
         .pointerInput(Unit) {
             detectTapGestures(
                 onTap = { currentOnTap() },
                 onDoubleTap = { offset -> currentOnDoubleTap(seekDirectionAt(offset.x, size.width.toFloat())) },
+                onLongPress = { currentOnHoldChange(true) },
+                onPress = {
+                    tryAwaitRelease()
+                    currentOnHoldChange(false)
+                },
             )
         }
-        .pointerInput(swipeEnabled) {
-            if (!swipeEnabled) {
-                return@pointerInput
-            }
+        .pointerInput(Unit) {
             var startY = 0f
             var dragY = 0f
             detectVerticalDragGestures(
@@ -227,11 +250,7 @@ private fun Modifier.playerGestures(onTap: () -> Unit, onDoubleTap: (direction: 
                     startY = offset.y
                     dragY = 0f
                 },
-                onDragEnd = {
-                    if (isRelatedPanelSwipe(startY, size.height.toFloat(), dragY, PanelSwipeDistance.toPx())) {
-                        currentOnSwipeUp?.invoke()
-                    }
-                },
+                onDragEnd = { currentOnVerticalSwipe(startY, size.height.toFloat(), dragY, PanelSwipeDistance.toPx()) },
                 onVerticalDrag = { change, amount ->
                     change.consume()
                     dragY += amount
@@ -240,7 +259,86 @@ private fun Modifier.playerGestures(onTap: () -> Unit, onDoubleTap: (direction: 
         }
 }
 
-/** Scrims, the top row, the centred play button and the bottom bar with the seek bar. */
+/**
+ * What a vertical swipe on the video does: inline a swipe up goes fullscreen; in fullscreen a swipe
+ * down leaves it and a swipe up from the lower half opens the related panel when there is one.
+ */
+private class VerticalSwipeActions(
+    private val isFullscreen: Boolean,
+    private val onToggleFullscreen: () -> Unit,
+    private val onOpenRelated: (() -> Unit)?,
+) {
+
+    /** Acts on a finished swipe that started at [startY] and moved [dragY] (negative is up). */
+    fun onSwipe(startY: Float, height: Float, dragY: Float, threshold: Float) {
+        if (!isFullscreen) {
+            if (dragY <= -threshold) {
+                onToggleFullscreen()
+            }
+            return
+        }
+        if (dragY >= threshold) {
+            onToggleFullscreen()
+            return
+        }
+        if (onOpenRelated != null && isRelatedPanelSwipe(startY, height, dragY, threshold)) {
+            onOpenRelated()
+        }
+    }
+}
+
+/** Speed while the video is held down. */
+private const val BOOST_SPEED = 2f
+
+/** Plays at [BOOST_SPEED] while held, then back at the speed it had. */
+@Stable
+private class SpeedBoost(private val player: Player) {
+    var active by mutableStateOf(false)
+        private set
+    private var speedBefore = 1f
+
+    /** Starts the boost when [holding], ends it when let go. */
+    fun hold(holding: Boolean) {
+        if (holding && !active) {
+            speedBefore = player.playbackParameters.speed
+            player.setPlaybackSpeed(BOOST_SPEED)
+            active = true
+            return
+        }
+        if (!holding && active) {
+            player.setPlaybackSpeed(speedBefore)
+            active = false
+        }
+    }
+}
+
+/** "2×" at the top while the video is held. */
+@Composable
+private fun SpeedBoostLabel(modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(VeilShapes.capsule).background(VeilColors.playerDim).padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("2×", style = MaterialTheme.typography.labelLarge, color = VeilColors.content)
+        Icon(VeilIcons.FastForward, contentDescription = null, tint = VeilColors.content, modifier = Modifier.size(SmallIconSize))
+    }
+}
+
+/** A thin played line along the bottom edge of the inline player while its controls are hidden. */
+@Composable
+private fun HiddenProgressLine(player: Player, modifier: Modifier = Modifier) {
+    val progress = rememberProgressStateWithTickInterval(player, PROGRESS_TICK_MILLISECONDS)
+    val played = fractionOf(progress.currentPositionMs, progress.durationMs)
+    Box(modifier.fillMaxWidth().height(HiddenLineHeight).background(VeilColors.playerDim)) {
+        Box(Modifier.fillMaxWidth(played).fillMaxHeight().background(VeilColors.accent))
+    }
+}
+
+private val HiddenLineHeight = 2.dp
+private val SmallIconSize = 16.dp
+
+/** An even dim over the video, the top row, the centred play button and the bottom bar with the seek bar. */
 @Composable
 private fun ControlsLayer(
     player: Player,
@@ -256,8 +354,7 @@ private fun ControlsLayer(
     onMenuChange: (Boolean) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.TopCenter).background(TopScrim))
-        Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.BottomCenter).background(BottomScrim))
+        Box(Modifier.fillMaxSize().background(VeilColors.playerDim))
         TopRow(player, options, title, isFullscreen, extras, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
         if (!isBuffering) {
             CentreButtons(player, extras.live, onTouch, Modifier.align(Alignment.Center))
@@ -287,8 +384,6 @@ private fun Modifier.fullscreenCutoutPadding(isFullscreen: Boolean): Modifier {
     return this.displayCutoutPadding()
 }
 
-/** Share of the player's height each gradient scrim covers. */
-private const val SCRIM_HEIGHT_FRACTION = 0.4f
 
 /** In fullscreen a way out and the title, inline the page's back button if it has one; always the settings gear on the right. */
 @Composable
@@ -308,7 +403,7 @@ private fun TopRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isFullscreen) {
-            RoundIconButton(VeilIcons.Back, contentDescription = "Leave fullscreen", onClick = onToggleFullscreen, size = ControlButtonSize)
+            OverlayIconButton(VeilIcons.Back, contentDescription = "Leave fullscreen", onClick = onToggleFullscreen, size = ControlButtonSize)
             Text(
                 title,
                 modifier = Modifier.weight(1f),
@@ -320,7 +415,7 @@ private fun TopRow(
         }
         val onBack = extras.onBack
         if (!isFullscreen && onBack != null) {
-            RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, size = ControlButtonSize)
+            OverlayIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, size = ControlButtonSize)
         }
         if (!isFullscreen) {
             Box(Modifier.weight(1f))
@@ -335,7 +430,7 @@ private fun CentreButtons(player: Player, live: Boolean, onTouch: () -> Unit, mo
     val paused = rememberPlayPauseButtonState(player).showPlay && !live
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraLarge), verticalAlignment = Alignment.CenterVertically) {
         FrameStepSlot(paused) {
-            RoundIconButton(
+            OverlayIconButton(
                 VeilIcons.StepBack,
                 contentDescription = "Previous frame",
                 onClick = {
@@ -347,7 +442,7 @@ private fun CentreButtons(player: Player, live: Boolean, onTouch: () -> Unit, mo
         }
         PlayPauseButton(player, onTouch)
         FrameStepSlot(paused) {
-            RoundIconButton(
+            OverlayIconButton(
                 VeilIcons.StepForward,
                 contentDescription = "Next frame",
                 onClick = {
@@ -370,7 +465,7 @@ private fun FrameStepSlot(paused: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-/** The large glass play/pause button in the middle. */
+/** The large round play/pause button in the middle. */
 @Composable
 private fun PlayPauseButton(player: Player, onTouch: () -> Unit, modifier: Modifier = Modifier) {
     val state = rememberPlayPauseButtonState(player)
@@ -380,7 +475,7 @@ private fun PlayPauseButton(player: Player, onTouch: () -> Unit, modifier: Modif
         icon = VeilIcons.Play
         label = "Play"
     }
-    GlassIconButton(
+    OverlayRoundButton(
         icon,
         contentDescription = label,
         onClick = {
@@ -392,7 +487,10 @@ private fun PlayPauseButton(player: Player, onTouch: () -> Unit, modifier: Modif
     )
 }
 
-/** Elapsed / total time and the buttons above the seek bar. */
+/**
+ * Elapsed / total time and the chapter playing on the left, the buttons on the right, then the seek
+ * bar: edge to edge inline, as YouTube's, inset in fullscreen.
+ */
 @Composable
 private fun BottomBar(
     player: Player,
@@ -406,13 +504,17 @@ private fun BottomBar(
     modifier: Modifier = Modifier,
 ) {
     val progress = rememberProgressStateWithTickInterval(player, PROGRESS_TICK_MILLISECONDS)
-    Column(modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen).padding(horizontal = VeilSpacing.medium)) {
+    var barModifier: Modifier = Modifier
+    if (isFullscreen) {
+        barModifier = barModifier.padding(horizontal = VeilSpacing.medium)
+    }
+    Column(modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen)) {
         if (isFullscreen) {
-            MarkerChips(extras.markers, player)
+            MarkerChips(extras.markers, player, Modifier.padding(horizontal = VeilSpacing.medium))
         }
         Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+            Modifier.fillMaxWidth().padding(start = VeilSpacing.medium, end = VeilSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (extras.live) {
@@ -426,26 +528,21 @@ private fun BottomBar(
                     modifier = Modifier.weight(1f),
                 )
             } else {
-                Text(
-                    formatPlaybackTime(progress.currentPositionMs, progress.durationMs),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = VeilColors.content,
-                )
+                TimeAndChapter(progress.currentPositionMs, progress.durationMs, extras.markers, Modifier.weight(1f))
             }
             if (options.loop.startMilliseconds != null) {
-                RoundIconButton(VeilIcons.Repeat, contentDescription = "Loop: ${loopLabel(options.loop)}", onClick = options::clearLoop, size = ControlButtonSize)
+                OverlayIconButton(VeilIcons.Repeat, contentDescription = "Loop: ${loopLabel(options.loop)}", onClick = options::clearLoop, size = ControlButtonSize)
             }
             if (extras.onNext != null) {
-                RoundIconButton(VeilIcons.SkipNext, contentDescription = "Next in queue", onClick = extras.onNext, size = ControlButtonSize)
+                OverlayIconButton(VeilIcons.SkipNext, contentDescription = "Next in queue", onClick = extras.onNext, size = ControlButtonSize)
             }
             if (extras.onEnterPictureInPicture != null) {
-                RoundIconButton(VeilIcons.PictureInPicture, contentDescription = "Picture-in-picture", onClick = extras.onEnterPictureInPicture, size = ControlButtonSize)
+                OverlayIconButton(VeilIcons.PictureInPicture, contentDescription = "Picture-in-picture", onClick = extras.onEnterPictureInPicture, size = ControlButtonSize)
             }
             if (onOpenRelated != null) {
-                RoundIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
+                OverlayIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
             }
-            RoundIconButton(
+            OverlayIconButton(
                 fullscreenIcon(isFullscreen),
                 contentDescription = fullscreenLabel(isFullscreen),
                 onClick = onToggleFullscreen,
@@ -461,6 +558,7 @@ private fun BottomBar(
                 onTouch()
             },
             onScrubbingChange = onScrubbingChange,
+            modifier = barModifier,
             loop = options.loop,
             markerFractions = markerFractions(extras.markers, progress.durationMs / MILLISECONDS_PER_SECOND_DOUBLE),
             heatmap = extras.heatmap,
@@ -469,6 +567,31 @@ private fun BottomBar(
 }
 
 private const val MILLISECONDS_PER_SECOND_DOUBLE = 1000.0
+
+/** Small white text over video, shadowed so it reads on bright frames. */
+private val OverlayLabel: TextStyle
+    @Composable get() = MaterialTheme.typography.labelMedium.copy(shadow = Shadow(VeilColors.playerShadow, blurRadius = TEXT_SHADOW_BLUR))
+
+private const val TEXT_SHADOW_BLUR = 6f
+
+/** "1:23 / 6:40", then " · " and the chapter playing (the marker reached last), as YouTube shows it. */
+@Composable
+private fun TimeAndChapter(positionMilliseconds: Long, durationMilliseconds: Long, markers: List<VideoSegment>, modifier: Modifier = Modifier) {
+    val activeIndex = activeMarkerIndex(markers, positionMilliseconds / MILLISECONDS_PER_SECOND_DOUBLE)
+    val chapter = markers.getOrNull(activeIndex)?.title?.takeIf { title -> title.isNotBlank() }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(formatPlaybackTime(positionMilliseconds, durationMilliseconds), style = OverlayLabel, color = VeilColors.content, maxLines = 1)
+        if (chapter != null) {
+            Text(
+                " · $chapter",
+                style = OverlayLabel,
+                color = VeilColors.contentMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 /**
  * Where a live room's playhead is: a red LIVE badge at the live edge, else how far it is rewound

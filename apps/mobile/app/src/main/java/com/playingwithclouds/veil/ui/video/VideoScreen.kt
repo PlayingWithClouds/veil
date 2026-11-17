@@ -32,7 +32,7 @@ import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.LocalTopBarInset
-import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.OverlayIconButton
 import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.Spinner
@@ -139,7 +139,7 @@ private fun PlayerArea(
         PlayerPlaceholder(state)
         val onBack = extras.onBack
         if (onBack != null) {
-            RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, modifier = Modifier.padding(VeilSpacing.medium))
+            OverlayIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, modifier = Modifier.padding(VeilSpacing.medium))
         }
     }
 }

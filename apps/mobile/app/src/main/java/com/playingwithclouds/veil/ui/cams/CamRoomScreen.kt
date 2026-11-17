@@ -51,7 +51,7 @@ import com.playingwithclouds.veil.ui.components.ReactionRowInset
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.LocalTopBarInset
-import com.playingwithclouds.veil.ui.design.RoundIconButton
+import com.playingwithclouds.veil.ui.design.OverlayIconButton
 import androidx.compose.foundation.layout.statusBarsPadding
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.design.Pill
@@ -174,7 +174,7 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
                     )
                 } else {
                     RoomPlaceholder(room, state, onRetry = viewModel::load)
-                    RoundIconButton(
+                    OverlayIconButton(
                         VeilIcons.Back,
                         contentDescription = "Back",
                         onClick = navigator::back,

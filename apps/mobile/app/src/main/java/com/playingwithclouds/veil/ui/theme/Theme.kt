@@ -56,6 +56,12 @@ object VeilColors {
     /** Dims the page behind sheets and full-screen viewers. */
     val scrim = Color.Black.copy(alpha = 0.6f)
 
+    /** Dims the video evenly while the player's controls show, and fills its round centre buttons. */
+    val playerDim = Color.Black.copy(alpha = 0.38f)
+
+    /** Shadow under the player's flat icons and text so they read on bright frames. */
+    val playerShadow = Color.Black.copy(alpha = 0.55f)
+
     /** Hairline edge of glass surfaces. */
     val glassEdge = Color.White.copy(alpha = 0.10f)
 
