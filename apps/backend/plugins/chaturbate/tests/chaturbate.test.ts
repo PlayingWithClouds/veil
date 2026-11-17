@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { buildRoomListQuery, toCamRoom } from "../src/rooms.ts";
+import { buildRoomListQuery, isLooseAnswer, toCamRoom, toListResult } from "../src/rooms.ts";
 import { toStreamResult } from "../src/stream.ts";
 
 test("toCamRoom maps a public room", () => {
@@ -42,6 +42,18 @@ test("buildRoomListQuery caps the page size and maps filters", () => {
   expect(params.get("keywords")).toBe("anna");
   expect(params.get("hashtags")).toBe("squirt");
   expect(params.get("genders")).toBe("t");
+});
+
+test("isLooseAnswer spots the site's loose search answer", () => {
+  expect(isLooseAnswer({ total_count: 500 })).toBe(true);
+  expect(isLooseAnswer({ total_count: 45 })).toBe(false);
+});
+
+test("toListResult cuts the padding past an exact search's total", () => {
+  const rooms = Array.from({ length: 100 }, (_, index) => ({ username: `room${index}`, current_show: "public" }));
+  expect(toListResult({ rooms, total_count: 45 }, { offset: 0 }).rooms).toHaveLength(45);
+  expect(toListResult({ rooms, total_count: 145 }, { offset: 100 }).rooms).toHaveLength(45);
+  expect(toListResult({ rooms, total_count: 7000 }, { offset: 0 }).rooms).toHaveLength(100);
 });
 
 test("toStreamResult returns the HLS url with a room referer", () => {

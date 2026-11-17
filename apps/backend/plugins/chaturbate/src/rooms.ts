@@ -65,16 +65,57 @@ export function buildRoomListQuery(args: CamListArgs): string {
   return params.toString();
 }
 
+/** One answer of the room-list endpoint. */
+export interface RoomListBody {
+  rooms?: ChaturbateRoom[];
+  total_count?: number;
+}
+
+/**
+ * The total the site reports when it answers a keyword search loosely: mostly
+ * rooms that don't match, capped at this many. It answers the same request
+ * either loosely or exactly at random, so a search asks again on this total.
+ */
+const LOOSE_SEARCH_TOTAL = 500;
+
+/** Times a keyword search is asked while the site answers it loosely. */
+const SEARCH_TRIES = 3;
+
 /** Lists the rooms online now, most viewed first (the site's default order). */
 export async function camList(args: CamListArgs): Promise<CamListResult> {
+  let body = await fetchRoomList(args);
+  for (let tries = 1; args.query && isLooseAnswer(body) && tries < SEARCH_TRIES; tries++) {
+    body = await fetchRoomList(args);
+  }
+  return toListResult(body, args);
+}
+
+/** Fetches one page of the room list. */
+async function fetchRoomList(args: CamListArgs): Promise<RoomListBody> {
   const response = await fetch(`${SITE}/api/ts/roomlist/room-list/?${buildRoomListQuery(args)}`, {
     headers: API_HEADERS,
     signal: AbortSignal.timeout(20000),
   });
   if (!response.ok) throw new Error(`chaturbate room list: HTTP ${response.status}`);
-  const body = (await response.json()) as { rooms?: ChaturbateRoom[]; total_count?: number };
+  return (await response.json()) as RoomListBody;
+}
+
+/** Whether a search answer is the loose one (a word common enough to have 500 exact matches looks the same). */
+export function isLooseAnswer(body: RoomListBody): boolean {
+  return body.total_count === LOOSE_SEARCH_TOTAL;
+}
+
+/**
+ * The plugin result of one answer. An exact search answer pads its page with
+ * unrelated rooms past its total, so those are cut off.
+ */
+export function toListResult(body: RoomListBody, args: CamListArgs): CamListResult {
   const result: CamListResult = { rooms: [] };
-  if (body.rooms) result.rooms = body.rooms.map(toCamRoom);
-  if (typeof body.total_count === "number") result.total = body.total_count;
+  let rooms = body.rooms ?? [];
+  if (typeof body.total_count === "number") {
+    result.total = body.total_count;
+    rooms = rooms.slice(0, Math.max(0, body.total_count - (args.offset ?? 0)));
+  }
+  result.rooms = rooms.map(toCamRoom);
   return result;
 }
