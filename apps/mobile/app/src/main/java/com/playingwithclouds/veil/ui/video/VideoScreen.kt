@@ -2,6 +2,9 @@ package com.playingwithclouds.veil.ui.video
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.ui.unit.dp
+import com.playingwithclouds.veil.ui.components.ScenePreview
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +42,9 @@ import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
+
+/** The small spinner in the corner of the preview while the stream resolves. */
+private val PreviewSpinnerSize = 20.dp
 
 /** The player box's shape on the page; fullscreen and picture-in-picture fill the screen instead. */
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
@@ -144,17 +150,27 @@ private fun PlayerArea(
     }
 }
 
-/** Before a source plays: the cover with a spinner or why nothing plays; a spinner alone while the video opens. */
+/**
+ * Before a source plays: the cover with the preview looping over it from the moment the card is
+ * read, so the page moves at once while the stream resolves; a small spinner while it does, or why
+ * nothing plays. A spinner alone until even the card is there.
+ */
 @Composable
-private fun PlayerPlaceholder(state: VideoState) {
-    val detail = (state.detail as? LoadState.Loaded)?.value
-    if (detail == null) {
+private fun BoxScope.PlayerPlaceholder(state: VideoState) {
+    val summary = (state.detail as? LoadState.Loaded)?.value?.summary ?: state.card
+    if (summary == null) {
         LoadingIndicator()
         return
     }
-    RemoteImage(detail.summary.coverUrl, Modifier.fillMaxSize(), ContentScale.Crop)
+    RemoteImage(summary.coverUrl, Modifier.fillMaxSize(), ContentScale.Crop)
+    val previewUrl = summary.previewUrl
+    val problem = state.problem
+    if (previewUrl != null && problem == null) {
+        ScenePreview(previewUrl, Modifier.fillMaxSize())
+        Spinner(Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.medium), size = PreviewSpinnerSize)
+        return
+    }
     Box(Modifier.fillMaxSize().background(VeilColors.scrim), contentAlignment = Alignment.Center) {
-        val problem = state.problem
         if (problem != null && !state.resolving) {
             Text(
                 problem,

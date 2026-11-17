@@ -57,6 +57,8 @@ private enum class RelatedStage { LIBRARY, SITES, NAMES, PICKS, DONE }
  */
 data class VideoState(
     val detail: LoadState<VideoDetail> = LoadState.Loading,
+    /** The video's card, read first so the cover and preview show while the pages are read. */
+    val card: VideoSummary? = null,
     val active: ActiveSource? = null,
     val resolving: Boolean = false,
     val problem: String? = null,
@@ -106,6 +108,10 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
     /** Opens the video and starts its first source; Up next starts loading alongside. */
     fun load() {
         mutableState.update { state -> state.copy(detail = LoadState.Loading, problem = null) }
+        viewModelScope.launch {
+            val card = runCatching { VideoRepository.card(videoId) }.getOrNull() ?: return@launch
+            mutableState.update { state -> state.copy(card = card) }
+        }
         viewModelScope.launch { loadMoreRelated() }
         viewModelScope.launch {
             try {

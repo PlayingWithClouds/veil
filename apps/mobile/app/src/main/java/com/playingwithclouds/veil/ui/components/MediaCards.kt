@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.playingwithclouds.veil.data.HiddenRecords
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
@@ -105,12 +107,22 @@ private fun VideoCardContent(
         coverShape = RectangleShape
         captionModifier = Modifier.padding(start = VeilSpacing.gutter, top = VeilSpacing.medium, end = VeilSpacing.gutter, bottom = VeilSpacing.large)
     }
+    var scrubFraction by remember(video.id) { mutableStateOf<Float?>(null) }
+    val previewUrl = video.previewUrl
+    var coverModifier = Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(coverShape)
+    if (edgeToEdge && previewUrl != null) {
+        coverModifier = coverModifier.scrubGesture { fraction -> scrubFraction = fraction }
+    }
     Column(modifier.fillMaxWidth().pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(LANDSCAPE_RATIO).clip(coverShape)) {
+        Box(coverModifier) {
             RemoteImage(video.coverUrl, Modifier.matchParentSize())
-            val previewUrl = video.previewUrl
-            if (previewing && previewUrl != null) {
-                ScenePreview(previewUrl, Modifier.matchParentSize())
+            val scrubbed = scrubFraction
+            if (previewUrl != null && (previewing || scrubbed != null)) {
+                // Cards stay silent; the one preview with sound is Home's hero.
+                ScenePreview(previewUrl, Modifier.matchParentSize(), scrubFraction = scrubbed, sound = false)
+            }
+            if (scrubbed != null) {
+                ProgressBar(scrubbed, Modifier.align(Alignment.BottomStart), trackColor = VeilColors.imageTrack, height = ResumeBarHeight)
             }
             val runtime = runtimeLabel(video)
             if (runtime != null) {
@@ -131,6 +143,24 @@ private fun VideoCardContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * Dragging a finger sideways across a cover peeks through the video: [onScrub] gets the share of the
+ * width under the finger, and null when it lets go. Vertical drags still scroll the feed.
+ */
+private fun Modifier.scrubGesture(onScrub: (Float?) -> Unit): Modifier {
+    return this.pointerInput(Unit) {
+        detectHorizontalDragGestures(
+            onDragStart = { offset -> onScrub((offset.x / size.width).coerceIn(0f, 1f)) },
+            onDragEnd = { onScrub(null) },
+            onDragCancel = { onScrub(null) },
+            onHorizontalDrag = { change, _ ->
+                change.consume()
+                onScrub((change.position.x / size.width).coerceIn(0f, 1f))
+            },
+        )
     }
 }
 

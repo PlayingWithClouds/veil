@@ -14,6 +14,7 @@ import com.playingwithclouds.veil.graphql.RelatedVideosQuery
 import com.playingwithclouds.veil.graphql.SetBlockedMutation
 import com.playingwithclouds.veil.graphql.SetFavoriteMutation
 import com.playingwithclouds.veil.graphql.SiteRelatedVideosQuery
+import com.playingwithclouds.veil.graphql.VideoCardQuery
 import com.playingwithclouds.veil.graphql.fragment.VideoCardFields
 import com.playingwithclouds.veil.graphql.fragment.VideoDetailFields
 import com.playingwithclouds.veil.graphql.type.CollectionKind
@@ -27,6 +28,14 @@ object VideoRepository {
     suspend fun open(id: String): VideoDetail? {
         val data = VeilApi.client.mutation(OpenVideoMutation(id)).execute().dataOrThrow()
         return data.fetchVideo?.videoDetailFields?.let(::detailOf)
+    }
+
+    /**
+     * A video as its card shows it, from the library alone (no site is read, nothing is logged):
+     * fast enough to show the cover and preview while [open] reads the pages. Null when it's gone.
+     */
+    suspend fun card(id: String): VideoSummary? {
+        return VeilApi.client.query(VideoCardQuery(id)).execute().dataOrThrow().video?.videoCardFields?.toSummary()
     }
 
     /** Resolves a site's stream to a URL the player can load; null when the site gives none. */

@@ -22,6 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import com.playingwithclouds.veil.ui.design.Spinner
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -79,23 +83,27 @@ private fun forYouKey(videoId: String): String = "for-you:$videoId"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navigator: AppNavigator) {
-    val viewModel = viewModel { HomeViewModel() }
+    val appContext = LocalContext.current.applicationContext
+    val viewModel = viewModel { HomeViewModel(appContext) }
     val picks by viewModel.picks.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val loadingMore by viewModel.loadingMore.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    ShowAmbientGlow((picks as? LoadState.Loaded)?.value?.top?.firstOrNull()?.video?.coverUrl)
+    val loaded = (picks as? LoadState.Loaded)?.value
+    ShowAmbientGlow((loaded?.hero ?: loaded?.top?.firstOrNull())?.video?.coverUrl)
     GlassTopBarLayout(bar = { TabTopBar(navigator) }) {
+        val barInset = LocalTopBarInset.current
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = viewModel::refresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = VeilSpacing.large + LocalFloatingBarInset.current),
+                contentPadding = PaddingValues(bottom = VeilSpacing.large + LocalFloatingBarInset.current),
             ) {
+                item("hero") { HeroOrBarSpace(loaded?.hero, barInset, viewModel, navigator) }
+                item("live") { LiveRow(viewModel, navigator) }
                 item("top-picks") { TopPicks(picks, viewModel, navigator) }
                 item("continue-watching") { ContinueWatchingRow(viewModel, navigator) }
-                item("live") { LiveRow(viewModel, navigator) }
                 item("more-rows") { MoreRows(viewModel, navigator) }
                 forYou(picks, viewModel, navigator)
                 if (loadingMore) {
@@ -133,7 +141,7 @@ private fun TopPicksRow(top: List<RecommendedVideo>, viewModel: HomeViewModel, n
     val rowState = rememberLazyListState()
     val inFront by remember { derivedStateOf { pickInFront(rowState) } }
     TrackShown(rowState, top.map { pick -> pick.video.id }) { position ->
-        viewModel.recordShown(top[position].video.id, ImpressionSurface.HOME, position)
+        viewModel.recordShown(top[position].video.id, ImpressionSurface.HOME, HERO_POSITION + 1 + position)
     }
     Column(Modifier.fillMaxWidth()) {
         SectionHeading("Top picks for you", modifier = Modifier.gutterPadding())
@@ -148,7 +156,7 @@ private fun TopPicksRow(top: List<RecommendedVideo>, viewModel: HomeViewModel, n
                 VideoCard(
                     pick.video,
                     onClick = {
-                        viewModel.recordClicked(pick.video.id, ImpressionSurface.HOME, position)
+                        viewModel.recordClicked(pick.video.id, ImpressionSurface.HOME, HERO_POSITION + 1 + position)
                         navigator.openVideo(pick.video.id)
                     },
                     modifier = Modifier.fillParentMaxWidth(TOP_PICK_WIDTH_FRACTION),
@@ -199,14 +207,32 @@ private fun ContinueWatchingRow(viewModel: HomeViewModel, navigator: AppNavigato
     }
 }
 
-/** Rooms being recorded, then rooms live now. */
+/** Rooms being recorded, then rooms live now, as ringed faces. */
 @Composable
 private fun LiveRow(viewModel: HomeViewModel, navigator: AppNavigator) {
     val rooms by viewModel.live.collectAsStateWithLifecycle()
-    Shelf("Live now", rooms, key = { room -> room.id }, itemWidth = LiveCardWidth) { room, _ ->
-        CamCard(room, onClick = { navigator.openCam(room.id) })
-    }
+    LiveFacesRow(rooms, onOpen = { room -> navigator.openCam(room.id) })
 }
+
+/**
+ * The hero under the see-through bar, logged as shown at position 0 on "home"; until there is one,
+ * the bar's height, so the rows start below it.
+ */
+@Composable
+private fun HeroOrBarSpace(hero: RecommendedVideo?, barInset: Dp, viewModel: HomeViewModel, navigator: AppNavigator) {
+    if (hero == null) {
+        Spacer(Modifier.height(barInset))
+        return
+    }
+    LaunchedEffect(hero.video.id) { viewModel.recordShown(hero.video.id, ImpressionSurface.HOME, HERO_POSITION) }
+    HomeHero(hero, onOpen = {
+        viewModel.recordClicked(hero.video.id, ImpressionSurface.HOME, HERO_POSITION)
+        navigator.openVideo(hero.video.id)
+    })
+}
+
+/** The hero's place among Home's recommendations; the top picks follow it. */
+private const val HERO_POSITION = 0
 
 /** More for you: a heading, then the recommendations after the top picks as full-width cards. */
 private fun LazyListScope.forYou(picks: LoadState<HomePicks>, viewModel: HomeViewModel, navigator: AppNavigator) {
@@ -217,7 +243,7 @@ private fun LazyListScope.forYou(picks: LoadState<HomePicks>, viewModel: HomeVie
     if (forYou.isEmpty()) {
         return
     }
-    val firstPosition = picks.value.top.size
+    val firstPosition = HERO_POSITION + 1 + picks.value.top.size
     item("for-you-heading") { SectionHeading("More for you", modifier = Modifier.gutterPadding()) }
     itemsIndexed(forYou, key = { _, pick -> forYouKey(pick.video.id) }) { index, pick ->
         VideoCard(
@@ -239,7 +265,7 @@ private fun ForYouImpressions(listState: LazyListState, picks: LoadState<HomePic
         return
     }
     val forYou = picks.value.forYou
-    val firstPosition = picks.value.top.size
+    val firstPosition = HERO_POSITION + 1 + picks.value.top.size
     TrackShown(listState, forYou.map { pick -> forYouKey(pick.video.id) }) { index ->
         viewModel.recordShown(forYou[index].video.id, ImpressionSurface.HOME, firstPosition + index)
     }
