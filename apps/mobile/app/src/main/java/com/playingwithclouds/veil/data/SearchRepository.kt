@@ -10,6 +10,7 @@ import com.playingwithclouds.veil.graphql.VideoTagCountsQuery
 import com.playingwithclouds.veil.graphql.type.EventKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 
 /**
  * Part of one site's answer to a search page. [sites] is how many sites the page asked; [final]
@@ -50,6 +51,11 @@ object SearchRepository {
                 },
             )
         }
+    }
+
+    /** Every video one unfiltered search page (0 first) finds, once all sites answered, as the web's `collectSearchPage`. */
+    suspend fun collectPage(query: String, page: Int): List<VideoSummary> {
+        return page(query, page, SearchFilter()).toList().flatMap { batch -> batch.videos }
     }
 
     /**

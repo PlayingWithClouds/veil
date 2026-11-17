@@ -7,6 +7,7 @@ import com.playingwithclouds.veil.data.HomeRepository
 import com.playingwithclouds.veil.data.LoggedEvent
 import com.playingwithclouds.veil.data.PlayableStream
 import com.playingwithclouds.veil.data.PlayerSource
+import com.playingwithclouds.veil.data.SearchRepository
 import com.playingwithclouds.veil.data.VideoDetail
 import com.playingwithclouds.veil.data.VideoRepository
 import com.playingwithclouds.veil.data.VideoSummary
@@ -15,6 +16,7 @@ import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,8 +42,14 @@ data class ActiveSource(val sourceId: String, val playable: PlayableStream)
 /** A thumbs up or down given on this page. */
 enum class Verdict { LIKED, DISLIKED }
 
-/** Where Up next is in its chain: the library's related, then the sites', then recommendations. */
-private enum class RelatedStage { LIBRARY, SITES, PICKS, DONE }
+/** Search pages read for one performer or studio name before the next name's turn. */
+private const val PAGES_PER_NAME = 3
+
+/**
+ * Where Up next is in its chain: the library's related, then the sites', then the sites' search for
+ * its performers and studio by name, then recommendations.
+ */
+private enum class RelatedStage { LIBRARY, SITES, NAMES, PICKS, DONE }
 
 /**
  * What the video page shows. [problem] says why nothing plays; [message] is a note for the
@@ -68,8 +76,8 @@ data class VideoState(
 /**
  * The video page, as the web's video page works: opens the video (reading its source pages), plays
  * a local copy first, else the sites' streams in order (the next one when one fails), and resumes
- * where it was left. Up next chains the library's related videos, the sites' related lists and
- * recommendations. Watching goes to the event log with one session id.
+ * where it was left. Up next chains the library's related videos, the sites' related lists (once
+ * the pages were read), a site search for its performers and studio, and recommendations. Watching goes to the event log with one session id.
  */
 class VideoViewModel(private val videoId: String) : ViewModel() {
 
@@ -80,6 +88,16 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
     private val triedSourceIds = mutableSetOf<String>()
     private var relatedStage = RelatedStage.LIBRARY
     private var siteRelatedOffset = 0
+
+    /** Names Up next still searches the sites for, read from the opened video when that stage starts. */
+    private var creditNames: MutableList<String>? = null
+    private var namePage = 0
+
+    /**
+     * Settles once the video's pages were read (null when it couldn't open). Reading them stores what
+     * the sites list as related and names its credits, so the later Up next stages wait for it.
+     */
+    private val opened = CompletableDeferred<VideoDetail?>()
 
     init {
         load()
@@ -92,6 +110,7 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
         viewModelScope.launch {
             try {
                 val detail = VideoRepository.open(videoId)
+                opened.complete(detail)
                 if (detail == null) {
                     mutableState.update { state -> state.copy(detail = LoadState.Failed("This video is gone.")) }
                     return@launch
@@ -104,6 +123,7 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                opened.complete(null)
                 mutableState.update { state -> state.copy(detail = LoadState.Failed(error.displayMessage())) }
             }
         }
@@ -296,7 +316,8 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
         while (relatedStage != RelatedStage.DONE) {
             val found = when (relatedStage) {
                 RelatedStage.LIBRARY -> VideoRepository.related(videoId, LIBRARY_RELATED)
-                RelatedStage.SITES -> VideoRepository.siteRelated(videoId, SITE_RELATED_PAGE, siteRelatedOffset)
+                RelatedStage.SITES -> siteRelatedPage()
+                RelatedStage.NAMES -> nextNameSearch()
                 RelatedStage.PICKS -> HomeRepository.recommendedVideos(PICKS).map { pick -> pick.video }
                 RelatedStage.DONE -> emptyList()
             }
@@ -308,10 +329,39 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
         return emptyList()
     }
 
-    /** Moves past the stage that just answered with [count] videos; the sites' lists page on until one is empty. */
+    /** The next page of what the sites list as related, once the video's pages were read. */
+    private suspend fun siteRelatedPage(): List<VideoSummary> {
+        opened.await()
+        return VideoRepository.siteRelated(videoId, SITE_RELATED_PAGE, siteRelatedOffset)
+    }
+
+    /**
+     * The next page of a site search for the video's performers, then its studio, quoted so only
+     * results naming them come back. A name's turn ends at an empty page or after [PAGES_PER_NAME].
+     */
+    private suspend fun nextNameSearch(): List<VideoSummary> {
+        val names = creditNames ?: creditNamesOf(opened.await()).also { names -> creditNames = names }
+        while (names.isNotEmpty()) {
+            if (namePage < PAGES_PER_NAME) {
+                val found = SearchRepository.collectPage("\"${names.first()}\"", namePage)
+                namePage++
+                if (found.isNotEmpty()) {
+                    return found
+                }
+            }
+            names.removeAt(0)
+            namePage = 0
+        }
+        return emptyList()
+    }
+
+    /** Moves past the stage that just answered with [count] videos; the sites' lists and name searches go on until empty. */
     private fun advanceRelated(count: Int) {
         if (relatedStage == RelatedStage.SITES && count > 0) {
             siteRelatedOffset += count
+            return
+        }
+        if (relatedStage == RelatedStage.NAMES && count > 0) {
             return
         }
         relatedStage = RelatedStage.entries[relatedStage.ordinal + 1]
@@ -343,4 +393,17 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
     private companion object {
         const val MILLISECONDS_PER_SECOND = 1000.0
     }
+}
+
+/** The video's performers' names, then its studio's; none when it couldn't open. */
+private fun creditNamesOf(detail: VideoDetail?): MutableList<String> {
+    if (detail == null) {
+        return mutableListOf()
+    }
+    val names = detail.performers.map { performer -> performer.name }.toMutableList()
+    val studio = detail.studio
+    if (studio != null) {
+        names.add(studio.name)
+    }
+    return names
 }
