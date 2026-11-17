@@ -74,7 +74,7 @@ fun PollWhileStarted(intervalMilliseconds: Long, action: () -> Unit) {
 
 /**
  * A live room as a card: its snapshot with the viewer count, REC while the backend records it and
- * AUTO while it is recorded automatically, then the name and why it's listed (in the accent) or
+ * AUTO while it is recorded automatically, then the name and why it's listed or
  * else the room's subject.
  */
 @Composable
@@ -97,7 +97,7 @@ fun RoomCard(room: CamModel, recording: Boolean, onClick: () -> Unit, modifier: 
             val reason = room.reason
             val subject = room.subject
             if (reason != null) {
-                Text(reason, style = VeilType.cardMeta, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(reason, style = VeilType.cardMeta, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             } else if (!subject.isNullOrBlank()) {
                 Text(subject, style = VeilType.cardMeta, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

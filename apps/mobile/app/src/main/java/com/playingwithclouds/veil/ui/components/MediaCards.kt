@@ -51,7 +51,7 @@ private val ResumeBarHeight = 3.dp
 
 /**
  * A video as a landscape card: cover with runtime (or time left) and resume bar, then the
- * creator's avatar beside the title, who it's from and when, and a [note] in the accent (why it's
+ * creator's avatar beside the title, who it's from and when, and a muted [note] (why it's
  * recommended). While [previewing], its preview clip plays muted over the cover. [edgeToEdge] runs
  * the cover across the full width without rounded corners and gives the caption the gutter, for a
  * full-width feed. A long press calls [onLongClick], e.g. for a sheet of actions.
@@ -94,7 +94,7 @@ fun VideoCard(
                 CardTitle(video.title)
                 CardMeta(listOfNotNull(video.byline, formatReleaseDate(video.date)).joinToString(" · "))
                 if (note != null) {
-                    Text(note, style = VeilType.cardMeta, color = VeilColors.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(note, style = VeilType.cardMeta, color = VeilColors.contentMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

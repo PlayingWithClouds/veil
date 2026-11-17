@@ -22,8 +22,9 @@ import com.playingwithclouds.veil.R
  * Surface ramp and accents of the web client's design tokens (`routes/layout.css`), plus the
  * translucent layers drawn over images and glass. The only place colours are defined.
  *
- * The accent marks selection and progress: the current tab, selected pills and toggles,
- * resume bars, why a scene is recommended. Main actions stay white ([content]).
+ * The accent marks selection and progress: the current tab, selected pills and toggles, resume
+ * bars, the seek bar. It is white (the web's violet looked too loud on the phone); the only hue
+ * is [live] pink for what's live.
  */
 object VeilColors {
     val canvas = Color(0xFF000000)
@@ -33,9 +34,10 @@ object VeilColors {
     val content = Color(0xFFFAFAFA)
     val contentMuted = Color(0xFFA1A1AA)
     val contentFaint = Color(0xFF71717A)
-    val accent = Color(0xFFA78BFA)
+    // No colour accent: selection and progress are white, set apart by fill rather than hue.
+    val accent = Color(0xFFFAFAFA)
     val onAccent = Color(0xFF0B0B0D)
-    val accentSoft = Color(0xFFA78BFA).copy(alpha = 0.18f)
+    val accentSoft = Color.White.copy(alpha = 0.14f)
 
     /** What's live (cams), as the web's `--color-live`. */
     val live = Color(0xFFF472B6)
