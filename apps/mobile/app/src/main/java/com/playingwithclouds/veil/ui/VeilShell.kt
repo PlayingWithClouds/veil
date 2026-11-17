@@ -146,6 +146,8 @@ fun VeilShell() {
                             exitTransition = { PageTransitions.exit(initialState, targetState) },
                             popEnterTransition = { PageTransitions.popEnter(initialState, targetState) },
                             popExitTransition = { PageTransitions.popExit(initialState, targetState) },
+                            predictivePopEnterTransition = { _ -> PageTransitions.swipeBackEnter() },
+                            predictivePopExitTransition = { _ -> PageTransitions.swipeBackExit() },
                         ) {
                             composable(Routes.TABS) { TabPager(pagerState, navigator) }
                             detailScreens(navigator)
