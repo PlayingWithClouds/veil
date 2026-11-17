@@ -62,6 +62,9 @@ object VeilColors {
     /** Shadow under the player's flat icons and text so they read on bright frames. */
     val playerShadow = Color.Black.copy(alpha = 0.55f)
 
+    /** The played part and thumb of the player's seek bar: red, as YouTube's, the one place colour marks progress. */
+    val playerProgress = Color(0xFFFF0033)
+
     /** Hairline edge of glass surfaces. */
     val glassEdge = Color.White.copy(alpha = 0.10f)
 

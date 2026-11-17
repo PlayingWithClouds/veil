@@ -69,7 +69,7 @@ private const val PROGRESS_TICK_MILLISECONDS = 250L
 
 private const val MILLISECONDS_PER_SECOND = 1000L
 
-private val PlayButtonSize = 64.dp
+private val PlayButtonSize = 60.dp
 private val ControlButtonSize = 36.dp
 
 /** How far a swipe up has to travel to open the related panel. */
@@ -331,7 +331,7 @@ private fun HiddenProgressLine(player: Player, modifier: Modifier = Modifier) {
     val progress = rememberProgressStateWithTickInterval(player, PROGRESS_TICK_MILLISECONDS)
     val played = fractionOf(progress.currentPositionMs, progress.durationMs)
     Box(modifier.fillMaxWidth().height(HiddenLineHeight).background(VeilColors.playerDim)) {
-        Box(Modifier.fillMaxWidth(played).fillMaxHeight().background(VeilColors.accent))
+        Box(Modifier.fillMaxWidth(played).fillMaxHeight().background(VeilColors.playerProgress))
     }
 }
 
@@ -355,7 +355,7 @@ private fun ControlsLayer(
 ) {
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(VeilColors.playerDim))
-        TopRow(player, options, title, isFullscreen, extras, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
+        TopRow(player, options, title, isFullscreen, extras, onToggleFullscreen, onOpenRelated, onMenuChange, Modifier.align(Alignment.TopCenter))
         if (!isBuffering) {
             CentreButtons(player, extras.live, onTouch, Modifier.align(Alignment.Center))
         }
@@ -365,7 +365,6 @@ private fun ControlsLayer(
             extras = extras,
             isFullscreen = isFullscreen,
             onToggleFullscreen = onToggleFullscreen,
-            onOpenRelated = onOpenRelated,
             onTouch = onTouch,
             onScrubbingChange = onScrubbingChange,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -385,7 +384,10 @@ private fun Modifier.fullscreenCutoutPadding(isFullscreen: Boolean): Modifier {
 }
 
 
-/** In fullscreen a way out and the title, inline the page's back button if it has one; always the settings gear on the right. */
+/**
+ * In fullscreen a way out and the title, inline the page's back button if it has one; on the right,
+ * as YouTube's, the secondary actions (picture-in-picture, related) and the settings gear.
+ */
 @Composable
 private fun TopRow(
     player: Player,
@@ -394,12 +396,13 @@ private fun TopRow(
     isFullscreen: Boolean,
     extras: PlayerExtras,
     onToggleFullscreen: () -> Unit,
+    onOpenRelated: (() -> Unit)?,
     onMenuChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen).padding(horizontal = VeilSpacing.medium, vertical = VeilSpacing.small),
-        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
+        modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen).padding(horizontal = VeilSpacing.small, vertical = VeilSpacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isFullscreen) {
@@ -420,50 +423,69 @@ private fun TopRow(
         if (!isFullscreen) {
             Box(Modifier.weight(1f))
         }
+        if (extras.onEnterPictureInPicture != null) {
+            OverlayIconButton(VeilIcons.PictureInPicture, contentDescription = "Picture-in-picture", onClick = extras.onEnterPictureInPicture, size = ControlButtonSize)
+        }
+        if (onOpenRelated != null) {
+            OverlayIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
+        }
         PlayerSettingsButton(player, options, ControlButtonSize, live = extras.live, onOpenChange = onMenuChange)
     }
 }
 
-/** The play/pause button in the middle, with frame-step buttons on either side while a video (not a live room) is paused. */
+/**
+ * Three dark round buttons in the middle, as YouTube's: back, play/pause, forward. Back and forward
+ * jump 10 s while playing and step one frame while paused; a live room has only play/pause.
+ */
 @Composable
 private fun CentreButtons(player: Player, live: Boolean, onTouch: () -> Unit, modifier: Modifier = Modifier) {
-    val paused = rememberPlayPauseButtonState(player).showPlay && !live
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraLarge), verticalAlignment = Alignment.CenterVertically) {
-        FrameStepSlot(paused) {
-            OverlayIconButton(
-                VeilIcons.StepBack,
-                contentDescription = "Previous frame",
-                onClick = {
-                    player.stepFrame(-1)
-                    onTouch()
-                },
-                size = ControlButtonSize,
-            )
+    val paused = rememberPlayPauseButtonState(player).showPlay
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(CentreGap), verticalAlignment = Alignment.CenterVertically) {
+        if (!live) {
+            SideButton(player, direction = -1, paused, onTouch)
         }
         PlayPauseButton(player, onTouch)
-        FrameStepSlot(paused) {
-            OverlayIconButton(
-                VeilIcons.StepForward,
-                contentDescription = "Next frame",
-                onClick = {
-                    player.stepFrame(1)
-                    onTouch()
-                },
-                size = ControlButtonSize,
-            )
+        if (!live) {
+            SideButton(player, direction = 1, paused, onTouch)
         }
     }
 }
 
-/** Room for a frame-step button that only shows while paused, so the play button does not shift. */
+/** A round button beside play: a 10 s jump, or a frame step while [paused]; [direction] -1 is back. */
 @Composable
-private fun FrameStepSlot(paused: Boolean, content: @Composable () -> Unit) {
-    Box(Modifier.size(ControlButtonSize)) {
-        if (paused) {
-            content()
-        }
+private fun SideButton(player: Player, direction: Int, paused: Boolean, onTouch: () -> Unit) {
+    var icon = VeilIcons.SeekForward
+    var label = "Forward $DOUBLE_TAP_SEEK_SECONDS seconds"
+    if (direction < 0) {
+        icon = VeilIcons.SeekBack
+        label = "Back $DOUBLE_TAP_SEEK_SECONDS seconds"
     }
+    if (paused && direction < 0) {
+        icon = VeilIcons.StepBack
+        label = "Previous frame"
+    }
+    if (paused && direction > 0) {
+        icon = VeilIcons.StepForward
+        label = "Next frame"
+    }
+    OverlayRoundButton(
+        icon,
+        contentDescription = label,
+        onClick = {
+            if (paused) {
+                player.stepFrame(direction)
+            } else {
+                val delta = direction * DOUBLE_TAP_SEEK_SECONDS * MILLISECONDS_PER_SECOND
+                player.seekTo(clampedSeekTarget(player.currentPosition, delta, player.duration))
+            }
+            onTouch()
+        },
+        size = SideButtonSize,
+    )
 }
+
+private val SideButtonSize = 44.dp
+private val CentreGap = 40.dp
 
 /** The large round play/pause button in the middle. */
 @Composable
@@ -488,8 +510,9 @@ private fun PlayPauseButton(player: Player, onTouch: () -> Unit, modifier: Modif
 }
 
 /**
- * Elapsed / total time and the chapter playing on the left, the buttons on the right, then the seek
- * bar: edge to edge inline, as YouTube's, inset in fullscreen.
+ * Elapsed / total time and the chapter playing on the left, the loop, next and fullscreen on the
+ * right, then the seek bar: along the bottom edge inline, as YouTube's, lifted and inset in
+ * fullscreen.
  */
 @Composable
 private fun BottomBar(
@@ -498,17 +521,18 @@ private fun BottomBar(
     extras: PlayerExtras,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
-    onOpenRelated: (() -> Unit)?,
     onTouch: () -> Unit,
     onScrubbingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val progress = rememberProgressStateWithTickInterval(player, PROGRESS_TICK_MILLISECONDS)
     var barModifier: Modifier = Modifier
+    var columnModifier = modifier.fillMaxWidth()
     if (isFullscreen) {
-        barModifier = barModifier.padding(horizontal = VeilSpacing.medium)
+        barModifier = barModifier.padding(horizontal = VeilSpacing.large)
+        columnModifier = columnModifier.fullscreenCutoutPadding(true).padding(bottom = FullscreenBarLift)
     }
-    Column(modifier.fillMaxWidth().fullscreenCutoutPadding(isFullscreen)) {
+    Column(columnModifier) {
         if (isFullscreen) {
             MarkerChips(extras.markers, player, Modifier.padding(horizontal = VeilSpacing.medium))
         }
@@ -536,12 +560,6 @@ private fun BottomBar(
             if (extras.onNext != null) {
                 OverlayIconButton(VeilIcons.SkipNext, contentDescription = "Next in queue", onClick = extras.onNext, size = ControlButtonSize)
             }
-            if (extras.onEnterPictureInPicture != null) {
-                OverlayIconButton(VeilIcons.PictureInPicture, contentDescription = "Picture-in-picture", onClick = extras.onEnterPictureInPicture, size = ControlButtonSize)
-            }
-            if (onOpenRelated != null) {
-                OverlayIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
-            }
             OverlayIconButton(
                 fullscreenIcon(isFullscreen),
                 contentDescription = fullscreenLabel(isFullscreen),
@@ -568,6 +586,9 @@ private fun BottomBar(
 
 private const val MILLISECONDS_PER_SECOND_DOUBLE = 1000.0
 
+/** How far the seek bar sits above the screen's bottom edge in fullscreen. */
+private val FullscreenBarLift = 16.dp
+
 /** Small white text over video, shadowed so it reads on bright frames. */
 private val OverlayLabel: TextStyle
     @Composable get() = MaterialTheme.typography.labelMedium.copy(shadow = Shadow(VeilColors.playerShadow, blurRadius = TEXT_SHADOW_BLUR))
@@ -580,7 +601,10 @@ private fun TimeAndChapter(positionMilliseconds: Long, durationMilliseconds: Lon
     val activeIndex = activeMarkerIndex(markers, positionMilliseconds / MILLISECONDS_PER_SECOND_DOUBLE)
     val chapter = markers.getOrNull(activeIndex)?.title?.takeIf { title -> title.isNotBlank() }
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(formatPlaybackTime(positionMilliseconds, durationMilliseconds), style = OverlayLabel, color = VeilColors.content, maxLines = 1)
+        Text(formatPlaybackClock(positionMilliseconds), style = OverlayLabel, color = VeilColors.content, maxLines = 1)
+        if (durationMilliseconds > 0) {
+            Text(" / ${formatPlaybackClock(durationMilliseconds)}", style = OverlayLabel, color = VeilColors.contentMuted, maxLines = 1)
+        }
         if (chapter != null) {
             Text(
                 " · $chapter",

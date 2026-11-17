@@ -25,6 +25,7 @@ import com.adamglin.phosphoricons.regular.Headphones
 import com.adamglin.phosphoricons.regular.List as ListIcon
 import com.adamglin.phosphoricons.regular.SquaresFour
 import com.adamglin.phosphoricons.regular.ArrowClockwise
+import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
 import com.adamglin.phosphoricons.regular.ArrowLeft
 import com.adamglin.phosphoricons.regular.ArrowsMerge
 import com.adamglin.phosphoricons.regular.Eye
@@ -90,6 +91,8 @@ object VeilIcons {
     val FastForward: ImageVector get() = PhosphorIcons.Regular.FastForward
     val NotInterested: ImageVector get() = PhosphorIcons.Regular.EyeSlash
     val OpenExternal: ImageVector get() = PhosphorIcons.Regular.ArrowSquareOut
+    val SeekBack: ImageVector get() = PhosphorIcons.Regular.ArrowCounterClockwise
+    val SeekForward: ImageVector get() = PhosphorIcons.Regular.ArrowClockwise
     val StepBack: ImageVector get() = PhosphorIcons.Regular.CaretLineLeft
     val StepForward: ImageVector get() = PhosphorIcons.Regular.CaretLineRight
     val ZoomToFill: ImageVector get() = PhosphorIcons.Regular.ArrowsOutSimple

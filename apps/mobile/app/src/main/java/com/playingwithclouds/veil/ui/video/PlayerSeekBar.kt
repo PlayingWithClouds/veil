@@ -61,16 +61,16 @@ private const val LOOP_SPAN_SCALE = 1.8f
 
 /** The most-replayed graph, and its part already played. */
 private val HeatmapColor = VeilColors.content.copy(alpha = 0.16f)
-private val HeatmapPlayedColor = VeilColors.accent.copy(alpha = 0.4f)
+private val HeatmapPlayedColor = VeilColors.playerProgress.copy(alpha = 0.4f)
 
 /** The span of an A–B loop on the track. */
 private val LoopColor = VeilColors.content.copy(alpha = 0.7f)
 
 /** Buffered but not yet played. */
-private val BufferedColor = VeilColors.content.copy(alpha = 0.45f)
+private val BufferedColor = VeilColors.content.copy(alpha = 0.4f)
 
 /**
- * A thin seek bar, split into chapters at the markers: played part in accent, buffered part
+ * A thin seek bar along the bottom of its touch area, split into chapters at the markers: played part in red as YouTube's, buffered part
  * lighter, a small thumb that grows while dragged with the drag time floating above it. Dragging only previews; the player seeks on
  * release (or on a tap), so HLS streams are not asked for every position on the way.
  */
@@ -143,14 +143,15 @@ fun PlayerSeekBar(
         contentAlignment = Alignment.CenterStart,
     ) {
         Canvas(Modifier.fillMaxWidth().height(SeekBarTouchHeight + heatHeight)) {
-            val trackCenterY = size.height - SeekBarTouchHeight.toPx() / 2f
+            // Low in the touch area, so the track runs along the video's bottom edge with the thumb still whole.
+            val trackCenterY = size.height - ThumbDiameter.toPx() / 2f
             drawHeatmap(heatmap, shownFraction, trackCenterY, thickness, heatHeight)
             drawChapters(markerFractions) {
                 drawTrackLines(shownFraction, bufferedFraction, thickness, trackCenterY)
             }
             drawLoop(loop, durationMilliseconds, thickness, trackCenterY)
             if (seekable) {
-                drawCircle(VeilColors.accent, radius = thumb.toPx() / 2f, center = Offset(size.width * shownFraction, trackCenterY))
+                drawCircle(VeilColors.playerProgress, radius = thumb.toPx() / 2f, center = Offset(size.width * shownFraction, trackCenterY))
             }
         }
         if (dragged != null) {
@@ -184,7 +185,7 @@ private fun DrawScope.drawTrackLines(played: Float, buffered: Float, thickness: 
         drawLine(BufferedColor, start, Offset(size.width * buffered, centerY), stroke, StrokeCap.Butt)
     }
     if (played > 0f) {
-        drawLine(VeilColors.accent, start, Offset(size.width * played, centerY), stroke, StrokeCap.Butt)
+        drawLine(VeilColors.playerProgress, start, Offset(size.width * played, centerY), stroke, StrokeCap.Butt)
     }
 }
 
