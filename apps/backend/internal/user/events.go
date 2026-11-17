@@ -183,6 +183,30 @@ func (s *Service) RecentSearches(ctx context.Context, limit int) ([]string, erro
 		db.Vars{"kind": schema.EventKindSearch, "limit": limit})
 }
 
+// likedQuery picks each record's latest like event (rowid breaks ties
+// between events logged in the same instant) and keeps the records it
+// liked, most recently liked first. A later thumbs down or undo (value -1)
+// takes a record out.
+const likedQuery = `
+	SELECT "subjectId" FROM (
+		SELECT "subjectId", "at", json_extract("data", '$.value') AS "value",
+			ROW_NUMBER() OVER (PARTITION BY "subjectId" ORDER BY "at" DESC, rowid DESC) AS "latest"
+		FROM "Event"
+		WHERE "kind" = $like AND "subjectKind" = $subjectKind AND "subjectId" IS NOT NULL AND "deletedAt" IS NULL
+	)
+	WHERE "latest" = 1 AND "value" > 0
+	ORDER BY "at" DESC
+	LIMIT $limit OFFSET $offset`
+
+// Liked returns the ids of the records of kind the user gave a thumbs up and
+// didn't take back, most recently liked first. Likes live only in the event
+// log, so this reads it rather than UserState.
+func (s *Service) Liked(ctx context.Context, kind schema.RecordKind, limit, offset int) ([]string, error) {
+	return s.database.Strings(ctx, likedQuery, db.Vars{
+		"like": schema.EventKindLike, "subjectKind": kind, "limit": limit, "offset": offset,
+	})
+}
+
 // ClearEvents forgets every event of kinds (all kinds when empty), e.g. to
 // clear the search history. View counts and resume points stay.
 func (s *Service) ClearEvents(ctx context.Context, kinds []schema.EventKind) (int, error) {

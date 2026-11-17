@@ -7,6 +7,9 @@ extend type Query {
   userStates(filter: UserStateFilter, limit: Int, offset: Int): [UserState!]!
   # What was viewed, most recently viewed first.
   history(kind: RecordKind, limit: Int, offset: Int): [UserState!]!
+  # Records of kind the user gave a thumbs up and didn't take back, most
+  # recently liked first. Likes live in the event log, not in UserState.
+  liked(kind: RecordKind!, limit: Int, offset: Int): [Record!]!
   events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
   eventCount(filter: EventFilter): Int!
   # The latest search texts, newest first, without repeats.

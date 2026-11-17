@@ -111,6 +111,7 @@ export interface Query {
     storageLocations: StorageLocation[]
     userStates: UserState[]
     history: UserState[]
+    liked: Record[]
     events: Event[]
     eventCount: Scalars['Int']
     recentSearches: Scalars['String'][]
@@ -1530,6 +1531,7 @@ export interface QueryGenqlSelection{
     storageLocations?: (StorageLocationGenqlSelection & { __args?: {deviceId?: (Scalars['ID'] | null)} })
     userStates?: (UserStateGenqlSelection & { __args?: {filter?: (UserStateFilter | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     history?: (UserStateGenqlSelection & { __args?: {kind?: (RecordKind | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    liked?: (RecordGenqlSelection & { __args: {kind: RecordKind, limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     events?: (EventGenqlSelection & { __args?: {filter?: (EventFilter | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     eventCount?: { __args: {filter?: (EventFilter | null)} } | boolean | number
     recentSearches?: { __args: {limit?: (Scalars['Int'] | null)} } | boolean | number

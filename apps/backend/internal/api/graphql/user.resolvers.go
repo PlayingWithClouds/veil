@@ -102,6 +102,20 @@ func (r *queryResolver) History(ctx context.Context, kind *schema.RecordKind, li
 	return pointers(states), err
 }
 
+// Liked is the resolver for the liked field.
+func (r *queryResolver) Liked(ctx context.Context, kind schema.RecordKind, limit *int, offset *int) ([]model.Record, error) {
+	size, start := page(limit, offset)
+	ids, err := r.user.Liked(ctx, kind, size, start)
+	if err != nil {
+		return nil, err
+	}
+	refs := make([]schema.RecordRef, len(ids))
+	for index, id := range ids {
+		refs[index] = schema.RecordRef{Kind: kind, Id: id}
+	}
+	return r.loadRecords(ctx, refs)
+}
+
 // Events is the resolver for the events field.
 func (r *queryResolver) Events(ctx context.Context, filter *model.EventFilter, limit *int, offset *int) ([]*schema.Event, error) {
 	events, err := r.user.Events(ctx, eventQuery(filter, limit, offset))

@@ -983,6 +983,21 @@ export default {
                     ]
                 }
             ],
+            "liked": [
+                156,
+                {
+                    "kind": [
+                        151,
+                        "RecordKind!"
+                    ],
+                    "limit": [
+                        3
+                    ],
+                    "offset": [
+                        3
+                    ]
+                }
+            ],
             "events": [
                 161,
                 {

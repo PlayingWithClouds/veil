@@ -959,6 +959,7 @@ type ComplexityRoot struct {
 		Jobs                     func(childComplexity int, statuses []schema.JobStatus, kinds []schema.JobKind, limit *int, offset *int) int
 		LibraryRoot              func(childComplexity int, id string) int
 		LibraryRoots             func(childComplexity int) int
+		Liked                    func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
 		LimitStatus              func(childComplexity int) int
 		Limits                   func(childComplexity int) int
 		Media                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
@@ -1716,6 +1717,7 @@ type QueryResolver interface {
 	StorageLocations(ctx context.Context, deviceID *string) ([]*schema.StorageLocation, error)
 	UserStates(ctx context.Context, filter *model.UserStateFilter, limit *int, offset *int) ([]*schema.UserState, error)
 	History(ctx context.Context, kind *schema.RecordKind, limit *int, offset *int) ([]*schema.UserState, error)
+	Liked(ctx context.Context, kind schema.RecordKind, limit *int, offset *int) ([]model.Record, error)
 	Events(ctx context.Context, filter *model.EventFilter, limit *int, offset *int) ([]*schema.Event, error)
 	EventCount(ctx context.Context, filter *model.EventFilter) (int, error)
 	RecentSearches(ctx context.Context, limit *int) ([]string, error)
@@ -6676,6 +6678,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.LibraryRoots(childComplexity), true
+	case "Query.liked":
+		if e.ComplexityRoot.Query.Liked == nil {
+			break
+		}
+
+		args, err := ec.field_Query_liked_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Liked(childComplexity, args["kind"].(schema.RecordKind), args["limit"].(*int), args["offset"].(*int)), true
 	case "Query.limitStatus":
 		if e.ComplexityRoot.Query.LimitStatus == nil {
 			break
@@ -10856,6 +10869,9 @@ extend type Query {
   userStates(filter: UserStateFilter, limit: Int, offset: Int): [UserState!]!
   # What was viewed, most recently viewed first.
   history(kind: RecordKind, limit: Int, offset: Int): [UserState!]!
+  # Records of kind the user gave a thumbs up and didn't take back, most
+  # recently liked first. Likes live in the event log, not in UserState.
+  liked(kind: RecordKind!, limit: Int, offset: Int): [Record!]!
   events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
   eventCount(filter: EventFilter): Int!
   # The latest search texts, newest first, without repeats.
@@ -16644,6 +16660,36 @@ func (ec *executionContext) field_Query_libraryRoot_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_liked_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (schema.RecordKind, error) {
+			return ec.unmarshalNRecordKind2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg2
 	return args, nil
 }
 
@@ -39663,6 +39709,50 @@ func (ec *executionContext) fieldContext_Query_history(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_liked(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_liked(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Liked(ctx, fc.Args["kind"].(schema.RecordKind), fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []model.Record) graphql.Marshaler {
+			return ec.marshalNRecord2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐRecordᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_liked(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Record does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_liked_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_events(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59037,6 +59127,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_history(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "liked":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_liked(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -103,3 +103,27 @@ func TestEventsUpdateState(t *testing.T) {
 		t.Error("progress without a position was accepted")
 	}
 }
+
+// TestLiked lists a liked video, and drops it once a later thumbs down
+// takes the like back.
+func TestLiked(t *testing.T) {
+	ctx := context.Background()
+	service, videoID := openTestService(t)
+	kind := schema.RecordKindVideo
+	like := func(value int) {
+		event := NewEvent{Kind: schema.EventKindLike, SubjectKind: &kind, SubjectID: &videoID, Data: map[string]any{"value": value}}
+		if _, err := service.Record(ctx, event); err != nil {
+			t.Fatal(err)
+		}
+	}
+	like(1)
+	liked, err := service.Liked(ctx, kind, 10, 0)
+	if err != nil || len(liked) != 1 || liked[0] != videoID {
+		t.Fatalf("liked = %v, err %v", liked, err)
+	}
+	like(-1)
+	liked, err = service.Liked(ctx, kind, 10, 0)
+	if err != nil || len(liked) != 0 {
+		t.Errorf("liked after a thumbs down = %v, err %v", liked, err)
+	}
+}

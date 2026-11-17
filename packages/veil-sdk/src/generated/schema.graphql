@@ -97,6 +97,7 @@ type Query {
   storageLocations(deviceId: ID): [StorageLocation!]!
   userStates(filter: UserStateFilter, limit: Int, offset: Int): [UserState!]!
   history(kind: RecordKind, limit: Int, offset: Int): [UserState!]!
+  liked(kind: RecordKind!, limit: Int, offset: Int): [Record!]!
   events(filter: EventFilter, limit: Int, offset: Int): [Event!]!
   eventCount(filter: EventFilter): Int!
   recentSearches(limit: Int): [String!]!
