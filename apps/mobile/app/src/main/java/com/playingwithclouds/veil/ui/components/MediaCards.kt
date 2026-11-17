@@ -13,6 +13,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.playingwithclouds.veil.data.HiddenRecords
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +60,8 @@ private val ResumeBarHeight = 3.dp
  * creator's avatar beside the title, who it's from and when, and a muted [note] (why it's
  * recommended). While [previewing], its preview clip plays muted over the cover. [edgeToEdge] runs
  * the cover across the full width without rounded corners and gives the caption the gutter, for a
- * full-width feed. A long press calls [onLongClick], e.g. for a sheet of actions.
+ * full-width feed. A long press opens [VideoActionsSheet], unless the list passes its own
+ * [onLongClick] (the Library's remove). A card the user hid or blocked from leaves at once.
  */
 @Composable
 fun VideoCard(
@@ -65,6 +72,32 @@ fun VideoCard(
     previewing: Boolean = false,
     edgeToEdge: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+) {
+    val hiddenKeys by HiddenRecords.keys.collectAsStateWithLifecycle()
+    var showingActions by remember { mutableStateOf(false) }
+    if (HiddenRecords.hidesVideo(hiddenKeys, video)) {
+        return
+    }
+    if (showingActions) {
+        VideoActionsSheet(video, onDismiss = { showingActions = false })
+    }
+    var longClick = onLongClick
+    if (longClick == null) {
+        longClick = { showingActions = true }
+    }
+    VideoCardContent(video, onClick, longClick, modifier, note, previewing, edgeToEdge)
+}
+
+/** What [VideoCard] draws. */
+@Composable
+private fun VideoCardContent(
+    video: VideoSummary,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier,
+    note: String?,
+    previewing: Boolean,
+    edgeToEdge: Boolean,
 ) {
     var coverShape: Shape = VeilShapes.card
     var captionModifier = Modifier.padding(top = VeilSpacing.medium, bottom = VeilSpacing.small)

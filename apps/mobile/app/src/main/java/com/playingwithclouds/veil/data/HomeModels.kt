@@ -2,7 +2,8 @@ package com.playingwithclouds.veil.data
 
 /**
  * A video as a card shows it. [byline] and [avatarUrl] are who it's from: the studio, else the
- * first performer. [progressSeconds] is the resume point while it's being watched.
+ * first performer. [progressSeconds] is the resume point while it's being watched. [performers],
+ * [studio] and [favorite] are for the card's long-press actions.
  */
 data class VideoSummary(
     val id: String,
@@ -14,6 +15,9 @@ data class VideoSummary(
     val byline: String?,
     val avatarUrl: String?,
     val date: String?,
+    val performers: List<PerformerSummary> = emptyList(),
+    val studio: PerformerSummary? = null,
+    val favorite: Boolean = false,
 )
 
 /** A recommended video and why it's picked, e.g. "Because you watched …". */

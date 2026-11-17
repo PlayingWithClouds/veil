@@ -11,6 +11,7 @@ import com.playingwithclouds.veil.graphql.OpenVideoMutation
 import com.playingwithclouds.veil.graphql.PlayQuery
 import com.playingwithclouds.veil.graphql.RateMutation
 import com.playingwithclouds.veil.graphql.RelatedVideosQuery
+import com.playingwithclouds.veil.graphql.SetBlockedMutation
 import com.playingwithclouds.veil.graphql.SetFavoriteMutation
 import com.playingwithclouds.veil.graphql.SiteRelatedVideosQuery
 import com.playingwithclouds.veil.graphql.fragment.VideoCardFields
@@ -62,6 +63,23 @@ object VideoRepository {
         val collection = VeilApi.client.query(BuiltInCollectionIdQuery(CollectionKind.watchlist)).execute().dataOrThrow()
         val mutation = AddToCollectionMutation(collection.builtInCollection.id, listOf(videoRef(id)))
         VeilApi.client.mutation(mutation).execute().dataOrThrow()
+    }
+
+    /** Puts a video first in the queue, as the web's `playNext`. */
+    suspend fun playNext(id: String) {
+        val collection = VeilApi.client.query(BuiltInCollectionIdQuery(CollectionKind.queue)).execute().dataOrThrow()
+        val mutation = AddToCollectionMutation(collection.builtInCollection.id, listOf(videoRef(id)), Optional.present(0))
+        VeilApi.client.mutation(mutation).execute().dataOrThrow()
+    }
+
+    /** Adds a video to one of the user's collections, at its end. */
+    suspend fun addToCollection(collectionId: String, id: String) {
+        VeilApi.client.mutation(AddToCollectionMutation(collectionId, listOf(videoRef(id)))).execute().dataOrThrow()
+    }
+
+    /** Blocks a video, performer or studio: it, and what credits it, leaves every list. */
+    suspend fun block(kind: RecordKind, id: String) {
+        VeilApi.client.mutation(SetBlockedMutation(RecordRefInput(kind, id), true)).execute().dataOrThrow()
     }
 
     /** Downloads a video's best stream for keeps, as a background job. */
@@ -124,5 +142,8 @@ internal fun VideoCardFields.toSummary(): VideoSummary {
         byline = byline,
         avatarUrl = avatarUrl,
         date = date,
+        performers = performers.map { performer -> PerformerSummary(performer.id, performer.name, performer.image?.url) },
+        studio = creditedStudio?.let { credited -> PerformerSummary(credited.id, credited.name, credited.image?.url) },
+        favorite = userState.favorite,
     )
 }

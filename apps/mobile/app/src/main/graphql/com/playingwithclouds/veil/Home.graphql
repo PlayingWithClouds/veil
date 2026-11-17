@@ -28,6 +28,7 @@ fragment VideoCardFields on Video {
   userState {
     progress
     viewCount
+    favorite
   }
 }
 

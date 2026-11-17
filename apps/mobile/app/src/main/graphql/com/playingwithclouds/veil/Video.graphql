@@ -102,6 +102,13 @@ query BuiltInCollectionId($kind: CollectionKind!) {
   }
 }
 
+# Blocks a record, or lifts the block: a blocked video, performer or studio leaves every list.
+mutation SetBlocked($subject: RecordRefInput!, $blocked: Boolean!) {
+  setBlocked(subject: $subject, blocked: $blocked) {
+    blocked
+  }
+}
+
 mutation AddToCollection($collectionId: ID!, $subjects: [RecordRefInput!]!, $position: Int) {
   addToCollection(collectionId: $collectionId, subjects: $subjects, position: $position) {
     id
