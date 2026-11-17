@@ -1,4 +1,5 @@
 import { API_BASE, UA, toIsoDate, toRating, parseKeywords, embedUrl } from "./http.ts";
+import { qualityUrl } from "./resolve.ts";
 import type { DiscoveredItem, Scene, Image } from "@playingwithclouds/veil-sdk";
 
 // One video as returned by the eporner v2 API.
@@ -87,7 +88,7 @@ export function toDiscoveredItem(video: EpVideo): DiscoveredItem {
     view_count: video.views,
     // The embed page is a deterministic source, so the browse stub is playable
     // without a scrape (resolved to a CDN mp4 on demand). Mirrors toScene.
-    downloads: [{ label: "eporner", url: video.embed || embedUrl(video.id) }],
+    downloads: downloadsOf(video),
   };
 }
 
@@ -108,7 +109,7 @@ export function toScene(video: EpVideo): Scene {
     preview_images: previewFrames(video),
     images,
     // The embed page carries the hash + CDN source the resolver needs.
-    downloads: [{ label: "eporner", url: video.embed || embedUrl(video.id) }],
+    downloads: downloadsOf(video),
   };
 }
 
@@ -116,4 +117,14 @@ function previewFrames(video: EpVideo): string[] {
   return (video.thumbs ?? [])
     .map((thumb) => thumb.src)
     .filter((src): src is string => typeof src === "string" && src.length > 0);
+}
+
+// The best quality, and a 360p stream for callers that want small files (the
+// resolver reads the #quality hint on its URL).
+function downloadsOf(video: EpVideo) {
+  const embed = video.embed || embedUrl(video.id);
+  return [
+    { label: "eporner", url: embed },
+    { label: "eporner 360p", url: qualityUrl(embed, 360), quality: "360p", format: "mp4" },
+  ];
 }

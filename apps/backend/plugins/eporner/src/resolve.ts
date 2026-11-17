@@ -12,7 +12,7 @@ export async function resolve(url: string): Promise<ResolveResult> {
   const page = embedUrl(id);
   const html = await fetchPage(page);
 
-  const viaXhr = await resolveViaXhr(id, html, page).catch(() => null);
+  const viaXhr = await resolveViaXhr(id, html, page, wantedHeight(url)).catch(() => null);
   if (viaXhr) return viaXhr;
 
   const mp4 = html.match(/https?:\/\/[a-z0-9.-]*eporner\.com\/[^\s"'\\]+?\.mp4/i)?.[0];
@@ -28,7 +28,18 @@ interface Source {
   quality: string;
 }
 
-async function resolveViaXhr(id: string, html: string, referer: string): Promise<ResolveResult | null> {
+/** The height a `#quality=360p` hint on the stream URL asks for; undefined for the best. */
+export function wantedHeight(url: string): number | undefined {
+  const match = url.match(/#quality=(\d+)p?$/);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** A stream URL that resolves to the given height (see wantedHeight). */
+export function qualityUrl(url: string, height: number): string {
+  return `${url}#quality=${height}p`;
+}
+
+async function resolveViaXhr(id: string, html: string, referer: string, wanted?: number): Promise<ResolveResult | null> {
   const rawHash = html.match(/player\.hash\s*=\s*['"]([0-9a-f]{32})['"]/i)?.[1];
   if (!rawHash) return null;
 
@@ -58,7 +69,7 @@ async function resolveViaXhr(id: string, html: string, referer: string): Promise
   if (!res.ok) return null;
 
   const data: any = await res.json();
-  const best = pickBestMp4(data?.sources?.mp4);
+  const best = pickMp4(data?.sources?.mp4, wanted);
   if (!best) return null;
   return {
     url: best.src,
@@ -80,9 +91,11 @@ function calcHash(hash: string): string {
 }
 
 // sources.mp4 is a label→{src,labelShort} map ("1080p HD", "720p HD", "auto",
-// ...). Pick the highest real resolution, ignoring the na.mp4 placeholder.
-function pickBestMp4(
+// ...). Pick the highest real resolution, ignoring the na.mp4 placeholder; with
+// `wanted`, the highest at or below that height (else the lowest above it).
+export function pickMp4(
   mp4: Record<string, { src?: string; labelShort?: string }> | undefined,
+  wanted?: number,
 ): Source | null {
   if (!mp4) return null;
   const sources: Source[] = [];
@@ -95,7 +108,9 @@ function pickBestMp4(
   }
   if (sources.length === 0) return null;
   sources.sort((a, b) => b.height - a.height);
-  return sources[0];
+  if (wanted === undefined) return sources[0];
+  const fitting = sources.find((source) => source.height > 0 && source.height <= wanted);
+  return fitting ?? sources.filter((source) => source.height > 0).at(-1) ?? sources[0];
 }
 
 function refererHeaders(): Record<string, string> {

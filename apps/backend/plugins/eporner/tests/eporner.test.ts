@@ -3,6 +3,7 @@ import { test, expect, describe } from "bun:test";
 import { idFromUrl, embedUrl, toIsoDate, toRating, parseKeywords } from "../src/http.ts";
 import { toScene, toDiscoveredItem, type EpVideo } from "../src/api.ts";
 import { sceneList } from "../src/scenes.ts";
+import { pickMp4, qualityUrl, wantedHeight } from "../src/resolve.ts";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no network)
@@ -76,7 +77,44 @@ describe("mappers", () => {
     expect(scene.tags).toEqual(["blowjob", "teens"]);
     expect(scene.downloads).toEqual([
       { label: "eporner", url: "https://www.eporner.com/embed/tuvMM4RP0eA/" },
+      {
+        label: "eporner 360p",
+        url: "https://www.eporner.com/embed/tuvMM4RP0eA/#quality=360p",
+        quality: "360p",
+        format: "mp4",
+      },
     ]);
+  });
+});
+
+describe("quality picking", () => {
+  const mp4 = {
+    "1080p HD": { src: "https://cdn/1080.mp4", labelShort: "1080p" },
+    "720p HD": { src: "https://cdn/720.mp4", labelShort: "720p" },
+    "480p": { src: "https://cdn/480.mp4", labelShort: "480p" },
+    "360p": { src: "https://cdn/360.mp4", labelShort: "360p" },
+    "240p": { src: "https://cdn/240.mp4", labelShort: "240p" },
+    "na": { src: "https://cdn/na.mp4", labelShort: "na" },
+  };
+
+  test("the best without a wish", () => {
+    expect(pickMp4(mp4)?.src).toBe("https://cdn/1080.mp4");
+  });
+
+  test("the wished height, or the nearest below it", () => {
+    expect(pickMp4(mp4, 360)?.src).toBe("https://cdn/360.mp4");
+    expect(pickMp4(mp4, 400)?.src).toBe("https://cdn/360.mp4");
+  });
+
+  test("the lowest above when nothing is small enough", () => {
+    expect(pickMp4({ "720p": mp4["720p HD"], "480p": mp4["480p"] }, 360)?.src).toBe("https://cdn/480.mp4");
+  });
+
+  test("the hint round-trips through the stream url", () => {
+    const url = qualityUrl("https://www.eporner.com/embed/abc/", 360);
+    expect(wantedHeight(url)).toBe(360);
+    expect(idFromUrl(url)).toBe("abc");
+    expect(wantedHeight("https://www.eporner.com/embed/abc/")).toBeUndefined();
   });
 });
 
