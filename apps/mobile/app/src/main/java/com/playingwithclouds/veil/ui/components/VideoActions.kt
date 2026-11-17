@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import com.playingwithclouds.veil.AppScope
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.CollectionTile
@@ -34,8 +35,8 @@ private const val SHEET_PERFORMERS = 3
 
 /**
  * A video card's long-press sheet, the web's card menu (`recordActions.ts`): play next, add to a
- * collection, favourite, not interested, and blocking the video, its first performers or its
- * studio. Not interested and the blocks take the card (and every card crediting what's blocked)
+ * collection, favourite, not interested, blocking the video, its first performers or its studio,
+ * and opening its page on the site in the browser. Not interested and the blocks take the card (and every card crediting what's blocked)
  * off the screen at once.
  */
 @Composable
@@ -80,6 +81,14 @@ fun VideoActionsSheet(video: VideoSummary, onDismiss: () -> Unit) {
             SheetAction("Block ${studio.name}", VeilIcons.Studios, onClick = {
                 block(RecordKind.studio, studio.id)
                 onDismiss()
+            })
+        }
+        val sourceUrl = video.sourceUrl
+        if (sourceUrl != null) {
+            val uriHandler = LocalUriHandler.current
+            SheetAction("Open on the site", VeilIcons.OpenExternal, onClick = {
+                onDismiss()
+                runCatching { uriHandler.openUri(sourceUrl) }
             })
         }
     }

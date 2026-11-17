@@ -30,6 +30,10 @@ fragment VideoCardFields on Video {
     viewCount
     favorite
   }
+  # The pages it was found on, for the card's "Open on the site".
+  sources {
+    url
+  }
 }
 
 fragment CamCardFields on CamModel {

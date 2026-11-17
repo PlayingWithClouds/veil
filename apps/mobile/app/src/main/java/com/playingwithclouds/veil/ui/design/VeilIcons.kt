@@ -61,6 +61,7 @@ import com.adamglin.phosphoricons.regular.Repeat
 import com.adamglin.phosphoricons.regular.SkipForward
 import com.adamglin.phosphoricons.regular.FastForward
 import com.adamglin.phosphoricons.regular.EyeSlash
+import com.adamglin.phosphoricons.regular.ArrowSquareOut
 import com.adamglin.phosphoricons.regular.Playlist
 import com.adamglin.phosphoricons.regular.Plus
 import com.adamglin.phosphoricons.regular.Prohibit
@@ -88,6 +89,7 @@ object VeilIcons {
     val SkipNext: ImageVector get() = PhosphorIcons.Regular.SkipForward
     val FastForward: ImageVector get() = PhosphorIcons.Regular.FastForward
     val NotInterested: ImageVector get() = PhosphorIcons.Regular.EyeSlash
+    val OpenExternal: ImageVector get() = PhosphorIcons.Regular.ArrowSquareOut
     val StepBack: ImageVector get() = PhosphorIcons.Regular.CaretLineLeft
     val StepForward: ImageVector get() = PhosphorIcons.Regular.CaretLineRight
     val ZoomToFill: ImageVector get() = PhosphorIcons.Regular.ArrowsOutSimple

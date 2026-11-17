@@ -114,3 +114,13 @@ query VideoCard($id: ID!) {
 mutation DeleteDownload($jobId: ID!) {
   deleteDownload(jobId: $jobId)
 }
+
+# Videos the user gave a thumbs up and didn't take back, most recently liked first.
+query LikedVideos($limit: Int) {
+  liked(kind: video, limit: $limit) {
+    __typename
+    ... on Video {
+      ...VideoCardFields
+    }
+  }
+}

@@ -18,9 +18,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** The Library's tabs, in order, as the web's library page has them, plus Favourites. */
+/** The Library's tabs, in order, as the web's library page has them, plus Liked and Favourites. */
 enum class LibraryTab(val label: String) {
     WATCHLIST("Watchlist"),
+    LIKED("Liked"),
     FAVORITES("Favourites"),
     QUEUE("Queue"),
     COLLECTIONS("Collections"),
@@ -37,6 +38,7 @@ class LibraryViewModel : ViewModel() {
     private val watchlistState = MutableStateFlow<LoadState<CollectionPage>>(LoadState.Loading)
     private val queueState = MutableStateFlow<LoadState<CollectionPage>>(LoadState.Loading)
     private val favoritesState = MutableStateFlow<LoadState<CollectionPage>>(LoadState.Loading)
+    private val likedState = MutableStateFlow<LoadState<CollectionPage>>(LoadState.Loading)
     private val collectionsState = MutableStateFlow<LoadState<List<CollectionTile>>>(LoadState.Loading)
     private val downloadsState = MutableStateFlow<LoadState<List<DownloadItem>>>(LoadState.Loading)
     private val messageState = MutableStateFlow<String?>(null)
@@ -46,6 +48,7 @@ class LibraryViewModel : ViewModel() {
     val watchlist: StateFlow<LoadState<CollectionPage>> = watchlistState.asStateFlow()
     val queue: StateFlow<LoadState<CollectionPage>> = queueState.asStateFlow()
     val favorites: StateFlow<LoadState<CollectionPage>> = favoritesState.asStateFlow()
+    val liked: StateFlow<LoadState<CollectionPage>> = likedState.asStateFlow()
     val collections: StateFlow<LoadState<List<CollectionTile>>> = collectionsState.asStateFlow()
     val downloads: StateFlow<LoadState<List<DownloadItem>>> = downloadsState.asStateFlow()
 
@@ -77,8 +80,13 @@ class LibraryViewModel : ViewModel() {
         }
     }
 
-    /** Takes an entry out of the watchlist, the queue or the favourites; it vanishes at once. */
+    /** Takes an entry out of the watchlist, the queue, the liked videos or the favourites; it vanishes at once. */
     fun remove(page: CollectionPage, entry: CollectionEntry) {
+        if (page.id == LibraryRepository.LIKED_ID) {
+            likedState.update { current -> withoutEntry(current, entry) }
+            LibraryRepository.unlike(entry)
+            return
+        }
         if (page.id == LibraryRepository.FAVORITES_ID) {
             favoritesState.update { current -> withoutEntry(current, entry) }
             write("Couldn't remove the favourite") { LibraryRepository.unfavorite(entry) }
@@ -119,6 +127,7 @@ class LibraryViewModel : ViewModel() {
             LibraryTab.WATCHLIST -> viewModelScope.loadInto(watchlistState) { LibraryRepository.builtInCollection(CollectionKind.watchlist) }
             LibraryTab.QUEUE -> viewModelScope.loadInto(queueState) { LibraryRepository.builtInCollection(CollectionKind.queue) }
             LibraryTab.FAVORITES -> viewModelScope.loadInto(favoritesState) { LibraryRepository.favorites() }
+            LibraryTab.LIKED -> viewModelScope.loadInto(likedState) { LibraryRepository.liked() }
             LibraryTab.COLLECTIONS -> viewModelScope.loadInto(collectionsState) { LibraryRepository.collections() }
             LibraryTab.DOWNLOADS -> viewModelScope.loadInto(downloadsState) { LibraryRepository.downloads() }
         }

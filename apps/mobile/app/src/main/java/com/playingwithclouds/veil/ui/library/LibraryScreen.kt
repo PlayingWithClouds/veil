@@ -53,7 +53,10 @@ import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.ProgressBar
 import com.playingwithclouds.veil.ui.design.SecondaryButton
-import com.playingwithclouds.veil.ui.design.SegmentedControl
+import com.playingwithclouds.veil.ui.design.FeedChip
+import com.playingwithclouds.veil.ui.design.GutterRowPadding
+import com.playingwithclouds.veil.ui.design.fadingEdges
+import androidx.compose.foundation.lazy.LazyRow
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -94,17 +97,22 @@ fun LibraryScreen(navigator: AppNavigator) {
         GlassTopBarLayout(
             bar = {
                 TabTopBar(navigator, "Library")
-                SegmentedControl(
-                    LibraryTab.entries.map { entry -> entry.label },
-                    selectedIndex = tab.ordinal,
-                    onSelect = { index -> viewModel.select(LibraryTab.entries[index]) },
-                    modifier = Modifier.gutterPadding().padding(bottom = VeilSpacing.small),
-                )
+                // Six tabs don't fit a segmented control on a phone; they scroll as chips.
+                LazyRow(
+                    Modifier.fillMaxWidth().fadingEdges().padding(bottom = VeilSpacing.small),
+                    contentPadding = GutterRowPadding,
+                    horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
+                ) {
+                    items(LibraryTab.entries, key = { entry -> entry.name }) { entry ->
+                        FeedChip(entry.label, onClick = { viewModel.select(entry) }, selected = entry == tab)
+                    }
+                }
             },
             modifier = Modifier.padding(padding),
         ) {
             when (tab) {
                 LibraryTab.WATCHLIST -> EntriesTab(viewModel.watchlist, "Nothing on your watchlist. Add videos from their page.", viewModel, navigator)
+                LibraryTab.LIKED -> EntriesTab(viewModel.liked, "No liked videos yet. Give one a thumbs up on its page.", viewModel, navigator)
                 LibraryTab.FAVORITES -> EntriesTab(viewModel.favorites, "No favourites yet. Tap the heart on a video or gallery.", viewModel, navigator)
                 LibraryTab.QUEUE -> EntriesTab(viewModel.queue, "Nothing queued up next.", viewModel, navigator)
                 LibraryTab.COLLECTIONS -> CollectionsTab(viewModel, navigator)

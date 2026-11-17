@@ -4,6 +4,8 @@ import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
 import com.playingwithclouds.veil.graphql.FilteredVideosQuery
+import com.playingwithclouds.veil.graphql.LikedVideosQuery
+import com.playingwithclouds.veil.graphql.type.EventKind
 import com.playingwithclouds.veil.graphql.type.FilterInput
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.BuiltInCollectionQuery
@@ -87,6 +89,21 @@ object LibraryRepository {
         val entries = videos.await().map { video -> CollectionEntry.Video(video.videoCardFields.toSummary()) } +
             galleries.await().map { gallery -> CollectionEntry.Gallery(gallery.galleryCardFields.toSummary()) }
         CollectionPage(FAVORITES_ID, "Favourites", builtIn = true, details = null, itemCount = entries.size, entries = entries)
+    }
+
+    /** The page id the liked videos go by; they're no collection on the backend. */
+    const val LIKED_ID = "liked"
+
+    /** The videos the user gave a thumbs up, most recently liked first, as one page. */
+    suspend fun liked(): CollectionPage {
+        val data = VeilApi.client.query(LikedVideosQuery(Optional.present(FAVORITES_LIMIT))).execute().dataOrThrow()
+        val entries = data.liked.mapNotNull { record -> record.onVideo?.videoCardFields?.toSummary() }.map { video -> CollectionEntry.Video(video) }
+        return CollectionPage(LIKED_ID, "Liked", builtIn = true, details = null, itemCount = entries.size, entries = entries)
+    }
+
+    /** Takes a like back: a thumbs down through the event log, as the video page's undo does. */
+    fun unlike(entry: CollectionEntry) {
+        AppServices.events.log(LoggedEvent(EventKind.like, RecordKind.video, entry.id, mapOf("value" to -1)), flush = true)
     }
 
     /** Takes a video or gallery out of the favourites. */
