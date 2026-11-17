@@ -33,7 +33,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.playingwithclouds.veil.data.CollectionPage
 import com.playingwithclouds.veil.data.CollectionTile
+import kotlinx.coroutines.flow.StateFlow
 import com.playingwithclouds.veil.data.DownloadItem
 import com.playingwithclouds.veil.graphql.type.JobStatus
 import androidx.compose.ui.graphics.Color
@@ -102,8 +104,9 @@ fun LibraryScreen(navigator: AppNavigator) {
             modifier = Modifier.padding(padding),
         ) {
             when (tab) {
-                LibraryTab.WATCHLIST -> BuiltInTab(viewModel, navigator, watchlist = true)
-                LibraryTab.QUEUE -> BuiltInTab(viewModel, navigator, watchlist = false)
+                LibraryTab.WATCHLIST -> EntriesTab(viewModel.watchlist, "Nothing on your watchlist. Add videos from their page.", viewModel, navigator)
+                LibraryTab.FAVORITES -> EntriesTab(viewModel.favorites, "No favourites yet. Tap the heart on a video or gallery.", viewModel, navigator)
+                LibraryTab.QUEUE -> EntriesTab(viewModel.queue, "Nothing queued up next.", viewModel, navigator)
                 LibraryTab.COLLECTIONS -> CollectionsTab(viewModel, navigator)
                 LibraryTab.DOWNLOADS -> DownloadsTab(viewModel, navigator)
             }
@@ -111,15 +114,9 @@ fun LibraryScreen(navigator: AppNavigator) {
     }
 }
 
-/** The watchlist or the queue. */
+/** The watchlist, the favourites or the queue; a long press takes an entry out. */
 @Composable
-private fun BuiltInTab(viewModel: LibraryViewModel, navigator: AppNavigator, watchlist: Boolean) {
-    var flow = viewModel.queue
-    var emptyText = "Nothing queued up next."
-    if (watchlist) {
-        flow = viewModel.watchlist
-        emptyText = "Nothing on your watchlist. Add videos from their page."
-    }
+private fun EntriesTab(flow: StateFlow<LoadState<CollectionPage>>, emptyText: String, viewModel: LibraryViewModel, navigator: AppNavigator) {
     val state by flow.collectAsStateWithLifecycle()
     LoadStateContent(state, onRetry = viewModel::reload) { page ->
         CollectionEntries(page, emptyText, navigator, onRemove = { entry -> viewModel.remove(page, entry) })

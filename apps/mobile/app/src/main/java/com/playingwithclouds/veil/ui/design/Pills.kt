@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.theme.VeilColors
@@ -169,6 +170,11 @@ fun SegmentedControl(
 ) {
     var width by remember { mutableIntStateOf(0) }
     val segmentWidth = with(LocalDensity.current) { (width / labels.size.coerceAtLeast(1)).toDp() }
+    // Five or more segments don't fit a phone's width at the larger label size.
+    var labelStyle = MaterialTheme.typography.labelLarge
+    if (labels.size > ROOMY_SEGMENTS) {
+        labelStyle = MaterialTheme.typography.labelMedium
+    }
     val thumbOffset by animateDpAsState(
         segmentWidth * selectedIndex,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -193,9 +199,12 @@ fun SegmentedControl(
                     Modifier.weight(1f).fillMaxHeight().clip(VeilShapes.capsule).pressClickable { onSelect(index) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = color, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                    Text(label, color = color, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
     }
 }
+
+/** Most segments that still fit at the larger label size. */
+private const val ROOMY_SEGMENTS = 4

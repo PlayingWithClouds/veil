@@ -1,6 +1,10 @@
 package com.playingwithclouds.veil.data
 
+import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
+import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
+import com.playingwithclouds.veil.graphql.FilteredVideosQuery
+import com.playingwithclouds.veil.graphql.type.FilterInput
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.BuiltInCollectionQuery
 import com.playingwithclouds.veil.graphql.CollectionQuery
@@ -66,6 +70,31 @@ object LibraryRepository {
     suspend fun builtInCollection(kind: CollectionKind): CollectionPage {
         val data = VeilApi.client.query(BuiltInCollectionQuery(kind)).execute().dataOrThrow()
         return data.builtInCollection.collectionPageFields.toPage()
+    }
+
+    /** The page id the favourites go by; they're no collection on the backend. */
+    const val FAVORITES_ID = "favorites"
+
+    /** Favourites read at once; enough for anyone's, without paging. */
+    private const val FAVORITES_LIMIT = 500
+
+    /** The favourite videos, then the favourite galleries, most recently added first, as one page. */
+    suspend fun favorites(): CollectionPage = coroutineScope {
+        val favorite = FilterInput(favorite = Optional.present(true))
+        val limit = Optional.present(FAVORITES_LIMIT)
+        val videos = async { VeilApi.client.query(FilteredVideosQuery(Optional.present(favorite), limit, Optional.absent())).execute().dataOrThrow().videos }
+        val galleries = async { VeilApi.client.query(FilteredGalleriesQuery(Optional.present(favorite), limit, Optional.absent())).execute().dataOrThrow().galleries }
+        val entries = videos.await().map { video -> CollectionEntry.Video(video.videoCardFields.toSummary()) } +
+            galleries.await().map { gallery -> CollectionEntry.Gallery(gallery.galleryCardFields.toSummary()) }
+        CollectionPage(FAVORITES_ID, "Favourites", builtIn = true, details = null, itemCount = entries.size, entries = entries)
+    }
+
+    /** Takes a video or gallery out of the favourites. */
+    suspend fun unfavorite(entry: CollectionEntry) {
+        when (entry) {
+            is CollectionEntry.Video -> VideoRepository.setFavorite(entry.id, favorite = false)
+            is CollectionEntry.Gallery -> GalleryRepository.setFavorite(entry.id, favorite = false)
+        }
     }
 
     /** A collection with its items; null when it's gone. */
