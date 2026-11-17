@@ -72,10 +72,16 @@ object VeilColors {
     val glassFallback = surfaceHigh.copy(alpha = 0.92f)
 
     /** Top of the fill of glass controls sitting in the page: a light sheen... */
-    val glassControlTop = Color.White.copy(alpha = 0.13f)
+    val glassControlTop = Color.White.copy(alpha = 0.18f)
 
     /** ...fading to this at the bottom. */
-    val glassControlBottom = Color.White.copy(alpha = 0.06f)
+    val glassControlBottom = Color.White.copy(alpha = 0.05f)
+
+    /** The rim of glass controls where light catches it, at the top... */
+    val glassRimTop = Color.White.copy(alpha = 0.42f)
+
+    /** ...fading to this along the bottom. */
+    val glassRimBottom = Color.White.copy(alpha = 0.06f)
 
     /** The selected slot inside a glass control. */
     val glassSelection = Color.White.copy(alpha = 0.14f)

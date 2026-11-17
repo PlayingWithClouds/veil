@@ -41,8 +41,8 @@ private val glassStyle = HazeBlurStyle {
 }
 
 /**
- * Turns the element into glass of [shape]: the page behind it, blurred and tinted, with a hairline
- * edge. Without a backdrop it falls back to a translucent fill.
+ * Turns the element into glass of [shape]: the page behind it, blurred and tinted, with the rim
+ * [glassControl] has. Without a backdrop it falls back to a translucent fill.
  *
  * Blurring glass is for things floating over scrolling content (the tab bar). Controls that sit in
  * the page use [glassControl], the same look without the blur.
@@ -56,7 +56,7 @@ fun Modifier.glass(shape: Shape): Modifier {
     } else {
         clipped.background(VeilColors.glassFallback)
     }
-    return surface.border(1.dp, VeilColors.glassEdge, shape)
+    return surface.border(GlassRimWidth, glassRim, shape)
 }
 
 /**
@@ -76,16 +76,26 @@ fun Modifier.glassBar(): Modifier {
     }
 }
 
-/** Glass for controls in the page (buttons, pills, switches): a translucent sheen with the hairline glass edge. */
+/**
+ * Glass for controls in the page (buttons, pills, switches): a translucent sheen, lighter at the
+ * top, inside a rim that's bright where light catches its upper edge and fades down its sides.
+ * Controls in the page can't blur what's behind them (they're part of what a blur would sample),
+ * so the rim is what reads as glass.
+ */
 fun Modifier.glassControl(shape: Shape): Modifier {
     return this
         .clip(shape)
         .background(glassControlFill)
-        .border(1.dp, VeilColors.glassEdge, shape)
+        .border(GlassRimWidth, glassRim, shape)
 }
 
 /** Lighter at the top, like light catching the upper edge of glass. */
 private val glassControlFill = Brush.verticalGradient(listOf(VeilColors.glassControlTop, VeilColors.glassControlBottom))
+
+/** The rim: bright along the top, faint along the bottom. */
+private val glassRim = Brush.verticalGradient(listOf(VeilColors.glassRimTop, VeilColors.glassRimBottom))
+
+private val GlassRimWidth = 1.dp
 
 /** A round glass button holding one icon, for controls floating over content. */
 @Composable
