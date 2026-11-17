@@ -18,6 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import com.playingwithclouds.veil.ui.components.SearchField
+import com.playingwithclouds.veil.ui.components.VideoCard
+import com.playingwithclouds.veil.ui.design.SegmentedControl
+import com.playingwithclouds.veil.ui.design.gutterPadding
+import com.playingwithclouds.veil.data.SearchRepository
+import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.theme.VeilColors
@@ -72,6 +77,15 @@ private const val POPULAR_TAG_COUNT = 12
 /** Width of a room in the top picks row. */
 private val TopPickWidth = 240.dp
 
+/** What the Cams search looks through, in the switch's order. */
+enum class CamSearchMode(val label: String) {
+    LIVE("Live"),
+    RECORDED("Recorded"),
+}
+
+/** Content kind of the sites carrying recorded cam shows (the web's `cams.ts` asks the same). */
+private const val CAM_SHOWS_CONTENT = "cam-shows"
+
 /** Everything around the live grid: the filter, the sites, the user's rooms, picks and running recordings. */
 data class CamsState(
     val filter: CamFilter = CamFilter(),
@@ -83,6 +97,8 @@ data class CamsState(
     val popularTags: List<String> = emptyList(),
     /** What's typed in the room search box; the filter takes it once typing pauses. */
     val queryText: String = "",
+    /** What the search box looks through: rooms live now, or recorded shows on the cam-show sites. */
+    val searchMode: CamSearchMode = CamSearchMode.LIVE,
 ) {
 
     /** Ids of the rooms being recorded now. */
@@ -161,14 +177,53 @@ class CamsViewModel(initialTag: String?) : ViewModel() {
         applyFilter(mutableState.value.filter.copy(tag = next))
     }
 
-    /** Narrows the live rooms to the cam sites' keyword search for [text] once typing pauses; blank lists all. */
+    /** Recorded shows the cam-show sites find for the search text, page by page; none while it's blank. */
+    val recorded = PagedList<VideoSummary>(
+        viewModelScope,
+        PAGE_SIZE,
+        { video -> video.id },
+        isLastPage = { page -> page.isEmpty() },
+    ) { offset ->
+        val text = mutableState.value.queryText.trim()
+        if (text.isEmpty()) {
+            emptyList()
+        } else {
+            SearchRepository.collectPage(text, offset / PAGE_SIZE, CAM_SHOWS_CONTENT)
+        }
+    }
+
+    /**
+     * Searches for [text] once typing pauses: the live rooms through the cam sites' keyword search,
+     * the recorded shows through the cam-show sites; blank lists all rooms again.
+     */
     fun setQuery(text: String) {
         mutableState.update { current -> current.copy(queryText = text) }
         queryJob?.cancel()
         queryJob = viewModelScope.launch {
             delay(QUERY_DEBOUNCE_MILLISECONDS)
             applyFilter(mutableState.value.filter.copy(query = text.trim().ifEmpty { null }))
+            recordedSearched = false
+            if (mutableState.value.searchMode == CamSearchMode.RECORDED) {
+                searchRecorded()
+            }
         }
+    }
+
+    /** Switches the search between live rooms and recorded shows; the shows are searched when first shown. */
+    fun setSearchMode(mode: CamSearchMode) {
+        mutableState.update { current -> current.copy(searchMode = mode) }
+        if (mode == CamSearchMode.RECORDED && !recordedSearched) {
+            searchRecorded()
+        }
+    }
+
+    /** Whether [recorded] holds the shows for the text typed now. */
+    private var recordedSearched = false
+
+    /** Searches the cam-show sites for the text typed now. */
+    private fun searchRecorded() {
+        recordedSearched = true
+        recorded.refresh()
     }
 
     /** Stops a running recording; it becomes a video among the room's recordings. */
@@ -230,11 +285,21 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
                     searching = false
                     viewModel.setQuery("")
                 })
+                SegmentedControl(
+                    CamSearchMode.entries.map { mode -> mode.label },
+                    selectedIndex = state.searchMode.ordinal,
+                    onSelect = { index -> viewModel.setSearchMode(CamSearchMode.entries[index]) },
+                    modifier = Modifier.gutterPadding().padding(bottom = VeilSpacing.small),
+                )
             } else {
                 TabTopBar(navigator, "Cams", onSearch = { searching = true })
             }
         }) {
-            CamsGrid(state, viewModel, navigator, showOverview = !searching, Modifier.fillMaxSize())
+            if (searching && state.searchMode == CamSearchMode.RECORDED) {
+                RecordedShows(state.queryText, viewModel, navigator)
+            } else {
+                CamsGrid(state, viewModel, navigator, showOverview = !searching, Modifier.fillMaxSize())
+            }
         }
         return
     }
@@ -262,6 +327,23 @@ private fun RoomSearchBar(text: String, onQueryChange: (String) -> Unit, onClose
             focusRequester = focusRequester,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+/** Recorded shows the cam-show sites find for the search, as video cards. */
+@Composable
+private fun RecordedShows(queryText: String, viewModel: CamsViewModel, navigator: AppNavigator) {
+    var emptyText = "Type a model's name to find their recorded shows."
+    if (queryText.isNotBlank()) {
+        emptyText = "No cam-show site has recordings for that."
+    }
+    PagedGrid(
+        paged = viewModel.recorded,
+        keyOf = { video -> video.id },
+        emptyText = emptyText,
+        modifier = Modifier.fillMaxSize(),
+    ) { _, video ->
+        VideoCard(video, onClick = { navigator.openVideo(video.id) })
     }
 }
 

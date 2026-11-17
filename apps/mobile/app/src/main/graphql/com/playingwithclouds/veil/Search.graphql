@@ -1,9 +1,10 @@
 # Searching the sites, as the web's apps/web/src/lib/search.ts and libraryFilter.ts do it.
 
 # One page of a video search: each site's answer as it comes, then the subscription completes.
-# The filter narrows the results, and its sources the sites asked.
-subscription SearchResults($query: String!, $page: Int, $filter: FilterInput) {
-  searchResults(kind: VIDEO, query: $query, page: $page, filter: $filter) {
+# The filter narrows the results, and its sources the sites asked; content ("cam-shows") asks only
+# the sites carrying that kind.
+subscription SearchResults($query: String!, $page: Int, $filter: FilterInput, $content: String) {
+  searchResults(kind: VIDEO, query: $query, page: $page, filter: $filter, content: $content) {
     plugin
     sites
     final

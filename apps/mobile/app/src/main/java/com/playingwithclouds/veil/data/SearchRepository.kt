@@ -35,8 +35,8 @@ object SearchRepository {
      * One page (0 first) of a video search: each site's answer as it comes; completes when all
      * answered. The filter narrows the results, and its sites are the ones asked.
      */
-    fun page(query: String, page: Int, filter: SearchFilter): Flow<SearchBatch> {
-        val subscription = SearchResultsSubscription(query, Optional.present(page), Optional.present(filter.toInput()))
+    fun page(query: String, page: Int, filter: SearchFilter, content: String? = null): Flow<SearchBatch> {
+        val subscription = SearchResultsSubscription(query, Optional.present(page), Optional.present(filter.toInput()), Optional.presentIfNotNull(content))
         return VeilApi.client.subscription(subscription).toFlow().map { response ->
             val batch = response.dataOrThrow().searchResults
             SearchBatch(
@@ -53,9 +53,12 @@ object SearchRepository {
         }
     }
 
-    /** Every video one unfiltered search page (0 first) finds, once all sites answered, as the web's `collectSearchPage`. */
-    suspend fun collectPage(query: String, page: Int): List<VideoSummary> {
-        return page(query, page, SearchFilter()).toList().flatMap { batch -> batch.videos }
+    /**
+     * Every video one unfiltered search page (0 first) finds, once all sites answered, as the web's
+     * `collectSearchPage`; [content] asks only the sites carrying that kind ("cam-shows").
+     */
+    suspend fun collectPage(query: String, page: Int, content: String? = null): List<VideoSummary> {
+        return page(query, page, SearchFilter(), content).toList().flatMap { batch -> batch.videos }
     }
 
     /**
