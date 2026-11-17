@@ -42,10 +42,11 @@ private val TabTopBarHeight = 52.dp
 
 /**
  * The slim bar of the tab screens: ☰, then the wordmark on Home or the tab's [title], then search.
+ * The magnifier opens the site search unless the tab searches itself through [onSearch].
  * Draws under the status bar on its own.
  */
 @Composable
-fun TabTopBar(navigator: AppNavigator, title: String? = null) {
+fun TabTopBar(navigator: AppNavigator, title: String? = null, onSearch: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().height(TabTopBarHeight).padding(horizontal = VeilSpacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
@@ -57,14 +58,18 @@ fun TabTopBar(navigator: AppNavigator, title: String? = null) {
         } else {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = VeilColors.content, maxLines = 1)
         }
-        SearchButton(navigator)
+        if (onSearch == null) {
+            SearchButton(onClick = navigator::openSearch)
+        } else {
+            SearchButton(onClick = onSearch)
+        }
     }
 }
 
-/** The magnifier in the tab screens' top bars; opens search. */
+/** The magnifier in the tab screens' top bars. */
 @Composable
-fun SearchButton(navigator: AppNavigator) {
-    IconTap(VeilIcons.Search, contentDescription = "Search", onClick = navigator::openSearch, tint = VeilColors.content)
+fun SearchButton(onClick: () -> Unit) {
+    IconTap(VeilIcons.Search, contentDescription = "Search", onClick = onClick, tint = VeilColors.content)
 }
 
 /** The ☰ at the start of the tab screens' top bars; opens the side menu. A dot marks an update the user hasn't skipped. */

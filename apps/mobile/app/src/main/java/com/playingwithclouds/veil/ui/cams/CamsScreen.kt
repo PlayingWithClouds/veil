@@ -1,11 +1,28 @@
 package com.playingwithclouds.veil.ui.cams
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.playingwithclouds.veil.ui.components.SearchField
+import com.playingwithclouds.veil.ui.design.IconTap
+import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.theme.VeilColors
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -65,6 +82,8 @@ data class CamsState(
     val recordings: List<CamRecording> = emptyList(),
     /** The tags most of the first live rooms carry, for the tag chips. */
     val popularTags: List<String> = emptyList(),
+    /** What's typed in the room search box; the filter takes it once typing pauses. */
+    val queryText: String = "",
 ) {
 
     /** Ids of the rooms being recorded now. */
@@ -143,6 +162,16 @@ class CamsViewModel(initialTag: String?) : ViewModel() {
         applyFilter(mutableState.value.filter.copy(tag = next))
     }
 
+    /** Narrows the live rooms to the cam sites' keyword search for [text] once typing pauses; blank lists all. */
+    fun setQuery(text: String) {
+        mutableState.update { current -> current.copy(queryText = text) }
+        queryJob?.cancel()
+        queryJob = viewModelScope.launch {
+            delay(QUERY_DEBOUNCE_MILLISECONDS)
+            applyFilter(mutableState.value.filter.copy(query = text.trim().ifEmpty { null }))
+        }
+    }
+
     /** Stops a running recording; it becomes a video among the room's recordings. */
     fun stopRecording(recording: CamRecording) {
         mutableState.update { current -> current.copy(recordings = current.recordings - recording) }
@@ -158,8 +187,11 @@ class CamsViewModel(initialTag: String?) : ViewModel() {
         rooms.refresh()
     }
 
+    private var queryJob: Job? = null
+
     companion object {
         private const val PAGE_SIZE = 48
+        private const val QUERY_DEBOUNCE_MILLISECONDS = 350L
     }
 }
 
@@ -187,14 +219,50 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
     PollWhileStarted(CAM_POLL_MILLISECONDS) { viewModel.refreshLive() }
 
     if (initialTag == null) {
+        var searching by rememberSaveable { mutableStateOf(false) }
+        BackHandler(enabled = searching) {
+            searching = false
+            viewModel.setQuery("")
+        }
         ShowAmbientGlow(state.topPicks.firstOrNull()?.thumbnailUrl)
-        GlassTopBarLayout(bar = { TabTopBar(navigator, "Cams") }) {
-            CamsGrid(state, viewModel, navigator, showOverview = true, Modifier.fillMaxSize())
+        GlassTopBarLayout(bar = {
+            if (searching) {
+                RoomSearchBar(state.queryText, onQueryChange = viewModel::setQuery, onClose = {
+                    searching = false
+                    viewModel.setQuery("")
+                })
+            } else {
+                TabTopBar(navigator, "Cams", onSearch = { searching = true })
+            }
+        }) {
+            CamsGrid(state, viewModel, navigator, showOverview = !searching, Modifier.fillMaxSize())
         }
         return
     }
     Scaffold(topBar = { VeilTopBar("#$initialTag", onBack = navigator::back) }) { padding ->
         CamsGrid(state, viewModel, navigator, showOverview = false, Modifier.padding(padding))
+    }
+}
+
+/** The Cams tab's bar while searching rooms: close, then the box, focused when it opens. */
+@Composable
+private fun RoomSearchBar(text: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = VeilSpacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconTap(VeilIcons.Back, contentDescription = "Close search", onClick = onClose, tint = VeilColors.content)
+        SearchField(
+            value = text,
+            onValueChange = onQueryChange,
+            placeholder = "Search live rooms",
+            onSearch = { focusManager.clearFocus() },
+            focusRequester = focusRequester,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
