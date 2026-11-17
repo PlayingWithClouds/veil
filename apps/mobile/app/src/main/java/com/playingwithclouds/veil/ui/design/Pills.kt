@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +41,9 @@ import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
 /**
- * A choice capsule, optionally with a leading icon (or any [leading] content, e.g. a site's
- * favicon): accent with dark text when selected, a dark fill otherwise. For filters and options;
- * tags use [TagPill].
+ * A choice, optionally with a leading icon (or any [leading] content, e.g. a site's favicon): drawn
+ * as a [FeedChip], white with dark text when selected, flat grey otherwise. For filters and
+ * options; tags use [TagPill].
  */
 @Composable
 fun Pill(
@@ -53,28 +54,7 @@ fun Pill(
     icon: ImageVector? = null,
     leading: (@Composable () -> Unit)? = null,
 ) {
-    val foreground by animateColorAsState(if (selected) VeilColors.onAccent else VeilColors.content, label = "pillText")
-    var surface = Modifier.glassControl(VeilShapes.capsule)
-    if (selected) {
-        surface = Modifier.clip(VeilShapes.capsule).background(VeilColors.accent)
-    }
-    Row(
-        modifier
-            .height(36.dp)
-            .pressClickable(onClick)
-            .then(surface)
-            .padding(horizontal = VeilSpacing.large),
-        horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(16.dp))
-        }
-        if (leading != null) {
-            leading()
-        }
-        Text(text, color = foreground, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-    }
+    FeedChip(text, onClick, modifier, selected, icon, leading)
 }
 
 /**
@@ -117,7 +97,7 @@ fun FeedChip(
     }
 }
 
-/** A tag as a link: a lighter outlined capsule, so tags read differently from choices. */
+/** A tag as a link: a [FeedChip]'s flat grey with muted text, so tags read a little quieter than choices. */
 @Composable
 fun TagPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Text(
@@ -125,7 +105,8 @@ fun TagPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .height(32.dp)
             .pressClickable(onClick)
-            .glassControl(VeilShapes.capsule)
+            .clip(VeilShapes.small)
+            .background(VeilColors.surfaceHigh)
             .padding(horizontal = VeilSpacing.medium, vertical = 7.dp),
         color = VeilColors.contentMuted,
         style = MaterialTheme.typography.labelMedium,
@@ -184,11 +165,12 @@ fun SegmentedControl(
         modifier
             .fillMaxWidth()
             .height(40.dp)
-            .glassControl(VeilShapes.capsule)
+            .clip(VeilShapes.small)
+            .background(VeilColors.surfaceHigh)
             .padding(3.dp)
             .onSizeChanged { size -> width = size.width },
     ) {
-        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(VeilShapes.capsule).background(VeilColors.glassSelection))
+        Box(Modifier.offset(x = thumbOffset).width(segmentWidth).fillMaxHeight().clip(SegmentThumbShape).background(VeilColors.glassSelection))
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             labels.forEachIndexed { index, label ->
                 val color by animateColorAsState(
@@ -205,6 +187,9 @@ fun SegmentedControl(
         }
     }
 }
+
+/** The thumb's corners, a little tighter than the track's so it nests inside it. */
+private val SegmentThumbShape = RoundedCornerShape(8.dp)
 
 /** Most segments that still fit at the larger label size. */
 private const val ROOMY_SEGMENTS = 4

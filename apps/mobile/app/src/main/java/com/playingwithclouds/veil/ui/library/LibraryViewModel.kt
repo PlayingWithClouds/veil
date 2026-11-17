@@ -6,8 +6,11 @@ import com.playingwithclouds.veil.data.CollectionEntry
 import com.playingwithclouds.veil.data.CollectionPage
 import com.playingwithclouds.veil.data.CollectionTile
 import com.playingwithclouds.veil.data.DownloadItem
+import com.playingwithclouds.veil.data.BlockedRecord
 import com.playingwithclouds.veil.data.LibraryRepository
+import com.playingwithclouds.veil.data.PeopleRepository
 import com.playingwithclouds.veil.graphql.type.CollectionKind
+import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import com.playingwithclouds.veil.ui.loadInto
@@ -26,7 +29,11 @@ enum class LibraryTab(val label: String) {
     QUEUE("Queue"),
     COLLECTIONS("Collections"),
     DOWNLOADS("Downloads"),
+    BLOCKED("Blocked"),
 }
+
+/** Blocked records listed per kind, at most this many of each. */
+private const val BLOCKED_LIMIT = 200
 
 /**
  * The Library tab: the watchlist, the queue, the user's collections and the downloads. A tab loads
@@ -41,6 +48,7 @@ class LibraryViewModel : ViewModel() {
     private val likedState = MutableStateFlow<LoadState<CollectionPage>>(LoadState.Loading)
     private val collectionsState = MutableStateFlow<LoadState<List<CollectionTile>>>(LoadState.Loading)
     private val downloadsState = MutableStateFlow<LoadState<List<DownloadItem>>>(LoadState.Loading)
+    private val blockedState = MutableStateFlow<LoadState<List<BlockedRecord>>>(LoadState.Loading)
     private val messageState = MutableStateFlow<String?>(null)
     private val loadedTabs = mutableSetOf<LibraryTab>()
 
@@ -51,6 +59,9 @@ class LibraryViewModel : ViewModel() {
     val liked: StateFlow<LoadState<CollectionPage>> = likedState.asStateFlow()
     val collections: StateFlow<LoadState<List<CollectionTile>>> = collectionsState.asStateFlow()
     val downloads: StateFlow<LoadState<List<DownloadItem>>> = downloadsState.asStateFlow()
+
+    /** Blocked videos, then performers, then studios. */
+    val blocked: StateFlow<LoadState<List<BlockedRecord>>> = blockedState.asStateFlow()
 
     /** A note for the snackbar. */
     val message: StateFlow<String?> = messageState.asStateFlow()
@@ -116,6 +127,24 @@ class LibraryViewModel : ViewModel() {
         write("Couldn't delete the download") { LibraryRepository.deleteDownload(item.jobId) }
     }
 
+    /** Lets a blocked record back into every list; it leaves the Blocked list at once. */
+    fun unblock(record: BlockedRecord) {
+        blockedState.update { current ->
+            if (current !is LoadState.Loaded) {
+                return@update current
+            }
+            LoadState.Loaded(current.value.filter { item -> item.id != record.id })
+        }
+        write("Couldn't unblock it") { PeopleRepository.setBlocked(record.kind, record.id, false) }
+    }
+
+    /** Every blocked video, performer and studio. */
+    private suspend fun allBlocked(): List<BlockedRecord> {
+        return listOf(RecordKind.video, RecordKind.performer, RecordKind.studio).flatMap { kind ->
+            PeopleRepository.blocked(kind, BLOCKED_LIMIT, 0)
+        }
+    }
+
     /** The snackbar showed the message. */
     fun messageShown() {
         messageState.value = null
@@ -130,6 +159,7 @@ class LibraryViewModel : ViewModel() {
             LibraryTab.LIKED -> viewModelScope.loadInto(likedState) { LibraryRepository.liked() }
             LibraryTab.COLLECTIONS -> viewModelScope.loadInto(collectionsState) { LibraryRepository.collections() }
             LibraryTab.DOWNLOADS -> viewModelScope.loadInto(downloadsState) { LibraryRepository.downloads() }
+            LibraryTab.BLOCKED -> viewModelScope.loadInto(blockedState) { allBlocked() }
         }
     }
 

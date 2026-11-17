@@ -53,6 +53,7 @@ import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.TabTopBar
+import com.playingwithclouds.veil.ui.components.BarSearchField
 import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.FeedChip
@@ -281,7 +282,7 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
         ShowAmbientGlow(state.topPicks.firstOrNull()?.thumbnailUrl)
         GlassTopBarLayout(bar = {
             if (searching) {
-                RoomSearchBar(state.queryText, onQueryChange = viewModel::setQuery, onClose = {
+                BarSearchField(state.queryText, onTextChange = viewModel::setQuery, placeholder = "Search live rooms", onClose = {
                     searching = false
                     viewModel.setQuery("")
                 })
@@ -305,28 +306,6 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
     }
     DetailScreen("#$initialTag", onBack = navigator::back) {
         CamsGrid(state, viewModel, navigator, showOverview = false, Modifier.fillMaxSize())
-    }
-}
-
-/** The Cams tab's bar while searching rooms: close, then the box, focused when it opens. */
-@Composable
-private fun RoomSearchBar(text: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(start = VeilSpacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconTap(VeilIcons.Back, contentDescription = "Close search", onClick = onClose, tint = VeilColors.content)
-        SearchField(
-            value = text,
-            onValueChange = onQueryChange,
-            placeholder = "Search live rooms",
-            onSearch = { focusManager.clearFocus() },
-            focusRequester = focusRequester,
-            modifier = Modifier.weight(1f),
-        )
     }
 }
 

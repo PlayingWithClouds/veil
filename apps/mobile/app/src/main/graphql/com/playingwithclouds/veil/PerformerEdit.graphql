@@ -1,0 +1,45 @@
+# Editing a performer, as the web's PerformerEditor reads and saves them (apps/web/src/lib/performers.ts).
+
+# One performer as stored, with every attribute and the picture's stored uri.
+query PerformerForEdit($id: ID!) {
+  performer(id: $id) {
+    id
+    name
+    aliases
+    details
+    links
+    image {
+      uri
+      url
+    }
+    attributes {
+      gender
+      birthdate
+      deathDate
+      country
+      ethnicity
+      eyeColor
+      hairColor
+      heightCm
+      weightKg
+      measurements
+      fakeTits
+      tattoos
+      piercings
+      careerStart
+      careerEnd
+    }
+  }
+}
+
+# Saves the user's change; every field it sets is locked against the sites.
+mutation EditPerformer($id: ID!, $edit: PerformerEdit!) {
+  editPerformer(id: $id, edit: $edit) {
+    id
+  }
+}
+
+# The values a text attribute has across the library's performers, most common first.
+query PerformerAttributeValues($attribute: String!) {
+  performerAttributeValues(attribute: $attribute)
+}

@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -22,11 +26,10 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.components.AvatarCellWidth
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.PagedGrid
-import com.playingwithclouds.veil.ui.components.SearchField
+import com.playingwithclouds.veil.ui.components.BarSearchField
 import com.playingwithclouds.veil.ui.components.DetailScreen
-import com.playingwithclouds.veil.ui.components.fullWidthItem
+import com.playingwithclouds.veil.ui.components.SearchButton
 import com.playingwithclouds.veil.ui.components.pressClickable
-import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.paging.PagedList
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -84,22 +87,27 @@ class MembersViewModel(private val kind: MemberKind) : ViewModel() {
     }
 }
 
-/** The library's performers or studios as round pictures with names, filtered by a box on top. */
+/** The library's performers or studios as round pictures with names; the magnifier filters them by name. */
 @Composable
 fun MembersScreen(kind: MemberKind, navigator: AppNavigator) {
     val viewModel = viewModel(key = "members-${kind.name}") { MembersViewModel(kind) }
     val text by viewModel.text.collectAsStateWithLifecycle()
-    DetailScreen(kind.title, onBack = navigator::back) {
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val closeSearch = {
+        searching = false
+        viewModel.onTextChange("")
+    }
+    BackHandler(enabled = searching, onBack = closeSearch)
+    var searchBar: (@Composable () -> Unit)? = null
+    if (searching) {
+        searchBar = { BarSearchField(text, onTextChange = viewModel::onTextChange, placeholder = "Filter by name", onClose = closeSearch) }
+    }
+    DetailScreen(kind.title, onBack = navigator::back, actions = { SearchButton(onClick = { searching = true }) }, searchBar = searchBar) {
         PagedGrid(
             paged = viewModel.members,
             keyOf = { member -> member.id },
             emptyText = "Nobody here yet. They come in with the videos you open.",
             cellWidth = AvatarCellWidth,
-            header = {
-                fullWidthItem("filter") {
-                    SearchField(text, onValueChange = viewModel::onTextChange, placeholder = "Filter by name", modifier = Modifier.bleed())
-                }
-            },
         ) { _, member ->
             MemberTile(member, onClick = {
                 if (kind == MemberKind.STUDIOS) {

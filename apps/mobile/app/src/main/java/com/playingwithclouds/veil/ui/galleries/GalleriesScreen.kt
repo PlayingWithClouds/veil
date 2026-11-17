@@ -9,8 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.layout.Box
 import com.playingwithclouds.veil.data.SearchFilter
 import com.playingwithclouds.veil.ui.search.FilterChipRow
@@ -18,7 +16,7 @@ import com.playingwithclouds.veil.ui.search.FilterChoices
 import com.playingwithclouds.veil.ui.search.FilterSheet
 import kotlinx.coroutines.flow.update
 import com.playingwithclouds.veil.ui.components.SearchButton
-import com.playingwithclouds.veil.ui.components.SearchField
+import com.playingwithclouds.veil.ui.components.BarSearchField
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
@@ -232,11 +230,17 @@ fun GalleriesScreen(navigator: AppNavigator) {
         searching = false
         viewModel.setQuery("")
     }
-    DetailScreen("Galleries", onBack = navigator::back, actions = {
-        if (!searching) {
-            SearchButton(onClick = { searching = true })
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    var searchBar: (@Composable () -> Unit)? = null
+    if (searching) {
+        searchBar = {
+            BarSearchField(query, onTextChange = viewModel::setQuery, placeholder = "Search the gallery sites", onClose = {
+                searching = false
+                viewModel.setQuery("")
+            })
         }
-    }) {
+    }
+    DetailScreen("Galleries", onBack = navigator::back, actions = { SearchButton(onClick = { searching = true }) }, searchBar = searchBar) {
         if (searching) {
             GallerySearch(viewModel, navigator)
         } else {
@@ -246,8 +250,8 @@ fun GalleriesScreen(navigator: AppNavigator) {
 }
 
 /**
- * The search box, focused when it opens, and the filter chips (the video search's, without length,
- * quality and sort) over what the gallery sites find.
+ * The filter chips (the video search's, without length, quality and sort) over what the gallery
+ * sites find for the text in the bar's search box.
  */
 @Composable
 private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator) {
@@ -255,12 +259,7 @@ private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val choices by viewModel.filterChoices.collectAsStateWithLifecycle()
     var filtersOpen by remember { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        viewModel.loadFilterChoices()
-    }
+    LaunchedEffect(Unit) { viewModel.loadFilterChoices() }
     if (filtersOpen) {
         FilterSheet(filter, choices, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false }, forVideos = false)
     }
@@ -274,16 +273,6 @@ private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator
         emptyText = emptyText,
         cellWidth = PosterCellWidth,
         header = {
-            fullWidthItem("search") {
-                SearchField(
-                    query,
-                    onValueChange = viewModel::setQuery,
-                    placeholder = "Search the gallery sites",
-                    modifier = Modifier.bleed(),
-                    onSearch = { focusManager.clearFocus() },
-                    focusRequester = focusRequester,
-                )
-            }
             fullWidthItem("filters") {
                 Box(Modifier.bleed()) {
                     FilterChipRow(filter, onOpenFilters = { filtersOpen = true }, onFilter = viewModel::setFilter)

@@ -117,6 +117,7 @@ fun LibraryScreen(navigator: AppNavigator) {
                 LibraryTab.QUEUE -> EntriesTab(viewModel.queue, "Nothing queued up next.", viewModel, navigator)
                 LibraryTab.COLLECTIONS -> CollectionsTab(viewModel, navigator)
                 LibraryTab.DOWNLOADS -> DownloadsTab(viewModel, navigator)
+                LibraryTab.BLOCKED -> BlockedTab(viewModel, navigator)
             }
         }
     }

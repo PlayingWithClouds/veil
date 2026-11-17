@@ -14,6 +14,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.theme.VeilType
 import androidx.compose.runtime.getValue
@@ -34,6 +38,7 @@ import com.playingwithclouds.veil.update.UpdateChecker
  * A detail screen: its back bar (round back button, [title], round actions) floats over the
  * content, see-through until the content scrolls under it, then glass. The content draws from the
  * top edge; lists start below the bar with [LocalTopBarInset] (`PagedGrid` does on its own).
+ * [searchBar], while set, takes the bar's place (a [BarSearchField] once the magnifier is tapped).
  */
 @Composable
 fun DetailScreen(
@@ -42,6 +47,7 @@ fun DetailScreen(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    searchBar: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Scaffold(
@@ -53,7 +59,13 @@ fun DetailScreen(
         },
     ) { padding ->
         GlassTopBarLayout(
-            bar = { DetailBar(title, onBack, Modifier.statusBarsPadding(), actions) },
+            bar = {
+                if (searchBar != null) {
+                    searchBar()
+                } else {
+                    DetailBar(title, onBack, Modifier.statusBarsPadding(), actions)
+                }
+            },
             modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
             content = content,
         )
@@ -89,10 +101,35 @@ fun TabTopBar(navigator: AppNavigator, title: String? = null, onSearch: (() -> U
     }
 }
 
-/** The magnifier in the tab screens' top bars. */
+/** The magnifier at the right of a top bar: every screen's search starts here. */
 @Composable
 fun SearchButton(onClick: () -> Unit) {
     IconTap(VeilIcons.Search, contentDescription = "Search", onClick = onClick, tint = VeilColors.content)
+}
+
+/**
+ * A top bar in search mode: back closes the search, then the box, focused when it opens. The
+ * keyboard's search key only puts the keyboard away; screens search as the text changes.
+ */
+@Composable
+fun BarSearchField(text: String, onTextChange: (String) -> Unit, placeholder: String, onClose: () -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = VeilSpacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconTap(VeilIcons.Back, contentDescription = "Close search", onClick = onClose, tint = VeilColors.content)
+        SearchField(
+            value = text,
+            onValueChange = onTextChange,
+            placeholder = placeholder,
+            onSearch = { focusManager.clearFocus() },
+            focusRequester = focusRequester,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 /** The ☰ at the start of the tab screens' top bars; opens the side menu. A dot marks an update the user hasn't skipped. */

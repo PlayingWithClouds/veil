@@ -82,6 +82,44 @@ mutation ReadPerformer($id: ID!) {
   }
 }
 
+# Reads every one of the performer's site pages again and asks every site to identify them anew.
+mutation RefreshPerformer($id: ID!) {
+  fetchPerformer(id: $id, refresh: true) {
+    ...PerformerDetailFields
+  }
+}
+
+# The follow of a performer or studio, when they're followed.
+query FollowOf($subject: RecordRefInput!) {
+  followOf(subject: $subject) {
+    id
+  }
+}
+
+# Blocked records of a kind, most recently changed first.
+query BlockedRecords($kind: RecordKind!, $limit: Int, $offset: Int) {
+  userStates(filter: { kind: $kind, blocked: true }, limit: $limit, offset: $offset) {
+    subjectId
+    record {
+      ... on Video {
+        ...VideoCardFields
+      }
+      ... on Performer {
+        ...MemberFields
+      }
+      ... on Studio {
+        id
+        name
+        image {
+          url
+        }
+        videoCount
+        galleryCount
+      }
+    }
+  }
+}
+
 query Studio($id: ID!) {
   studio(id: $id) {
     ...StudioDetailFields
