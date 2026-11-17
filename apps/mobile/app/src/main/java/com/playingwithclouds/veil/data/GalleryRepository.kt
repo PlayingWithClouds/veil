@@ -3,7 +3,9 @@ package com.playingwithclouds.veil.data
 import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.BrowseGalleriesMutation
 import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
+import com.playingwithclouds.veil.graphql.GalleryPluginsQuery
 import com.playingwithclouds.veil.graphql.OpenGalleryMutation
 import com.playingwithclouds.veil.graphql.RateMutation
 import com.playingwithclouds.veil.graphql.RecentlyViewedGalleriesQuery
@@ -34,6 +36,9 @@ data class GalleryDetail(
 /** Galleries: the overview's rows, the endless feed and one gallery (`apps/web/src/lib/galleries.ts`). */
 object GalleryRepository {
 
+    /** Capability of the plugins that list galleries. */
+    private const val GALLERY_LIST_CAPABILITY = "gallery:list"
+
     /** A page of galleries recommended to the user. */
     suspend fun recommended(limit: Int, offset: Int): List<GallerySummary> {
         val query = RecommendedGalleriesQuery(Optional.present(limit), Optional.present(offset))
@@ -56,6 +61,21 @@ object GalleryRepository {
     /** The library's galleries, most recently added first. */
     suspend fun listing(limit: Int, offset: Int): List<GallerySummary> {
         return filtered(FilterInput(), limit, offset)
+    }
+
+    /** Names of the enabled gallery sites that can run here, as the web's `listerNames('GALLERY')`. */
+    suspend fun siteNames(): List<String> {
+        val plugins = VeilApi.client.query(GalleryPluginsQuery()).execute().dataOrThrow().plugins
+        return plugins
+            .filter { plugin -> plugin.enabled && plugin.available && GALLERY_LIST_CAPABILITY in plugin.capabilities }
+            .map { plugin -> plugin.name }
+    }
+
+    /** One page of a gallery site's catalog; the backend stores what it lists. */
+    suspend fun browse(plugin: String, limit: Int, offset: Int): List<GallerySummary> {
+        val mutation = BrowseGalleriesMutation(plugin, Optional.present(limit), Optional.present(offset))
+        val listed = VeilApi.client.mutation(mutation).execute().dataOrThrow().browse
+        return listed.galleries.map { gallery -> gallery.galleryCardFields.toSummary() }
     }
 
     /** Opens a gallery: reads its pages (they list the images); null when it's gone. */

@@ -64,6 +64,25 @@ mutation OpenGallery($id: ID!) {
   }
 }
 
+# The plugins, for the gallery sites the feed browses once the library runs out.
+query GalleryPlugins {
+  plugins {
+    name
+    enabled
+    available
+    capabilities
+  }
+}
+
+# One page of a gallery site's catalog, stored in the library as it's listed.
+mutation BrowseGalleries($plugin: String!, $limit: Int, $offset: Int) {
+  browse(plugin: $plugin, kind: GALLERY, limit: $limit, offset: $offset) {
+    galleries {
+      ...GalleryCardFields
+    }
+  }
+}
+
 # Galleries like one, most alike first.
 query RelatedGalleries($id: ID!, $limit: Int) {
   related(subject: { kind: gallery, id: $id }, limit: $limit) {

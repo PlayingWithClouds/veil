@@ -34,8 +34,8 @@ private const val ROW_LIMIT = 20
 /** Width of a gallery in the rows above the feed. */
 private val RowCardWidth = 150.dp
 
-/** Where the feed is: recommended galleries first, then the rest of the library. */
-private enum class FeedStage { RANKED, REST }
+/** Where the feed is: recommended galleries first, then the rest of the library, then the gallery sites. */
+private enum class FeedStage { RANKED, REST, SITES }
 
 /** The galleries overview: rows of recently viewed and favourites, and the endless feed. */
 class GalleriesViewModel : ViewModel() {
@@ -48,11 +48,23 @@ class GalleriesViewModel : ViewModel() {
     val recent: StateFlow<List<GallerySummary>> = recentState.asStateFlow()
     val favorites: StateFlow<List<GallerySummary>> = favoritesState.asStateFlow()
 
-    /** Recommended galleries, then the rest of the library newest first. */
-    val feed = PagedList<GallerySummary>(viewModelScope, FEED_PAGE, { gallery -> gallery.id }) { offset ->
+    /** Gallery sites still listing, taking turns as the web's `siteSource` does; null until first asked. */
+    private var sites: MutableList<String>? = null
+    private val siteOffsets = mutableMapOf<String, Int>()
+    private var siteTurn = 0
+
+    /** Recommended galleries, then the rest of the library newest first, then new ones from the gallery sites. */
+    val feed = PagedList<GallerySummary>(
+        viewModelScope,
+        FEED_PAGE,
+        { gallery -> gallery.id },
+        isLastPage = { page -> page.isEmpty() },
+    ) { offset ->
         if (offset == 0) {
             stage = FeedStage.RANKED
             stageOffset = 0
+            sites = null
+            siteOffsets.clear()
         }
         nextFeedPage()
     }
@@ -63,7 +75,10 @@ class GalleriesViewModel : ViewModel() {
         viewModelScope.launch { favoritesState.value = runCatching { GalleryRepository.favorites(ROW_LIMIT) }.getOrDefault(emptyList()) }
     }
 
-    /** The next page of the feed; when the recommendations run short, the library's rest fills it up. */
+    /**
+     * The next page of the feed; when the recommendations run short, the library's rest fills it up,
+     * and when that runs out the gallery sites do. Empty only once every site is exhausted.
+     */
     private suspend fun nextFeedPage(): List<GallerySummary> {
         if (stage == FeedStage.RANKED) {
             val ranked = GalleryRepository.recommended(FEED_PAGE, stageOffset)
@@ -75,14 +90,42 @@ class GalleriesViewModel : ViewModel() {
             stageOffset = 0
             return (ranked + nextRestPage()).distinctBy { gallery -> gallery.id }
         }
-        return nextRestPage()
+        if (stage == FeedStage.REST) {
+            return nextRestPage()
+        }
+        return nextSitePage()
     }
 
-    /** The next page of the library's galleries, newest first. */
+    /** The next page of the library's galleries, newest first; the sites' turn once one comes back short. */
     private suspend fun nextRestPage(): List<GallerySummary> {
         val page = GalleryRepository.listing(FEED_PAGE, stageOffset)
         stageOffset += FEED_PAGE
+        if (page.size < FEED_PAGE) {
+            stage = FeedStage.SITES
+        }
+        if (page.isEmpty()) {
+            return nextSitePage()
+        }
         return page
+    }
+
+    /** The next page from the gallery sites in turn; a site leaves the turns when it lists nothing more or fails. */
+    private suspend fun nextSitePage(): List<GallerySummary> {
+        val remaining = sites ?: GalleryRepository.siteNames().toMutableList().also { names -> sites = names }
+        while (remaining.isNotEmpty()) {
+            siteTurn %= remaining.size
+            val site = remaining[siteTurn]
+            val offset = siteOffsets[site] ?: 0
+            val page = runCatching { GalleryRepository.browse(site, FEED_PAGE, offset) }.getOrDefault(emptyList())
+            if (page.isEmpty()) {
+                remaining.removeAt(siteTurn)
+                continue
+            }
+            siteOffsets[site] = offset + page.size
+            siteTurn++
+            return page
+        }
+        return emptyList()
     }
 }
 
