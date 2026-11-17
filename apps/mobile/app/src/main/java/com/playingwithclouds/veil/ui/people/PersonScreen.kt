@@ -37,7 +37,9 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.GalleryCard
+import com.playingwithclouds.veil.ui.components.EmptyMessage
 import com.playingwithclouds.veil.ui.components.LoadStateContent
+import com.playingwithclouds.veil.ui.components.SearchField
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.LocalTopBarInset
@@ -56,6 +58,8 @@ import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.ui.theme.VeilType
 import com.playingwithclouds.veil.util.formatVideoCount
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +68,9 @@ import kotlinx.coroutines.launch
 
 /** Videos per page of the list. */
 private const val VIDEO_PAGE = 24
+
+/** How long typing has to pause before their videos are narrowed. */
+private const val VIDEO_FILTER_DELAY_MILLISECONDS = 300L
 
 /** Galleries in the row. */
 private const val GALLERY_LIMIT = 30
@@ -89,10 +96,26 @@ class PersonViewModel(private val kind: MemberKind, private val personId: String
     val detail: StateFlow<LoadState<PersonDetail>> = detailState.asStateFlow()
     val galleries: StateFlow<List<GallerySummary>> = galleriesState.asStateFlow()
 
-    /** Their videos, newest first, once the page is loaded. */
+    private val videoTextState = MutableStateFlow("")
+    private var videoTextJob: Job? = null
+
+    /** What's typed in the box above their videos. */
+    val videoText: StateFlow<String> = videoTextState.asStateFlow()
+
+    /** Their videos, newest first, once the page is loaded; narrowed by [videoText]. */
     val videos = PagedList<VideoSummary>(viewModelScope, VIDEO_PAGE, { video -> video.id }) { offset ->
         val person = (detailState.value as? LoadState.Loaded)?.value ?: return@PagedList emptyList()
-        PeopleRepository.videos(person, VIDEO_PAGE, offset)
+        PeopleRepository.videos(person, videoTextState.value, VIDEO_PAGE, offset)
+    }
+
+    /** Takes the box's text and narrows their videos once typing pauses. */
+    fun setVideoText(text: String) {
+        videoTextState.value = text
+        videoTextJob?.cancel()
+        videoTextJob = viewModelScope.launch {
+            delay(VIDEO_FILTER_DELAY_MILLISECONDS)
+            videos.refresh()
+        }
     }
 
     init {
@@ -155,6 +178,7 @@ fun PersonScreen(kind: MemberKind, personId: String, navigator: AppNavigator) {
 private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navigator: AppNavigator) {
     val galleries by viewModel.galleries.collectAsStateWithLifecycle()
     val videos by viewModel.videos.state.collectAsStateWithLifecycle()
+    val videoText by viewModel.videoText.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -175,8 +199,14 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
                 }
             }
         }
-        if (videos.items.isNotEmpty()) {
+        if (videos.items.isNotEmpty() || videoText.isNotBlank()) {
             item("videos-heading") { SectionHeading("Videos", modifier = Modifier.gutterPadding()) }
+            item("videos-search") {
+                SearchField(videoText, onValueChange = viewModel::setVideoText, placeholder = "Search their videos")
+            }
+        }
+        if (videos.hasLoaded && !videos.isLoading && videos.items.isEmpty() && videoText.isNotBlank()) {
+            item("videos-none") { EmptyMessage("None of their videos match.") }
         }
         items(videos.items, key = { video -> video.id }) { video ->
             VideoCard(video, onClick = { navigator.openVideo(video.id) }, edgeToEdge = true)

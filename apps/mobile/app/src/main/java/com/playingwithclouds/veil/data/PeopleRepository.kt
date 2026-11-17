@@ -70,9 +70,9 @@ object PeopleRepository {
         return VeilApi.client.query(StudioQuery(id)).execute().dataOrThrow().studio?.studioDetailFields?.toDetail()
     }
 
-    /** Newest videos of a performer or studio. */
-    suspend fun videos(person: PersonDetail, limit: Int, offset: Int): List<VideoSummary> {
-        val query = FilteredVideosQuery(Optional.present(filterOf(person)), Optional.present(limit), Optional.present(offset))
+    /** Newest videos of a performer or studio, narrowed to [text] when it isn't blank. */
+    suspend fun videos(person: PersonDetail, text: String, limit: Int, offset: Int): List<VideoSummary> {
+        val query = FilteredVideosQuery(Optional.present(filterOf(person, text)), Optional.present(limit), Optional.present(offset))
         return VeilApi.client.query(query).execute().dataOrThrow().videos.map { video -> video.videoCardFields.toSummary() }
     }
 
@@ -88,11 +88,12 @@ object PeopleRepository {
     }
 
     /** The filter of everything credited to a performer or studio. */
-    private fun filterOf(person: PersonDetail): FilterInput {
+    private fun filterOf(person: PersonDetail, text: String = ""): FilterInput {
+        val textFilter = Optional.presentIfNotNull(text.trim().ifEmpty { null })
         if (person.kind == RecordKind.studio) {
-            return FilterInput(studioIds = Optional.present(listOf(person.id)))
+            return FilterInput(studioIds = Optional.present(listOf(person.id)), text = textFilter)
         }
-        return FilterInput(performerIds = Optional.present(listOf(person.id)))
+        return FilterInput(performerIds = Optional.present(listOf(person.id)), text = textFilter)
     }
 
     /** A performer's page from its fragment. */
