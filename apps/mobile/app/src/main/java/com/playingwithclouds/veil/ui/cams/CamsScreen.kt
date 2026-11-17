@@ -26,7 +26,6 @@ import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -49,7 +48,7 @@ import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.TabTopBar
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.FeedChip
 import com.playingwithclouds.veil.ui.design.GutterRowPadding
@@ -239,8 +238,8 @@ fun CamsScreen(tag: String, navigator: AppNavigator) {
         }
         return
     }
-    Scaffold(topBar = { VeilTopBar("#$initialTag", onBack = navigator::back) }) { padding ->
-        CamsGrid(state, viewModel, navigator, showOverview = false, Modifier.padding(padding))
+    DetailScreen("#$initialTag", onBack = navigator::back) {
+        CamsGrid(state, viewModel, navigator, showOverview = false, Modifier.fillMaxSize())
     }
 }
 

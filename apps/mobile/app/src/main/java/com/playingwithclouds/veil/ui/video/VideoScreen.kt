@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -29,8 +30,11 @@ import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FailedMessage
 import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
+import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
+import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import com.playingwithclouds.veil.ui.theme.VeilColors
@@ -40,7 +44,7 @@ import com.playingwithclouds.veil.ui.theme.VeilSpacing
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
 
 /**
- * A video's page: the player under the top bar, then what the video is, what to do with it and Up
+ * A video's page: the player under the status bar (no bar of its own; Back is in its controls), then what the video is, what to do with it and Up
  * next. Fullscreen and picture-in-picture show only the player. Watching is logged for as long as
  * the page is open.
  */
@@ -69,26 +73,25 @@ fun VideoScreen(videoId: String, navigator: AppNavigator) {
 
     val detail = state.detail
     if (detail is LoadState.Failed) {
-        Scaffold(topBar = { VeilTopBar("Video", onBack = navigator::back) }) { padding ->
-            FailedMessage(detail.message, onRetry = viewModel::load, modifier = Modifier.padding(padding))
+        DetailScreen("Video", onBack = navigator::back) {
+            FailedMessage(detail.message, onRetry = viewModel::load, modifier = Modifier.padding(top = LocalTopBarInset.current))
         }
         return
     }
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
     val title = (detail as? LoadState.Loaded)?.value?.title.orEmpty()
     ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
-    Scaffold(
-        topBar = {
-            if (!immersive) {
-                VeilTopBar(title, onBack = navigator::back)
-            }
-        },
-        snackbarHost = { VeilSnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Column(Modifier.padding(padding)) {
+    Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
+        // No bar above the player: it sits right under the status bar, its controls carry Back.
+        var columnModifier = Modifier.padding(bottom = padding.calculateBottomPadding())
+        if (!immersive) {
+            columnModifier = columnModifier.statusBarsPadding()
+        }
+        Column(columnModifier) {
             val extras = PlayerExtras(
                 markers = markersInPlayOrder((detail as? LoadState.Loaded)?.value?.segments.orEmpty()),
                 onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
+                onBack = navigator::back,
             )
             var playerModifier = Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO)
             if (immersive) {
@@ -132,6 +135,18 @@ private fun PlayerArea(
         )
         return
     }
+    Box(Modifier.fillMaxSize()) {
+        PlayerPlaceholder(state)
+        val onBack = extras.onBack
+        if (onBack != null) {
+            RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, modifier = Modifier.padding(VeilSpacing.medium))
+        }
+    }
+}
+
+/** Before a source plays: the cover with a spinner or why nothing plays; a spinner alone while the video opens. */
+@Composable
+private fun PlayerPlaceholder(state: VideoState) {
     val detail = (state.detail as? LoadState.Loaded)?.value
     if (detail == null) {
         LoadingIndicator()

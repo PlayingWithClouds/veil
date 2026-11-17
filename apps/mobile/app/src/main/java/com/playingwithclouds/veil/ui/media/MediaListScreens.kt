@@ -1,7 +1,5 @@
 package com.playingwithclouds.veil.ui.media
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,7 +18,7 @@ import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.PosterCellWidth
 import com.playingwithclouds.veil.ui.components.Shelf
 import com.playingwithclouds.veil.ui.components.StoryCard
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.bleed
@@ -76,12 +74,11 @@ class AudiosViewModel : ViewModel() {
 fun StoriesScreen(navigator: AppNavigator) {
     val viewModel = viewModel { StoriesViewModel() }
     val continueReading by viewModel.continueReading.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Stories", onBack = navigator::back) }) { padding ->
+    DetailScreen("Stories", onBack = navigator::back) {
         PagedGrid(
             paged = viewModel.stories,
             keyOf = { story -> story.id },
             emptyText = "No stories yet. They come in from the story sites.",
-            modifier = Modifier.padding(padding),
             cellWidth = PosterCellWidth,
             header = {
                 fullWidthItem("continue") {
@@ -102,12 +99,11 @@ fun StoriesScreen(navigator: AppNavigator) {
 fun AudiosScreen(navigator: AppNavigator) {
     val viewModel = viewModel { AudiosViewModel() }
     val continueListening by viewModel.continueListening.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Audio", onBack = navigator::back) }) { padding ->
+    DetailScreen("Audio", onBack = navigator::back) {
         PagedGrid(
             paged = viewModel.audios,
             keyOf = { audio -> audio.id },
             emptyText = "No audio yet. It comes in from the audio sites.",
-            modifier = Modifier.padding(padding),
             cellWidth = PosterCellWidth,
             header = {
                 fullWidthItem("continue") {

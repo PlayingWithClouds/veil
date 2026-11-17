@@ -1,7 +1,5 @@
 package com.playingwithclouds.veil.ui.galleries
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -17,7 +15,7 @@ import com.playingwithclouds.veil.ui.components.GalleryCard
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.PosterCellWidth
 import com.playingwithclouds.veil.ui.components.Shelf
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.bleed
@@ -94,12 +92,11 @@ fun GalleriesScreen(navigator: AppNavigator) {
     val viewModel = viewModel { GalleriesViewModel() }
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Galleries", onBack = navigator::back) }) { padding ->
+    DetailScreen("Galleries", onBack = navigator::back) {
         PagedGrid(
             paged = viewModel.feed,
             keyOf = { gallery -> gallery.id },
             emptyText = "No galleries yet. They come in from the gallery sites.",
-            modifier = Modifier.padding(padding),
             cellWidth = PosterCellWidth,
             header = {
                 fullWidthItem("recent") {

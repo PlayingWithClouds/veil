@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +31,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.LoadStateContent
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.ProgressBar
 import com.playingwithclouds.veil.ui.design.SectionHeading
@@ -76,9 +76,10 @@ class TasteViewModel : ViewModel() {
 fun TasteScreen(navigator: AppNavigator) {
     val viewModel = viewModel { TasteViewModel() }
     val state by viewModel.taste.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar("Taste", onBack = navigator::back) }) { padding ->
-        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { taste ->
-            LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
+    DetailScreen("Taste", onBack = navigator::back) {
+        val barInset = LocalTopBarInset.current
+        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(top = barInset)) { taste ->
+            LazyColumn(contentPadding = PaddingValues(top = barInset, bottom = VeilSpacing.huge)) {
                 item("signals") {
                     Text(
                         "From ${taste.signalCount} things you watched, liked and skipped.",

@@ -1,7 +1,6 @@
 package com.playingwithclouds.veil.ui.library
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -15,7 +14,8 @@ import com.playingwithclouds.veil.data.LibraryRepository
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.loadInto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,8 +56,8 @@ fun CollectionScreen(collectionId: String, navigator: AppNavigator) {
     val viewModel = viewModel(key = "collection-$collectionId") { CollectionViewModel(collectionId) }
     val state by viewModel.page.collectAsStateWithLifecycle()
     val title = (state as? LoadState.Loaded)?.value?.name ?: "Collection"
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { page ->
+    DetailScreen(title, onBack = navigator::back) {
+        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(top = LocalTopBarInset.current)) { page ->
             CollectionEntries(page, "Nothing in this collection yet.", navigator, onRemove = viewModel::remove)
         }
     }

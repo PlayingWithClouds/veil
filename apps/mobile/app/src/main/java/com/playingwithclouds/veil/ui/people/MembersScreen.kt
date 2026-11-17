@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,7 +23,7 @@ import com.playingwithclouds.veil.ui.components.AvatarCellWidth
 import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.PagedGrid
 import com.playingwithclouds.veil.ui.components.SearchField
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
 import com.playingwithclouds.veil.ui.components.fullWidthItem
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.bleed
@@ -90,12 +89,11 @@ class MembersViewModel(private val kind: MemberKind) : ViewModel() {
 fun MembersScreen(kind: MemberKind, navigator: AppNavigator) {
     val viewModel = viewModel(key = "members-${kind.name}") { MembersViewModel(kind) }
     val text by viewModel.text.collectAsStateWithLifecycle()
-    Scaffold(topBar = { VeilTopBar(kind.title, onBack = navigator::back) }) { padding ->
+    DetailScreen(kind.title, onBack = navigator::back) {
         PagedGrid(
             paged = viewModel.members,
             keyOf = { member -> member.id },
             emptyText = "Nobody here yet. They come in with the videos you open.",
-            modifier = Modifier.padding(padding),
             cellWidth = AvatarCellWidth,
             header = {
                 fullWidthItem("filter") {

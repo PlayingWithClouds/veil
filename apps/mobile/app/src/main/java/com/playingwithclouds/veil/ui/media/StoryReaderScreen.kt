@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -35,7 +34,8 @@ import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -130,8 +130,8 @@ fun StoryReaderScreen(storyId: String, position: Int, navigator: AppNavigator) {
     val viewModel = viewModel(key = "reader-$storyId") { StoryReaderViewModel(storyId, position) }
     val state by viewModel.page.collectAsStateWithLifecycle()
     val title = (state as? LoadState.Loaded)?.value?.chapter?.chapter?.let(::chapterTitle).orEmpty()
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(state, onRetry = { viewModel.open(position) }, modifier = Modifier.padding(padding)) { page ->
+    DetailScreen(title, onBack = navigator::back) {
+        LoadStateContent(state, onRetry = { viewModel.open(position) }, modifier = Modifier.padding(top = LocalTopBarInset.current)) { page ->
             ChapterReader(page, viewModel)
         }
     }
@@ -158,7 +158,7 @@ private fun ChapterReader(page: ReaderPage, viewModel: StoryReaderViewModel) {
     DisposableEffect(page.chapter.chapter.id) {
         onDispose { viewModel.save(ReadingPoint(position, fractionRead(listState, paragraphs.size))) }
     }
-    LazyColumn(state = listState, contentPadding = PaddingValues(top = VeilSpacing.medium, bottom = VeilSpacing.huge)) {
+    LazyColumn(state = listState, contentPadding = PaddingValues(top = VeilSpacing.medium + LocalTopBarInset.current, bottom = VeilSpacing.huge)) {
         items(paragraphs.size) { index ->
             Text(
                 paragraphs[index],

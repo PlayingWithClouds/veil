@@ -49,7 +49,10 @@ import com.playingwithclouds.veil.ui.components.LoadingIndicator
 import com.playingwithclouds.veil.ui.components.ReactionButton
 import com.playingwithclouds.veil.ui.components.ReactionRowInset
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
+import com.playingwithclouds.veil.ui.design.RoundIconButton
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.PrimaryButton
@@ -135,23 +138,21 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
 
     val model = state.model
     if (model is LoadState.Failed) {
-        Scaffold(topBar = { VeilTopBar("Cam", onBack = navigator::back) }) { padding ->
-            FailedMessage(model.message, onRetry = viewModel::load, modifier = Modifier.padding(padding))
+        DetailScreen("Cam", onBack = navigator::back) {
+            FailedMessage(model.message, onRetry = viewModel::load, modifier = Modifier.padding(top = LocalTopBarInset.current))
         }
         return
     }
     val room = (model as? LoadState.Loaded)?.value
     ShowAmbientGlow(room?.thumbnailUrl)
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
-    Scaffold(
-        topBar = {
-            if (!immersive) {
-                VeilTopBar(room?.displayName.orEmpty(), onBack = navigator::back)
-            }
-        },
-        snackbarHost = { VeilSnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Column(Modifier.padding(padding)) {
+    Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
+        // No bar above the player: it sits right under the status bar, its controls carry Back.
+        var columnModifier = Modifier.padding(bottom = padding.calculateBottomPadding())
+        if (!immersive) {
+            columnModifier = columnModifier.statusBarsPadding()
+        }
+        Column(columnModifier) {
             var boxModifier = Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO)
             if (immersive) {
                 boxModifier = Modifier.fillMaxSize()
@@ -166,13 +167,19 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
                         fullscreen = fullscreen,
                         pictureInPicture = pictureInPicture,
                         options = options,
-                        extras = PlayerExtras(live = true, onEnterPictureInPicture = pictureInPicture::enterPictureInPicture),
+                        extras = PlayerExtras(live = true, onEnterPictureInPicture = pictureInPicture::enterPictureInPicture, onBack = navigator::back),
                         related = emptyList(),
                         onOpenVideo = {},
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     RoomPlaceholder(room, state, onRetry = viewModel::load)
+                    RoundIconButton(
+                        VeilIcons.Back,
+                        contentDescription = "Back",
+                        onClick = navigator::back,
+                        modifier = Modifier.align(Alignment.TopStart).padding(VeilSpacing.medium),
+                    )
                 }
             }
             if (!immersive && room != null) {

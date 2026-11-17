@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import com.playingwithclouds.veil.ui.design.VeilSnackbarHost
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.theme.VeilType
@@ -27,14 +30,34 @@ import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import com.playingwithclouds.veil.update.UpdateChecker
 
-/** The bar of every detail screen: a round back button, the title and round actions. */
+/**
+ * A detail screen: its back bar (round back button, [title], round actions) floats over the
+ * content, see-through until the content scrolls under it, then glass. The content draws from the
+ * top edge; lists start below the bar with [LocalTopBarInset] (`PagedGrid` does on its own).
+ */
 @Composable
-fun VeilTopBar(
+fun DetailScreen(
     title: String,
-    onBack: (() -> Unit)? = null,
+    onBack: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    content: @Composable () -> Unit,
 ) {
-    DetailBar(title, onBack, Modifier.statusBarsPadding(), actions)
+    Scaffold(
+        modifier,
+        snackbarHost = {
+            if (snackbarHostState != null) {
+                VeilSnackbarHost(snackbarHostState)
+            }
+        },
+    ) { padding ->
+        GlassTopBarLayout(
+            bar = { DetailBar(title, onBack, Modifier.statusBarsPadding(), actions) },
+            modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
+            content = content,
+        )
+    }
 }
 
 /** Height of a tab screen's top bar under the status bar. */

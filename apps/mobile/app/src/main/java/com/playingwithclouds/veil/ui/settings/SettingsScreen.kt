@@ -8,14 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.playingwithclouds.veil.ui.AppNavigator
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.ServerForm
-import com.playingwithclouds.veil.ui.components.VeilTopBar
 import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.VeilCard
@@ -25,9 +25,12 @@ import com.playingwithclouds.veil.ui.theme.VeilSpacing
 /** Server choice, privacy, appearance and app updates. */
 @Composable
 fun SettingsScreen(navigator: AppNavigator) {
-    Scaffold(topBar = { VeilTopBar("Settings", onBack = navigator::back) }) { padding ->
+    DetailScreen("Settings", onBack = navigator::back) {
         Column(
-            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.large),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(top = LocalTopBarInset.current)
+                .padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.large),
             verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
         ) {
             SectionHeading("Server")

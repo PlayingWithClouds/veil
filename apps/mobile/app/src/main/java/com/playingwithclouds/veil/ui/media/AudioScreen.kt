@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +39,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.RoundIconButton
 import com.playingwithclouds.veil.ui.design.ShowAmbientGlow
@@ -155,10 +155,11 @@ fun AudioScreen(audioId: String, navigator: AppNavigator) {
     WatchTracking(player, onEvent = viewModel::onWatchEvent)
     val title = (detail as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
     ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { audio ->
+    DetailScreen(title, onBack = navigator::back) {
+        val barInset = LocalTopBarInset.current
+        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(top = barInset)) { audio ->
             Column(
-                Modifier.verticalScroll(rememberScrollState()).gutterPadding().padding(top = VeilSpacing.large, bottom = VeilSpacing.huge),
+                Modifier.verticalScroll(rememberScrollState()).gutterPadding().padding(top = VeilSpacing.large + barInset, bottom = VeilSpacing.huge),
                 verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
             ) {
                 RemoteImage(audio.summary.coverUrl, Modifier.fillMaxWidth().aspectRatio(1f).clip(VeilShapes.card))

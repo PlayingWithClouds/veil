@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,7 +44,8 @@ import com.playingwithclouds.veil.ui.components.RatingStars
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.design.bleed
 import com.playingwithclouds.veil.ui.components.Shelf
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.GutterRowPadding
 import com.playingwithclouds.veil.ui.design.IconTap
@@ -135,11 +135,12 @@ fun GalleryScreen(galleryId: String, navigator: AppNavigator) {
     var viewing by remember { mutableStateOf<Int?>(null) }
     val title = (detail as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
     ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { gallery ->
+    DetailScreen(title, onBack = navigator::back) {
+        val barInset = LocalTopBarInset.current
+        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(top = barInset)) { gallery ->
             LazyVerticalStaggeredGrid(
                 StaggeredGridCells.Fixed(PHOTO_COLUMNS),
-                contentPadding = PaddingValues(start = VeilSpacing.gutter, end = VeilSpacing.gutter, bottom = VeilSpacing.huge),
+                contentPadding = PaddingValues(start = VeilSpacing.gutter, top = barInset, end = VeilSpacing.gutter, bottom = VeilSpacing.huge),
                 horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
                 verticalItemSpacing = VeilSpacing.small,
             ) {

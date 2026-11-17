@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +39,8 @@ import com.playingwithclouds.veil.ui.components.Avatar
 import com.playingwithclouds.veil.ui.components.GalleryCard
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.Shelf
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.Pill
@@ -143,8 +143,8 @@ fun PersonScreen(kind: MemberKind, personId: String, navigator: AppNavigator) {
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val title = (detail as? LoadState.Loaded)?.value?.name.orEmpty()
     ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.imageUrl)
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { person ->
+    DetailScreen(title, onBack = navigator::back) {
+        LoadStateContent(detail, onRetry = viewModel::load, modifier = Modifier.padding(top = LocalTopBarInset.current)) { person ->
             PersonContent(person, viewModel, navigator)
         }
     }
@@ -166,7 +166,7 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
             }
         }
     }
-    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
+    LazyColumn(state = listState, contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = VeilSpacing.huge)) {
         item("header") { PersonHeader(person, onFavorite = viewModel::toggleFavorite, onTag = navigator::openTag) }
         if (galleries.isNotEmpty()) {
             item("galleries") {

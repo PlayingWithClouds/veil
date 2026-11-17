@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +31,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.components.pressClickable
 import com.playingwithclouds.veil.ui.design.PrimaryButton
 import com.playingwithclouds.veil.ui.design.SectionHeading
@@ -78,10 +78,11 @@ fun StoryScreen(storyId: String, navigator: AppNavigator) {
     val state by viewModel.story.collectAsStateWithLifecycle()
     val title = (state as? LoadState.Loaded)?.value?.summary?.title.orEmpty()
     ShowAmbientGlow((state as? LoadState.Loaded)?.value?.summary?.coverUrl)
-    Scaffold(topBar = { VeilTopBar(title, onBack = navigator::back) }) { padding ->
-        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { story ->
+    DetailScreen(title, onBack = navigator::back) {
+        val barInset = LocalTopBarInset.current
+        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(top = barInset)) { story ->
             val contents = StoryReading.contentsOf(story.chapters)
-            LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
+            LazyColumn(contentPadding = PaddingValues(top = barInset, bottom = VeilSpacing.huge)) {
                 item("header") { StoryHeader(story, navigator) }
                 if (contents.isNotEmpty()) {
                     item("chapters-heading") { SectionHeading("Chapters", modifier = Modifier.gutterPadding()) }

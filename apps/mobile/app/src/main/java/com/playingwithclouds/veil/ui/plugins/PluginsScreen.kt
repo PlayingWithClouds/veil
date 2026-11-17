@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +32,8 @@ import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.LoadStateContent
 import com.playingwithclouds.veil.ui.components.RemoteImage
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.VeilIcons
@@ -176,9 +176,10 @@ fun PluginsScreen(navigator: AppNavigator) {
         snackbarHostState.showSnackbar(note)
         viewModel.messageShown()
     }
-    Scaffold(topBar = { VeilTopBar("Plugins", onBack = navigator::back) }, snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
-        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { page ->
-            LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
+    DetailScreen("Plugins", onBack = navigator::back, snackbarHostState = snackbarHostState) {
+        val barInset = LocalTopBarInset.current
+        LoadStateContent(state, onRetry = viewModel::load, modifier = Modifier.padding(top = barInset)) { page ->
+            LazyColumn(contentPadding = PaddingValues(top = barInset, bottom = VeilSpacing.huge)) {
                 item("update") {
                     Row(Modifier.gutterPadding().padding(top = VeilSpacing.medium)) {
                         SecondaryButton("Update all", onClick = viewModel::updateAll, enabled = !busy, icon = VeilIcons.Refresh)

@@ -107,7 +107,8 @@ private fun rememberPlaybackStatus(player: Player): PlaybackStatus {
  * What the controls show beyond playback itself: the scene's markers (chips and ticks on the seek
  * bar), the most-replayed graph, a next-in-queue action and the picture-in-picture action. [live]
  * is a live room: no frame steps, speed or loop, and instead of the clock a LIVE badge, or how far
- * the playhead is rewound into the room's buffer with "Go live".
+ * the playhead is rewound into the room's buffer with "Go live". [onBack] leaves the page from the
+ * top row, for pages that have no bar above the player.
  */
 data class PlayerExtras(
     val markers: List<VideoSegment> = emptyList(),
@@ -115,6 +116,7 @@ data class PlayerExtras(
     val onNext: (() -> Unit)? = null,
     val onEnterPictureInPicture: (() -> Unit)? = null,
     val live: Boolean = false,
+    val onBack: (() -> Unit)? = null,
 )
 
 /**
@@ -256,7 +258,7 @@ private fun ControlsLayer(
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.TopCenter).background(TopScrim))
         Box(Modifier.fillMaxWidth().fillMaxHeight(SCRIM_HEIGHT_FRACTION).align(Alignment.BottomCenter).background(BottomScrim))
-        TopRow(player, options, title, isFullscreen, extras.live, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
+        TopRow(player, options, title, isFullscreen, extras, onToggleFullscreen, onMenuChange, Modifier.align(Alignment.TopCenter))
         if (!isBuffering) {
             CentreButtons(player, extras.live, onTouch, Modifier.align(Alignment.Center))
         }
@@ -275,7 +277,7 @@ private fun ControlsLayer(
 }
 
 /**
- * Keeps controls clear of the camera cutout in fullscreen. Inline the player sits below the top
+ * Keeps controls clear of the camera cutout in fullscreen. Inline the player sits below the status
  * bar, where the cutout's inset would only push the controls down.
  */
 private fun Modifier.fullscreenCutoutPadding(isFullscreen: Boolean): Modifier {
@@ -288,14 +290,14 @@ private fun Modifier.fullscreenCutoutPadding(isFullscreen: Boolean): Modifier {
 /** Share of the player's height each gradient scrim covers. */
 private const val SCRIM_HEIGHT_FRACTION = 0.4f
 
-/** In fullscreen a way out and the title; always the settings gear on the right. */
+/** In fullscreen a way out and the title, inline the page's back button if it has one; always the settings gear on the right. */
 @Composable
 private fun TopRow(
     player: Player,
     options: PlayerOptions,
     title: String,
     isFullscreen: Boolean,
-    live: Boolean,
+    extras: PlayerExtras,
     onToggleFullscreen: () -> Unit,
     onMenuChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -316,10 +318,14 @@ private fun TopRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        val onBack = extras.onBack
+        if (!isFullscreen && onBack != null) {
+            RoundIconButton(VeilIcons.Back, contentDescription = "Back", onClick = onBack, size = ControlButtonSize)
+        }
         if (!isFullscreen) {
             Box(Modifier.weight(1f))
         }
-        PlayerSettingsButton(player, options, ControlButtonSize, live = live, onOpenChange = onMenuChange)
+        PlayerSettingsButton(player, options, ControlButtonSize, live = extras.live, onOpenChange = onMenuChange)
     }
 }
 
