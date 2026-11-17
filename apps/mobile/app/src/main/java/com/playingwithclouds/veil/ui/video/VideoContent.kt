@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,7 +48,9 @@ import com.playingwithclouds.veil.ui.design.GutterRowPadding
 import com.playingwithclouds.veil.ui.design.IconTap
 import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.design.SectionHeading
+import com.playingwithclouds.veil.ui.design.SkeletonBlock
 import com.playingwithclouds.veil.ui.design.Spinner
+import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -97,6 +100,8 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
         val detail = (state.detail as? LoadState.Loaded)?.value
         if (detail != null) {
             aboutVideo(detail, state, viewModel, player, navigator)
+        } else {
+            aboutVideoSkeleton()
         }
         upNext(state, navigator)
     }
@@ -140,6 +145,53 @@ private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, vie
         }
     }
 }
+
+/**
+ * Stand-ins for the part about the video while it opens, under the same keys as the real rows: the
+ * list stays at the top instead of keeping Up next (which often arrives first) in view.
+ */
+private fun LazyListScope.aboutVideoSkeleton() {
+    item("title") {
+        Column(Modifier.gutterPadding().padding(top = VeilSpacing.medium), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
+            SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonTitleHeight))
+            SkeletonBlock(Modifier.fillMaxWidth(SKELETON_SHORT_LINE).height(SkeletonLineHeight))
+        }
+    }
+    item("actions") {
+        Row(Modifier.gutterPadding().padding(top = VeilSpacing.medium), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
+            repeat(SKELETON_PILLS) {
+                SkeletonBlock(Modifier.width(SkeletonPillWidth).height(SkeletonPillHeight), VeilShapes.capsule)
+            }
+        }
+    }
+    item("tags") {
+        Row(Modifier.gutterPadding().padding(top = VeilSpacing.large), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
+            repeat(SKELETON_PILLS) {
+                SkeletonBlock(Modifier.width(SkeletonTagWidth).height(SkeletonTagHeight), VeilShapes.capsule)
+            }
+        }
+    }
+    item("details") {
+        Column(Modifier.gutterPadding().padding(top = VeilSpacing.large), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
+            repeat(DETAILS_COLLAPSED_LINES) {
+                SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonLineHeight))
+            }
+        }
+    }
+}
+
+/** Pills in each skeleton row. */
+private const val SKELETON_PILLS = 4
+
+/** Share of the width the short skeleton line (the facts under the title) takes. */
+private const val SKELETON_SHORT_LINE = 0.55f
+
+private val SkeletonTitleHeight = 20.dp
+private val SkeletonLineHeight = 12.dp
+private val SkeletonPillWidth = 84.dp
+private val SkeletonPillHeight = 36.dp
+private val SkeletonTagWidth = 64.dp
+private val SkeletonTagHeight = 28.dp
 
 /** Up next: a heading, the related videos as full-width cards, a spinner while more load. */
 private fun LazyListScope.upNext(state: VideoState, navigator: AppNavigator) {

@@ -48,7 +48,7 @@ Commands (in `apps/mobile`): `bun run build` (arm64 backend into `jniLibs` + rel
 - Stories and audio (`ui/media`, the web's `media.ts`): lists with Continue reading / listening rows; `StoryScreen` (`fetchMedia` story: chapters as contents, branches indented) and `StoryReaderScreen` (`readChapter`, next chapter or the choices at the end; the place is saved as `progress {position}` = chapter position + fraction, see `data/StoryReading.kt`, a port of `storyReading.ts`); `AudioScreen` plays the first stream `play(url)` resolves in the shared player with `PlayerSeekBar`, logged through `WatchTracking` as kind audio.
 - Categories, tags, taste, plugins: `CategoriesScreen` (`categoryTiles`, grouped, empty ones hidden); a category or a tag opens `ScopedVideosScreen` (`videos(filter: categoryIds | includeTagIds)`); `TasteScreen` (`taste`); `PluginsScreen` (switch, Update all, install packages; settings and site logins are web-only).
 - Not rebuilt (old versions in git history before the reset): the Shorts-style preview feed, face identification ("Who is this?"), merging, the play queue's auto-advance.
-- Design kit: Settings → Design kit (`ui/designkit`). Tokens: `VeilColors`, `VeilSpacing` (16 dp `gutter`), `VeilShapes`, `Theme.kt`, `VeilType`. Components: buttons, pills (flat `FeedChip`), headers, surfaces, glass, `bleed`/`gutterPadding`.
+- Design kit: Settings → Design kit (`ui/designkit`). Tokens: `VeilColors`, `VeilSpacing` (16 dp `gutter`), `VeilShapes`, `Theme.kt`, `VeilType`. Components: buttons, pills (flat `FeedChip`), headers, surfaces, glass, `SkeletonBlock` (loading stand-ins under the real rows' list keys), `bleed`/`gutterPadding`.
 
 ## Privacy (Settings → Privacy, `ui/settings/PrivacySection.kt`)
 
