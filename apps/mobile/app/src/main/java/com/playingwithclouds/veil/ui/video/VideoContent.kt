@@ -53,6 +53,7 @@ import com.playingwithclouds.veil.ui.design.Spinner
 import com.playingwithclouds.veil.ui.theme.VeilShapes
 import com.playingwithclouds.veil.ui.design.TagPill
 import com.playingwithclouds.veil.ui.design.VeilIcons
+import com.playingwithclouds.veil.ui.design.fadingEdges
 import com.playingwithclouds.veil.ui.design.gutterPadding
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
@@ -338,15 +339,15 @@ private fun PeopleRow(detail: VideoDetail, onOpen: (PerformerSummary) -> Unit) {
     }
 }
 
-/** The tags as pills that wrap; tapping one opens the tag. */
+/** The tags as one row of pills that scrolls sideways, so they never take more than a line; tapping one opens the tag. */
 @Composable
 private fun TagsBlock(detail: VideoDetail, navigator: AppNavigator) {
-    FlowRow(
-        Modifier.gutterPadding().padding(top = VeilSpacing.large),
+    LazyRow(
+        Modifier.fillMaxWidth().fadingEdges().padding(top = VeilSpacing.large),
+        contentPadding = GutterRowPadding,
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
-        verticalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
-        for (tag in detail.tags) {
+        items(detail.tags, key = { tag -> tag.id }) { tag ->
             TagPill(tag.name, onClick = { navigator.openTag(tag) })
         }
     }
