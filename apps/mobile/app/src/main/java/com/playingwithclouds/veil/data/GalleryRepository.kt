@@ -6,6 +6,8 @@ import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.BrowseGalleriesMutation
 import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
 import com.playingwithclouds.veil.graphql.GalleryPluginsQuery
+import com.playingwithclouds.veil.graphql.GallerySearchResultsSubscription
+import kotlinx.coroutines.flow.toList
 import com.playingwithclouds.veil.graphql.OpenGalleryMutation
 import com.playingwithclouds.veil.graphql.RateMutation
 import com.playingwithclouds.veil.graphql.RecentlyViewedGalleriesQuery
@@ -69,6 +71,15 @@ object GalleryRepository {
         return plugins
             .filter { plugin -> plugin.enabled && plugin.available && GALLERY_LIST_CAPABILITY in plugin.capabilities }
             .map { plugin -> plugin.name }
+    }
+
+    /** Every gallery one page (0 first) of a search of the gallery sites finds, once all answered. */
+    suspend fun searchPage(query: String, page: Int): List<GallerySummary> {
+        val subscription = GallerySearchResultsSubscription(query, Optional.present(page))
+        val batches = VeilApi.client.subscription(subscription).toFlow().toList()
+        return batches.flatMap { response ->
+            response.dataOrThrow().searchResults.listed.galleries.map { gallery -> gallery.galleryCardFields.toSummary() }
+        }
     }
 
     /** One page of a gallery site's catalog; the backend stores what it lists. */

@@ -1,8 +1,20 @@
 package com.playingwithclouds.veil.ui.galleries
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import com.playingwithclouds.veil.ui.components.SearchButton
+import com.playingwithclouds.veil.ui.components.SearchField
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,6 +39,9 @@ import kotlinx.coroutines.launch
 
 /** Galleries per page of the feed. */
 private const val FEED_PAGE = 24
+
+/** How long typing has to pause before the sites are searched. */
+private const val QUERY_DEBOUNCE_MILLISECONDS = 500L
 
 /** Galleries in each row above the feed. */
 private const val ROW_LIMIT = 20
@@ -67,6 +82,37 @@ class GalleriesViewModel : ViewModel() {
             siteOffsets.clear()
         }
         nextFeedPage()
+    }
+
+    private val queryState = MutableStateFlow("")
+    private var queryJob: Job? = null
+
+    /** What's typed in the search box. */
+    val query: StateFlow<String> = queryState.asStateFlow()
+
+    /** What the gallery sites find for the query, page by page; nothing while it's blank. */
+    val results = PagedList<GallerySummary>(
+        viewModelScope,
+        FEED_PAGE,
+        { gallery -> gallery.id },
+        isLastPage = { page -> page.isEmpty() },
+    ) { offset ->
+        val text = queryState.value.trim()
+        if (text.isEmpty()) {
+            emptyList()
+        } else {
+            GalleryRepository.searchPage(text, offset / FEED_PAGE)
+        }
+    }
+
+    /** Takes the box's text and searches the sites once typing pauses. */
+    fun setQuery(text: String) {
+        queryState.value = text
+        queryJob?.cancel()
+        queryJob = viewModelScope.launch {
+            delay(QUERY_DEBOUNCE_MILLISECONDS)
+            results.refresh()
+        }
     }
 
     init {
@@ -129,33 +175,88 @@ class GalleriesViewModel : ViewModel() {
     }
 }
 
-/** Galleries: recently viewed and favourites as rows, then more for you, endlessly. */
+/**
+ * Galleries: recently viewed and favourites as rows, then more for you, endlessly. The magnifier
+ * searches the gallery sites instead, as the web's top bar search on its galleries page does.
+ */
 @Composable
 fun GalleriesScreen(navigator: AppNavigator) {
     val viewModel = viewModel { GalleriesViewModel() }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = searching) {
+        searching = false
+        viewModel.setQuery("")
+    }
+    DetailScreen("Galleries", onBack = navigator::back, actions = {
+        if (!searching) {
+            SearchButton(onClick = { searching = true })
+        }
+    }) {
+        if (searching) {
+            GallerySearch(viewModel, navigator)
+        } else {
+            GalleriesOverview(viewModel, navigator)
+        }
+    }
+}
+
+/** The search box, focused when it opens, over what the gallery sites find. */
+@Composable
+private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator) {
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    var emptyText = "Type to search the gallery sites."
+    if (query.isNotBlank()) {
+        emptyText = "No gallery site found anything."
+    }
+    PagedGrid(
+        paged = viewModel.results,
+        keyOf = { gallery -> gallery.id },
+        emptyText = emptyText,
+        cellWidth = PosterCellWidth,
+        header = {
+            fullWidthItem("search") {
+                SearchField(
+                    query,
+                    onValueChange = viewModel::setQuery,
+                    placeholder = "Search the gallery sites",
+                    modifier = Modifier.bleed(),
+                    onSearch = { focusManager.clearFocus() },
+                    focusRequester = focusRequester,
+                )
+            }
+        },
+    ) { _, gallery ->
+        GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
+    }
+}
+
+/** Recently viewed and favourites as rows, then the endless feed. */
+@Composable
+private fun GalleriesOverview(viewModel: GalleriesViewModel, navigator: AppNavigator) {
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    DetailScreen("Galleries", onBack = navigator::back) {
-        PagedGrid(
-            paged = viewModel.feed,
-            keyOf = { gallery -> gallery.id },
-            emptyText = "No galleries yet. They come in from the gallery sites.",
-            cellWidth = PosterCellWidth,
-            header = {
-                fullWidthItem("recent") {
-                    Shelf("Recently viewed", recent, key = { gallery -> gallery.id }, itemWidth = RowCardWidth, modifier = Modifier.bleed()) { gallery, _ ->
-                        GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
-                    }
+    PagedGrid(
+        paged = viewModel.feed,
+        keyOf = { gallery -> gallery.id },
+        emptyText = "No galleries yet. They come in from the gallery sites.",
+        cellWidth = PosterCellWidth,
+        header = {
+            fullWidthItem("recent") {
+                Shelf("Recently viewed", recent, key = { gallery -> gallery.id }, itemWidth = RowCardWidth, modifier = Modifier.bleed()) { gallery, _ ->
+                    GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
                 }
-                fullWidthItem("favorites") {
-                    Shelf("Favourites", favorites, key = { gallery -> gallery.id }, itemWidth = RowCardWidth, modifier = Modifier.bleed()) { gallery, _ ->
-                        GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
-                    }
+            }
+            fullWidthItem("favorites") {
+                Shelf("Favourites", favorites, key = { gallery -> gallery.id }, itemWidth = RowCardWidth, modifier = Modifier.bleed()) { gallery, _ ->
+                    GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
                 }
-                fullWidthItem("feed-heading") { SectionHeading("More for you") }
-            },
-        ) { _, gallery ->
-            GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
-        }
+            }
+            fullWidthItem("feed-heading") { SectionHeading("More for you") }
+        },
+    ) { _, gallery ->
+        GalleryCard(gallery, onClick = { navigator.openGallery(gallery.id) })
     }
 }

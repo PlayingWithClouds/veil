@@ -83,6 +83,18 @@ mutation BrowseGalleries($plugin: String!, $limit: Int, $offset: Int) {
   }
 }
 
+# One page of a search of the gallery sites: each site's answer as it comes, then it completes.
+subscription GallerySearchResults($query: String!, $page: Int) {
+  searchResults(kind: GALLERY, query: $query, page: $page) {
+    exhausted
+    listed {
+      galleries {
+        ...GalleryCardFields
+      }
+    }
+  }
+}
+
 # Galleries like one, most alike first.
 query RelatedGalleries($id: ID!, $limit: Int) {
   related(subject: { kind: gallery, id: $id }, limit: $limit) {
