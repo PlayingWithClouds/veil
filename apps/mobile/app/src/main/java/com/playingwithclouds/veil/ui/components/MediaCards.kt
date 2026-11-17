@@ -138,7 +138,7 @@ fun CamCard(cam: CamSummary, onClick: () -> Unit, modifier: Modifier = Modifier)
             if (cam.recording) {
                 Badge("REC", badgeModifier, VeilColors.error, VeilColors.content)
             } else if (viewers != null) {
-                Badge("LIVE · ${formatCount(viewers)}", badgeModifier, VeilColors.accent, VeilColors.onAccent)
+                Badge("LIVE · ${formatCount(viewers)}", badgeModifier, VeilColors.live, VeilColors.onLive)
             }
         }
         Column(Modifier.padding(top = VeilSpacing.small, bottom = VeilSpacing.small)) {

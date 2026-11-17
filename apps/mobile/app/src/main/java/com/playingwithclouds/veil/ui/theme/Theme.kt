@@ -33,9 +33,13 @@ object VeilColors {
     val content = Color(0xFFFAFAFA)
     val contentMuted = Color(0xFFA1A1AA)
     val contentFaint = Color(0xFF71717A)
-    val accent = Color(0xFFFB7185)
+    val accent = Color(0xFFA78BFA)
     val onAccent = Color(0xFF0B0B0D)
-    val accentSoft = Color(0xFFFB7185).copy(alpha = 0.18f)
+    val accentSoft = Color(0xFFA78BFA).copy(alpha = 0.18f)
+
+    /** What's live (cams), as the web's `--color-live`. */
+    val live = Color(0xFFF472B6)
+    val onLive = Color(0xFF0B0B0D)
     val info = Color(0xFF60A5FA)
     val success = Color(0xFF4ADE80)
     val warning = Color(0xFFFBBF24)

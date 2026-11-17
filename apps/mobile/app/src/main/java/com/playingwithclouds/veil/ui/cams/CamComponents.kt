@@ -116,7 +116,7 @@ private val CamAvatarSize = 64.dp
 fun CamAvatar(thumbnailUrl: String?, live: Boolean, modifier: Modifier = Modifier) {
     var ringed = modifier.size(CamAvatarSize)
     if (live) {
-        ringed = ringed.border(LiveRingWidth, VeilColors.accent, VeilShapes.capsule).padding(LiveRingWidth + VeilSpacing.hairline)
+        ringed = ringed.border(LiveRingWidth, VeilColors.live, VeilShapes.capsule).padding(LiveRingWidth + VeilSpacing.hairline)
     }
     Avatar(thumbnailUrl, ringed)
 }
@@ -200,7 +200,7 @@ fun recordingFacts(recording: CamRecording): String {
 @Composable
 fun OnlineLabel(online: Boolean) {
     if (online) {
-        Badge("LIVE", background = VeilColors.accent, foreground = VeilColors.onAccent)
+        Badge("LIVE", background = VeilColors.live, foreground = VeilColors.onLive)
         return
     }
     Row(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {

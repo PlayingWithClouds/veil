@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +31,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.ui.AppNavigator
-import com.playingwithclouds.veil.ui.components.VeilTopBar
+import com.playingwithclouds.veil.ui.components.DetailScreen
+import com.playingwithclouds.veil.ui.components.LocalTopBarInset
 import com.playingwithclouds.veil.ui.design.Badge
 import com.playingwithclouds.veil.ui.design.LoadingBar
 import com.playingwithclouds.veil.ui.design.FeedChip
@@ -71,6 +71,7 @@ private val colorSamples = listOf(
     Sample("contentFaint", VeilColors.contentFaint),
     Sample("accent", VeilColors.accent),
     Sample("accentSoft", VeilColors.accentSoft),
+    Sample("live", VeilColors.live),
     Sample("info", VeilColors.info),
     Sample("success", VeilColors.success),
     Sample("warning", VeilColors.warning),
@@ -113,8 +114,8 @@ fun DesignKitScreen(navigator: AppNavigator) {
         Sample("labelMedium", MaterialTheme.typography.labelMedium),
         Sample("labelSmall", MaterialTheme.typography.labelSmall),
     )
-    Scaffold(topBar = { VeilTopBar("Design kit", onBack = navigator::back) }) { padding ->
-        LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
+    DetailScreen("Design kit", onBack = navigator::back) {
+        LazyColumn(contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = VeilSpacing.huge)) {
             item { SectionHeading("Colours", Modifier.gutterPadding()) }
             item { ColorSwatches() }
             item { SectionHeading("Type", Modifier.gutterPadding()) }
