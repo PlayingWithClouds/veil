@@ -20,6 +20,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.playingwithclouds.veil.data.FilterOption
 import com.playingwithclouds.veil.data.SearchFilter
+import com.playingwithclouds.veil.data.SiteChoice
+import com.playingwithclouds.veil.data.SiteStyle
+import com.playingwithclouds.veil.data.TagSummary
 import com.playingwithclouds.veil.ui.components.RemoteImage
 import com.playingwithclouds.veil.ui.design.FeedChip
 import com.playingwithclouds.veil.ui.design.GutterRowPadding
@@ -35,13 +38,25 @@ import com.playingwithclouds.veil.ui.theme.VeilSpacing
 /** Size of a site's logo in its chip. */
 private val SiteIconSize = 16.dp
 
+/** What a filter sheet offers: the sites (with their styles, video search only) and the tags to hide. */
+data class FilterChoices(
+    val siteChoices: List<SiteChoice> = emptyList(),
+    val siteStyles: List<SiteStyle> = emptyList(),
+    val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
+)
+
 /**
  * The chip row under the search box, as the desktop's: Filters (with how many of its settings are
  * on), the hidden tags (tap to show them again), then the recent searches.
  */
 @Composable
-fun FilterChipRow(state: SearchState, onOpenFilters: () -> Unit, onFilter: (SearchFilter) -> Unit, onRecent: (String) -> Unit) {
-    val filter = state.filter
+fun FilterChipRow(
+    filter: SearchFilter,
+    onOpenFilters: () -> Unit,
+    onFilter: (SearchFilter) -> Unit,
+    recent: List<String> = emptyList(),
+    onRecent: (String) -> Unit = {},
+) {
     var filtersLabel = "Filters"
     if (filter.panelCount > 0) {
         filtersLabel = "Filters · ${filter.panelCount}"
@@ -55,7 +70,7 @@ fun FilterChipRow(state: SearchState, onOpenFilters: () -> Unit, onFilter: (Sear
         items(filter.hiddenTags.entries.toList(), key = { entry -> "hidden-${entry.key}" }) { entry ->
             FeedChip("Not ${entry.value}", onClick = { onFilter(filter.copy(hiddenTags = filter.hiddenTags - entry.key)) }, selected = true, icon = VeilIcons.Close)
         }
-        items(state.recent, key = { text -> "recent-$text" }) { text ->
+        items(recent, key = { text -> "recent-$text" }) { text ->
             FeedChip(text, onClick = { onRecent(text) }, icon = VeilIcons.Search)
         }
     }
@@ -64,11 +79,21 @@ fun FilterChipRow(state: SearchState, onOpenFilters: () -> Unit, onFilter: (Sear
 /**
  * The filters, as the desktop's panel has them: length, quality, the user's rating, show only
  * unwatched or favourites, sort, sites (a whole style at once, or one by one with their logos)
- * and tags to hide. Every tap applies at once.
+ * and tags to hide. Every tap applies at once. For galleries ([forVideos] false) length, quality
+ * and sort are left out, and "unwatched" reads "not viewed".
  */
 @Composable
-fun FilterSheet(state: SearchState, onFilter: (SearchFilter) -> Unit, onDismiss: () -> Unit) {
-    val filter = state.filter
+fun FilterSheet(
+    filter: SearchFilter,
+    choices: FilterChoices,
+    onFilter: (SearchFilter) -> Unit,
+    onDismiss: () -> Unit,
+    forVideos: Boolean = true,
+) {
+    var unseenLabel = "Unwatched"
+    if (!forVideos) {
+        unseenLabel = "Not viewed"
+    }
     VeilBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier.verticalScroll(rememberScrollState()).gutterPadding().padding(bottom = VeilSpacing.huge),
@@ -80,18 +105,22 @@ fun FilterSheet(state: SearchState, onFilter: (SearchFilter) -> Unit, onDismiss:
                     TextAction("Clear all", onClick = { onFilter(SearchFilter()) })
                 }
             }
-            SingleChoice("Length", SearchFilter.LENGTH_OPTIONS, filter.length) { value -> onFilter(filter.copy(length = value)) }
-            SingleChoice("Quality", SearchFilter.RESOLUTION_OPTIONS, filter.minHeight) { value -> onFilter(filter.copy(minHeight = value)) }
+            if (forVideos) {
+                SingleChoice("Length", SearchFilter.LENGTH_OPTIONS, filter.length) { value -> onFilter(filter.copy(length = value)) }
+                SingleChoice("Quality", SearchFilter.RESOLUTION_OPTIONS, filter.minHeight) { value -> onFilter(filter.copy(minHeight = value)) }
+            }
             SingleChoice("Your rating", SearchFilter.RATING_OPTIONS, filter.minRating) { value -> onFilter(filter.copy(minRating = value)) }
             FilterGroup("Show only") {
-                FeedChip("Unwatched", onClick = { onFilter(filter.copy(unwatched = !filter.unwatched)) }, selected = filter.unwatched)
+                FeedChip(unseenLabel, onClick = { onFilter(filter.copy(unwatched = !filter.unwatched)) }, selected = filter.unwatched)
                 FeedChip("Favourites", onClick = { onFilter(filter.copy(favorite = !filter.favorite)) }, selected = filter.favorite)
             }
-            SingleChoice("Sort by", SearchFilter.SORT_OPTIONS, filter.sort) { value -> onFilter(filter.copy(sort = value)) }
-            SitesGroup(state, onFilter)
-            if (state.tagCounts.isNotEmpty()) {
+            if (forVideos) {
+                SingleChoice("Sort by", SearchFilter.SORT_OPTIONS, filter.sort) { value -> onFilter(filter.copy(sort = value)) }
+            }
+            SitesGroup(filter, choices, onFilter)
+            if (choices.tagCounts.isNotEmpty()) {
                 FilterGroup("Hide tags") {
-                    for ((tag, count) in state.tagCounts) {
+                    for ((tag, count) in choices.tagCounts) {
                         FeedChip("${tag.name} · $count", onClick = { onFilter(filter.copy(hiddenTags = filter.hiddenTags + (tag.id to tag.name))) }, icon = VeilIcons.Block)
                     }
                 }
@@ -118,18 +147,17 @@ private fun SingleChoice(title: String, options: List<FilterOption>, current: St
 
 /** The styles (each picks all its sites), then every site with its logo. */
 @Composable
-private fun SitesGroup(state: SearchState, onFilter: (SearchFilter) -> Unit) {
-    if (state.siteChoices.isEmpty()) {
+private fun SitesGroup(filter: SearchFilter, choices: FilterChoices, onFilter: (SearchFilter) -> Unit) {
+    if (choices.siteChoices.isEmpty()) {
         return
     }
-    val filter = state.filter
     FilterGroup("Sites") {
-        for (style in state.siteStyles) {
+        for (style in choices.siteStyles) {
             FeedChip("${style.label} · ${style.sites.size}", onClick = { onFilter(filter.toggledStyle(style)) }, selected = filter.styleOn(style))
         }
     }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small), verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
-        for (choice in state.siteChoices) {
+        for (choice in choices.siteChoices) {
             FeedChip(
                 choice.label,
                 onClick = { onFilter(filter.toggledSite(choice.value)) },

@@ -63,12 +63,12 @@ object SearchRepository {
 
     /**
      * The sites the filter offers, by name: each site of a plugin serving several ("plugin/host"),
-     * the other video plugins whole. Only enabled plugins that can run here; sites needing a
+     * the other plugins listing videos (or what [capability] names, e.g. "gallery:list") whole. Only enabled plugins that can run here; sites needing a
      * Cloudflare solver the phone doesn't have are left out.
      */
-    suspend fun siteChoices(): List<SiteChoice> {
+    suspend fun siteChoices(capability: String = VIDEO_LIST_CAPABILITY): List<SiteChoice> {
         val data = VeilApi.client.query(VideoSitesQuery()).execute().dataOrThrow()
-        val listers = data.plugins.filter { plugin -> plugin.enabled && plugin.available && VIDEO_LIST_CAPABILITY in plugin.capabilities }
+        val listers = data.plugins.filter { plugin -> plugin.enabled && plugin.available && capability in plugin.capabilities }
         return listers.flatMap { plugin ->
             if (plugin.sites.isEmpty()) {
                 return@flatMap listOf(SiteChoice(plugin.name, plugin.displayName ?: plugin.name, plugin.iconUrl))

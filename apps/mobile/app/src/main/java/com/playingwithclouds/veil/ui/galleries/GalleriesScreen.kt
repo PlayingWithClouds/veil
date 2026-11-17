@@ -11,6 +11,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.layout.Box
+import com.playingwithclouds.veil.data.SearchFilter
+import com.playingwithclouds.veil.ui.search.FilterChipRow
+import com.playingwithclouds.veil.ui.search.FilterChoices
+import com.playingwithclouds.veil.ui.search.FilterSheet
+import kotlinx.coroutines.flow.update
 import com.playingwithclouds.veil.ui.components.SearchButton
 import com.playingwithclouds.veil.ui.components.SearchField
 import kotlinx.coroutines.Job
@@ -42,6 +48,9 @@ private const val FEED_PAGE = 24
 
 /** How long typing has to pause before the sites are searched. */
 private const val QUERY_DEBOUNCE_MILLISECONDS = 500L
+
+/** Tags offered for hiding in the search's filter sheet. */
+private const val TAG_COUNT_LIMIT = 24
 
 /** Galleries in each row above the feed. */
 private const val ROW_LIMIT = 20
@@ -101,9 +110,18 @@ class GalleriesViewModel : ViewModel() {
         if (text.isEmpty()) {
             emptyList()
         } else {
-            GalleryRepository.searchPage(text, offset / FEED_PAGE)
+            GalleryRepository.searchPage(text, offset / FEED_PAGE, filterState.value)
         }
     }
+
+    private val filterState = MutableStateFlow(SearchFilter())
+    private val choicesState = MutableStateFlow(FilterChoices())
+
+    /** The search's filter: sites, rating, not viewed, favourites, hidden tags. */
+    val filter: StateFlow<SearchFilter> = filterState.asStateFlow()
+
+    /** The gallery sites and the tags the filter sheet offers. */
+    val filterChoices: StateFlow<FilterChoices> = choicesState.asStateFlow()
 
     /** Takes the box's text and searches the sites once typing pauses. */
     fun setQuery(text: String) {
@@ -112,6 +130,33 @@ class GalleriesViewModel : ViewModel() {
         queryJob = viewModelScope.launch {
             delay(QUERY_DEBOUNCE_MILLISECONDS)
             results.refresh()
+        }
+    }
+
+    /** Searches again under a changed filter, and reads the tags offered for hiding under it. */
+    fun setFilter(filter: SearchFilter) {
+        filterState.value = filter
+        results.refresh()
+        loadTagCounts()
+    }
+
+    /** Reads what the filter sheet offers, the first time search opens. */
+    fun loadFilterChoices() {
+        if (choicesState.value.siteChoices.isNotEmpty()) {
+            return
+        }
+        viewModelScope.launch {
+            val sites = runCatching { GalleryRepository.siteChoices() }.getOrDefault(emptyList())
+            choicesState.update { current -> current.copy(siteChoices = sites) }
+        }
+        loadTagCounts()
+    }
+
+    /** Reads the tags most common among the galleries under the filter. */
+    private fun loadTagCounts() {
+        viewModelScope.launch {
+            val counts = runCatching { GalleryRepository.tagCounts(filterState.value, TAG_COUNT_LIMIT) }.getOrDefault(emptyList())
+            choicesState.update { current -> current.copy(tagCounts = counts) }
         }
     }
 
@@ -200,13 +245,25 @@ fun GalleriesScreen(navigator: AppNavigator) {
     }
 }
 
-/** The search box, focused when it opens, over what the gallery sites find. */
+/**
+ * The search box, focused when it opens, and the filter chips (the video search's, without length,
+ * quality and sort) over what the gallery sites find.
+ */
 @Composable
 private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator) {
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val choices by viewModel.filterChoices.collectAsStateWithLifecycle()
+    var filtersOpen by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        viewModel.loadFilterChoices()
+    }
+    if (filtersOpen) {
+        FilterSheet(filter, choices, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false }, forVideos = false)
+    }
     var emptyText = "Type to search the gallery sites."
     if (query.isNotBlank()) {
         emptyText = "No gallery site found anything."
@@ -226,6 +283,11 @@ private fun GallerySearch(viewModel: GalleriesViewModel, navigator: AppNavigator
                     onSearch = { focusManager.clearFocus() },
                     focusRequester = focusRequester,
                 )
+            }
+            fullWidthItem("filters") {
+                Box(Modifier.bleed()) {
+                    FilterChipRow(filter, onOpenFilters = { filtersOpen = true }, onFilter = viewModel::setFilter)
+                }
             }
         },
     ) { _, gallery ->

@@ -91,16 +91,17 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
                 modifier = Modifier.weight(1f),
             )
         }
-        var chipState = state
+        var chipRecent = state.recent
         if (state.query == null) {
-            chipState = state.copy(recent = emptyList())
+            chipRecent = emptyList()
         }
-        FilterChipRow(chipState, onOpenFilters = { filtersOpen = true }, onFilter = viewModel::setFilter, onRecent = { text ->
+        FilterChipRow(state.filter, onOpenFilters = { filtersOpen = true }, onFilter = viewModel::setFilter, recent = chipRecent, onRecent = { text ->
             focusManager.clearFocus()
             viewModel.searchFor(text)
         })
         if (filtersOpen) {
-            FilterSheet(state, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false })
+            val choices = FilterChoices(state.siteChoices, state.siteStyles, state.tagCounts)
+            FilterSheet(state.filter, choices, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false })
         }
         if (state.query == null) {
             RecentSearches(state.recent, onSearch = { text ->

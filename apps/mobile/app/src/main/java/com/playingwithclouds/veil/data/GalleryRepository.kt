@@ -7,6 +7,7 @@ import com.playingwithclouds.veil.graphql.BrowseGalleriesMutation
 import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
 import com.playingwithclouds.veil.graphql.GalleryPluginsQuery
 import com.playingwithclouds.veil.graphql.GallerySearchResultsSubscription
+import com.playingwithclouds.veil.graphql.GalleryTagCountsQuery
 import kotlinx.coroutines.flow.toList
 import com.playingwithclouds.veil.graphql.OpenGalleryMutation
 import com.playingwithclouds.veil.graphql.RateMutation
@@ -73,12 +74,28 @@ object GalleryRepository {
             .map { plugin -> plugin.name }
     }
 
-    /** Every gallery one page (0 first) of a search of the gallery sites finds, once all answered. */
-    suspend fun searchPage(query: String, page: Int): List<GallerySummary> {
-        val subscription = GallerySearchResultsSubscription(query, Optional.present(page))
+    /**
+     * Every gallery one page (0 first) of a search of the gallery sites finds, once all answered;
+     * the filter narrows them, and its sites are the ones asked.
+     */
+    suspend fun searchPage(query: String, page: Int, filter: SearchFilter): List<GallerySummary> {
+        val subscription = GallerySearchResultsSubscription(query, Optional.present(page), Optional.present(filter.toInput()))
         val batches = VeilApi.client.subscription(subscription).toFlow().toList()
         return batches.flatMap { response ->
             response.dataOrThrow().searchResults.listed.galleries.map { gallery -> gallery.galleryCardFields.toSummary() }
+        }
+    }
+
+    /** The gallery sites the search filter offers. */
+    suspend fun siteChoices(): List<SiteChoice> {
+        return SearchRepository.siteChoices(GALLERY_LIST_CAPABILITY)
+    }
+
+    /** The tags most common among the galleries matching the filter, most common first, for hiding. */
+    suspend fun tagCounts(filter: SearchFilter, limit: Int): List<Pair<TagSummary, Int>> {
+        val query = GalleryTagCountsQuery(Optional.present(filter.toInput()), Optional.present(limit))
+        return VeilApi.client.query(query).execute().dataOrThrow().mediaTagCounts.map { entry ->
+            TagSummary(entry.tag.id, entry.tag.name) to entry.count
         }
     }
 

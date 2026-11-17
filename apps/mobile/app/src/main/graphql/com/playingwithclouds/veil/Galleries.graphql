@@ -84,13 +84,25 @@ mutation BrowseGalleries($plugin: String!, $limit: Int, $offset: Int) {
 }
 
 # One page of a search of the gallery sites: each site's answer as it comes, then it completes.
-subscription GallerySearchResults($query: String!, $page: Int) {
-  searchResults(kind: GALLERY, query: $query, page: $page) {
+# The filter narrows the results, and its sources the sites asked.
+subscription GallerySearchResults($query: String!, $page: Int, $filter: FilterInput) {
+  searchResults(kind: GALLERY, query: $query, page: $page, filter: $filter) {
     exhausted
     listed {
       galleries {
         ...GalleryCardFields
       }
+    }
+  }
+}
+
+# The tags most common among the galleries matching a filter, for hiding.
+query GalleryTagCounts($filter: FilterInput, $limit: Int) {
+  mediaTagCounts(kind: gallery, filter: $filter, limit: $limit) {
+    count
+    tag {
+      id
+      name
     }
   }
 }
