@@ -8,6 +8,8 @@ import com.playingwithclouds.veil.graphql.FilteredGalleriesQuery
 import com.playingwithclouds.veil.graphql.FilteredVideosQuery
 import com.playingwithclouds.veil.graphql.FollowOfQuery
 import com.playingwithclouds.veil.graphql.FollowRecordMutation
+import com.playingwithclouds.veil.graphql.MergeRecordsMutation
+import com.playingwithclouds.veil.graphql.PerformerDuplicatesQuery
 import com.playingwithclouds.veil.graphql.PerformersQuery
 import com.playingwithclouds.veil.graphql.ReadPerformerMutation
 import com.playingwithclouds.veil.graphql.RefreshPerformerMutation
@@ -98,6 +100,22 @@ object PeopleRepository {
         return VeilApi.client.query(query).execute().dataOrThrow().videoTagCounts.map { entry ->
             TagSummary(entry.tag.id, entry.tag.name) to entry.count
         }
+    }
+
+    /** Performers who share a name or alias with this one but weren't proven the same person; none for studios. */
+    suspend fun sameNamePeople(person: PersonDetail): List<MemberSummary> {
+        if (person.kind != RecordKind.performer) {
+            return emptyList()
+        }
+        return VeilApi.client.query(PerformerDuplicatesQuery(person.id)).execute().dataOrThrow().performerDuplicates.map { performer ->
+            val member = performer.memberFields
+            MemberSummary(member.id, member.name, member.image?.url, member.videoCount, member.galleryCount)
+        }
+    }
+
+    /** Folds [other] into [person]: their credits, sources and the user's state on them move over. */
+    suspend fun mergeInto(person: PersonDetail, other: MemberSummary) {
+        VeilApi.client.mutation(MergeRecordsMutation(person.kind, person.id, other.id)).execute().dataOrThrow()
     }
 
     /** The id of the follow on a performer or studio; null when they aren't followed. */

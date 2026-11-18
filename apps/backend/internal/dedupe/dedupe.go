@@ -76,7 +76,9 @@ func (s *Sweeper) Run(ctx context.Context) {
 }
 
 // Pass hashes a batch of unhashed videos, merges each into a stored copy it
-// provably is, then merges the waiting alike pairs that are provably one.
+// provably is, merges the waiting alike pairs that are provably one, then
+// merges the next batch of performers and studios into their provable
+// duplicates.
 func (s *Sweeper) Pass(ctx context.Context) error {
 	hashed, err := s.hashBatch(ctx)
 	if err != nil {
@@ -92,7 +94,10 @@ func (s *Sweeper) Pass(ctx context.Context) error {
 			log.Printf("dedupe: video %s: %v", video.Id, err)
 		}
 	}
-	return s.mergeProvablePairs(ctx, all, covers)
+	if err := s.mergeProvablePairs(ctx, all, covers); err != nil {
+		return err
+	}
+	return s.mergePeople(ctx)
 }
 
 // hashBatch hashes the pictures of up to hashBatch videos that have none yet.

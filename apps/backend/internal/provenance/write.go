@@ -29,9 +29,13 @@ func (r *Recorder) Update(ctx context.Context, kind schema.RecordKind, id string
 		if err != nil {
 			return err
 		}
+		plugins, err := ownerPlugins(ctx, tx, owners)
+		if err != nil {
+			return err
+		}
 		changes := db.Vars{}
 		for column, value := range fields {
-			if !mayWrite(kind, column, owners, author) {
+			if !mayWrite(kind, column, owners, plugins, author) {
 				continue
 			}
 			before := revisionValue(current[column], recordType.columns[column])
@@ -71,8 +75,10 @@ func (r *Recorder) Claim(ctx context.Context, kind schema.RecordKind, id string,
 
 // mayWrite decides whether author may write column. The user always may and
 // locks the field by doing so; anyone else never overwrites a locked field,
-// and a plugin only writes a field that no other source owns.
-func mayWrite(kind schema.RecordKind, column string, owners map[uint32]schema.FieldSource, author Author) bool {
+// and a plugin only writes a field that no other source owns, or one owned by
+// a site it outranks for that field (fieldPreference). plugins names the
+// plugin behind each owned field.
+func mayWrite(kind schema.RecordKind, column string, owners map[uint32]schema.FieldSource, plugins map[uint32]string, author Author) bool {
 	if _, known := Ordinal(kind, column); !known {
 		return false
 	}
@@ -90,7 +96,39 @@ func mayWrite(kind schema.RecordKind, column string, owners map[uint32]schema.Fi
 	if author.Actor != schema.ActorPlugin || owner.WrittenBy != schema.ActorPlugin {
 		return true
 	}
-	return sourceOf(owner) == author.SourceID
+	if sourceOf(owner) == author.SourceID {
+		return true
+	}
+	return outranks(kind, column, author.Name, plugins[ordinal])
+}
+
+// ownerPlugins names the plugin of the source owning each field, where a
+// source owns it.
+func ownerPlugins(ctx context.Context, tx *db.DB, owners map[uint32]schema.FieldSource) (map[uint32]string, error) {
+	sourceIDs := []string{}
+	for _, owner := range owners {
+		if owner.Source != nil {
+			sourceIDs = append(sourceIDs, *owner.Source)
+		}
+	}
+	out := map[uint32]string{}
+	if len(sourceIDs) == 0 {
+		return out, nil
+	}
+	rows, err := tx.Query(ctx, `SELECT "id", "plugin" FROM "Source" WHERE "id" IN (SELECT value FROM json_each($ids))`, db.Vars{"ids": sourceIDs})
+	if err != nil {
+		return nil, err
+	}
+	pluginBySource := map[string]string{}
+	for _, row := range rows {
+		id, _ := row["id"].(string)
+		plugin, _ := row["plugin"].(string)
+		pluginBySource[id] = plugin
+	}
+	for ordinal, owner := range owners {
+		out[ordinal] = pluginBySource[sourceOf(owner)]
+	}
+	return out, nil
 }
 
 // sourceOf is the source id a field owner names, or "".

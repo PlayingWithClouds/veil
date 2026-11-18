@@ -37,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playingwithclouds.veil.data.GallerySummary
+import com.playingwithclouds.veil.data.MemberSummary
+import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.data.PeopleRepository
 import com.playingwithclouds.veil.data.PersonDetail
 import com.playingwithclouds.veil.data.SearchFilter
@@ -121,6 +123,10 @@ class PersonViewModel(private val kind: MemberKind, private val personId: String
     private val filterState = MutableStateFlow(SearchFilter())
     private val choicesState = MutableStateFlow(FilterChoices())
     private val messageState = MutableStateFlow<String?>(null)
+    private val sameNameState = MutableStateFlow(emptyList<MemberSummary>())
+
+    /** Performers sharing a name or alias with them, offered for merging. */
+    val sameName: StateFlow<List<MemberSummary>> = sameNameState.asStateFlow()
 
     val detail: StateFlow<LoadState<PersonDetail>> = detailState.asStateFlow()
     val galleries: StateFlow<List<GallerySummary>> = galleriesState.asStateFlow()
@@ -240,11 +246,28 @@ class PersonViewModel(private val kind: MemberKind, private val personId: String
         }
     }
 
-    /** Shows them and reloads what's credited to them. */
+    /** Shows them and reloads what's credited to them and who shares their name. */
     private suspend fun showPerson(person: PersonDetail) {
         detailState.value = LoadState.Loaded(person)
         videos.refresh()
         galleriesState.value = runCatching { PeopleRepository.galleries(person, GALLERY_LIMIT) }.getOrDefault(emptyList())
+        sameNameState.value = runCatching { PeopleRepository.sameNamePeople(person) }.getOrDefault(emptyList())
+    }
+
+    /** Merges [other] into them, then reloads the page with what came over. */
+    fun merge(other: MemberSummary) {
+        val person = loadedPerson() ?: return
+        sameNameState.update { current -> current.filter { member -> member.id != other.id } }
+        viewModelScope.launch {
+            val merged = runCatching { PeopleRepository.mergeInto(person, other) }
+            if (merged.isFailure) {
+                messageState.value = merged.exceptionOrNull()?.displayMessage()
+                return@launch
+            }
+            messageState.value = "${other.name} merged into ${person.name}."
+            val reloaded = runCatching { fetchPerson() }.getOrNull() ?: return@launch
+            showPerson(reloaded)
+        }
     }
 
     /** The studio as stored, or the performer after reading their site pages not read yet. */
@@ -417,6 +440,7 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
     val videoText by viewModel.videoText.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val followId by viewModel.followId.collectAsStateWithLifecycle()
+    val sameName by viewModel.sameName.collectAsStateWithLifecycle()
     var filtersOpen by remember { mutableStateOf(false) }
     if (filtersOpen) {
         val choices by viewModel.filterChoices.collectAsStateWithLifecycle()
@@ -444,6 +468,11 @@ private fun PersonContent(person: PersonDetail, viewModel: PersonViewModel, navi
                 onFollow = viewModel::toggleFollow,
                 onTag = navigator::openTag,
             )
+        }
+        if (sameName.isNotEmpty()) {
+            item("same-person") {
+                SamePersonSection(sameName, onOpen = { member -> navigator.openPerformer(member.id) }, onMerge = viewModel::merge)
+            }
         }
         if (galleries.isNotEmpty()) {
             item("galleries") {
@@ -524,6 +553,33 @@ private fun PersonHeader(person: PersonDetail, following: Boolean, onFavorite: (
         }
     }
 }
+
+/**
+ * "Same person?": performers who share a name or alias with this one but weren't proven the same
+ * (the backend merges the provable ones on its own). Tap one to look, Merge to fold them in here.
+ */
+@Composable
+private fun SamePersonSection(members: List<MemberSummary>, onOpen: (MemberSummary) -> Unit, onMerge: (MemberSummary) -> Unit) {
+    Column(Modifier.padding(top = VeilSpacing.large)) {
+        SectionHeading("Same person?", modifier = Modifier.gutterPadding())
+        for (member in members) {
+            Row(
+                Modifier.fillMaxWidth().pressClickable { onOpen(member) }.padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
+                horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Avatar(member.imageUrl, Modifier.size(SamePersonPictureSize))
+                Column(Modifier.weight(1f)) {
+                    Text(member.name, style = VeilType.cardTitle, color = VeilColors.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(formatVideoCount(member.videoCount), style = VeilType.cardMeta, color = VeilColors.contentMuted)
+                }
+                SecondaryButton("Merge", onClick = { onMerge(member) })
+            }
+        }
+    }
+}
+
+private val SamePersonPictureSize = 44.dp
 
 /** "120 videos · 4 galleries", galleries left out when there are none. */
 private fun countsLine(person: PersonDetail): String {

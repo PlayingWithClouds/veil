@@ -89,6 +89,20 @@ mutation RefreshPerformer($id: ID!) {
   }
 }
 
+# Performers sharing a name or alias with one who weren't proven the same person.
+query PerformerDuplicates($id: ID!) {
+  performerDuplicates(id: $id) {
+    ...MemberFields
+  }
+}
+
+# Folds mergeId into keepId (undoable through the merge journal).
+mutation MergeRecords($kind: RecordKind!, $keepId: ID!, $mergeId: ID!) {
+  merge(kind: $kind, keepId: $keepId, mergeId: $mergeId) {
+    __typename
+  }
+}
+
 # The follow of a performer or studio, when they're followed.
 query FollowOf($subject: RecordRefInput!) {
   followOf(subject: $subject) {
