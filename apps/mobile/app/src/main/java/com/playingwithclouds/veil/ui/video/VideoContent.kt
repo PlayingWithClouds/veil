@@ -281,7 +281,6 @@ private fun ActionsRow(state: VideoState, viewModel: VideoViewModel, player: Pla
         item { Pill("Like", onClick = viewModel::like, selected = state.verdict == Verdict.LIKED, icon = likeIcon) }
         item { Pill("Dislike", onClick = viewModel::dislike, selected = state.verdict == Verdict.DISLIKED, icon = dislikeIcon) }
         item { Pill("Favourite", onClick = viewModel::toggleFavorite, selected = state.favorite, icon = favoriteIcon) }
-        item { Pill(state.oCount.toString(), onClick = { viewModel.logO(player.currentPosition / MILLISECONDS_PER_SECOND) }, icon = VeilIcons.O) }
         item {
             Pill(watchlistLabel, onClick = {
                 if (!state.onWatchlist) {

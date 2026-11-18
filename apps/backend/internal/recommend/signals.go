@@ -69,7 +69,7 @@ var fixedWeightQueries = []struct {
 }
 
 // fixedWeightQuery reads one event kind's media subjects since $since.
-const fixedWeightQuery = `SELECT "subjectKind", "subjectId", "at" FROM "Event"
+const fixedWeightQuery = `SELECT "subjectKind", "subjectId", "at", json_extract("data", '$.inferred') AS "inferred" FROM "Event"
 	WHERE "kind" = $eventKind AND "at" >= $since AND "deletedAt" IS NULL
 	  AND "subjectKind" IN (SELECT value FROM json_each($mediaKinds))
 	ORDER BY "at" DESC LIMIT $limit`
@@ -102,7 +102,9 @@ func (e *Engine) collectSignals(ctx context.Context, now time.Time) (*signals, e
 	return collected, nil
 }
 
-// fixedWeightSignals gives every event of one kind the same weight.
+// fixedWeightSignals gives every event of one kind the same weight; an event
+// the app inferred (data.inferred, e.g. an O guessed from the app closing
+// right after a watch) weighs inferredEventShare of it.
 func (e *Engine) fixedWeightSignals(ctx context.Context, eventKind schema.EventKind, weight float64, since string) ([]signal, error) {
 	rows, err := e.database.Query(ctx, fixedWeightQuery,
 		db.Vars{"eventKind": eventKind, "since": since, "mediaKinds": mediaKinds, "limit": eventReadLimit})
@@ -111,9 +113,27 @@ func (e *Engine) fixedWeightSignals(ctx context.Context, eventKind schema.EventK
 	}
 	out := make([]signal, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, signal{item: rowRef(row, "subjectKind", "subjectId"), weight: weight, at: rowTime(row, "at")})
+		rowWeight := weight
+		if isTruthy(row["inferred"]) {
+			rowWeight = weight * inferredEventShare
+		}
+		out = append(out, signal{item: rowRef(row, "subjectKind", "subjectId"), weight: rowWeight, at: rowTime(row, "at")})
 	}
 	return out, nil
+}
+
+// isTruthy reports whether a JSON value read from SQLite is true (SQLite
+// returns JSON true as the integer 1).
+func isTruthy(value any) bool {
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case int64:
+		return typed != 0
+	case float64:
+		return typed != 0
+	}
+	return false
 }
 
 // likeSignals turns like events into likes and dislikes of media, and into

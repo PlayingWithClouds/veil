@@ -22,7 +22,7 @@ import com.playingwithclouds.veil.ui.design.VeilCard
 import com.playingwithclouds.veil.ui.design.VeilSwitch
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
-/** Server choice, privacy, appearance and app updates. */
+/** Server choice, privacy, background work, appearance and app updates. */
 @Composable
 fun SettingsScreen(navigator: AppNavigator) {
     DetailScreen("Settings", onBack = navigator::back) {
@@ -37,6 +37,8 @@ fun SettingsScreen(navigator: AppNavigator) {
             VeilCard { ServerForm() }
             SectionHeading("Privacy")
             PrivacySection()
+            SectionHeading("Background")
+            BackgroundSection()
             SectionHeading("Appearance")
             SecondaryButton("Design kit", onClick = navigator::openDesignKit)
             SectionHeading("Updates")

@@ -13,6 +13,7 @@ import com.playingwithclouds.veil.data.VideoRepository
 import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.graphql.type.EventKind
 import com.playingwithclouds.veil.graphql.type.RecordKind
+import com.playingwithclouds.veil.habits.Habits
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -186,7 +187,10 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
     /** Logs what the watch session reports: progress, played stretches, the finish. */
     fun onWatchEvent(event: WatchEvent) {
         when (event) {
-            is WatchEvent.Progress -> log(EventKind.progress, mapOf("position" to event.positionSeconds))
+            is WatchEvent.Progress -> {
+                log(EventKind.progress, mapOf("position" to event.positionSeconds))
+                Habits.progress(videoId, event.positionSeconds)
+            }
             is WatchEvent.Span -> log(EventKind.heatSpan, mapOf("start" to event.startSeconds, "end" to event.endSeconds))
             is WatchEvent.Finish -> log(EventKind.finish, mapOf("position" to event.positionSeconds), flush = true)
         }
@@ -226,12 +230,6 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
     /** The thumbs down was taken back. */
     fun undoDislike() {
         mutableState.update { state -> state.copy(verdict = null, pendingDislike = false) }
-    }
-
-    /** Counts an O at the playing moment. */
-    fun logO(positionSeconds: Double) {
-        mutableState.update { state -> state.copy(oCount = state.oCount + 1) }
-        log(EventKind.o, mapOf("position" to positionSeconds), flush = true)
     }
 
     /** Flips the favourite mark. */

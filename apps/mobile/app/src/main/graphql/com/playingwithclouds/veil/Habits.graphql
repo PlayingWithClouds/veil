@@ -1,0 +1,31 @@
+# When the user watched and finished lately: the times the usual-time nudge learns from.
+query HabitEvents($since: String!, $limit: Int) {
+  events(filter: { kinds: [o, view], since: $since }, limit: $limit) {
+    at
+    kind
+  }
+}
+
+# The enabled follows, so the background check can run each one.
+query FollowIds {
+  follows {
+    id
+    enabled
+  }
+}
+
+mutation RunFollow($id: ID!) {
+  runFollow(id: $id) {
+    id
+  }
+}
+
+query JobStatus($id: ID!) {
+  job(id: $id) {
+    status
+  }
+}
+
+query UnreadNotificationCount {
+  unreadNotificationCount
+}

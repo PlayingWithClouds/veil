@@ -28,6 +28,10 @@ const (
 // express distaste.
 const (
 	weightO = 5.0
+	// inferredEventShare is how much an event the app guessed counts against
+	// one the user logged: the phone infers an O from the app closing right
+	// after a long watch, which is usually but not always right.
+	inferredEventShare = 0.6
 	// weightSessionEnd is a watch nothing else followed (see sessionGap): the
 	// video was the one, whether or not it was watched to the end.
 	weightSessionEnd = 4.0
