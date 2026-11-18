@@ -86,7 +86,7 @@ private fun upNextKey(videoId: String): String = "up-next:$videoId"
  * description and where it was found, then Up next, which grows while scrolled to its end.
  */
 @Composable
-fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator) {
+fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator, onCompilation: (() -> Unit)?) {
     val listState = rememberLazyListState()
     val related = state.related
     LaunchedEffect(listState) {
@@ -105,7 +105,7 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
     LazyColumn(Modifier.fillMaxWidth(), state = listState, contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
         val detail = (state.detail as? LoadState.Loaded)?.value
         if (detail != null) {
-            aboutVideo(detail, state, viewModel, player, navigator)
+            aboutVideo(detail, state, viewModel, navigator, onCompilation)
         } else {
             aboutVideoSkeleton()
         }
@@ -114,7 +114,7 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
 }
 
 /** The part about the video itself, above Up next. */
-private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator) {
+private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, viewModel: VideoViewModel, navigator: AppNavigator, onCompilation: (() -> Unit)?) {
     item("title") { TitleBlock(detail) }
     val scan = state.sceneScan
     if (scan != null && !scan.done) {
@@ -127,7 +127,7 @@ private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, vie
             )
         }
     }
-    item("actions") { ActionsRow(state, viewModel, player) }
+    item("actions") { ActionsRow(state, viewModel, onCompilation) }
     if (detail.sources.size > 1) {
         item("sources") { SourcesRow(detail, state, viewModel) }
     }
@@ -261,9 +261,9 @@ private fun qualityLabel(height: Int?): String? {
     return "${height}p"
 }
 
-/** The actions as a sideways row: like, dislike, favourite, O, watchlist, download. */
+/** The actions as a sideways row: like, dislike, favourite, watchlist, download, and Compilation with a scene model. */
 @Composable
-private fun ActionsRow(state: VideoState, viewModel: VideoViewModel, player: Player) {
+private fun ActionsRow(state: VideoState, viewModel: VideoViewModel, onCompilation: (() -> Unit)?) {
     var likeIcon = VeilIcons.Like
     var dislikeIcon = VeilIcons.Dislike
     var favoriteIcon = VeilIcons.Heart
@@ -305,6 +305,9 @@ private fun ActionsRow(state: VideoState, viewModel: VideoViewModel, player: Pla
                     viewModel.download()
                 }
             }, icon = VeilIcons.Download)
+        }
+        if (onCompilation != null) {
+            item { Pill("Compilation", onClick = onCompilation, icon = VeilIcons.Scenes) }
         }
     }
 }

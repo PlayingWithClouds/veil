@@ -21,6 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
+import com.playingwithclouds.veil.scenes.CompilationOptions
+import com.playingwithclouds.veil.ui.design.SectionHeading
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -58,10 +63,12 @@ private val LoadingSpinnerSize = 20.dp
  * The compilation mode: plays only the scenes the user likes, one stretch after another and across
  * videos (the one it was opened from, the queue, then the best-matching videos), jumping by itself.
  * Tap the picture to pause; Next scene skips; Open the video goes to the whole video at that point.
+ * Below, the clips as a queue: the playing one highlighted, a tap jumps to one. [options] and
+ * [queueOnly] as [CompilationViewModel] takes them.
  */
 @Composable
-fun CompilationScreen(firstVideoId: String, navigator: AppNavigator, onlyTags: Set<String> = emptySet()) {
-    val viewModel = viewModel(key = "compilation:$firstVideoId:${onlyTags.sorted()}") { CompilationViewModel(firstVideoId, onlyTags) }
+fun CompilationScreen(firstVideoId: String, navigator: AppNavigator, options: CompilationOptions = CompilationOptions(), queueOnly: Boolean = false) {
+    val viewModel = viewModel(key = "compilation:$firstVideoId:$options:$queueOnly") { CompilationViewModel(firstVideoId, options, queueOnly) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val player = rememberVideoPlayer()
     var playingIndex by remember { mutableIntStateOf(0) }
@@ -72,7 +79,10 @@ fun CompilationScreen(firstVideoId: String, navigator: AppNavigator, onlyTags: S
     val playing = state.clips.getOrNull(playingIndex)
     ShowAmbientGlow(playing?.video?.coverUrl)
     DetailScreen("Compilation", onBack = navigator::back) {
-        Column(Modifier.padding(top = LocalTopBarInset.current), verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(top = LocalTopBarInset.current, bottom = VeilSpacing.huge),
+            verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
+        ) {
             Box(Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO).background(VeilColors.canvas), contentAlignment = Alignment.Center) {
                 if (state.clips.isEmpty()) {
                     CompilationPlaceholder(state)
@@ -82,6 +92,33 @@ fun CompilationScreen(firstVideoId: String, navigator: AppNavigator, onlyTags: S
             }
             if (playing != null) {
                 ClipCaption(playing, player, playingIndex, state, navigator)
+                ClipQueue(state.clips, playingIndex, onPlay = { index -> player.seekTo(index, 0) })
+            }
+        }
+    }
+}
+
+/** The clips in play order: number, video, scenes and where in it; the playing one on a lighter fill, a tap plays one. */
+@Composable
+private fun ClipQueue(clips: List<ReadyClip>, playingIndex: Int, onPlay: (Int) -> Unit) {
+    Column {
+        SectionHeading("Clips", modifier = Modifier.padding(horizontal = VeilSpacing.gutter))
+        for ((index, ready) in clips.withIndex()) {
+            var rowModifier = Modifier.fillMaxWidth()
+            if (index == playingIndex) {
+                rowModifier = rowModifier.background(VeilColors.surfaceHigh)
+            }
+            Row(
+                rowModifier.pressClickable { onPlay(index) }.padding(horizontal = VeilSpacing.gutter, vertical = VeilSpacing.small),
+                horizontalArrangement = Arrangement.spacedBy(VeilSpacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("${index + 1}", style = VeilType.cardMeta, color = VeilColors.contentFaint)
+                Column(Modifier.weight(1f)) {
+                    Text(ready.video.title, style = VeilType.cardTitle, color = VeilColors.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val length = formatClock(ready.clip.endSeconds - ready.clip.startSeconds)
+                    Text("${ready.clip.tags.joinToString(" · ")} · ${formatClock(ready.clip.startSeconds)} · $length", style = VeilType.cardMeta, color = VeilColors.contentMuted, maxLines = 1)
+                }
             }
         }
     }
@@ -131,7 +168,7 @@ private fun ClipCaption(playing: ReadyClip, player: ExoPlayer, index: Int, state
                 Spinner(size = LoadingSpinnerSize)
             }
         }
-        Text("Playing the scenes you like: ${state.likedTags.sorted().joinToString(", ")}", style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint)
+        Text("Playing: ${state.likedTags.sorted().joinToString(", ")}", style = MaterialTheme.typography.bodySmall, color = VeilColors.contentFaint)
     }
 }
 

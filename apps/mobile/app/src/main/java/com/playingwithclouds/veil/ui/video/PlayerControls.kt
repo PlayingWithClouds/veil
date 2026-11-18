@@ -110,7 +110,8 @@ private fun rememberPlaybackStatus(player: Player): PlaybackStatus {
  * bar), the most-replayed graph, a next-in-queue action and the picture-in-picture action. [live]
  * is a live room: no frame steps, speed or loop, and instead of the clock a LIVE badge, or how far
  * the playhead is rewound into the room's buffer with "Go live". [onBack] leaves the page from the
- * top row, for pages that have no bar above the player.
+ * top row, for pages that have no bar above the player. [onOpenQueue] shows the queue (also in
+ * fullscreen).
  */
 data class PlayerExtras(
     val markers: List<VideoSegment> = emptyList(),
@@ -119,6 +120,7 @@ data class PlayerExtras(
     val onEnterPictureInPicture: (() -> Unit)? = null,
     val live: Boolean = false,
     val onBack: (() -> Unit)? = null,
+    val onOpenQueue: (() -> Unit)? = null,
 )
 
 /**
@@ -428,6 +430,9 @@ private fun TopRow(
         }
         if (onOpenRelated != null) {
             OverlayIconButton(VeilIcons.Collections, contentDescription = "Related videos", onClick = onOpenRelated, size = ControlButtonSize)
+        }
+        if (extras.onOpenQueue != null) {
+            OverlayIconButton(VeilIcons.Queue, contentDescription = "Queue", onClick = extras.onOpenQueue, size = ControlButtonSize)
         }
         PlayerSettingsButton(player, options, ControlButtonSize, live = extras.live, onOpenChange = onMenuChange)
     }

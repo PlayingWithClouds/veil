@@ -7,6 +7,7 @@ import com.playingwithclouds.veil.data.SceneMatchVideo
 import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.scenes.CompilationClip
+import com.playingwithclouds.veil.scenes.CompilationOptions
 import com.playingwithclouds.veil.scenes.CompilationPlanner
 import com.playingwithclouds.veil.scenes.CompilationSource
 import com.playingwithclouds.veil.ui.displayMessage
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 /** Matching videos read per page once the first video and the queue are used up. */
 private const val MATCH_PAGE = 12
@@ -38,19 +40,29 @@ data class CompilationState(
     val problem: String? = null,
 )
 
+/** A planned clip with the video it's cut from, waiting for its stream. */
+private class PlannedClip(val clip: CompilationClip, val video: VideoSummary)
+
 /**
- * The compilation mode: only the stretches of liked scenes, from [firstVideoId] (when the page
- * was opened from a video), then the queue's videos in order, then the videos with the most
- * matching seconds. Videos resolve to streams one at a time, a few clips ahead of playback.
- * [onlyTags] (names), when given, plays those scenes instead of the liked ones.
+ * The compilation mode: only the stretches of liked scenes (or [CompilationOptions.tags] when
+ * given), from [firstVideoId] (when the page was opened from a video), then the queue's videos in
+ * order, then, unless [queueOnly], the videos with the most matching seconds. Each batch of videos
+ * is cut into clips as the options say (shortest clip, queue order or shuffled; with [queueOnly]
+ * the first video and the queue are one batch, so shuffle mixes them all). Streams resolve a few
+ * clips ahead of playback, once per video.
  */
-class CompilationViewModel(private val firstVideoId: String, private val onlyTags: Set<String> = emptySet()) : ViewModel() {
+class CompilationViewModel(
+    private val firstVideoId: String,
+    private val options: CompilationOptions = CompilationOptions(),
+    private val queueOnly: Boolean = false,
+) : ViewModel() {
 
     private val mutableState = MutableStateFlow(CompilationState())
     val state: StateFlow<CompilationState> = mutableState.asStateFlow()
 
     private val usedVideoIds = mutableSetOf<String>()
-    private var pending = ArrayDeque<SceneMatchVideo>()
+    private val pending = ArrayDeque<PlannedClip>()
+    private val streams = mutableMapOf<String, PlayableStream?>()
     private var stage = Stage.FIRST
     private var matchOffset = 0
 
@@ -61,15 +73,15 @@ class CompilationViewModel(private val firstVideoId: String, private val onlyTag
         viewModelScope.launch { start() }
     }
 
-    /** Reads the liked scenes and prepares the first clips. */
+    /** Reads the liked scenes (unless tags were picked) and prepares the first clips. */
     private suspend fun start() {
         try {
-            var liked = onlyTags
-            if (liked.isEmpty()) {
-                liked = SceneRepository.refreshLikedTags()
+            var tags = options.tags
+            if (tags.isEmpty()) {
+                tags = SceneRepository.refreshLikedTags()
             }
-            mutableState.update { state -> state.copy(likedTags = liked) }
-            if (liked.isEmpty()) {
+            mutableState.update { state -> state.copy(likedTags = tags) }
+            if (tags.isEmpty()) {
                 mutableState.update { state -> state.copy(loading = false, finished = true, problem = "Say yes to the scenes you like in Your taste first.") }
                 return
             }
@@ -90,76 +102,78 @@ class CompilationViewModel(private val firstVideoId: String, private val onlyTag
         viewModelScope.launch { runCatching { prepareMore() } }
     }
 
-    /** Resolves videos until at least [PREPARE_AHEAD] more clips are ready or none are left. */
+    /** Resolves clips until [PREPARE_AHEAD] more are ready or none are left. */
     private suspend fun prepareMore() {
         mutableState.update { state -> state.copy(loading = true) }
         var added = 0
         while (added < PREPARE_AHEAD) {
-            val video = nextVideo() ?: break
-            added += prepare(video)
+            val planned = nextClip() ?: break
+            val stream = streamOf(planned.video.id) ?: continue
+            mutableState.update { state -> state.copy(clips = state.clips + ReadyClip(planned.clip, planned.video, stream)) }
+            added++
         }
         mutableState.update { state ->
             var problem: String? = null
             if (state.clips.isEmpty() && stage == Stage.DONE) {
-                problem = "No video has the scenes you like yet. Scanned videos show up here."
+                problem = "No video here has those scenes yet. Scanned videos show up here."
             }
             state.copy(loading = false, finished = stage == Stage.DONE && pending.isEmpty(), problem = problem)
         }
     }
 
-    /** Adds one video's clips once its stream resolves; returns how many. */
-    private suspend fun prepare(match: SceneMatchVideo): Int {
-        val source = CompilationSource(match.video.id, match.segments, match.video.durationSeconds)
-        val clips = CompilationPlanner.clips(source, state.value.likedTags)
-        if (clips.isEmpty()) {
-            return 0
+    /** The stream a video's clips play from, resolved once; null when nothing plays. */
+    private suspend fun streamOf(videoId: String): PlayableStream? {
+        if (streams.containsKey(videoId)) {
+            return streams[videoId]
         }
-        val playable = runCatching { SceneRepository.playable(match.video.id, readPages = false) }.getOrNull()
-            ?: runCatching { SceneRepository.playable(match.video.id, readPages = true) }.getOrNull()
-            ?: return 0
-        val ready = clips.map { clip -> ReadyClip(clip, match.video, playable.stream) }
-        mutableState.update { state -> state.copy(clips = state.clips + ready) }
-        return ready.size
+        val playable = runCatching { SceneRepository.playable(videoId, readPages = false) }.getOrNull()
+            ?: runCatching { SceneRepository.playable(videoId, readPages = true) }.getOrNull()
+        streams[videoId] = playable?.stream
+        return playable?.stream
     }
 
-    /** The next video not used yet, reading the next source when the pending ones run out; null at the end. */
-    private suspend fun nextVideo(): SceneMatchVideo? {
-        while (true) {
-            val next = pending.removeFirstOrNull()
-            if (next != null) {
-                if (usedVideoIds.add(next.video.id)) {
-                    return next
-                }
-                continue
-            }
+    /** The next planned clip, cutting the next batch of videos when the planned ones run out; null at the end. */
+    private suspend fun nextClip(): PlannedClip? {
+        while (pending.isEmpty()) {
             if (stage == Stage.DONE) {
                 return null
             }
-            pending = ArrayDeque(readStage())
+            val fresh = readStage().filter { match -> usedVideoIds.add(match.video.id) }
+            pending.addAll(plan(fresh))
         }
+        return pending.removeFirst()
+    }
+
+    /** One batch of videos cut into clips as the options say. */
+    private fun plan(matches: List<SceneMatchVideo>): List<PlannedClip> {
+        val videos = matches.associate { match -> match.video.id to match.video }
+        val sources = matches.map { match -> CompilationSource(match.video.id, match.segments, match.video.durationSeconds) }
+        val clips = CompilationPlanner.plan(sources, state.value.likedTags, options.order, options.minClipSeconds, Random.Default)
+        return clips.mapNotNull { clip -> videos[clip.videoId]?.let { video -> PlannedClip(clip, video) } }
     }
 
     /** Reads the videos of the current stage and moves on to the next. */
     private suspend fun readStage(): List<SceneMatchVideo> {
-        val liked = state.value.likedTags
+        val tags = state.value.likedTags
         when (stage) {
             Stage.FIRST -> {
                 stage = Stage.QUEUE
+                if (queueOnly) {
+                    stage = Stage.DONE
+                    val ids = (listOf(firstVideoId).filter { id -> id.isNotEmpty() } + SceneRepository.queueIds()).distinct()
+                    return matchesOf(tags, ids)
+                }
                 if (firstVideoId.isEmpty()) {
                     return emptyList()
                 }
-                return SceneRepository.sceneMatches(liked, listOf(firstVideoId), 1, 0)
+                return SceneRepository.sceneMatches(tags, listOf(firstVideoId), 1, 0)
             }
             Stage.QUEUE -> {
                 stage = Stage.MATCHES
-                val queue = SceneRepository.queueIds()
-                if (queue.isEmpty()) {
-                    return emptyList()
-                }
-                return SceneRepository.sceneMatches(liked, queue, queue.size, 0)
+                return matchesOf(tags, SceneRepository.queueIds())
             }
             Stage.MATCHES -> {
-                val page = SceneRepository.sceneMatches(liked, null, MATCH_PAGE, matchOffset)
+                val page = SceneRepository.sceneMatches(tags, null, MATCH_PAGE, matchOffset)
                 matchOffset += page.size
                 if (page.size < MATCH_PAGE) {
                     stage = Stage.DONE
@@ -168,5 +182,13 @@ class CompilationViewModel(private val firstVideoId: String, private val onlyTag
             }
             Stage.DONE -> return emptyList()
         }
+    }
+
+    /** The matches among [ids], in their order. */
+    private suspend fun matchesOf(tags: Set<String>, ids: List<String>): List<SceneMatchVideo> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        return SceneRepository.sceneMatches(tags, ids, ids.size, 0)
     }
 }

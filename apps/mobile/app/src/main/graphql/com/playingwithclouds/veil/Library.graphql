@@ -85,6 +85,13 @@ mutation RemoveFromCollection($collectionId: ID!, $subjects: [RecordRefInput!]!)
   }
 }
 
+# Moves one item to a position (0 = first), as the player's queue reorders by drag.
+mutation MoveInCollection($collectionId: ID!, $subject: RecordRefInput!, $position: Int!) {
+  moveInCollection(collectionId: $collectionId, subject: $subject, position: $position) {
+    id
+  }
+}
+
 query Downloads {
   downloads {
     job {

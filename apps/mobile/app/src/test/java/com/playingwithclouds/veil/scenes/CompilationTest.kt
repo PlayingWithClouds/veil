@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.scenes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 class CompilationTest {
 
@@ -39,6 +40,32 @@ class CompilationTest {
         val first = CompilationSource("a", listOf(TimedSegment("Cowgirl", 100.0, 130.0)), null)
         val second = CompilationSource("b", listOf(TimedSegment("Cowgirl", 10.0, 40.0)), null)
         assertEquals(listOf("a", "b"), CompilationPlanner.plan(listOf(first, second), setOf("Cowgirl")).map { clip -> clip.videoId })
+    }
+
+    @Test
+    fun optionsPickTheScenesAndTheShortestClip() {
+        val source = CompilationSource(
+            "v1",
+            listOf(TimedSegment("Cowgirl", 0.0, 12.0), TimedSegment("Anal", 100.0, 140.0), TimedSegment("Kissing", 200.0, 260.0)),
+            null,
+        )
+        val all = CompilationPlanner.plan(listOf(source), setOf("Cowgirl", "Anal"), CompilationOrder.QUEUE, CompilationPlanner.MIN_CLIP_SECONDS, Random(1))
+        assertEquals(listOf(listOf("Cowgirl"), listOf("Anal")), all.map { clip -> clip.tags })
+        val long = CompilationPlanner.plan(listOf(source), setOf("Cowgirl", "Anal"), CompilationOrder.QUEUE, 30.0, Random(1))
+        assertEquals(listOf(listOf("Anal")), long.map { clip -> clip.tags })
+    }
+
+    @Test
+    fun shuffleMixesTheClipsOfEveryVideo() {
+        val sources = (0 until 6).map { index ->
+            CompilationSource("v$index", listOf(TimedSegment("Cowgirl", 0.0, 20.0), TimedSegment("Cowgirl", 100.0, 120.0)), null)
+        }
+        val inOrder = CompilationPlanner.plan(sources, setOf("Cowgirl"), CompilationOrder.QUEUE, CompilationPlanner.MIN_CLIP_SECONDS, Random(3))
+        val shuffled = CompilationPlanner.plan(sources, setOf("Cowgirl"), CompilationOrder.SHUFFLE, CompilationPlanner.MIN_CLIP_SECONDS, Random(3))
+        assertEquals(inOrder.toSet(), shuffled.toSet())
+        assertEquals(12, shuffled.size)
+        assertTrue(inOrder != shuffled)
+        assertEquals(listOf("v0", "v0", "v1"), inOrder.take(3).map { clip -> clip.videoId })
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.ui
 import android.net.Uri
 import androidx.navigation.NavHostController
 import com.playingwithclouds.veil.data.TagSummary
+import com.playingwithclouds.veil.scenes.CompilationOptions
 
 /** Route patterns of every destination, plus builders that fill in the arguments. */
 object Routes {
@@ -14,8 +15,12 @@ object Routes {
     const val VIDEO = "video/{id}?at={at}"
     const val SHORTS = "shorts"
 
-    /** The compilation of the liked scenes, or of [tags] (names, comma-separated) when given; [video] (optional) plays first. */
-    const val COMPILATION = "compilation?video={video}&tags={tags}"
+    /**
+     * The compilation of the liked scenes, or of [tags] (names, comma-separated) when given; [video]
+     * (optional) plays first. [queue] = 1 keeps it to that video and the queue, cut in [order]
+     * (`CompilationOrder` name) into clips of at least [min] seconds.
+     */
+    const val COMPILATION = "compilation?video={video}&tags={tags}&queue={queue}&order={order}&min={min}"
     const val CAM = "cam/{id}"
     const val COLLECTION = "collection/{id}"
     const val SEARCH = "search?query={query}"
@@ -50,6 +55,11 @@ object Routes {
 
     /** A video's page starting at [seconds]. */
     fun videoAt(id: String, seconds: Double): String = "video/${Uri.encode(id)}?at=$seconds"
+
+    /** A compilation over [videoId] and the queue only, as [options] say. */
+    fun queueCompilation(videoId: String, options: CompilationOptions): String {
+        return compilation(videoId, options.tags) + "&queue=1&order=${options.order.name}&min=${options.minClipSeconds}"
+    }
 
     fun compilation(videoId: String, tags: Set<String> = emptySet()): String {
         return "compilation?video=${Uri.encode(videoId)}&tags=${Uri.encode(tags.sorted().joinToString(","))}"
@@ -125,6 +135,19 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     /** A compilation of only the scenes with [tags] (names). */
     fun openCompilationOf(tags: Set<String>) = controller.navigate(Routes.compilation("", tags))
+
+    /** A compilation over [videoId] (may be empty) and the queue, as [options] say. */
+    fun openQueueCompilation(videoId: String, options: CompilationOptions) = controller.navigate(Routes.queueCompilation(videoId, options))
+
+    /** The queue's next video, in place of the one playing so Back doesn't walk through the queue. */
+    fun playQueued(id: String) {
+        val current = controller.currentDestination?.id
+        controller.navigate(Routes.video(id)) {
+            if (current != null) {
+                popUpTo(current) { inclusive = true }
+            }
+        }
+    }
 
     /** The user's taste: what they're into, avoid, and the labels to answer about. */
     fun openTaste() = controller.navigate(Routes.TASTE)

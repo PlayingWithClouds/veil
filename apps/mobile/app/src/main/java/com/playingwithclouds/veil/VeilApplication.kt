@@ -3,6 +3,7 @@ package com.playingwithclouds.veil
 import android.app.Application
 import com.playingwithclouds.veil.api.ServerSettings
 import com.playingwithclouds.veil.backend.EmbeddedBackend
+import com.playingwithclouds.veil.data.PlayQueue
 import com.playingwithclouds.veil.habits.HabitPreferences
 import com.playingwithclouds.veil.habits.Habits
 import com.playingwithclouds.veil.privacy.AppLock
@@ -31,6 +32,7 @@ class VeilApplication : Application() {
         EmbeddedBackend(this).start()
         UpdateChecker.checkInBackground()
         Habits.start(this)
+        PlayQueue.initialize(this)
         SceneModelStore.initialize(this)
         CoverLabels.initialize(this)
         SceneScans.start(this)

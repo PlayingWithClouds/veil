@@ -52,6 +52,7 @@ import com.playingwithclouds.veil.ui.components.StoryCard
 import com.playingwithclouds.veil.ui.components.TabTopBar
 import com.playingwithclouds.veil.ui.components.TrackShown
 import com.playingwithclouds.veil.ui.components.VideoCard
+import com.playingwithclouds.veil.ui.compilation.QueueCompilationButton
 import com.playingwithclouds.veil.ui.design.GutterRowPadding
 import com.playingwithclouds.veil.ui.design.SectionHeading
 import com.playingwithclouds.veil.ui.design.gutterPadding
@@ -104,6 +105,7 @@ fun HomeScreen(navigator: AppNavigator) {
                 item("live") { LiveRow(viewModel, navigator) }
                 item("top-picks") { TopPicks(picks, viewModel, navigator) }
                 item("continue-watching") { ContinueWatchingRow(viewModel, navigator) }
+                item("queue-compilation") { QueueCompilationButton(navigator, Modifier.gutterPadding().padding(top = VeilSpacing.medium)) }
                 item("more-rows") { MoreRows(viewModel, navigator) }
                 forYou(picks, viewModel, navigator)
                 if (loadingMore) {

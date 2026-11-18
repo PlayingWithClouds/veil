@@ -2,12 +2,37 @@ package com.playingwithclouds.veil.scenes
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 
 /** One stretch the compilation plays: a part of a video whose scenes the user likes, named by [tags]. */
 data class CompilationClip(val videoId: String, val startSeconds: Double, val endSeconds: Double, val tags: List<String>)
 
 /** A video to cut a compilation from: its ai segments and runtime (null when unknown). */
 data class CompilationSource(val videoId: String, val segments: List<TimedSegment>, val durationSeconds: Double?)
+
+/** The order a compilation over the queue plays its clips in. */
+enum class CompilationOrder(val label: String) {
+    /** The video it started from, then the queue's videos in order, each video's clips in time order. */
+    QUEUE("Queue order"),
+
+    /** All clips of those videos mixed. */
+    SHUFFLE("Shuffle"),
+}
+
+/**
+ * What a compilation over the queue plays: the scenes with [tags] (empty = the liked scenes), in
+ * [order], clips of at least [minClipSeconds].
+ */
+data class CompilationOptions(
+    val tags: Set<String> = emptySet(),
+    val order: CompilationOrder = CompilationOrder.QUEUE,
+    val minClipSeconds: Double = CompilationPlanner.MIN_CLIP_SECONDS,
+) {
+    companion object {
+        /** The shortest-clip choices the options sheet offers. */
+        val MIN_CLIP_CHOICES = listOf(CompilationPlanner.MIN_CLIP_SECONDS, 15.0, 30.0)
+    }
+}
 
 /**
  * Plans the compilation mode: from each video, only the stretches whose scene model tags the user
@@ -33,8 +58,20 @@ object CompilationPlanner {
         return sources.flatMap { source -> clips(source, likedTags) }
     }
 
-    /** One video's clips in time order. Tags compare without case. */
-    fun clips(source: CompilationSource, likedTags: Set<String>): List<CompilationClip> {
+    /**
+     * The clips of every source with [tags] and at least [minClipSeconds] long, in source order or
+     * shuffled as [order] says ([random] decides the shuffle).
+     */
+    fun plan(sources: List<CompilationSource>, tags: Set<String>, order: CompilationOrder, minClipSeconds: Double, random: Random): List<CompilationClip> {
+        val clips = sources.flatMap { source -> clips(source, tags, minClipSeconds) }
+        if (order == CompilationOrder.SHUFFLE) {
+            return clips.shuffled(random)
+        }
+        return clips
+    }
+
+    /** One video's clips in time order, none shorter than [minClipSeconds]. Tags compare without case. */
+    fun clips(source: CompilationSource, likedTags: Set<String>, minClipSeconds: Double = MIN_CLIP_SECONDS): List<CompilationClip> {
         val liked = likedTags.map { tag -> tag.lowercase() }.toSet()
         val matching = source.segments.filter { segment -> segment.tag.lowercase() in liked }.sortedBy { segment -> segment.startSeconds }
         val out = mutableListOf<CompilationClip>()
@@ -46,7 +83,7 @@ object CompilationPlanner {
             }
             out.add(CompilationClip(source.videoId, segment.startSeconds, segment.endSeconds, listOf(segment.tag)))
         }
-        return out.filter { clip -> clip.endSeconds - clip.startSeconds >= MIN_CLIP_SECONDS }.map { clip -> fitted(clip, source.durationSeconds) }
+        return out.filter { clip -> clip.endSeconds - clip.startSeconds >= minClipSeconds }.map { clip -> fitted(clip, source.durationSeconds) }
     }
 
     /** A clip with its lead-in, cut to [MAX_CLIP_SECONDS] and kept inside the runtime. */

@@ -33,6 +33,17 @@ import com.playingwithclouds.veil.data.VideoDetail
 import com.playingwithclouds.veil.data.VideoSegment
 import com.playingwithclouds.veil.scenes.OpenScanProgress
 import com.playingwithclouds.veil.scenes.SceneSections
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.media3.common.Player
+import com.playingwithclouds.veil.data.PlayQueue
+import com.playingwithclouds.veil.scenes.SceneModelStore
+import com.playingwithclouds.veil.scenes.ready
+import com.playingwithclouds.veil.ui.compilation.CompilationSheet
 import kotlinx.coroutines.delay
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
@@ -96,6 +107,37 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
     PlaybackErrors(player, onError = viewModel::onPlayerError)
     WatchTracking(player, onEvent = viewModel::onWatchEvent)
     VideoSnackbars(state, viewModel, snackbarHostState)
+    LaunchedEffect(videoId) { runCatching { PlayQueue.refresh() } }
+    QueueAdvance(player, videoId, onAdvance = navigator::playQueued)
+    var showingQueue by remember { mutableStateOf(false) }
+    var choosingCompilation by remember { mutableStateOf(false) }
+    if (showingQueue) {
+        QueueSheet(
+            playing = (state.detail as? LoadState.Loaded)?.value?.summary ?: state.card,
+            playingId = videoId,
+            onPlay = { id ->
+                showingQueue = false
+                if (id != videoId) {
+                    navigator.playQueued(id)
+                }
+            },
+            onCompilation = compilationAction {
+                showingQueue = false
+                choosingCompilation = true
+            },
+            onDismiss = { showingQueue = false },
+        )
+    }
+    if (choosingCompilation) {
+        CompilationSheet(
+            onDismiss = { choosingCompilation = false },
+            onStart = { options ->
+                choosingCompilation = false
+                player.pause()
+                navigator.openQueueCompilation(videoId, options)
+            },
+        )
+    }
 
     val detail = state.detail
     if (detail is LoadState.Failed) {
@@ -107,7 +149,22 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
     val title = (detail as? LoadState.Loaded)?.value?.title.orEmpty()
     ShowAmbientGlow((detail as? LoadState.Loaded)?.value?.summary?.coverUrl)
-    Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
+    val queueContents by PlayQueue.contents.collectAsState()
+    val queueRepeat by PlayQueue.repeat.collectAsState()
+    val queueShuffle by PlayQueue.shuffle.collectAsState()
+    val skipTarget = remember(queueContents, queueRepeat, queueShuffle, videoId) { PlayQueue.skip(videoId) }
+    var onNext: (() -> Unit)? = null
+    if (skipTarget != null) {
+        onNext = { navigator.playQueued(skipTarget) }
+    }
+    Scaffold(
+        snackbarHost = { VeilSnackbarHost(snackbarHostState) },
+        bottomBar = {
+            if (!immersive) {
+                QueueBar(videoId, onOpen = { showingQueue = true }, Modifier.navigationBarsPadding())
+            }
+        },
+    ) { padding ->
         // No bar above the player: it sits right under the status bar, its controls carry Back.
         var columnModifier = Modifier.padding(bottom = padding.calculateBottomPadding())
         if (!immersive) {
@@ -118,6 +175,8 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
                 markers = markersInPlayOrder(SceneSections.chapters(pageSegments(detail, state.sceneScan))),
                 onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
                 onBack = navigator::back,
+                onNext = onNext,
+                onOpenQueue = { showingQueue = true },
             )
             var playerModifier = Modifier.fillMaxWidth().aspectRatio(PLAYER_ASPECT_RATIO)
             if (immersive) {
@@ -127,10 +186,47 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
                 PlayerArea(state, player, title, fullscreen, pictureInPicture, options, extras, navigator)
             }
             if (!immersive) {
-                VideoContent(state, viewModel, player, navigator)
+                VideoContent(state, viewModel, player, navigator, onCompilation = compilationAction { choosingCompilation = true })
             }
         }
     }
+}
+
+/**
+ * At the end of the video, the queue goes on: the same video again on repeat one, else what
+ * [PlayQueue.next] names, opened through [onAdvance]; nothing past the end without repeat.
+ */
+@Composable
+private fun QueueAdvance(player: Player, videoId: String, onAdvance: (String) -> Unit) {
+    val currentOnAdvance by rememberUpdatedState(onAdvance)
+    DisposableEffect(player, videoId) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState != Player.STATE_ENDED) {
+                    return
+                }
+                val next = PlayQueue.next(videoId) ?: return
+                if (next == videoId) {
+                    player.seekTo(0)
+                    player.play()
+                    return
+                }
+                currentOnAdvance(next)
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
+}
+
+/** The Compilation action, offered only with a scene model installed. */
+@Composable
+private fun compilationAction(open: () -> Unit): (() -> Unit)? {
+    val model by SceneModelStore.state.collectAsState()
+    if (model.ready == null) {
+        return null
+    }
+    return open
 }
 
 /** The video's segments, the running scan's in place of the stored ai ones. */

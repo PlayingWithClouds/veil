@@ -59,6 +59,9 @@ import com.adamglin.phosphoricons.regular.PictureInPicture
 import com.adamglin.phosphoricons.regular.ListPlus
 import com.adamglin.phosphoricons.regular.Queue
 import com.adamglin.phosphoricons.regular.Repeat
+import com.adamglin.phosphoricons.regular.RepeatOnce
+import com.adamglin.phosphoricons.regular.DotsSixVertical
+import com.adamglin.phosphoricons.regular.Sparkle
 import com.adamglin.phosphoricons.regular.SkipForward
 import com.adamglin.phosphoricons.regular.FastForward
 import com.adamglin.phosphoricons.regular.EyeSlash
@@ -87,6 +90,11 @@ object VeilIcons {
     val PlayNext: ImageVector get() = PhosphorIcons.Regular.ListPlus
     val Queue: ImageVector get() = PhosphorIcons.Regular.Queue
     val Repeat: ImageVector get() = PhosphorIcons.Regular.Repeat
+    val RepeatOne: ImageVector get() = PhosphorIcons.Regular.RepeatOnce
+    val DragHandle: ImageVector get() = PhosphorIcons.Regular.DotsSixVertical
+
+    /** The scene model's doings: compilations, scene rules. */
+    val Scenes: ImageVector get() = PhosphorIcons.Regular.Sparkle
     val SkipNext: ImageVector get() = PhosphorIcons.Regular.SkipForward
     val FastForward: ImageVector get() = PhosphorIcons.Regular.FastForward
     val NotInterested: ImageVector get() = PhosphorIcons.Regular.EyeSlash

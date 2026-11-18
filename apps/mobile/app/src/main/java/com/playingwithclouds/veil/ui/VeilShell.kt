@@ -65,6 +65,9 @@ import androidx.navigation.navArgument
 import com.playingwithclouds.veil.ui.settings.SettingsScreen
 import com.playingwithclouds.veil.ui.uploader.UploaderScreen
 import com.playingwithclouds.veil.ui.video.VideoScreen
+import com.playingwithclouds.veil.scenes.CompilationOptions
+import com.playingwithclouds.veil.scenes.CompilationOrder
+import com.playingwithclouds.veil.scenes.CompilationPlanner
 import com.playingwithclouds.veil.ui.compilation.CompilationScreen
 import com.playingwithclouds.veil.ui.shorts.ShortsScreen
 import com.playingwithclouds.veil.data.VideoUploader
@@ -221,9 +224,14 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
         VideoScreen(entry.argument("id"), navigator, entry.argument("at").toDoubleOrNull())
     }
     composable(Routes.SHORTS) { ShortsScreen(navigator) }
-    composable(Routes.COMPILATION, arguments = listOf(optionalText("video"), optionalText("tags"))) { entry ->
+    composable(
+        Routes.COMPILATION,
+        arguments = listOf(optionalText("video"), optionalText("tags"), optionalText("queue"), optionalText("order"), optionalText("min")),
+    ) { entry ->
         val tags = entry.argument("tags").split(",").filter { tag -> tag.isNotBlank() }.toSet()
-        CompilationScreen(entry.argument("video"), navigator, tags)
+        val order = CompilationOrder.entries.firstOrNull { order -> order.name == entry.argument("order") } ?: CompilationOrder.QUEUE
+        val minClipSeconds = entry.argument("min").toDoubleOrNull() ?: CompilationPlanner.MIN_CLIP_SECONDS
+        CompilationScreen(entry.argument("video"), navigator, CompilationOptions(tags, order, minClipSeconds), queueOnly = entry.argument("queue") == "1")
     }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
