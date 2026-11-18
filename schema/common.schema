@@ -88,6 +88,18 @@ model Asset {
   5 blurhash: string?
 }
 
+/// The account that put a video on a tube site. Not a studio: anybody can
+/// upload, so it stays on the source and never becomes a record of its own;
+/// url is their channel or profile page, which their videos are listed from.
+@value
+model Uploader {
+  1 name: string
+  2 url: string?
+  /// The site's own id for the account, when it has one.
+  3 externalId: string?
+  4 image: Asset?
+}
+
 /// Where a record came from: one entry per site it was scraped or merged
 /// from. Merging two records moves their sources onto the survivor.
 @index(fields: ["plugin", "externalId"], unique: true)
@@ -109,4 +121,7 @@ model Source extends Entity {
   /// Archived copy of the page and media, in case the site removes it.
   17 snapshot: Asset?
   18 fetchedAt: timestamp?
+
+  /// Who uploaded it to this site, for tube sites; videos only.
+  19 uploader: Uploader?
 }

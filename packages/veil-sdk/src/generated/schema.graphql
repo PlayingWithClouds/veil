@@ -175,6 +175,7 @@ type Mutation {
   createPerformer(name: String!): Performer!
   createStudio(name: String!): Studio!
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
+  fetchUploader(plugin: String!, url: String!, name: String!, limit: Int, offset: Int): [Video!]!
   search(kind: ListKind!, query: String!, limit: Int): Listed!
   editVideo(id: ID!, edit: MediaEdit!): Video
   editGallery(id: ID!, edit: MediaEdit!): Gallery
@@ -895,6 +896,7 @@ type Source {
   title: String
   image: Asset
   fetchedAt: String
+  uploader: Uploader
 }
 
 type SearchBatch {
@@ -1127,6 +1129,13 @@ type Tag {
   galleryCount: Int!
   userState: UserState!
   revisions(limit: Int, offset: Int): [Revision!]!
+}
+
+type Uploader {
+  name: String!
+  url: String
+  externalId: String
+  image: Asset
 }
 
 type Stream {

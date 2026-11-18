@@ -12,6 +12,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
 	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/pipeline"
+	"github.com/playingwithclouds/veil/internal/plugins"
 	"github.com/playingwithclouds/veil/internal/provenance"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
@@ -152,6 +153,19 @@ func (r *mutationResolver) Browse(ctx context.Context, plugin string, kind model
 		return nil, err
 	}
 	return r.listed(ctx, refs)
+}
+
+// FetchUploader is the resolver for the fetchUploader field.
+func (r *mutationResolver) FetchUploader(ctx context.Context, plugin string, url string, name string, limit *int, offset *int) ([]*schema.Video, error) {
+	refs, err := r.pipeline.ListUploader(ctx, plugin, plugins.Uploader{Name: name, URL: url}, number(limit), number(offset))
+	if err != nil {
+		return nil, err
+	}
+	listed, err := r.listed(ctx, refs)
+	if err != nil {
+		return nil, err
+	}
+	return listed.Videos, nil
 }
 
 // Search is the resolver for the search field.

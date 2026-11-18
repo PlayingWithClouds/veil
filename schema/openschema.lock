@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-08T01:57:27.624Z",
+  "updatedAt": "2026-11-18T00:01:55.522Z",
   "baseline": false,
-  "digest": "sha256-673aa496ea671969f31c5f443eca558eb0e0d71c8e1f37d5d9b9608e3c9ca1be",
+  "digest": "sha256-fdb915ab054a7da4c270fe849ea61ab49bea20bd53829bdb994e8ed2aef57257",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -3802,6 +3802,13 @@
           "type": "timestamp?",
           "encoding": "singular:varint",
           "since": "2026-11-01T18:16:57.204Z"
+        },
+        "19": {
+          "state": "active",
+          "name": "uploader",
+          "type": "Uploader?",
+          "encoding": "singular:len",
+          "since": "2026-11-18T00:01:55.522Z"
         }
       }
     },
@@ -4373,6 +4380,39 @@
           "type": "string?",
           "encoding": "singular:len",
           "since": "2026-11-01T18:20:52.420Z"
+        }
+      }
+    },
+    "model:veil.Uploader": {
+      "kind": "model",
+      "ordinals": {
+        "1": {
+          "state": "active",
+          "name": "name",
+          "type": "string",
+          "encoding": "singular:len",
+          "since": "2026-11-18T00:01:55.522Z"
+        },
+        "2": {
+          "state": "active",
+          "name": "url",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-18T00:01:55.522Z"
+        },
+        "3": {
+          "state": "active",
+          "name": "externalId",
+          "type": "string?",
+          "encoding": "singular:len",
+          "since": "2026-11-18T00:01:55.522Z"
+        },
+        "4": {
+          "state": "active",
+          "name": "image",
+          "type": "Asset?",
+          "encoding": "singular:len",
+          "since": "2026-11-18T00:01:55.522Z"
         }
       }
     },

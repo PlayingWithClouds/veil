@@ -572,6 +572,17 @@ type Asset struct {
 	Blurhash *string `json:"blurhash,omitempty"`
 }
 
+// The account that put a video on a tube site. Not a studio: anybody can
+// upload, so it stays on the source and never becomes a record of its own;
+// url is their channel or profile page, which their videos are listed from.
+type Uploader struct {
+	Name string  `json:"name"`
+	Url  *string `json:"url,omitempty"`
+	// The site's own id for the account, when it has one.
+	ExternalId *string `json:"externalId,omitempty"`
+	Image      *Asset  `json:"image,omitempty"`
+}
+
 // Where a record came from: one entry per site it was scraped or merged
 // from. Merging two records moves their sources onto the survivor.
 type Source struct {
@@ -589,6 +600,8 @@ type Source struct {
 	// Archived copy of the page and media, in case the site removes it.
 	Snapshot  *Asset  `json:"snapshot,omitempty"`
 	FetchedAt *string `json:"fetchedAt,omitempty"`
+	// Who uploaded it to this site, for tube sites; videos only.
+	Uploader *Uploader `json:"uploader,omitempty"`
 }
 
 // Fields every piece of media shares. Categories are not stored: they follow

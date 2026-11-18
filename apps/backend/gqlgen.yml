@@ -69,6 +69,8 @@ models:
     model: github.com/playingwithclouds/veil/internal/schema.Tag
   Source:
     model: github.com/playingwithclouds/veil/internal/schema.Source
+  Uploader:
+    model: github.com/playingwithclouds/veil/internal/schema.Uploader
   Stream:
     model: github.com/playingwithclouds/veil/internal/schema.Stream
     fields:

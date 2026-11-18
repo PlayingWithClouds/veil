@@ -276,6 +276,12 @@ func (r *Runner) List(ctx context.Context, p *Plugin, entity MediaType, args Lis
 	return r.items(ctx, p, ListCapability(entity), args)
 }
 
+// ListUploader invokes "uploader:list" — the videos on an uploader's channel
+// page (args.URL), as scene stubs.
+func (r *Runner) ListUploader(ctx context.Context, p *Plugin, args ListArgs) (*ItemsResult, error) {
+	return r.items(ctx, p, CapabilityUploaderList, args)
+}
+
 // ListStream is List for a caller that shows results as they come: onItems
 // gets each batch of items the plugin emits while it is still crawling
 // (SDK emitItems), then the final result's items it hadn't sent, each item

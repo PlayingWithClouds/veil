@@ -54,6 +54,10 @@ extend type Mutation {
   createStudio(name: String!): Studio!
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
+  # Stores one page of the videos on an uploader's channel page (the url a
+  # source's uploader gave) through the plugin that reported it, and returns
+  # them; name is the uploader's, set on the ones whose cards don't say.
+  fetchUploader(plugin: String!, url: String!, name: String!, limit: Int, offset: Int): [Video!]!
   # Searches every plugin that lists this kind and stores the results, sites
   # taking turns. A site that answered within 6 hours isn't asked again.
   search(kind: ListKind!, query: String!, limit: Int): Listed!
@@ -418,6 +422,17 @@ type Source {
   image: Asset
   # When its page was read; null for a listing card only.
   fetchedAt: String
+  # Who uploaded the video to this site (tube sites). Not a studio.
+  uploader: Uploader
+}
+
+# The account that uploaded a video to a tube site; url is their channel or
+# profile page, which fetchUploader lists videos from.
+type Uploader {
+  name: String!
+  url: String
+  externalId: String
+  image: Asset
 }
 
 # A playable stream a source offers.

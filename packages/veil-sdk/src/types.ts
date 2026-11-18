@@ -23,6 +23,11 @@ export type Capability =
   // the site's own pages (a channel, performer or category page), which is how
   // subscriptions follow a studio/performer/tag.
   | "scene:list:page"
+  // Declares that uploaderList lists the videos on an uploader's channel or
+  // profile page (args.url is the Uploader.url the plugin reported), newest
+  // first, paged by limit and offset. For tube sites whose videos carry the
+  // account that uploaded them rather than a studio.
+  | "uploader:list"
   // The site's own search-box completions for a partly typed query
   // (args.query), best first, so the search field can offer things the library
   // doesn't hold yet.
@@ -225,6 +230,21 @@ export interface StudioRef {
 }
 
 /**
+ * The account that uploaded a video to a tube site. Report it here, not as the
+ * video's studio: anybody can upload, and only real studios and production
+ * companies become studio records. It stays on the video's source.
+ */
+export interface Uploader {
+  name: string;
+  /** the account's channel or profile page, which uploader:list lists videos from */
+  url?: string;
+  /** the site's own id for the account */
+  external_id?: string;
+  /** avatar */
+  image_path?: string;
+}
+
+/**
  * A plugin-emitted marker: a tag and/or label at a point (or span, when
  * end_seconds is set) in a scene. Ingested as a global marker credited to the
  * emitting plugin.
@@ -264,6 +284,8 @@ export interface Scene {
   /** the site's own view counter */
   view_count?: number;
   studio?: StudioRef;
+  /** the account that uploaded it (tube sites), instead of a studio */
+  uploader?: Uploader;
   performers?: ScenePerformer[];
   tags?: string[];
   /** markers describing what happens at points/spans in the scene */
@@ -561,6 +583,8 @@ export interface DiscoveredItem {
    * record credits nobody
    */
   studio?: StudioRef;
+  /** the account that uploaded the scene when the card names it (tube sites) */
+  uploader?: Uploader;
   /**
    * Playback sources known at discovery time. Set this when a source can be
    * derived deterministically from the listing (e.g. a fixed embed URL) so the

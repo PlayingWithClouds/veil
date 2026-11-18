@@ -28,6 +28,9 @@ func (l *Library) upsertVideo(ctx context.Context, plugin string, scene *plugins
 	if err != nil {
 		return "", err
 	}
+	if err := l.setUploader(ctx, sourceID, scene.Uploader); err != nil {
+		return "", err
+	}
 	return id, l.afterVideoWrite(ctx, plugin, id, sourceID, scene, fetched)
 }
 

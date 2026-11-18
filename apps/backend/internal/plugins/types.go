@@ -27,15 +27,20 @@ const (
 	// library knows (PerformerIdentifyArgs), returned only when the plugin is
 	// sure it's the same person.
 	CapabilityPerformerIdentify Capability = "performer:identify"
-	CapabilityStudioFind    Capability = "studio:find"
-	CapabilityStudioList    Capability = "studio:list"
-	CapabilityTagFind       Capability = "tag:find"
-	CapabilityTagList       Capability = "tag:list"
+	CapabilityStudioFind        Capability = "studio:find"
+	CapabilityStudioList        Capability = "studio:list"
+	CapabilityTagFind           Capability = "tag:find"
+	CapabilityTagList           Capability = "tag:list"
 
 	// CapabilitySceneListPage declares that scene:list honours args.url: it
 	// lists the scenes on one of the site's own pages (a channel, performer or
 	// category page), which is how subscriptions follow a studio/performer/tag.
 	CapabilitySceneListPage Capability = "scene:list:page"
+
+	// CapabilityUploaderList lists the videos on an uploader's channel or
+	// profile page (ListArgs.URL is the Uploader.URL the plugin reported),
+	// newest first. Declared by tube-site plugins that report uploaders.
+	CapabilityUploaderList Capability = "uploader:list"
 
 	// CapabilitySearchSuggest returns the site's own search-box completions for
 	// a partly typed query, so the search field can offer things the library
@@ -425,7 +430,10 @@ type Scene struct {
 	// ViewCount is the site's own view counter, not Veil's watch count.
 	ViewCount int `json:"view_count,omitempty"`
 	// Related entities by name/reference (resolved to records during ingest).
-	Studio     *StudioRef       `json:"studio,omitempty"`
+	Studio *StudioRef `json:"studio,omitempty"`
+	// Uploader is the account that uploaded the scene, on tube sites; the
+	// scene's studio is then a real production company or empty.
+	Uploader   *Uploader        `json:"uploader,omitempty"`
 	Performers []ScenePerformer `json:"performers,omitempty"`
 	Tags       []string         `json:"tags,omitempty"`
 	// Markers describing what happens at points/spans in the scene. Ingested
@@ -581,6 +589,17 @@ type StudioRef struct {
 	ExternalID string `json:"external_id,omitempty"`
 	SourceURL  string `json:"source_url,omitempty"`
 	// ImagePath is the channel's logo/avatar, set on the studio when it has none.
+	ImagePath string `json:"image_path,omitempty"`
+}
+
+// Uploader is the account that uploaded a scene to a tube site. It is not a
+// studio: it stays on the scene's source, and URL (the account's channel or
+// profile page) is what CapabilityUploaderList lists videos from.
+type Uploader struct {
+	Name       string `json:"name"`
+	URL        string `json:"url,omitempty"`
+	ExternalID string `json:"external_id,omitempty"`
+	// ImagePath is the account's avatar.
 	ImagePath string `json:"image_path,omitempty"`
 }
 
@@ -751,6 +770,8 @@ type DiscoveredItem struct {
 	// audio and story cards it's the voice or author, credited as a performer
 	// while the record credits nobody.
 	Studio *StudioRef `json:"studio,omitempty"`
+	// Uploader is the account that uploaded the scene, when the card names it.
+	Uploader *Uploader `json:"uploader,omitempty"`
 	// Downloads are playback sources known at discovery time. When a plugin can
 	// derive a source deterministically from the listing (e.g. a fixed embed URL),
 	// setting this attaches a stream to the stub immediately — no scrape needed.

@@ -190,6 +190,7 @@ export interface Mutation {
     createPerformer: Performer
     createStudio: Studio
     browse: Listed
+    fetchUploader: Video[]
     search: Listed
     editVideo: (Video | null)
     editGallery: (Gallery | null)
@@ -800,6 +801,7 @@ export interface Source {
     title: (Scalars['String'] | null)
     image: (Asset | null)
     fetchedAt: (Scalars['String'] | null)
+    uploader: (Uploader | null)
     __typename: 'Source'
 }
 
@@ -981,6 +983,14 @@ export interface Tag {
     userState: UserState
     revisions: Revision[]
     __typename: 'Tag'
+}
+
+export interface Uploader {
+    name: Scalars['String']
+    url: (Scalars['String'] | null)
+    externalId: (Scalars['String'] | null)
+    image: (Asset | null)
+    __typename: 'Uploader'
 }
 
 export interface Stream {
@@ -1611,6 +1621,7 @@ export interface MutationGenqlSelection{
     createPerformer?: (PerformerGenqlSelection & { __args: {name: Scalars['String']} })
     createStudio?: (StudioGenqlSelection & { __args: {name: Scalars['String']} })
     browse?: (ListedGenqlSelection & { __args: {plugin: Scalars['String'], kind: ListKind, query?: (Scalars['String'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    fetchUploader?: (VideoGenqlSelection & { __args: {plugin: Scalars['String'], url: Scalars['String'], name: Scalars['String'], limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     search?: (ListedGenqlSelection & { __args: {kind: ListKind, query: Scalars['String'], limit?: (Scalars['Int'] | null)} })
     editVideo?: (VideoGenqlSelection & { __args: {id: Scalars['ID'], edit: MediaEdit} })
     editGallery?: (GalleryGenqlSelection & { __args: {id: Scalars['ID'], edit: MediaEdit} })
@@ -2277,6 +2288,7 @@ export interface SourceGenqlSelection{
     title?: boolean | number
     image?: AssetGenqlSelection
     fetchedAt?: boolean | number
+    uploader?: UploaderGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2479,6 +2491,15 @@ export interface TagGenqlSelection{
     galleryCount?: boolean | number
     userState?: UserStateGenqlSelection
     revisions?: (RevisionGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface UploaderGenqlSelection{
+    name?: boolean | number
+    url?: boolean | number
+    externalId?: boolean | number
+    image?: AssetGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3522,6 +3543,14 @@ export interface SavedFilterGenqlSelection{
     export const isTag = (obj?: { __typename?: any } | null): obj is Tag => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isTag"')
       return Tag_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const Uploader_possibleTypes: string[] = ['Uploader']
+    export const isUploader = (obj?: { __typename?: any } | null): obj is Uploader => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isUploader"')
+      return Uploader_possibleTypes.includes(obj.__typename)
     }
     
 

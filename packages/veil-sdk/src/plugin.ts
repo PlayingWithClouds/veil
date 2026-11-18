@@ -45,6 +45,8 @@ export interface PluginHandlers {
   // Entity-scoped listings ("<entity>:list"). A set args.query means keyword
   // search; otherwise the site's paginated catalog.
   sceneList?: ListHandler;
+  /** Serves "uploader:list": the videos on an uploader's page (args.url), as scenes. */
+  uploaderList?: ListHandler;
   galleryList?: ListHandler;
   performerList?: ListHandler;
   studioList?: ListHandler;
@@ -159,6 +161,7 @@ function parseCamListArgs(args: Record<string, unknown> | undefined): CamListArg
 function listHandlers(handlers: PluginHandlers): Record<string, ListHandler | undefined> {
   return {
     "scene:list": handlers.sceneList,
+    "uploader:list": handlers.uploaderList,
     "gallery:list": handlers.galleryList,
     "performer:list": handlers.performerList,
     "studio:list": handlers.studioList,

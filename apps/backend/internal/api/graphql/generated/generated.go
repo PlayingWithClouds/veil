@@ -635,6 +635,7 @@ type ComplexityRoot struct {
 		FetchGallery              func(childComplexity int, id string) int
 		FetchMedia                func(childComplexity int, subject schema.RecordRef) int
 		FetchPerformer            func(childComplexity int, id string, refresh *bool, plugins []string) int
+		FetchUploader             func(childComplexity int, plugin string, url string, name string, limit *int, offset *int) int
 		FetchVideo                func(childComplexity int, id string) int
 		FingerprintFile           func(childComplexity int, fileID string) int
 		FollowRecord              func(childComplexity int, subject schema.RecordRef, intervalHours *int, notify *bool) int
@@ -1104,6 +1105,7 @@ type ComplexityRoot struct {
 		Plugin     func(childComplexity int) int
 		Snapshot   func(childComplexity int) int
 		Title      func(childComplexity int) int
+		Uploader   func(childComplexity int) int
 		Url        func(childComplexity int) int
 	}
 
@@ -1259,6 +1261,13 @@ type ComplexityRoot struct {
 		Filter        func(childComplexity int) int
 		Kind          func(childComplexity int) int
 		PluginTrigger func(childComplexity int) int
+	}
+
+	Uploader struct {
+		ExternalId func(childComplexity int) int
+		Image      func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Url        func(childComplexity int) int
 	}
 
 	Usage struct {
@@ -1529,6 +1538,7 @@ type MutationResolver interface {
 	CreatePerformer(ctx context.Context, name string) (*schema.Performer, error)
 	CreateStudio(ctx context.Context, name string) (*schema.Studio, error)
 	Browse(ctx context.Context, plugin string, kind model.ListKind, query *string, limit *int, offset *int) (*model.Listed, error)
+	FetchUploader(ctx context.Context, plugin string, url string, name string, limit *int, offset *int) ([]*schema.Video, error)
 	Search(ctx context.Context, kind model.ListKind, query string, limit *int) (*model.Listed, error)
 	EditVideo(ctx context.Context, id string, edit model.MediaEdit) (*schema.Video, error)
 	EditGallery(ctx context.Context, id string, edit model.MediaEdit) (*schema.Gallery, error)
@@ -4540,6 +4550,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.FetchPerformer(childComplexity, args["id"].(string), args["refresh"].(*bool), args["plugins"].([]string)), true
+	case "Mutation.fetchUploader":
+		if e.ComplexityRoot.Mutation.FetchUploader == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_fetchUploader_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.FetchUploader(childComplexity, args["plugin"].(string), args["url"].(string), args["name"].(string), args["limit"].(*int), args["offset"].(*int)), true
 	case "Mutation.fetchVideo":
 		if e.ComplexityRoot.Mutation.FetchVideo == nil {
 			break
@@ -7591,6 +7612,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Source.Title(childComplexity), true
+	case "Source.uploader":
+		if e.ComplexityRoot.Source.Uploader == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Source.Uploader(childComplexity), true
 	case "Source.url":
 		if e.ComplexityRoot.Source.Url == nil {
 			break
@@ -8269,6 +8296,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Trigger.PluginTrigger(childComplexity), true
+
+	case "Uploader.externalId":
+		if e.ComplexityRoot.Uploader.ExternalId == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Uploader.ExternalId(childComplexity), true
+	case "Uploader.image":
+		if e.ComplexityRoot.Uploader.Image == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Uploader.Image(childComplexity), true
+	case "Uploader.name":
+		if e.ComplexityRoot.Uploader.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Uploader.Name(childComplexity), true
+	case "Uploader.url":
+		if e.ComplexityRoot.Uploader.Url == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Uploader.Url(childComplexity), true
 
 	case "Usage.sessions":
 		if e.ComplexityRoot.Usage.Sessions == nil {
@@ -9800,6 +9852,10 @@ extend type Mutation {
   createStudio(name: String!): Studio!
   # Stores one page of a plugin's catalog (no query) or search results.
   browse(plugin: String!, kind: ListKind!, query: String, limit: Int, offset: Int): Listed!
+  # Stores one page of the videos on an uploader's channel page (the url a
+  # source's uploader gave) through the plugin that reported it, and returns
+  # them; name is the uploader's, set on the ones whose cards don't say.
+  fetchUploader(plugin: String!, url: String!, name: String!, limit: Int, offset: Int): [Video!]!
   # Searches every plugin that lists this kind and stores the results, sites
   # taking turns. A site that answered within 6 hours isn't asked again.
   search(kind: ListKind!, query: String!, limit: Int): Listed!
@@ -10164,6 +10220,17 @@ type Source {
   image: Asset
   # When its page was read; null for a listing card only.
   fetchedAt: String
+  # Who uploaded the video to this site (tube sites). Not a studio.
+  uploader: Uploader
+}
+
+# The account that uploaded a video to a tube site; url is their channel or
+# profile page, which fetchUploader lists videos from.
+type Uploader {
+  name: String!
+  url: String
+  externalId: String
+  image: Asset
 }
 
 # A playable stream a source offers.
@@ -12721,6 +12788,8 @@ func (ec *executionContext) childFields_Source(ctx context.Context, field graphq
 		return ec.fieldContext_Source_image(ctx, field)
 	case "fetchedAt":
 		return ec.fieldContext_Source_fetchedAt(ctx, field)
+	case "uploader":
+		return ec.fieldContext_Source_uploader(ctx, field)
 	case "snapshot":
 		return ec.fieldContext_Source_snapshot(ctx, field)
 	}
@@ -13023,6 +13092,20 @@ func (ec *executionContext) childFields_Trigger(ctx context.Context, field graph
 		return ec.fieldContext_Trigger_pluginTrigger(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+}
+
+func (ec *executionContext) childFields_Uploader(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_Uploader_name(ctx, field)
+	case "url":
+		return ec.fieldContext_Uploader_url(ctx, field)
+	case "externalId":
+		return ec.fieldContext_Uploader_externalId(ctx, field)
+	case "image":
+		return ec.fieldContext_Uploader_image(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Uploader", field.Name)
 }
 
 func (ec *executionContext) childFields_Usage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -14418,6 +14501,52 @@ func (ec *executionContext) field_Mutation_fetchPerformer_args(ctx context.Conte
 		return nil, err
 	}
 	args["plugins"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_fetchUploader_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "plugin",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["plugin"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "url",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["url"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg4
 	return args, nil
 }
 
@@ -29739,6 +29868,50 @@ func (ec *executionContext) fieldContext_Mutation_browse(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_fetchUploader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_fetchUploader(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().FetchUploader(ctx, fc.Args["plugin"].(string), fc.Args["url"].(string), fc.Args["name"].(string), fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Video) graphql.Marshaler {
+			return ec.marshalNVideo2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_fetchUploader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_fetchUploader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_search(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41452,6 +41625,38 @@ func (ec *executionContext) fieldContext_Source_fetchedAt(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Source", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Source_uploader(ctx context.Context, field graphql.CollectedField, obj *schema.Source) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Source_uploader(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Uploader, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Uploader) graphql.Marshaler {
+			return ec.marshalOUploader2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐUploader(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Source_uploader(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Source",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Uploader(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Source_snapshot(ctx context.Context, field graphql.CollectedField, obj *schema.Source) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44265,6 +44470,107 @@ func (ec *executionContext) _Trigger_pluginTrigger(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_Trigger_pluginTrigger(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Trigger", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Uploader_name(ctx context.Context, field graphql.CollectedField, obj *schema.Uploader) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Uploader_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Uploader_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Uploader", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Uploader_url(ctx context.Context, field graphql.CollectedField, obj *schema.Uploader) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Uploader_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Url, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Uploader_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Uploader", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Uploader_externalId(ctx context.Context, field graphql.CollectedField, obj *schema.Uploader) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Uploader_externalId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalId, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Uploader_externalId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Uploader", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Uploader_image(ctx context.Context, field graphql.CollectedField, obj *schema.Uploader) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Uploader_image(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Image, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Asset) graphql.Marshaler {
+			return ec.marshalOAsset2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAsset(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Uploader_image(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Uploader",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Asset(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Usage_since(ctx context.Context, field graphql.CollectedField, obj *limits.Usage) (ret graphql.Marshaler) {
@@ -54838,6 +55144,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "fetchUploader":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_fetchUploader(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "search":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_search(ctx, field)
@@ -60042,6 +60355,8 @@ func (ec *executionContext) _Source(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Source_image(ctx, field, obj)
 		case "fetchedAt":
 			out.Values[i] = ec._Source_fetchedAt(ctx, field, obj)
+		case "uploader":
+			out.Values[i] = ec._Source_uploader(ctx, field, obj)
 		case "snapshot":
 			out.Values[i] = ec._Source_snapshot(ctx, field, obj)
 		default:
@@ -61691,6 +62006,51 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Trigger_filter(ctx, field, obj)
 		case "pluginTrigger":
 			out.Values[i] = ec._Trigger_pluginTrigger(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var uploaderImplementors = []string{"Uploader"}
+
+func (ec *executionContext) _Uploader(ctx context.Context, sel ast.SelectionSet, obj *schema.Uploader) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, uploaderImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Uploader")
+		case "name":
+			out.Values[i] = ec._Uploader_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._Uploader_url(ctx, field, obj)
+		case "externalId":
+			out.Values[i] = ec._Uploader_externalId(ctx, field, obj)
+		case "image":
+			out.Values[i] = ec._Uploader_image(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -67803,6 +68163,13 @@ func (ec *executionContext) unmarshalOTriggerInput2ᚖgithubᚗcomᚋplayingwith
 	}
 	res, err := ec.unmarshalInputTriggerInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOUploader2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐUploader(ctx context.Context, sel ast.SelectionSet, v *schema.Uploader) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Uploader(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOUserStateFilter2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐUserStateFilter(ctx context.Context, v any) (*model.UserStateFilter, error) {

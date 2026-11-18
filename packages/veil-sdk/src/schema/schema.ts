@@ -407,6 +407,13 @@ export interface Asset {
   blurhash?: string;
 }
 
+export interface Uploader {
+  name: string;
+  url?: string;
+  externalId?: string;
+  image?: Asset;
+}
+
 export interface Source extends Entity {
   subjectKind: RecordKind;
   subjectId: string;
@@ -417,6 +424,7 @@ export interface Source extends Entity {
   image?: Asset;
   snapshot?: Asset;
   fetchedAt?: string;
+  uploader?: Uploader;
 }
 
 export interface Media extends Entity {

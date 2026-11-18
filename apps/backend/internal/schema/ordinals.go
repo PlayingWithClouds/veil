@@ -540,6 +540,7 @@ var FieldOrdinals = map[string]map[string]uint32{
 		"image":       16,
 		"snapshot":    17,
 		"fetchedAt":   18,
+		"uploader":    19,
 	},
 	"StorageLocation": {
 		"id":         1,

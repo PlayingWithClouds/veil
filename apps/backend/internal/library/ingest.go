@@ -115,6 +115,7 @@ func sceneFromListing(item plugins.DiscoveredItem) *plugins.Scene {
 		PreviewVideo:  item.PreviewVideo,
 		PreviewImages: item.PreviewImages,
 		Studio:        item.Studio,
+		Uploader:      item.Uploader,
 		Downloads:     item.Downloads,
 	}
 }
