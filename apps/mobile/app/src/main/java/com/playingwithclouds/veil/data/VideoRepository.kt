@@ -127,7 +127,14 @@ object VideoRepository {
             sites = video.sources.map { source -> SiteSource(source.plugin, source.url) } + copySites,
             sources = files + streams + copyStreams,
             segments = video.segments.map { segment ->
-                VideoSegment(segment.id, segment.title ?: segment.tag?.name.orEmpty(), segment.startSeconds, segment.endSeconds)
+                VideoSegment(
+                    segment.id,
+                    segment.title ?: segment.tag?.name.orEmpty(),
+                    segment.startSeconds,
+                    segment.endSeconds,
+                    segment.origin.rawValue,
+                    segment.tag?.name,
+                )
             },
             favorite = video.userState.favorite,
             rating = video.userState.rating,

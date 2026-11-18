@@ -1,0 +1,147 @@
+# The on-phone scene model's reads and writes: what to scan, where a video streams from, the ai
+# segments, the liked scenes (setting likedSceneTags), compilations and the shorts feed.
+
+fragment SceneSegmentFields on Segment {
+  id
+  startSeconds
+  endSeconds
+  origin
+  tag {
+    name
+  }
+}
+
+# Videos worth scanning, in priority order: favourites, collections (watchlist, queue and the
+# user's own), recently watched, then recommendations.
+query SceneScanCandidates($limit: Int) {
+  favorites: videos(filter: { favorite: true }, limit: $limit) {
+    id
+  }
+  collections {
+    items(limit: $limit) {
+      record {
+        __typename
+        ... on Video {
+          id
+        }
+      }
+    }
+  }
+  history(kind: video, limit: $limit) {
+    record {
+      __typename
+      ... on Video {
+        id
+      }
+    }
+  }
+  recommendations(filter: { kinds: [video] }, limit: $limit) {
+    item {
+      id
+    }
+  }
+}
+
+fragment SceneSourceFields on Video {
+  id
+  durationSeconds
+  streams {
+    url
+  }
+  files {
+    url
+    mimeType
+    missing
+  }
+}
+
+# A video's streams as stored, without reading its pages (previews, compilations, shorts).
+query SceneVideoSources($id: ID!) {
+  video(id: $id) {
+    ...SceneSourceFields
+  }
+}
+
+# A video's streams after reading its pages not read yet, for scanning a stub.
+mutation SceneFetchSources($id: ID!) {
+  fetchVideo(id: $id) {
+    ...SceneSourceFields
+  }
+}
+
+# What a card's moment preview plays: the ai segments, else the site's stills across the video.
+query ScenePreviewPlan($id: ID!) {
+  video(id: $id) {
+    id
+    durationSeconds
+    segments {
+      ...SceneSegmentFields
+    }
+    previewFrames {
+      url
+    }
+  }
+}
+
+mutation ReplaceAiSegments($subject: RecordRefInput!, $segments: [AiSegmentInput!]!) {
+  replaceAiSegments(subject: $subject, segments: $segments) {
+    id
+  }
+}
+
+# Every global setting; the phone reads likedSceneTags.
+query SceneSettings {
+  settings
+}
+
+mutation UpdateSceneSettings($values: JSON!) {
+  updateSettings(values: $values)
+}
+
+# Videos with ai segments of the liked tags, with those segments, for a compilation.
+query SceneMatches($tags: [String!]!, $videoIds: [ID!], $limit: Int, $offset: Int) {
+  sceneMatches(tags: $tags, videoIds: $videoIds, limit: $limit, offset: $offset) {
+    matchingSeconds
+    segments {
+      ...SceneSegmentFields
+    }
+    video {
+      ...VideoCardFields
+    }
+  }
+}
+
+# The queue's videos, in order, for a compilation across them.
+query SceneQueue {
+  builtInCollection(kind: queue) {
+    items {
+      record {
+        __typename
+        ... on Video {
+          id
+        }
+      }
+    }
+  }
+}
+
+# The vertical feed: where in which video each short plays.
+query Shorts($limit: Int) {
+  shorts(limit: $limit) {
+    startSeconds
+    endSeconds
+    match {
+      item {
+        kind
+        id
+      }
+      evidence {
+        detail
+        title
+      }
+    }
+    video {
+      ...VideoCardFields
+    }
+  }
+}

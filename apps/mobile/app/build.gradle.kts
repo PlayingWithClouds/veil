@@ -114,6 +114,8 @@ dependencies {
     implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.ui)
     implementation(libs.media3.ui.compose)
+    implementation(libs.media3.inspector.frame)
+    implementation(libs.onnxruntime.android)
     implementation(libs.apollo.runtime)
     implementation(libs.okhttp)
     implementation(libs.coil.compose)

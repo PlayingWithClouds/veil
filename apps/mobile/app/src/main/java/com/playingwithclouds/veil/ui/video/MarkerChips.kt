@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.media3.common.Player
 import androidx.media3.ui.compose.state.rememberProgressStateWithTickInterval
 import com.playingwithclouds.veil.data.VideoSegment
+import com.playingwithclouds.veil.scenes.SceneSections
 import com.playingwithclouds.veil.ui.design.Pill
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 
@@ -27,10 +28,11 @@ private const val MILLISECONDS_PER_SECOND = 1000.0
  */
 @Composable
 fun MarkerChips(markers: List<VideoSegment>, player: Player, modifier: Modifier = Modifier) {
-    if (markers.isEmpty()) {
+    // The scene model's untitled markers only end a section on the seek bar; they're no place to jump to.
+    val ordered = markersInPlayOrder(markers).filter { marker -> marker.origin != SceneSections.ORIGIN_AI || marker.title.isNotEmpty() }
+    if (ordered.isEmpty()) {
         return
     }
-    val ordered = markersInPlayOrder(markers)
     val progress = rememberProgressStateWithTickInterval(player, CHIP_TICK_MILLISECONDS)
     val activeIndex = activeMarkerIndex(ordered, progress.currentPositionMs / MILLISECONDS_PER_SECOND)
     val listState = rememberLazyListState()

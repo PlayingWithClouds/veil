@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
+import com.playingwithclouds.veil.scenes.SceneSections
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FailedMessage
@@ -95,7 +96,7 @@ fun VideoScreen(videoId: String, navigator: AppNavigator) {
         }
         Column(columnModifier) {
             val extras = PlayerExtras(
-                markers = markersInPlayOrder((detail as? LoadState.Loaded)?.value?.segments.orEmpty()),
+                markers = markersInPlayOrder(SceneSections.chapters((detail as? LoadState.Loaded)?.value?.segments.orEmpty())),
                 onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
                 onBack = navigator::back,
             )

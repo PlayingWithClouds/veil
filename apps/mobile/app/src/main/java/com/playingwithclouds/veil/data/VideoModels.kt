@@ -20,8 +20,18 @@ data class PlayableStream(val url: String, val mimeType: String) {
         get() = mimeType.contains("mpegURL", ignoreCase = true) || url.contains(".m3u8")
 }
 
-/** A stretch of a video with a name, e.g. an act; [endSeconds] is null when only its start is known. */
-data class VideoSegment(val id: String, val title: String, val seconds: Double, val endSeconds: Double?)
+/**
+ * A stretch of a video with a name, e.g. an act; [endSeconds] is null when only its start is known.
+ * [origin] is who made it (user, plugin, ai, as the API spells it); [tag] is its tag's name.
+ */
+data class VideoSegment(
+    val id: String,
+    val title: String,
+    val seconds: Double,
+    val endSeconds: Double?,
+    val origin: String = "user",
+    val tag: String? = null,
+)
 
 /**
  * Everything the video page shows. [sources] lists local copies first, then the sites' streams;
