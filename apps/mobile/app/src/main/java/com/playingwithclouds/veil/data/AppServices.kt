@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.data
 
 import com.playingwithclouds.veil.AppScope
 import com.playingwithclouds.veil.privacy.PrivacyPreferences
+import com.playingwithclouds.veil.scenes.CoverLabels
 
 /** Process-wide services that screens share. */
 object AppServices {
@@ -13,6 +14,6 @@ object AppServices {
         enabled = { !PrivacyPreferences.incognito.value },
     )
 
-    /** Logs which recommendations were shown and opened. */
-    val impressions = ImpressionLogger(events)
+    /** Logs which recommendations were shown and opened, with what the scene model read off their covers. */
+    val impressions = ImpressionLogger(events, CoverLabels, AppScope)
 }

@@ -74,4 +74,30 @@ class ImpressionLoggerTest {
         assertEquals(listOf(EventKind.impression, EventKind.choice), batch.map { event -> event.kind })
         assertEquals(listOf(4, 4), batch.map { event -> event.data["position"] })
     }
+
+    /** Cover tags known for record "1" only. */
+    private class FakeCoverTags : CoverTagSource {
+        val tags = mapOf("Cowgirl" to 0.8)
+
+        override fun active(): Boolean = true
+
+        override fun cached(recordId: String): Map<String, Double>? = tags.takeIf { recordId == "1" }
+
+        override suspend fun await(recordId: String): Map<String, Double>? = cached(recordId)
+    }
+
+    @Test
+    fun coverTagsRideAlongWhenRead() = runTest {
+        val logger = ImpressionLogger(EventLog(this, { batch -> batches.add(batch) }, flushDelayMilliseconds = 3000), FakeCoverTags(), this)
+        logger.recordShown("1", video, "home", 0)
+        logger.recordShown("2", video, "home", 1)
+        logger.recordClicked("1", video, "home", 0)
+        advanceUntilIdle()
+        val events = batches.flatten()
+        val byKind = events.groupBy { event -> event.kind }
+        assertEquals(mapOf("Cowgirl" to 0.8), byKind.getValue(EventKind.choice).single().data["coverTags"])
+        val impressions = byKind.getValue(EventKind.impression).associateBy { event -> event.subjectId }
+        assertEquals(mapOf("Cowgirl" to 0.8), impressions.getValue("1").data["coverTags"])
+        assertEquals(null, impressions.getValue("2").data["coverTags"])
+    }
 }

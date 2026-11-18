@@ -63,17 +63,29 @@ object SceneRepository {
     /** The tag names of the scenes the user likes, as last read or saved. */
     val likedTags: StateFlow<Set<String>> = mutableLikedTags
 
+    private var likedTagsRead = false
+
+    /** Reads the liked scenes unless they were read (or saved) in this process already. */
+    suspend fun ensureLikedTags() {
+        if (likedTagsRead) {
+            return
+        }
+        runCatching { refreshLikedTags() }
+    }
+
     /** Reads the liked scenes from the backend. */
     suspend fun refreshLikedTags(): Set<String> {
         val settings = VeilApi.client.query(SceneSettingsQuery()).execute().dataOrThrow().settings as? Map<*, *>
         val liked = (settings?.get(LIKED_SETTING) as? List<*>).orEmpty().filterIsInstance<String>().toSet()
         mutableLikedTags.value = liked
+        likedTagsRead = true
         return liked
     }
 
     /** Saves the liked scenes. */
     suspend fun setLikedTags(tags: Set<String>) {
         mutableLikedTags.value = tags
+        likedTagsRead = true
         VeilApi.client.mutation(UpdateSceneSettingsMutation(mapOf(LIKED_SETTING to tags.sorted()))).execute().dataOrThrow()
     }
 

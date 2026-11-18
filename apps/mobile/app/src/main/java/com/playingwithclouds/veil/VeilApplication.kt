@@ -7,6 +7,7 @@ import com.playingwithclouds.veil.habits.HabitPreferences
 import com.playingwithclouds.veil.habits.Habits
 import com.playingwithclouds.veil.privacy.AppLock
 import com.playingwithclouds.veil.privacy.PrivacyPreferences
+import com.playingwithclouds.veil.scenes.CoverLabels
 import com.playingwithclouds.veil.scenes.SceneModelStore
 import com.playingwithclouds.veil.scenes.SceneScans
 import com.playingwithclouds.veil.update.UpdateChecker
@@ -31,6 +32,7 @@ class VeilApplication : Application() {
         UpdateChecker.checkInBackground()
         Habits.start(this)
         SceneModelStore.initialize(this)
+        CoverLabels.initialize(this)
         SceneScans.start(this)
     }
 }

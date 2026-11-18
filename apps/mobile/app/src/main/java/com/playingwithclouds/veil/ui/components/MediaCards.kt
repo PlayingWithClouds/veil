@@ -13,6 +13,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import com.playingwithclouds.veil.scenes.CoverLabels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +62,8 @@ private val ResumeBarHeight = 3.dp
 /**
  * A video as a landscape card: cover with runtime (or time left) and resume bar, then the
  * creator's avatar beside the title, who it's from and when, and a muted [note] (why it's
- * recommended). While [previewing], its preview clip plays muted over the cover. [edgeToEdge] runs
+ * recommended). While [previewing], its preview plays muted over the cover ([CardPreview]: moments
+ * of the scenes the user likes, else the site's clip, else its stills). [edgeToEdge] runs
  * the cover across the full width without rounded corners and gives the caption the gutter, for a
  * full-width feed. A long press opens [VideoActionsSheet], unless the list passes its own
  * [onLongClick] (the Library's remove). A card the user hid or blocked from leaves at once.
@@ -116,10 +119,14 @@ private fun VideoCardContent(
     Column(modifier.fillMaxWidth().pressClickable(enabled = true, onLongClick = onLongClick, onClick = onClick)) {
         Box(coverModifier) {
             RemoteImage(video.coverUrl, Modifier.matchParentSize())
+            // The scene model reads every cover shown (nothing without a model), for click learning.
+            LaunchedEffect(video.id, video.coverUrl) { CoverLabels.read(video.id, video.coverUrl) }
             val scrubbed = scrubFraction
-            if (previewUrl != null && (previewing || scrubbed != null)) {
-                // Cards stay silent; the one preview with sound is Home's hero.
+            // Cards stay silent; the one preview with sound is Home's hero.
+            if (previewUrl != null && scrubbed != null) {
                 ScenePreview(previewUrl, Modifier.matchParentSize(), scrubFraction = scrubbed, sound = false)
+            } else if (previewing) {
+                CardPreview(video, Modifier.matchParentSize())
             }
             if (scrubbed != null) {
                 ProgressBar(scrubbed, Modifier.align(Alignment.BottomStart), trackColor = VeilColors.imageTrack, height = ResumeBarHeight)
