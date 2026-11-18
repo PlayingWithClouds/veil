@@ -477,6 +477,7 @@ export interface Video {
     gallery: (Gallery | null)
     sources: Source[]
     streams: Stream[]
+    copies: Video[]
     userState: UserState
     oCount: Scalars['Int']
     fieldSources: FieldSource[]
@@ -1928,6 +1929,7 @@ export interface VideoGenqlSelection{
     gallery?: GalleryGenqlSelection
     sources?: SourceGenqlSelection
     streams?: StreamGenqlSelection
+    copies?: VideoGenqlSelection
     userState?: UserStateGenqlSelection
     oCount?: boolean | number
     fieldSources?: FieldSourceGenqlSelection

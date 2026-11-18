@@ -70,7 +70,7 @@ This install's `Device` row (`current`) is created on first start (`DEVICE_NAME`
 - Performers, studios and tags without a site identity match by `nameKey` (`internal/names.Key`); a site identity, when given, is added as a source.
 - `IngestFound` (a page from `<entity>:find`): root first (video/gallery), then standalone performers/studios/tags. Marks the root's source `fetchedAt`, replaces its streams (`Stream`, per source) and gallery images.
 - `IngestListed` (a listing card): stub only; doesn't touch credits. Unfetched sources are read on first open (`pipeline.Visit` via `fetchVideo`/`fetchGallery`).
-- Not back yet: cross-site merging of the same video (`alike.SameSceneStrict` is still there, unused).
+- Cross-site duplicates: `library.DetectAlike` records loose matches (`alike.SameScene`) at ingest as hidden `Alike` pairs (lists show one card; `Video.copies` lists the other side, whose sites and streams the video page adds). `internal/dedupe` sweeps every 10 min: hashes each video's cover and up to 4 preview stills (dHash, kept in `CacheEntry` under `pictures:<videoId>`), then merges automatically what's provably one scene (`alike.SameSceneStrict`, or `alike.SameSceneByImages`: same cover or 2+ same stills, runtimes within 2 %, no conflicting numbers or casts; a cover shared by more than 3 videos is a placeholder and proves nothing), and merges waiting pairs that became provable. Merges are journaled (`UndoMerge`).
 
 ## API (`internal/api/graphql`)
 

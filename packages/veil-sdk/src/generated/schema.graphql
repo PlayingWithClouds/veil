@@ -528,6 +528,7 @@ type Video {
   gallery: Gallery
   sources: [Source!]!
   streams: [Stream!]!
+  copies: [Video!]!
   userState: UserState!
   oCount: Int!
   fieldSources: [FieldSource!]!

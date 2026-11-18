@@ -45,6 +45,22 @@ fragment VideoDetailFields on Video {
   gallery {
     id
   }
+  # The same video from other sites, kept apart but shown as one: their sites
+  # and streams join this page's.
+  copies {
+    sources {
+      plugin
+      url
+    }
+    streams {
+      id
+      url
+      quality
+      source {
+        plugin
+      }
+    }
+  }
 }
 
 # Opens a video: reads the pages behind its sources not read yet (credits, description, streams).

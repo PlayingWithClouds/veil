@@ -520,6 +520,12 @@ func (r *videoResolver) Streams(ctx context.Context, obj *schema.Video) ([]*sche
 	return pointers(streams), err
 }
 
+// Copies is the resolver for the copies field.
+func (r *videoResolver) Copies(ctx context.Context, obj *schema.Video) ([]*schema.Video, error) {
+	copies, err := r.library.Copies(ctx, obj.Id)
+	return pointers(copies), err
+}
+
 // UserState is the resolver for the userState field.
 func (r *videoResolver) UserState(ctx context.Context, obj *schema.Video) (*schema.UserState, error) {
 	return r.userStateOf(ctx, schema.RecordKindVideo, obj.Id)

@@ -1297,6 +1297,7 @@ type ComplexityRoot struct {
 		Categories          func(childComplexity int) int
 		Clips               func(childComplexity int) int
 		Comments            func(childComplexity int) int
+		Copies              func(childComplexity int) int
 		Cover               func(childComplexity int) int
 		CreatedAt           func(childComplexity int) int
 		Date                func(childComplexity int) int
@@ -1800,6 +1801,7 @@ type VideoResolver interface {
 	Gallery(ctx context.Context, obj *schema.Video) (*schema.Gallery, error)
 	Sources(ctx context.Context, obj *schema.Video) ([]*schema.Source, error)
 	Streams(ctx context.Context, obj *schema.Video) ([]*schema.Stream, error)
+	Copies(ctx context.Context, obj *schema.Video) ([]*schema.Video, error)
 	UserState(ctx context.Context, obj *schema.Video) (*schema.UserState, error)
 	OCount(ctx context.Context, obj *schema.Video) (int, error)
 	FieldSources(ctx context.Context, obj *schema.Video) ([]*schema.FieldSource, error)
@@ -8444,6 +8446,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Video.Comments(childComplexity), true
+	case "Video.copies":
+		if e.ComplexityRoot.Video.Copies == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Video.Copies(childComplexity), true
 	case "Video.cover":
 		if e.ComplexityRoot.Video.Cover == nil {
 			break
@@ -10066,6 +10074,10 @@ type Video {
   sources: [Source!]!
   # Playable streams, fastest measured first.
   streams: [Stream!]!
+  # Probably the same video from other sites, not proven enough to merge:
+  # the other side of its undismissed alike pairs. Lists show one card; the
+  # page offers their sources too.
+  copies: [Video!]!
   userState: UserState!
   oCount: Int!
   fieldSources: [FieldSource!]!
@@ -13198,6 +13210,8 @@ func (ec *executionContext) childFields_Video(ctx context.Context, field graphql
 		return ec.fieldContext_Video_sources(ctx, field)
 	case "streams":
 		return ec.fieldContext_Video_streams(ctx, field)
+	case "copies":
+		return ec.fieldContext_Video_copies(ctx, field)
 	case "userState":
 		return ec.fieldContext_Video_userState(ctx, field)
 	case "oCount":
@@ -45555,6 +45569,38 @@ func (ec *executionContext) fieldContext_Video_streams(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Video_copies(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Video_copies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Video().Copies(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Video) graphql.Marshaler {
+			return ec.marshalNVideo2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Video_copies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Video_userState(ctx context.Context, field graphql.CollectedField, obj *schema.Video) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62604,6 +62650,42 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Video_streams(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "copies":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_copies(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -19,6 +19,7 @@ import (
 	imgapi "github.com/playingwithclouds/veil/internal/api/imgcache"
 	"github.com/playingwithclouds/veil/internal/blobcache"
 	"github.com/playingwithclouds/veil/internal/cache"
+	"github.com/playingwithclouds/veil/internal/dedupe"
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/devices"
 	"github.com/playingwithclouds/veil/internal/files"
@@ -410,6 +411,7 @@ func main() {
 	jobRunner.Start(ctx)
 	feature.start(ctx)
 	go runMaintenance(ctx, maintained{library: lib, user: userService, files: feature.files, queue: queue}, settingsService)
+	go dedupe.New(lib, cacheClient, imgapi.New(storeClient)).Run(ctx)
 
 	resolver := gqlapi.NewResolver(gqlapi.Services{
 		Library:     lib,

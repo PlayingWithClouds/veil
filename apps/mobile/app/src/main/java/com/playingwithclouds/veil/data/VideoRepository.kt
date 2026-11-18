@@ -110,6 +110,11 @@ object VideoRepository {
         val streams = video.streams.map { stream ->
             PlayerSource(stream.id, stream.source?.plugin ?: "site", stream.quality, stream.url, null)
         }
+        // Copies from other sites come after this record's own streams, as fallbacks.
+        val copyStreams = video.copies.flatMap { copy -> copy.streams }.map { stream ->
+            PlayerSource(stream.id, stream.source?.plugin ?: "site", stream.quality, stream.url, null)
+        }
+        val copySites = video.copies.flatMap { copy -> copy.sources }.map { source -> SiteSource(source.plugin, source.url) }
         val studio = card.studio?.let { studio -> PerformerSummary(studio.id, studio.name, studio.image?.url) }
         return VideoDetail(
             summary = card.toSummary(),
@@ -119,8 +124,8 @@ object VideoRepository {
             studio = studio,
             performers = card.performers.map { performer -> PerformerSummary(performer.id, performer.name, performer.image?.url) },
             tags = video.tags.map { tag -> TagSummary(tag.id, tag.name) },
-            sites = video.sources.map { source -> SiteSource(source.plugin, source.url) },
-            sources = files + streams,
+            sites = video.sources.map { source -> SiteSource(source.plugin, source.url) } + copySites,
+            sources = files + streams + copyStreams,
             segments = video.segments.map { segment ->
                 VideoSegment(segment.id, segment.title ?: segment.tag?.name.orEmpty(), segment.startSeconds, segment.endSeconds)
             },
