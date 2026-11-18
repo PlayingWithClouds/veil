@@ -35,6 +35,32 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
 }
 
+/** Lists the videos a member uploaded (the videos2 API filtered by member id, on the url's own host). */
+export async function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  const limit = args.limit ?? 0;
+  const offset = args.offset ?? 0;
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  const memberId = memberIdOf(args.url);
+  if (memberId === "") throw new Error(`txxx-network: not a member page: ${args.url}`);
+  let target = 0;
+  if (limit > 0) target = offset + limit;
+  const items = await crawlVideos(hostFromUrl(args.url), MAX_PROFILE_PAGES, target, (page) => memberVideosPath(memberId, page));
+  if (limit > 0) return { items: items.slice(offset, offset + limit) };
+  return { items: items.slice(offset) };
+}
+
+/** The member id in a /members/<id>/ page URL, or "". */
+export function memberIdOf(url: string): string {
+  const match = url.match(/\/members\/(\d+)/);
+  if (!match) return "";
+  return match[1];
+}
+
+/** API path of one page of a member's uploads, newest first. */
+export function memberVideosPath(memberId: string, page: number): string {
+  return `/api/json/videos2/14400/str/latest-updates/${PAGE_SIZE}/member.${memberId}.${page}.all...jsond`;
+}
+
 /** API path of one page of a model's videos, newest first. */
 export function modelVideosPath(modelId: string, page: number): string {
   return `/api/json/videos2/14400/str/latest-updates/${PAGE_SIZE}/model.${modelId}.${page}.all...jsond`;

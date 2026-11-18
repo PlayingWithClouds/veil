@@ -2,7 +2,7 @@ import { test, expect, describe } from "bun:test";
 import { readFileSync } from "fs";
 import { parse } from "node-html-parser";
 import { parseVideoCards, titleFromPostText } from "../src/cards.ts";
-import { keywordFromQuery, listingUrl, sceneList } from "../src/listing.ts";
+import { keywordFromQuery, listingUrl, sceneList, uploaderList } from "../src/listing.ts";
 import { sceneFromPostPage, scrapeScene } from "../src/scene.ts";
 import { hostedSourcePath, qualityFromInfo, resolve } from "../src/resolve.ts";
 import { base64Encode, digitSum, playableUrl } from "../src/stream-token.ts";
@@ -91,6 +91,11 @@ describe("stream link (offline)", () => {
 });
 
 describe("listing pages (offline)", () => {
+  test("an uploader's list needs a blog page url", async () => {
+    await expect(uploaderList({ url: "https://sxyprn.com/latest-videos.html" })).rejects.toThrow("not a blog page");
+    await expect(uploaderList({})).rejects.toThrow("not a blog page");
+  });
+
   test("the newest posts: 30 cards with identity, title, poster, preview, runtime and views", () => {
     const items = parseVideoCards(parse(loadFixture("listing-latest.html")));
     expect(items.length).toBe(30);
@@ -155,11 +160,12 @@ describe("post page (offline)", () => {
     );
   });
 
-  test("the uploader is the studio, identified by its blog", () => {
-    expect(scene.studio).toEqual({
+  test("the uploader is its blog, never a studio", () => {
+    expect(scene.studio).toBeUndefined();
+    expect(scene.uploader).toEqual({
       name: "MeetMyLove",
       external_id: "5fe8b4a3935ca",
-      source_url: "https://sxyprn.com/blog/5fe8b4a3935ca/0.html",
+      url: "https://sxyprn.com/blog/5fe8b4a3935ca/0.html",
     });
   });
 

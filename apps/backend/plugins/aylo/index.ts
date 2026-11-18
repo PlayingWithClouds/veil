@@ -1,7 +1,7 @@
 import { runPlugin } from "@playingwithclouds/veil-sdk";
 import packageJson from "./package.json" with { type: "json" };
 import { scrape } from "./src/scrape.ts";
-import { sceneList } from "./src/scenes.ts";
+import { sceneList, uploaderList } from "./src/scenes.ts";
 import { tagList } from "./src/tags.ts";
 import { resolve } from "./src/resolve.ts";
 import { suggest } from "./src/suggest.ts";
@@ -22,6 +22,7 @@ runPlugin({
       "performer:identify",
       "scene:list",
       "scene:list:page",
+      "uploader:list",
       "tag:list",
       "stream:resolve",
       "search:suggest",
@@ -46,6 +47,7 @@ runPlugin({
   },
   identifyPerformer,
   sceneList,
+  uploaderList,
   tagList,
   resolve: (url) => resolve(url),
   suggest,

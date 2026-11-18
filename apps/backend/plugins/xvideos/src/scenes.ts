@@ -28,6 +28,12 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return sink.result();
 }
 
+/** Lists the videos on an uploader's channel or profile page. */
+export function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  return sceneList({ url: args.url, limit: args.limit, offset: args.offset });
+}
+
 /** Search results page `page` (0-based) for a query. */
 function searchPageUrl(query: string, page: number): string {
   const params = new URLSearchParams({ k: query });

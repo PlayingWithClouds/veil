@@ -1,4 +1,4 @@
-import type { SceneMarkerInput, ScenePerformer, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { SceneMarkerInput, ScenePerformer, StudioRef, Uploader } from "@playingwithclouds/veil-sdk";
 
 const INITIALS_MARKER = "window.initials=";
 
@@ -90,21 +90,24 @@ export function extractTags(initials: VideoInitials | undefined): string[] {
 }
 
 /**
- * The video's channel, or failing that its uploader, keyed by the channel/user page URL.
- * Brand chips (e.g. the FapHouse network promo) are not the video's source and are skipped.
+ * The video's channel, keyed by its channel page URL. Brand chips (e.g. the
+ * FapHouse network promo) are not the video's source and are skipped.
  */
 export function extractStudio(initials: VideoInitials | undefined): StudioRef | undefined {
-  const tags = videoTags(initials);
-  const channel = tags.find((tag) => tag.isChannel && !tag.isBrand);
-  if (channel) return studioFromTag(channel);
-  const uploader = tags.find((tag) => tag.isUploader);
-  if (uploader) return studioFromTag(uploader);
-  return undefined;
+  const channel = videoTags(initials).find((tag) => tag.isChannel && !tag.isBrand);
+  if (!channel) return undefined;
+  return { name: channel.name, source_url: channel.url };
 }
 
-/** A StudioRef named after the chip, with its page URL as source_url. */
-function studioFromTag(tag: VideoTag): StudioRef {
-  return { name: tag.name, source_url: tag.url };
+/**
+ * The member who uploaded the video, with their profile page. A channel's
+ * chip is also flagged as the uploader, but that is the studio; so is a
+ * pornstar's, who is credited as a performer.
+ */
+export function extractUploader(initials: VideoInitials | undefined): Uploader | undefined {
+  const member = videoTags(initials).find((tag) => tag.isUploader && !tag.isChannel && !tag.isPornstar);
+  if (!member) return undefined;
+  return { name: member.name, url: member.url };
 }
 
 /**

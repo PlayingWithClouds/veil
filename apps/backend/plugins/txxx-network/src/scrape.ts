@@ -6,7 +6,7 @@ import {
   videoApiPath,
   relatedApiPath,
 } from "./http.ts";
-import { videoUrl, parseDurationSeconds, videoToDiscoveredItem, hostScopedId, type ApiVideo } from "./listing.ts";
+import { videoUrl, parseDurationSeconds, videoToDiscoveredItem, hostScopedId, memberUrl, type ApiVideo } from "./listing.ts";
 import { fetchSources } from "./streams.ts";
 import type {
   ScrapeResult,
@@ -14,6 +14,7 @@ import type {
   ScenePerformer,
   StudioRef,
   Studio,
+  Uploader,
   Download,
   Image,
   DiscoveredItem,
@@ -100,6 +101,9 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
     related,
   };
 
+  const uploader = uploaderOf(host, detail);
+  if (uploader) scene.uploader = uploader;
+
   const credit = creditedStudio(host, detail);
   if (!credit) {
     scene.studio = siteStudio(host);
@@ -116,9 +120,9 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
 }
 
 /**
- * The entity that published the video, parented to the network site: its
- * channel, else its content source, else the uploading member. Null when the
- * API names none of them, leaving the site itself as the studio.
+ * The studio that published the video, parented to the network site: its
+ * channel, else its content source. Null when the API names neither (a
+ * member's upload), leaving the site itself as the studio.
  */
 export function creditedStudio(host: string, detail: ApiVideoDetail): Studio | null {
   const parent = siteStudio(host).name;
@@ -136,21 +140,23 @@ export function creditedStudio(host: string, detail: ApiVideoDetail): Studio | n
   }
 
   const source = contentSourceStudio(host, detail);
-  if (source) {
-    source.parent = parent;
-    return source;
-  }
+  if (!source) return null;
+  source.parent = parent;
+  return source;
+}
 
+/** The member who uploaded the video, with their profile page; undefined when the API names none. */
+export function uploaderOf(host: string, detail: ApiVideoDetail): Uploader | undefined {
   const user = detail.user;
-  if (!user || !user.id || !(user.username ?? "").trim()) return null;
-  return {
-    type: "studio",
-    external_id: hostScopedId(host, "member", user.id),
-    source_url: `${baseUrl(host)}/members/${user.id}/`,
+  if (!user || !user.id || !(user.username ?? "").trim()) return undefined;
+  const uploader: Uploader = {
     name: (user.username as string).trim(),
-    image_path: withScheme(user.avatar),
-    parent,
+    external_id: hostScopedId(host, "member", user.id),
+    url: memberUrl(host, user.id),
   };
+  const avatar = withScheme(user.avatar);
+  if (avatar) uploader.image_path = avatar;
+  return uploader;
 }
 
 /** The video's channel when it has a usable one (the API sends [] for none). */

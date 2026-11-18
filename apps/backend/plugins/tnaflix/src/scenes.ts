@@ -30,6 +30,12 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
 }
 
+/** Lists the videos on an uploader's /profile/ page. */
+export function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  return sceneList({ url: args.url, limit: args.limit, offset: args.offset });
+}
+
 /** Page URL builder for a profile page: page 1 is the URL itself, later pages add ?page=N. Past the last page the site answers 200 with no cards. */
 export function profilePageUrl(url: string): (page: number) => string {
   const base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");

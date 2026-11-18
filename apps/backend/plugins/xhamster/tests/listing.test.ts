@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { parse } from "node-html-parser";
-import { parseVideoCards, thumbsFromInitials, landingStudio } from "../src/listing.ts";
+import { parseVideoCards, thumbsFromInitials, landingStudio, landingUploader } from "../src/listing.ts";
 import { parseInitials } from "../src/initials.ts";
 
 // Two cards as xhamster serves them: the first fully rendered, the second a
@@ -35,8 +35,9 @@ test("skeleton cards get poster, runtime, date and channel from the page state",
     poster_path: "https://ic-vt-nss.xhcdn.com/second.webp",
     duration_seconds: 753,
     date: "2021-08-19",
-    studio: { name: "SarberCorvinus", source_url: "https://xhamster.com/users/sarbercorvinus" },
+    uploader: { name: "SarberCorvinus", url: "https://xhamster.com/users/sarbercorvinus" },
   });
+  expect(cards[1].studio).toBeUndefined();
 });
 
 test("cards parse without page state, as before", () => {
@@ -46,8 +47,9 @@ test("cards parse without page state, as before", () => {
 });
 
 test("uploader listing links map to the profile URL the video page uses", () => {
-  expect(
-    landingStudio({ name: "SiennaDiamond", link: "https://xhamster.com/users/profiles/siennadiamond/videos" })
-  ).toEqual({ name: "SiennaDiamond", source_url: "https://xhamster.com/users/siennadiamond" });
-  expect(landingStudio({ name: "", link: "https://xhamster.com/channels/x" })).toBeUndefined();
+  const member = { name: "SiennaDiamond", link: "https://xhamster.com/users/profiles/siennadiamond/videos" };
+  expect(landingUploader(member)).toEqual({ name: "SiennaDiamond", url: "https://xhamster.com/users/siennadiamond" });
+  expect(landingStudio(member)).toBeUndefined();
+  expect(landingUploader({ name: "", link: "https://xhamster.com/users/x" })).toBeUndefined();
+  expect(landingUploader({ name: "X", link: "https://xhamster.com/channels/x" })).toBeUndefined();
 });

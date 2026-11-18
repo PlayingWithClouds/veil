@@ -1,6 +1,6 @@
 import { HTMLElement } from "node-html-parser";
 import type { DiscoveredItem } from "@playingwithclouds/veil-sdk";
-import { absoluteUrl, parseClockDuration, studioFromLink } from "./http.ts";
+import { absoluteUrl, parseClockDuration, studioFromLink, uploaderFromLink } from "./http.ts";
 import { sceneExternalId, type Site } from "./sites.ts";
 
 /**
@@ -58,8 +58,11 @@ function parseCard(site: Site, card: HTMLElement): DiscoveredItem | undefined {
     if (duration > 0) item.duration_seconds = duration;
   }
 
-  const studio = studioFromLink(site, card.querySelector(site.uploaderLinkSelector));
+  const creditLink = card.querySelector(site.uploaderLinkSelector);
+  const studio = studioFromLink(site, creditLink);
   if (studio) item.studio = studio;
+  const uploader = uploaderFromLink(site, creditLink);
+  if (uploader) item.uploader = uploader;
   return item;
 }
 

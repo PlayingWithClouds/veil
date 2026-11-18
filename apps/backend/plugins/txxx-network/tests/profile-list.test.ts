@@ -1,5 +1,5 @@
 import { test, expect, afterEach } from "bun:test";
-import { sceneList, modelVideosPath } from "../src/scenes.ts";
+import { sceneList, uploaderList, memberIdOf, memberVideosPath, modelVideosPath } from "../src/scenes.ts";
 
 const rileyResponse = await Bun.file(`${import.meta.dir}/fixtures/model-riley-reid.json`).text();
 const pageOne = await Bun.file(`${import.meta.dir}/fixtures/model-videos-riley-reid-1.json`).text();
@@ -52,4 +52,17 @@ test("without a limit every page is listed", async () => {
   mockApi();
   const result = await sceneList({ url: PROFILE });
   expect(result.items).toHaveLength(6);
+});
+
+test("a member page lists the member's uploads through the member filter", async () => {
+  expect(memberIdOf("https://txxx.com/members/6098065/")).toBe("6098065");
+  expect(memberIdOf(PROFILE)).toBe("");
+  const requested: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requested.push(String(input));
+    return new Response(pageOne);
+  }) as typeof fetch;
+  const result = await uploaderList({ url: "https://txxx.com/members/6098065/", limit: 2 });
+  expect(result.items).toHaveLength(2);
+  expect(requested[0]).toEndWith(memberVideosPath("6098065", 1));
 });

@@ -1,6 +1,6 @@
 import { test, expect, afterEach } from "bun:test";
 import { readFileSync } from "node:fs";
-import { sceneList, profilePageUrl } from "../src/scenes.ts";
+import { sceneList, uploaderList, memberVideosUrl, profilePageUrl } from "../src/scenes.ts";
 
 const profilePage = readFileSync(new URL("./fixtures/profile-mia-malkova.html", import.meta.url), "utf8");
 const originalFetch = globalThis.fetch;
@@ -54,4 +54,16 @@ test("without a limit every page is listed", async () => {
   mockProfile();
   const result = await sceneList({ url: "https://xhamster.com/pornstars/mia-malkova" });
   expect(result.items).toHaveLength(6);
+});
+
+test("an uploader's profile lists the videos tab", async () => {
+  expect(memberVideosUrl("https://xhamster.com/users/siennadiamond")).toBe("https://xhamster.com/users/siennadiamond/videos");
+  expect(memberVideosUrl("https://xhamster.com/users/siennadiamond/videos/?x=1")).toBe("https://xhamster.com/users/siennadiamond/videos");
+  requested.length = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requested.push(String(input));
+    return new Response("not found", { status: 404 });
+  }) as typeof fetch;
+  await uploaderList({ url: "https://xhamster.com/users/siennadiamond" });
+  expect(requested).toEqual(["https://xhamster.com/users/siennadiamond/videos"]);
 });

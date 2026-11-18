@@ -1,6 +1,6 @@
 import { HTMLElement, parse } from "node-html-parser";
 import type { DiscoveredItem, Download, ScenePerformer, Scene, ScrapeResult } from "@playingwithclouds/veil-sdk";
-import { fetchText, parseIsoDuration, performerFromLink, studioFromLink } from "./http.ts";
+import { fetchText, parseIsoDuration, performerFromLink, studioFromLink, uploaderFromLink } from "./http.ts";
 import { extractComments } from "./comments.ts";
 import { parseCards } from "./listing.ts";
 import { actionTagMarkers } from "./markers.ts";
@@ -38,8 +38,11 @@ export function buildScene(site: Site, id: string, html: string): Scene {
   const poster = pagePoster(doc, videoObject, flashvars);
   if (poster) scene.poster_path = poster;
 
-  const studio = studioFromLink(site, doc.querySelector(site.uploaderPageSelector));
+  const creditLink = doc.querySelector(site.uploaderPageSelector);
+  const studio = studioFromLink(site, creditLink);
   if (studio) scene.studio = studio;
+  const uploader = uploaderFromLink(site, creditLink);
+  if (uploader) scene.uploader = uploader;
   scene.performers = extractPerformers(site, doc);
   scene.tags = extractTags(site, doc);
   scene.related = extractRelated(site, doc, scene.external_id);

@@ -4,7 +4,7 @@ import { fetchDoc, absoluteUrl } from "./html.ts";
 import { extractComments } from "./comments.ts";
 import { parseVideoCards } from "./listing.ts";
 import { HTMLElement } from "node-html-parser";
-import type { ScrapeResult, ScenePerformer, DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { ScrapeResult, ScenePerformer, DiscoveredItem, StudioRef, Uploader } from "@playingwithclouds/veil-sdk";
 
 const MAX_RELATED = 40;
 
@@ -27,6 +27,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   if (performers.length > 0) scene.performers = performers;
   const studio = extractStudio(doc);
   if (studio) scene.studio = studio;
+  const uploader = extractUploader(doc);
+  if (uploader) scene.uploader = uploader;
   scene.tags = mergeTags(scene.tags ?? [], extractPageTags(doc));
   scene.related = extractRelated(doc, scene.external_id);
   const comments = extractComments(doc);
@@ -35,28 +37,31 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   return [{ type: "scene", scene }];
 }
 
-/**
- * Reads who published the video: a real channel (`li.vit-channel`, the same
- * /channel/ page studio:find scrapes) wins over the uploader's /profile/ page.
- */
+/** Reads the video's channel (`li.vit-channel`, the same /channel/ page studio:find scrapes). */
 export function extractStudio(doc: HTMLElement): StudioRef | undefined {
-  const channel = studioFromLink(doc.querySelector('#video-info-tags li.vit-channel a[href*="/channel/"]'));
-  if (channel) {
-    // Same external_id scheme as studios.ts so ingest merges it with studio:find.
-    const slug = channel.source_url!.match(/\/channel\/([^/]+)/);
-    if (slug) channel.external_id = `eporner-ch-${slug[1]}`;
-    return channel;
-  }
-  return studioFromLink(doc.querySelector('#video-info-tags li.vit-uploader a[href*="/profile/"]'));
+  const link = linkOf(doc.querySelector('#video-info-tags li.vit-channel a[href*="/channel/"]'));
+  if (!link) return undefined;
+  const studio: StudioRef = { name: link.name, source_url: link.url };
+  // Same external_id scheme as studios.ts so ingest merges it with studio:find.
+  const slug = link.url.match(/\/channel\/([^/]+)/);
+  if (slug) studio.external_id = `eporner-ch-${slug[1]}`;
+  return studio;
 }
 
-/** Builds a StudioRef from a channel/profile link, its page URL as identity. */
-function studioFromLink(anchor: HTMLElement | null): StudioRef | undefined {
+/** Reads the account that uploaded the video (`li.vit-uploader`, its /profile/ page). */
+export function extractUploader(doc: HTMLElement): Uploader | undefined {
+  const link = linkOf(doc.querySelector('#video-info-tags li.vit-uploader a[href*="/profile/"]'));
+  if (!link) return undefined;
+  return { name: link.name, url: link.url };
+}
+
+/** The name and absolute URL a credit link shows; undefined without both. */
+function linkOf(anchor: HTMLElement | null): { name: string; url: string } | undefined {
   if (!anchor) return undefined;
   const href = anchor.getAttribute("href");
   const name = anchor.text.trim();
   if (!href || !name) return undefined;
-  return { name, source_url: absoluteUrl(href) };
+  return { name, url: absoluteUrl(href) };
 }
 
 /** Reads the video page's category (/cat/) and tag (/tag/) link texts, in page order. */

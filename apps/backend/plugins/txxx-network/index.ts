@@ -2,7 +2,7 @@ import { runPlugin } from "@playingwithclouds/veil-sdk";
 import packageJson from "./package.json" with { type: "json" };
 import { find } from "./src/find.ts";
 import { identifyPerformer } from "./src/identify.ts";
-import { sceneList } from "./src/scenes.ts";
+import { sceneList, uploaderList } from "./src/scenes.ts";
 import { resolve } from "./src/resolve.ts";
 import { suggest } from "./src/suggest.ts";
 import { DEFAULT_HOST, NETWORK_DOMAINS } from "./src/http.ts";
@@ -16,7 +16,7 @@ runPlugin({
     // /favicon.ico is a near-transparent 16px placeholder; this is the real logo.
     icon: "https://txxx.com/static/images/favicons/apple-touch-icon.png",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve", "search:suggest"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "uploader:list", "stream:resolve", "search:suggest"],
     // find/resolve derive the host from the video URL, so every network
     // domain routes to this plugin.
     domains: NETWORK_DOMAINS,
@@ -34,6 +34,7 @@ runPlugin({
   find,
   identifyPerformer,
   sceneList,
+  uploaderList,
   resolve: (url) => resolve(url),
   suggest,
 });

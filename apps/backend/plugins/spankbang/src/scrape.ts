@@ -11,6 +11,7 @@ import type {
   SceneMarkerInput,
   ScenePerformer,
   StudioRef,
+  Uploader,
 } from "@playingwithclouds/veil-sdk";
 
 const MAX_RELATED = 40;
@@ -44,6 +45,8 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
   };
   const studio = extractStudio(root);
   if (studio) scene.studio = studio;
+  const uploader = extractUploader(root);
+  if (uploader) scene.uploader = uploader;
   const markers = extractMarkers(root);
   if (markers.length > 0) scene.markers = markers;
 
@@ -66,17 +69,20 @@ export function extractPerformers(root: HTMLElement): ScenePerformer[] {
   return performers;
 }
 
-/**
- * Reads who published the video from the video-tags block: the studio channel
- * (`/channel/`) when credited, else the uploading creator's profile (`/creator/`).
- */
+/** Reads the studio channel (`/channel/`) the video-tags block credits. */
 export function extractStudio(root: HTMLElement): StudioRef | undefined {
   const block = root.querySelector('[data-testid="video-tags"]');
   if (!block) return undefined;
+  return creditFromLink(block.querySelector('a[href*="/channel/"]'));
+}
 
-  const channel = creditFromLink(block.querySelector('a[href*="/channel/"]'));
-  if (channel) return channel;
-  return creditFromLink(block.querySelector('a[href*="/creator/"]'));
+/** Reads the uploading creator's profile (`/creator/`) from the video-tags block. */
+export function extractUploader(root: HTMLElement): Uploader | undefined {
+  const block = root.querySelector('[data-testid="video-tags"]');
+  if (!block) return undefined;
+  const creator = creditFromLink(block.querySelector('a[href*="/creator/"]'));
+  if (!creator) return undefined;
+  return { name: creator.name, url: creator.source_url };
 }
 
 /** Turns a credit link into a name plus its absolute page URL, the credit's identity. */

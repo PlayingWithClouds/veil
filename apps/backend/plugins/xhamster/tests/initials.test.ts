@@ -4,6 +4,7 @@ import {
   extractPerformers,
   extractTags,
   extractStudio,
+  extractUploader,
   extractDetails,
   extractDate,
 } from "../src/initials.ts";
@@ -29,16 +30,22 @@ test("tags are the category and tag chips, de-duplicated, without nav noise", ()
   expect(extractTags(parseInitials(channelFixture))).toEqual(["In English", "4K Porn", "Blowjob", "Big Dick"]);
 });
 
-test("studio is the channel, falling back to the uploader, never a brand", () => {
+test("studio is the channel, never a brand or a member", () => {
   expect(extractStudio(parseInitials(channelFixture))).toEqual({
     name: "Xander-Vision",
     source_url: "https://xhamster.com/channels/xander-vision",
   });
-  expect(extractStudio(parseInitials(uploaderFixture))).toEqual({
-    name: "SiennaDiamond",
-    source_url: "https://xhamster.com/users/siennadiamond",
-  });
+  expect(extractStudio(parseInitials(uploaderFixture))).toBeUndefined();
   expect(extractStudio(undefined)).toBeUndefined();
+});
+
+test("uploader is the member who posted it, not a channel", () => {
+  expect(extractUploader(parseInitials(uploaderFixture))).toEqual({
+    name: "SiennaDiamond",
+    url: "https://xhamster.com/users/siennadiamond",
+  });
+  expect(extractUploader(parseInitials(channelFixture))).toBeUndefined();
+  expect(extractUploader(undefined)).toBeUndefined();
 });
 
 test("details and date come from the video model", () => {

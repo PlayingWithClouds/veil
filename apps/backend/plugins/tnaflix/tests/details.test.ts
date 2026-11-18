@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { parse } from "node-html-parser";
-import { extractStudio, extractPerformers, extractTags, extractDetails } from "../src/scrape.ts";
+import { extractStudio, extractUploader, extractPerformers, extractTags, extractDetails } from "../src/scrape.ts";
 
 const channelPage = parse(await Bun.file(`${import.meta.dir}/fixtures/video-channel.html`).text());
 const uploaderPage = parse(await Bun.file(`${import.meta.dir}/fixtures/video-uploader.html`).text());
@@ -17,6 +17,15 @@ test("only a verified channel badge becomes the studio", () => {
   });
   expect(extractStudio(badgesOf(uploaderPage))).toBeUndefined();
   expect(extractStudio(null)).toBeUndefined();
+});
+
+test("an unverified member badge is the uploader", () => {
+  expect(extractUploader(badgesOf(uploaderPage))).toEqual({
+    name: "halvorson_patience",
+    url: "https://www.tnaflix.com/profile/halvorson_patience",
+  });
+  expect(extractUploader(badgesOf(channelPage))).toBeUndefined();
+  expect(extractUploader(null)).toBeUndefined();
 });
 
 test("performers are the badge-kiss profiles only", () => {

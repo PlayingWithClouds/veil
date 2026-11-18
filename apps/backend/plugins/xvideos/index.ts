@@ -1,7 +1,7 @@
 import { runPlugin } from "@playingwithclouds/veil-sdk";
 import packageJson from "./package.json" with { type: "json" };
 import { scrape } from "./src/scrape.ts";
-import { sceneList } from "./src/scenes.ts";
+import { sceneList, uploaderList } from "./src/scenes.ts";
 import { resolve } from "./src/resolve.ts";
 import { identifyPerformer, isProfileUrl, performerFind } from "./src/profile.ts";
 
@@ -13,7 +13,7 @@ runPlugin({
       "Adult tube site — search, browse and play videos from xvideos.com; also opens and plays xnxx.com video pages, which share its player.",
     icon: "https://www.xvideos.com/favicon.ico",
     version: packageJson.version,
-    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "stream:resolve"],
+    capabilities: ["scene:find", "performer:find", "performer:identify", "scene:list", "scene:list:page", "uploader:list", "stream:resolve"],
     // xnxx is a sister site on the same CDN: its pages scrape and resolve
     // here, but search and listings stay on xvideos, which carries the same catalog.
     domains: ["xvideos.com", "xnxx.com"],
@@ -24,5 +24,6 @@ runPlugin({
   },
   identifyPerformer: (args) => identifyPerformer(args),
   sceneList,
+  uploaderList,
   resolve: (url) => resolve(url),
 });

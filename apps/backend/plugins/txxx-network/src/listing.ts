@@ -1,5 +1,5 @@
 import { baseUrl, videoPageUrl } from "./http.ts";
-import type { DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, StudioRef, Uploader } from "@playingwithclouds/veil-sdk";
 
 // One entry in the videos2 API `videos` array. Only the fields the plugin reads
 // are typed; the payload carries many more.
@@ -34,29 +34,35 @@ export function videoToDiscoveredItem(host: string, video: ApiVideo): Discovered
   const durationSeconds = parseDurationSeconds(video.duration);
   if (durationSeconds > 0) item.duration_seconds = durationSeconds;
 
-  const studio = listingStudio(host, video);
+  const studio = listingStudio(video);
   if (studio) item.studio = studio;
+  const uploader = listingUploader(host, video);
+  if (uploader) item.uploader = uploader;
 
   return item;
 }
 
 /**
- * The publisher a listing entry names: its content source, else the uploading
- * member (same identity the video page credits them with). Listings carry no
+ * The publisher a listing entry names: its content source. Listings carry no
  * channel, so a channel video's stub is re-credited when its page is visited.
  */
-export function listingStudio(host: string, video: ApiVideo): StudioRef | undefined {
+export function listingStudio(video: ApiVideo): StudioRef | undefined {
   const sourceName = (video.content_source_name ?? "").trim();
   if (sourceName) return { name: sourceName };
+  return undefined;
+}
 
+/** The member who uploaded a listing entry, with the profile page the video page links. */
+export function listingUploader(host: string, video: ApiVideo): Uploader | undefined {
   const userId = String(video.user_id ?? "").trim();
   const displayName = (video.display_name ?? "").trim();
   if (!userId || !displayName) return undefined;
-  return {
-    name: displayName,
-    external_id: hostScopedId(host, "member", userId),
-    source_url: `${baseUrl(host)}/members/${userId}/`,
-  };
+  return { name: displayName, external_id: hostScopedId(host, "member", userId), url: memberUrl(host, userId) };
+}
+
+/** A member's profile page on the site. */
+export function memberUrl(host: string, userId: string): string {
+  return `${baseUrl(host)}/members/${userId}/`;
 }
 
 /**

@@ -126,15 +126,16 @@ describe("listing cards", () => {
     expect(cards[0].studio).toBeUndefined();
   });
 
-  test("redtube reads numeric ids and amateur uploaders as studios", async () => {
+  test("redtube reads numeric ids and names amateurs as uploaders, not studios", async () => {
     const cards = parseCards(site("redtube"), parse(await fixture("rt-listing.html")));
     expect(cards.map((card) => card.external_id)).toEqual(["redtube-103634591", "redtube-102262661", "redtube-102089581"]);
     expect(cards[0]).toMatchObject({
       title: "I'm already 18 years old - can you fuck me like a neighbor?",
       source_url: "https://www.redtube.com/103634591",
       duration_seconds: 1217,
-      studio: { name: "DisDiger", source_url: "https://www.redtube.com/amateur/disdiger-ph" },
+      uploader: { name: "DisDiger", url: "https://www.redtube.com/amateur/disdiger-ph" },
     });
+    expect(cards[0].studio).toBeUndefined();
     expect(cards[0].poster_path).toStartWith("https://ei-ph.rdtcdn.com/");
   });
 
@@ -144,8 +145,9 @@ describe("listing cards", () => {
       external_id: "youporn-205140451",
       source_url: "https://www.youporn.com/watch/205140451/",
       duration_seconds: 345,
-      studio: { name: "Leah Aloe" },
+      uploader: { name: "Leah Aloe", url: "https://www.youporn.com/amateur/leahaloe/" },
     });
+    expect(youporn[0].studio).toBeUndefined();
     const tube8 = parseCards(site("tube8"), parse(await fixture("t8-listing.html")));
     expect(tube8[0]).toMatchObject({
       external_id: "tube8-31252491",
@@ -206,7 +208,8 @@ describe("scene pages", () => {
     const scene = buildScene(site("redtube"), "103634591", await fixture("rt-scene.html"));
     expect(scene.title).toBe("I'm already 18 years old - can you fuck me like a neighbor?");
     expect(scene.duration_seconds).toBe(1217);
-    expect(scene.studio).toMatchObject({ name: "DisDiger", source_url: "https://www.redtube.com/amateur/disdiger-ph" });
+    expect(scene.studio).toBeUndefined();
+    expect(scene.uploader).toMatchObject({ name: "DisDiger", url: "https://www.redtube.com/amateur/disdiger-ph" });
     expect(scene.performers).toEqual([
       {
         name: "Katty West",

@@ -1,5 +1,5 @@
 import { parse, HTMLElement } from "node-html-parser";
-import type { ScenePerformer, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { ScenePerformer, StudioRef, Uploader } from "@playingwithclouds/veil-sdk";
 import type { Site } from "./sites.ts";
 
 export const UA =
@@ -117,12 +117,8 @@ export function slugFromHref(href: string): string {
   }
 }
 
-/**
- * Builds the StudioRef for a card/page uploader link when it points at a
- * channel or amateur profile. Pornstar and model pages are performers, not
- * studios, so they yield undefined.
- */
-export function studioFromLink(site: Site, anchor: HTMLElement | null | undefined): StudioRef | undefined {
+/** The link's path, display name and absolute URL; undefined for a link without href or text. */
+function linkParts(site: Site, anchor: HTMLElement | null | undefined): { pathname: string; name: string; url: string } | undefined {
   if (!anchor) return undefined;
   const href = anchor.getAttribute("href");
   const name = anchor.text.trim();
@@ -132,14 +128,29 @@ export function studioFromLink(site: Site, anchor: HTMLElement | null | undefine
   if (href.startsWith("http")) {
     pathname = new URL(href).pathname;
   }
-  const match = pathname.match(site.studioPathPattern);
-  if (!match) return undefined;
+  return { pathname, name, url: `https://${site.host}${pathname}` };
+}
 
-  return {
-    name,
-    external_id: `${site.key}-${match[1]}-${match[2]}`,
-    source_url: `https://${site.host}${pathname}`,
-  };
+/**
+ * Builds the StudioRef for a card/page credit link when it points at a
+ * channel, a production company. Amateur profiles are uploaders, and pornstar
+ * and model pages are performers, so they yield undefined.
+ */
+export function studioFromLink(site: Site, anchor: HTMLElement | null | undefined): StudioRef | undefined {
+  const link = linkParts(site, anchor);
+  if (!link) return undefined;
+  const match = link.pathname.match(site.studioPathPattern);
+  if (!match) return undefined;
+  return { name: link.name, external_id: `${site.key}-${match[1]}-${match[2]}`, source_url: link.url };
+}
+
+/** Builds the Uploader for a card/page credit link when it points at an amateur's profile. */
+export function uploaderFromLink(site: Site, anchor: HTMLElement | null | undefined): Uploader | undefined {
+  const link = linkParts(site, anchor);
+  if (!link) return undefined;
+  const match = link.pathname.match(site.uploaderPathPattern);
+  if (!match) return undefined;
+  return { name: link.name, external_id: `${site.key}-${match[1]}-${match[2]}`, url: link.url };
 }
 
 /** Builds a ScenePerformer from a /pornstar/ link. */

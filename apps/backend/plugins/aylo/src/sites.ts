@@ -25,8 +25,10 @@ export interface Site {
   categoriesUrl: string;
   /** Matches a category link's path, capturing nothing; used to harvest the category index. */
   categoryLinkSelector: string;
-  /** Matches a channel/uploader path, capturing [kind, slug]. */
+  /** Matches a channel (a production company's page) path, capturing [kind, slug]. */
   studioPathPattern: RegExp;
+  /** Matches the path of an amateur uploader's profile, capturing [kind, slug]. */
+  uploaderPathPattern: RegExp;
   /** Rewrites a channel/performer page URL to the one that lists its videos. */
   videosPagePath: (pathname: string) => string;
 
@@ -66,7 +68,8 @@ const PORNHUB: Site = {
   newestUrl: () => "https://www.pornhub.com/video?o=cm",
   categoriesUrl: "https://www.pornhub.com/categories",
   categoryLinkSelector: "li.catPic .categoryTitleWrapper a",
-  studioPathPattern: /^\/(channels|users)\/([^/?#]+)/,
+  studioPathPattern: /^\/(channels)\/([^/?#]+)/,
+  uploaderPathPattern: /^\/(users)\/([^/?#]+)/,
   // A pornstar/channel root mixes several sections; /videos is the paginated full list.
   videosPagePath: (pathname) => {
     if (/^\/(pornstar|channels|model|users)\/[^/]+\/?$/.test(pathname)) {
@@ -105,7 +108,8 @@ const REDTUBE: Site = {
   newestUrl: () => "https://www.redtube.com/newest",
   categoriesUrl: "https://www.redtube.com/categories",
   categoryLinkSelector: 'a[href^="/redtube/"]',
-  studioPathPattern: /^\/(channels|amateur)\/([^/?#]+)/,
+  studioPathPattern: /^\/(channels)\/([^/?#]+)/,
+  uploaderPathPattern: /^\/(amateur)\/([^/?#]+)/,
   videosPagePath: (pathname) => pathname,
 
   cardSelector: "li.videoblock_list",
@@ -138,7 +142,8 @@ const YOUPORN: Site = {
   newestUrl: () => "https://www.youporn.com/browse/time/",
   categoriesUrl: "https://www.youporn.com/categories/",
   categoryLinkSelector: 'a[href^="/category/"]',
-  studioPathPattern: /^\/(channel|amateur)\/([^/?#]+)/,
+  studioPathPattern: /^\/(channel)\/([^/?#]+)/,
+  uploaderPathPattern: /^\/(amateur)\/([^/?#]+)/,
   videosPagePath: (pathname) => pathname,
 
   cardSelector: "article.video-box",

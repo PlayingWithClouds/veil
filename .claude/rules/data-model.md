@@ -66,7 +66,7 @@ This install's `Device` row (`current`) is created on first start (`DEVICE_NAME`
 
 ## Ingest (`internal/library`)
 
-- Identity: one `Source` row per site a record was found on (`plugin` + `externalId`, unique; `externalId` falls back to the URL). Ingesting the same site record again updates the record its source points at.
+- Identity: one `Source` row per site a record was found on (`plugin` + `externalId`, unique; `externalId` falls back to the URL). Ingesting the same site record again updates the record its source points at. A video's source also keeps its `uploader` (name, channel/profile url, avatar: the tube-site account, a value, not a studio); a scene or card that names none leaves the stored one. `mutation fetchUploader(plugin, url, name)` stores a page of the uploader's videos through `uploader:list` (`pipeline.ListUploader`) and names the uploader on the listed videos whose cards didn't. Studios stored before plugins split uploaders off are not rewritten.
 - Performers, studios and tags without a site identity match by `nameKey` (`internal/names.Key`); a site identity, when given, is added as a source.
 - `IngestFound` (a page from `<entity>:find`): root first (video/gallery), then standalone performers/studios/tags. Marks the root's source `fetchedAt`, replaces its streams (`Stream`, per source) and gallery images.
 - `IngestListed` (a listing card): stub only; doesn't touch credits. Unfetched sources are read on first open (`pipeline.Visit` via `fetchVideo`/`fetchGallery`).

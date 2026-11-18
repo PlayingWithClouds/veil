@@ -24,6 +24,12 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return sink.result();
 }
 
+/** Lists the videos on an uploader's /creator/ page. */
+export function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  return sceneList({ url: args.url, limit: args.limit, offset: args.offset });
+}
+
 function pageUrl(query: string, page: number): string {
   if (!query) {
     if (page === 1) return `${BASE_URL}/new_videos/`;

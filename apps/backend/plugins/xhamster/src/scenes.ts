@@ -31,6 +31,19 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
   return { items: limit > 0 ? items.slice(offset, offset + limit) : items.slice(offset) };
 }
 
+/** Lists an uploader's videos: a member's profile (/users/<name>) shows them under /videos. */
+export function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  return sceneList({ url: memberVideosUrl(args.url), limit: args.limit, offset: args.offset });
+}
+
+/** The page listing a member's videos, from the profile URL the video page links. */
+export function memberVideosUrl(profileUrl: string): string {
+  const base = profileUrl.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  if (!/\/users\/[^/]+$/.test(base)) return base;
+  return `${base}/videos`;
+}
+
 /** Page URL builder for a profile or channel page: page 1 is the URL itself, later pages append /N. Past the last page the site answers 404. */
 export function profilePageUrl(url: string): (page: number) => string {
   const base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");

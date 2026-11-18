@@ -113,3 +113,9 @@ export function interleave(lists: DiscoveredItem[][]): DiscoveredItem[] {
   }
   return merged;
 }
+
+/** Lists the videos on an uploader's profile page, on the site the profile belongs to. */
+export function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  if (!args.url) throw new Error("uploader:list needs the uploader's page url");
+  return sceneList({ url: args.url, limit: args.limit, offset: args.offset });
+}

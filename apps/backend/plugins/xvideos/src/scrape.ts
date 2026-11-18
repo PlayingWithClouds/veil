@@ -1,7 +1,7 @@
 import { parse, type HTMLElement } from "node-html-parser";
-import type { DiscoveredItem, Image, Scene, ScenePerformer, ScrapeResult, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, Image, Scene, ScenePerformer, ScrapeResult, Uploader } from "@playingwithclouds/veil-sdk";
 import { fetchComments } from "./comments.ts";
-import { externalId, jsonItem, jsonVideoList, studioFromLink } from "./cards.ts";
+import { externalId, jsonItem, jsonVideoList, uploaderFromLink } from "./cards.ts";
 import { canonicalUrl, decodeEntities, fetchText, ratingFromPercent, siteOf, type Site } from "./http.ts";
 
 const MAX_RELATED = 40;
@@ -87,8 +87,8 @@ export function parseVideoPage(html: string, target: string, site: Site): VideoP
   if (typeof views === "number") scene.view_count = views;
   const rating = ratingFromPercent(root.querySelector(".rating-good-perc, .rating-box")?.text);
   if (rating !== undefined) scene.rating = rating;
-  const studio = studioOf(root, player, site);
-  if (studio) scene.studio = studio;
+  const uploader = uploaderOf(root, player, site);
+  if (uploader) scene.uploader = uploader;
 
   const poster = posterOf(video, player);
   if (poster) {
@@ -150,10 +150,10 @@ function titleCase(name: string): string {
 }
 
 /** The uploader: xvideos links its channel or profile; xnxx only names the account. */
-function studioOf(root: HTMLElement, player: Map<string, string>, site: Site): StudioRef | undefined {
+function uploaderOf(root: HTMLElement, player: Map<string, string>, site: Site): Uploader | undefined {
   const uploader = root.querySelector(".main-uploader a");
-  if (uploader) return studioFromLink(uploader.querySelector(".name")?.text, uploader.getAttribute("href"), site);
-  return studioFromLink(player.get("setUploaderName"), undefined, site);
+  if (uploader) return uploaderFromLink(uploader.querySelector(".name")?.text, uploader.getAttribute("href"), site);
+  return uploaderFromLink(player.get("setUploaderName"), undefined, site);
 }
 
 /** The related videos the page embeds as JSON (var video_related=[…]), in site order. */

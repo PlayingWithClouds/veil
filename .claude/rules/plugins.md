@@ -35,7 +35,7 @@ GitHub only, never npm. Rolling `plugins` release: per version `<folder>-<versio
 
 ## Capabilities
 
-`meta`, `discover`, `scrape`, `search`, `enrich`, `resolve` (embed/page URL → playable mp4/HLS + headers; routed by `meta.domains`, `"*"` = wildcard), `browse:categories`, `browse:actors`, `scene:list:page` (`scene:list` with `url` lists a channel/performer/category page), `cam:list` (live rooms: query/tag/gender/limit/offset → `CamRoom`s + total), `cam:stream` (username → live HLS master as `ResolveResult`), `face:identify`.
+`meta`, `discover`, `scrape`, `search`, `enrich`, `resolve` (embed/page URL → playable mp4/HLS + headers; routed by `meta.domains`, `"*"` = wildcard), `browse:categories`, `browse:actors`, `scene:list:page` (`scene:list` with `url` lists a channel/performer/category page), `uploader:list` (`args.url` is the `Uploader.url` the plugin reported: that account's videos), `cam:list` (live rooms: query/tag/gender/limit/offset → `CamRoom`s + total), `cam:stream` (username → live HLS master as `ResolveResult`), `face:identify`.
 
 Resolution chain (`internal/resolve`): cache → domain plugin → wildcard → direct.
 
@@ -45,7 +45,7 @@ stdin/stdout JSON: `{ "capability", "args" }` → `{ "result" } | { "error" }`.
 
 - `scrape` streams NDJSON: one `ScrapeResult` per line, root entity (scene/gallery/image/collection) first, then related performers/studios/tags.
 - Lists may write `{ "items": [...] }` lines before the result so live search shows them early (SDK `ItemSink` for page crawls, `emitItems` for fan-outs). The result still carries every item; `Runner.ListStream` forwards each once.
-- `Scene.studio` is `StudioRef { name, external_id?, source_url? }`.
+- `Scene.studio` is `StudioRef { name, external_id?, source_url? }`: real studios and production companies only (Aylo channels, eporner/spankbang channels, missav makers). On tube sites the account that uploaded a video is `Scene.uploader` / `DiscoveredItem.uploader` (`Uploader { name, url?, external_id?, image_path? }`), stored on the video's `Source` (never a record), and `url` is what `uploader:list` lists from. Plugins reporting uploaders: aylo (`/users/`, `/amateur/`), eporner (`/profile/`), spankbang (`/creator/`), xhamster (`/users/`), txxx-network (members), tnaflix (unverified badge), xvideos (channel or profile), sxyprn (blog).
 - `Collection` with ordered `member_urls`; unresolved members are queued for scraping.
 - `Scene.markers` (tag/label + seconds/end_seconds) ingest as global markers.
 - Optional `rating` (0..10) and `view_count` on `Scene` and listing `DiscoveredItem`s; cards show them.

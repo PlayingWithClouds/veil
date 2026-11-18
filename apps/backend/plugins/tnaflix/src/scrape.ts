@@ -8,6 +8,7 @@ import type {
   Scene,
   ScenePerformer,
   StudioRef,
+  Uploader,
   Download,
   Image,
   DiscoveredItem,
@@ -34,6 +35,7 @@ export async function scrape(url: string): Promise<ScrapeResult[]> {
     details: extractDetails(root),
     date: extractDate(html),
     studio: extractStudio(badges),
+    uploader: extractUploader(badges),
     poster_path: poster,
     images: poster ? [{ type: "poster", file_path: poster } as Image] : [],
     tags: extractTags(badges),
@@ -106,10 +108,20 @@ export function extractPerformers(badges: HTMLElement | null): ScenePerformer[] 
 }
 
 /**
- * The verified channel badge as the scene's studio, keyed by its channel URL.
- * Unverified uploads come from throwaway member accounts (random handles like
- * "halvorson_patience") that would each become a junk studio, so they credit none.
+ * The unverified uploader badge: a member account (random handles like
+ * "halvorson_patience"), which is an uploader, never a studio.
  */
+export function extractUploader(badges: HTMLElement | null): Uploader | undefined {
+  if (!badges) return undefined;
+  const anchor = badges.querySelector('a.badge-unverified[href*="/profile/"]');
+  if (!anchor) return undefined;
+  const name = decodeEntities(anchor.text).trim();
+  const href = anchor.getAttribute("href");
+  if (!name || !href) return undefined;
+  return { name, url: resolveUrl(href) };
+}
+
+/** The verified channel badge as the scene's studio, keyed by its channel URL. */
 export function extractStudio(badges: HTMLElement | null): StudioRef | undefined {
   if (!badges) return undefined;
   const anchor = badges.querySelector("a.badge-verified");

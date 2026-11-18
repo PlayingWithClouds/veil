@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { creditedStudio, extractPerformers, type ApiVideoDetail } from "../src/scrape.ts";
+import { creditedStudio, uploaderOf, extractPerformers, type ApiVideoDetail } from "../src/scrape.ts";
 
 /** The `video` record of a saved video API response. */
 async function loadVideo(name: string): Promise<ApiVideoDetail> {
@@ -49,23 +49,12 @@ describe("creditedStudio", () => {
     });
   });
 
-  test("credits the uploading member when there is no channel or real source", () => {
-    expect(creditedStudio("txxx.com", memberUploadVideo)).toEqual({
-      type: "studio",
-      external_id: "txxx-member-6098065@txxx.com",
-      source_url: "https://txxx.com/members/6098065/",
-      name: "SeeHimFuck",
-      image_path: "https://tn.txxx.tube/contents/avatars/upd/1492700652/6098000/6098065.png",
-      parent: "Txxx",
-    });
-    expect(creditedStudio("hclips.com", hclipsUploadVideo)).toMatchObject({
-      source_url: "https://hclips.com/members/3100911/",
-      name: "ina37",
-      parent: "Hclips",
-    });
+  test("a member's upload has no studio", () => {
+    expect(creditedStudio("txxx.com", memberUploadVideo)).toBeNull();
+    expect(creditedStudio("hclips.com", hclipsUploadVideo)).toBeNull();
   });
 
-  test("credits a content source, then a real source group, before the member", () => {
+  test("credits a content source, then a real source group", () => {
     const withoutChannel = { ...channelVideo, channel: [] };
 
     expect(creditedStudio("txxx.com", { ...withoutChannel, source_title: "BBC Pie", source_dir: "bbcpie-com" }))
@@ -81,5 +70,21 @@ describe("creditedStudio", () => {
   test("returns null when the API names no publisher", () => {
     const anonymous = { ...memberUploadVideo, user: null };
     expect(creditedStudio("txxx.com", anonymous)).toBeNull();
+  });
+});
+
+describe("uploaderOf", () => {
+  test("names the member with their profile page and avatar", () => {
+    expect(uploaderOf("txxx.com", memberUploadVideo)).toEqual({
+      name: "SeeHimFuck",
+      external_id: "txxx-member-6098065@txxx.com",
+      url: "https://txxx.com/members/6098065/",
+      image_path: "https://tn.txxx.tube/contents/avatars/upd/1492700652/6098000/6098065.png",
+    });
+    expect(uploaderOf("hclips.com", hclipsUploadVideo)).toMatchObject({ name: "ina37", url: "https://hclips.com/members/3100911/" });
+  });
+
+  test("is undefined when the API names no member", () => {
+    expect(uploaderOf("txxx.com", { ...memberUploadVideo, user: null })).toBeUndefined();
   });
 });

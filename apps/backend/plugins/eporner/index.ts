@@ -1,7 +1,7 @@
 import { runPlugin } from "@playingwithclouds/veil-sdk";
 import packageJson from "./package.json" with { type: "json" };
 import { find } from "./src/find.ts";
-import { sceneList } from "./src/scenes.ts";
+import { sceneList, uploaderList } from "./src/scenes.ts";
 import { performerList } from "./src/performers.ts";
 import { studioList } from "./src/studios.ts";
 import { galleryList } from "./src/galleries.ts";
@@ -21,6 +21,7 @@ runPlugin({
       "scene:find",
       "scene:list",
       "scene:list:page",
+      "uploader:list",
       "performer:find",
       "performer:list",
       "performer:identify",
@@ -37,6 +38,7 @@ runPlugin({
   },
   find: (url) => find(url),
   sceneList,
+  uploaderList,
   performerList,
   studioList,
   galleryList,

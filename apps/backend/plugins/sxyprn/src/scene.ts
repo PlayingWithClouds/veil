@@ -4,7 +4,7 @@ import type {
   Scene,
   ScenePerformer,
   ScrapeResult,
-  StudioRef,
+  Uploader,
 } from "@playingwithclouds/veil-sdk";
 import { parseVideoCards, titleFromPostText } from "./cards.ts";
 import {
@@ -47,8 +47,8 @@ export function sceneFromPostPage(root: HTMLElement, postId: string): Scene {
   };
   const performers = performersOf(mainPost);
   if (performers.length > 0) scene.performers = performers;
-  const studio = studioOf(mainPost);
-  if (studio !== undefined) scene.studio = studio;
+  const uploader = uploaderOf(mainPost);
+  if (uploader !== undefined) scene.uploader = uploader;
   const date = dateOf(root);
   if (date !== "") scene.date = date;
   const duration = isoDurationSeconds(metaContent(root, "duration"));
@@ -113,10 +113,10 @@ function performersOf(mainPost: HTMLElement): ScenePerformer[] {
 }
 
 /**
- * The uploader of the post as its studio: the blog that posted it, identified by
- * its blog id. Undefined when the post names no uploader.
+ * The uploader of the post: the blog that posted it, identified by its blog
+ * id. Undefined when the post names no uploader.
  */
-function studioOf(mainPost: HTMLElement): StudioRef | undefined {
+function uploaderOf(mainPost: HTMLElement): Uploader | undefined {
   const link = mainPost.querySelector(".pes_author_div a[href^='/blog/']");
   if (link === null) return undefined;
   const nameElement = link.querySelector(".a_name");
@@ -125,7 +125,7 @@ function studioOf(mainPost: HTMLElement): StudioRef | undefined {
   return {
     name: normalizeText(nameElement.text),
     external_id: blogIdFromUrl(href),
-    source_url: resolveUrl(href),
+    url: resolveUrl(href),
   };
 }
 

@@ -57,9 +57,9 @@ describe("listing cards", () => {
       preview_video: "https://thumb-cdn77.xvideos-cdn.com/a7c798c9-d259-456d-8259-8378c554baae/0/preview.mp4",
       duration_seconds: 300,
       view_count: 931800,
-      studio: {
+      uploader: {
         name: "Bangbros Bubble Butts",
-        source_url: "https://www.xvideos.com/bubblebooties",
+        url: "https://www.xvideos.com/bubblebooties",
         external_id: "xvideos-uploader-bubblebooties",
       },
     });
@@ -97,8 +97,13 @@ describe("video page", () => {
     expect(page.numericId).toBe("23048371");
   });
 
-  test("credits the channel, the pornstar and the tags", () => {
-    expect(scene.studio?.name).toBe("Bangbros Bubble Butts");
+  test("names the channel as uploader, not studio, and credits the pornstar and the tags", () => {
+    expect(scene.studio).toBeUndefined();
+    expect(scene.uploader).toEqual({
+      name: "Bangbros Bubble Butts",
+      url: "https://www.xvideos.com/bubblebooties",
+      external_id: "xvideos-uploader-bubblebooties",
+    });
     expect(scene.performers).toEqual([
       {
         name: "Nicole Aniston",
@@ -113,7 +118,7 @@ describe("video page", () => {
   test("lists the related videos without the video itself", () => {
     expect(scene.related!.length).toBe(40);
     expect(scene.related!.some((item) => item.external_id === scene.external_id)).toBe(false);
-    expect(scene.related![0].studio?.name).toBe("Ass Parade");
+    expect(scene.related![0].uploader?.name).toBe("Ass Parade");
     expect(scene.related![0].rating).toBe(9.9);
   });
 
@@ -129,7 +134,7 @@ describe("video page", () => {
     expect(xnxx.scene.title).toBe("Busty Blonde Teases");
     expect(xnxx.scene.performers!.map((performer) => performer.name)).toEqual(["Octavia Red", "Parker Ambrose"]);
     expect(xnxx.scene.tags).toContain("big ass");
-    expect(xnxx.scene.studio?.name).toBe("blogporntv");
+    expect(xnxx.scene.uploader).toEqual({ name: "blogporntv" });
     expect(xnxx.scene.poster_path).toEndWith(".jpg");
     expect(xnxx.scene.related!.length).toBeGreaterThan(10);
     expect(xnxx.numericId).toBe("91186924");

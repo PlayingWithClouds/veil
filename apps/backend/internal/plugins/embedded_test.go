@@ -356,6 +356,7 @@ func checkBundleLive(t *testing.T, runner *Runner, dir, query string) {
 	}
 	t.Logf("%s:find → %d results in %s", entity, len(results), time.Since(started))
 	compareWithBun(t, ctx, plugin, entity, query, items, results)
+	checkUploaderLive(t, ctx, runner, plugin, results)
 	if entity != MediaTypeScene || !meta.Has(CapabilityStreamResolve) {
 		return
 	}
@@ -365,6 +366,29 @@ func checkBundleLive(t *testing.T, runner *Runner, dir, query string) {
 		t.Fatalf("resolve: %v", err)
 	}
 	t.Logf("stream:resolve → %s in %s", resolved.MimeType, time.Since(started))
+}
+
+// checkUploaderLive lists the videos of the uploader a found scene names, for
+// plugins that declare uploader:list; a scene naming no uploader with a page
+// is skipped, since the site may simply have none for that video.
+func checkUploaderLive(t *testing.T, ctx context.Context, runner *Runner, plugin *Plugin, results []*ScrapeResult) {
+	if !plugin.Meta.Has(CapabilityUploaderList) || len(results) == 0 || results[0].Scene == nil {
+		return
+	}
+	uploader := results[0].Scene.Uploader
+	if uploader == nil || uploader.URL == "" {
+		t.Log("uploader:list skipped: the scene names no uploader page")
+		return
+	}
+	started := time.Now()
+	listed, err := runner.ListUploader(ctx, plugin, ListArgs{URL: uploader.URL, Limit: 5})
+	if err != nil {
+		t.Fatalf("uploader:list %s: %v", uploader.URL, err)
+	}
+	t.Logf("uploader:list %s → %d items in %s", uploader.URL, len(listed.Items), time.Since(started))
+	if len(listed.Items) == 0 {
+		t.Fatalf("uploader:list %s returned no items", uploader.URL)
+	}
 }
 
 // compareWithBun runs the same list and find through Bun on the plugin's

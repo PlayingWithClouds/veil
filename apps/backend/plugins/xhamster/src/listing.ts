@@ -1,6 +1,6 @@
 import { HTMLElement } from "node-html-parser";
 import { resolveUrl, videoIdFromUrl, decodeEntities, durationSecondsFromLabel } from "./http.ts";
-import type { DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, StudioRef, Uploader } from "@playingwithclouds/veil-sdk";
 
 /** The channel or user a listed video links to (`landing` in the page state). */
 interface ThumbLanding {
@@ -58,6 +58,8 @@ export function parseVideoCards(root: HTMLElement, thumbs: Map<string, VideoThum
     if (date) item.date = date;
     const studio = landingStudio(thumb?.landing);
     if (studio) item.studio = studio;
+    const uploader = landingUploader(thumb?.landing);
+    if (uploader) item.uploader = uploader;
     items.push(item);
   }
 
@@ -97,21 +99,34 @@ function thumbDate(thumb: VideoThumb | undefined): string | undefined {
   return new Date(thumb.created * 1000).toISOString().slice(0, 10);
 }
 
-/**
- * The card's channel or uploader as a StudioRef, keyed by the same page URL
- * the video page's uploader chip uses (listing links point at
- * /users/profiles/<name>/videos, the chip at /users/<name>).
- */
+/** The card's channel as a StudioRef; a member's card links a profile, which is no studio. */
 export function landingStudio(landing: ThumbLanding | undefined): StudioRef | undefined {
-  if (!landing || !landing.name || !landing.link) return undefined;
-  const studio: StudioRef = { name: landing.name, source_url: canonicalLandingUrl(landing.link) };
+  if (!landing || !landing.name || !landing.link || isMemberLink(landing.link)) return undefined;
+  const studio: StudioRef = { name: landing.name, source_url: landing.link };
   if (landing.logo) studio.image_path = landing.logo;
   return studio;
 }
 
-/** Rewrites a user's listing link to their profile URL; channel links pass through. */
-function canonicalLandingUrl(link: string): string {
-  const userMatch = link.match(/^(https?:\/\/[^/]+)\/users\/profiles\/([^/?#]+)/);
+/**
+ * The member who uploaded the card's video, keyed by the same page URL the
+ * video page's uploader chip uses (listing links point at
+ * /users/profiles/<name>/videos, the chip at /users/<name>).
+ */
+export function landingUploader(landing: ThumbLanding | undefined): Uploader | undefined {
+  if (!landing || !landing.name || !landing.link || !isMemberLink(landing.link)) return undefined;
+  const uploader: Uploader = { name: landing.name, url: memberProfileUrl(landing.link) };
+  if (landing.logo) uploader.image_path = landing.logo;
+  return uploader;
+}
+
+/** Whether a listing link is a member's profile rather than a channel. */
+function isMemberLink(link: string): boolean {
+  return /^https?:\/\/[^/]+\/users\//.test(link);
+}
+
+/** Rewrites a member's listing link to their profile URL. */
+function memberProfileUrl(link: string): string {
+  const userMatch = link.match(/^(https?:\/\/[^/]+)\/users\/(?:profiles\/)?([^/?#]+)/);
   if (userMatch) return `${userMatch[1]}/users/${userMatch[2]}`;
   return link;
 }

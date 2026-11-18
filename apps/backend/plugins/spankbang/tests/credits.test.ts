@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { parse } from "node-html-parser";
-import { extractPerformers, extractStudio } from "../src/scrape.ts";
+import { extractPerformers, extractStudio, extractUploader } from "../src/scrape.ts";
 
 const channelPage = parse(await Bun.file(`${import.meta.dir}/fixtures/credits-channel.html`).text());
 const creatorPage = parse(await Bun.file(`${import.meta.dir}/fixtures/credits-creator.html`).text());
@@ -23,17 +23,19 @@ test("extractStudio reads the channel", () => {
   });
 });
 
-test("extractStudio falls back to the creator profile", () => {
-  expect(extractStudio(creatorPage)).toEqual({
+test("the creator profile is the uploader, not a studio", () => {
+  expect(extractStudio(creatorPage)).toBeUndefined();
+  expect(extractUploader(creatorPage)).toEqual({
     name: "Miguelmegadotado",
-    source_url: "https://spankbang.com/4wpt/creator/miguelmegadotado/",
+    url: "https://spankbang.com/4wpt/creator/miguelmegadotado/",
   });
 });
 
-test("extractStudio prefers the channel over the creator", () => {
+test("a video with a channel and a creator gets both", () => {
   const page = parse(`<div data-testid="video-tags">
     <a href="/4wpt/creator/someone/">someone</a>
     <a href="/iq/channel/mofos/">MOFOS</a>
   </div>`);
   expect(extractStudio(page)?.source_url).toBe("https://spankbang.com/iq/channel/mofos/");
+  expect(extractUploader(page)?.url).toBe("https://spankbang.com/4wpt/creator/someone/");
 });

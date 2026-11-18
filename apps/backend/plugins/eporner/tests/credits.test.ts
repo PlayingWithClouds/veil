@@ -1,14 +1,15 @@
 import { test, expect } from "bun:test";
 import { parse } from "node-html-parser";
-import { extractPerformerCredits, extractStudio, extractPageTags, mergeTags } from "../src/scrape.ts";
+import { extractPerformerCredits, extractStudio, extractUploader, extractPageTags, mergeTags } from "../src/scrape.ts";
 
 const uploaderPage = parse(await Bun.file(`${import.meta.dir}/fixtures/credits-uploader.html`).text());
 const channelPage = parse(await Bun.file(`${import.meta.dir}/fixtures/credits-channel.html`).text());
 
-test("extractStudio reads the uploader profile as the studio", () => {
-  expect(extractStudio(uploaderPage)).toEqual({
+test("the uploader profile is the uploader, not a studio", () => {
+  expect(extractStudio(uploaderPage)).toBeUndefined();
+  expect(extractUploader(uploaderPage)).toEqual({
     name: "glazers",
-    source_url: "https://www.eporner.com/profile/glazers/",
+    url: "https://www.eporner.com/profile/glazers/",
   });
 });
 
@@ -20,12 +21,13 @@ test("extractStudio reads a channel with the studio:find external_id", () => {
   });
 });
 
-test("extractStudio prefers the channel over the uploader", () => {
+test("a video with a channel and an uploader gets both", () => {
   const page = parse(`<div id="video-info-tags"><ul>
     <li class="vit-uploader"><a href="/profile/someone/">someone</a></li>
     <li class="vit-channel"><a href="/channel/pure-taboo/">Pure Taboo</a></li>
   </ul></div>`);
   expect(extractStudio(page)?.source_url).toBe("https://www.eporner.com/channel/pure-taboo/");
+  expect(extractUploader(page)?.url).toBe("https://www.eporner.com/profile/someone/");
 });
 
 test("extractStudio returns undefined without credits", () => {

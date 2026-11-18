@@ -1,10 +1,12 @@
 import { parse } from "node-html-parser";
 import type { DiscoveredItem, ItemsResult, ListArgs } from "@playingwithclouds/veil-sdk";
-import { BASE_URL, SITE_HOST, fetchPage } from "./http.ts";
+import { BASE_URL, SITE_HOST, blogIdFromUrl, fetchPage } from "./http.ts";
 import { parseVideoCards } from "./cards.ts";
 
 // The site serves 30 posts per page; its page parameter is the offset of the first post.
 const PAGE_SIZE = 30;
+// A blog page holds 20 posts and takes the offset in its path.
+const BLOG_PAGE_SIZE = 20;
 const DEFAULT_LIMIT = PAGE_SIZE;
 // Upper bound on the pages one call may fetch, so a large limit cannot flood the site.
 const MAX_PAGES_PER_CALL = 10;
@@ -32,6 +34,33 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
       items.push(item);
     }
     nextOffset = pageStartOf(nextOffset) + PAGE_SIZE;
+  }
+  return { items: items.slice(0, limit) };
+}
+
+/**
+ * Lists the posts of an uploader's blog (/blog/<id>/<offset>.html, whose page
+ * parameter is the offset of the first post, 20 to a page). Offsets and
+ * limits count posts, like sceneList.
+ */
+export async function uploaderList(args: ListArgs): Promise<ItemsResult> {
+  const blogId = blogIdFromUrl(args.url ?? "");
+  if (blogId === "") throw new Error(`sxyprn: args.url is not a blog page of the site: ${args.url}`);
+  const limit = limitFrom(args.limit);
+  const items: DiscoveredItem[] = [];
+  const seen = new Set<string>();
+  let nextOffset = offsetFrom(args.offset);
+  for (let pagesFetched = 0; items.length < limit && pagesFetched < MAX_PAGES_PER_CALL; pagesFetched++) {
+    const pageStart = nextOffset - (nextOffset % BLOG_PAGE_SIZE);
+    const html = await fetchPage(`${BASE_URL}/blog/${blogId}/${pageStart}.html`);
+    const pageItems = parseVideoCards(parse(html)).slice(nextOffset - pageStart);
+    if (pageItems.length === 0) break;
+    for (const item of pageItems) {
+      if (seen.has(item.external_id)) continue;
+      seen.add(item.external_id);
+      items.push(item);
+    }
+    nextOffset = pageStart + BLOG_PAGE_SIZE;
   }
   return { items: items.slice(0, limit) };
 }

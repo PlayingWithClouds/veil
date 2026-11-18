@@ -1,6 +1,6 @@
 import { parse, type HTMLElement } from "node-html-parser";
 import { relativeDate } from "@playingwithclouds/veil-sdk";
-import type { DiscoveredItem, StudioRef } from "@playingwithclouds/veil-sdk";
+import type { DiscoveredItem, Uploader } from "@playingwithclouds/veil-sdk";
 import {
   canonicalUrl,
   countFromText,
@@ -15,16 +15,20 @@ export function externalId(site: Site, encodedId: string): string {
   return `${site}-${encodedId}`;
 }
 
-/** The uploader a card or page links: a channel ("/bubblebooties"), pornstar or user profile. */
-export function studioFromLink(name: string | undefined, path: string | undefined, site: Site): StudioRef | undefined {
+/**
+ * The account a card or page links as the uploader: a channel
+ * ("/bubblebooties"), pornstar or user profile. Anybody can open a channel,
+ * so none of them is a studio.
+ */
+export function uploaderFromLink(name: string | undefined, path: string | undefined, site: Site): Uploader | undefined {
   const trimmed = name ? decodeEntities(name).trim() : "";
   if (trimmed === "") return undefined;
-  const studio: StudioRef = { name: trimmed };
+  const uploader: Uploader = { name: trimmed };
   if (path && path.startsWith("/")) {
-    studio.source_url = canonicalUrl(path, site);
-    studio.external_id = `${site}-uploader-${path.replace(/^\/+/, "").replace(/\//g, "-")}`;
+    uploader.url = canonicalUrl(path, site);
+    uploader.external_id = `${site}-uploader-${path.replace(/^\/+/, "").replace(/\//g, "-")}`;
   }
-  return studio;
+  return uploader;
 }
 
 /**
@@ -65,8 +69,8 @@ function cardItem(block: HTMLElement, site: Site): DiscoveredItem | undefined {
   const views = countFromText(viewsText(block));
   if (views !== undefined) item.view_count = views;
   const uploader = block.querySelector(".metadata a");
-  const studio = studioFromLink(uploader?.querySelector(".name")?.text, uploader?.getAttribute("href"), site);
-  if (studio) item.studio = studio;
+  const account = uploaderFromLink(uploader?.querySelector(".name")?.text, uploader?.getAttribute("href"), site);
+  if (account) item.uploader = account;
   return item;
 }
 
@@ -137,8 +141,8 @@ export function jsonItem(video: JsonVideo, site: Site): DiscoveredItem | undefin
   if (rating !== undefined) item.rating = rating;
   const views = countFromText(video.n);
   if (views !== undefined) item.view_count = views;
-  const studio = studioFromLink(video.pn, video.pu, site);
-  if (studio) item.studio = studio;
+  const account = uploaderFromLink(video.pn, video.pu, site);
+  if (account) item.uploader = account;
   if (video.ut) {
     const date = relativeDate(video.ut);
     if (date) item.date = date;
