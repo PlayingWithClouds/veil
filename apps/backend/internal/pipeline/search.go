@@ -21,6 +21,10 @@ import (
 // instead of asking the site.
 const searchFresh = 6 * time.Hour
 
+// emptySearchFresh is how long a site's empty answer is shown again: short,
+// since an empty answer is often a failure the plugin didn't report.
+const emptySearchFresh = 5 * time.Minute
+
 // SearchBatch is part of one site's answer to a search page.
 type SearchBatch struct {
 	Plugin string
@@ -244,13 +248,20 @@ func (p *Pipeline) storedSearch(ctx context.Context, key string) (storedAnswer, 
 	return answer, true
 }
 
-// storeSearch keeps a site's answer to a search page for searchFresh.
+// storeSearch keeps a site's answer to a search page for searchFresh, an
+// empty one only for emptySearchFresh: a plugin that swallows its errors (a
+// blocked page, a solver down) answers empty too, and that shouldn't hide the
+// site's results for hours.
 func (p *Pipeline) storeSearch(ctx context.Context, key string, answer storedAnswer) {
 	if p.searches == nil {
 		return
 	}
+	fresh := searchFresh
+	if len(answer.Refs) == 0 {
+		fresh = emptySearchFresh
+	}
 	value, _ := json.Marshal(answer)
-	if err := p.searches.Set(ctx, key, string(value), searchFresh); err != nil {
+	if err := p.searches.Set(ctx, key, string(value), fresh); err != nil {
 		log.Printf("search memory %s: %v", key, err)
 	}
 }

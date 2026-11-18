@@ -30,7 +30,10 @@ export async function sceneList(args: ListArgs): Promise<ItemsResult> {
     let html: string;
     try {
       html = await fetchPage(pageUrl(args.url, query, page));
-    } catch {
+    } catch (error) {
+      // A failed first page is a failure, not "nothing found": the backend
+      // would otherwise remember the empty answer. Later pages end the list.
+      if (page === 1) throw error;
       break;
     }
 
