@@ -139,8 +139,8 @@ func TestValidation(t *testing.T) {
 		}
 	}
 	automations, _ := f.service.Automations(ctx)
-	if len(automations) != 1 || !automations[0].BuiltIn {
-		t.Fatalf("automations = %+v, want the wanted hunt once", automations)
+	if len(automations) != len(builtIns) || !automations[0].BuiltIn || !automations[1].BuiltIn {
+		t.Fatalf("automations = %+v, want each built-in hunt once", automations)
 	}
 	if err := f.service.Delete(ctx, WantedHuntID); err == nil {
 		t.Error("built-in automation deleted")

@@ -36,20 +36,45 @@ const huntSearchLimit = 20
 // empty.
 const huntBatch = 200
 
+// builtIn is one built-in automation: a daily step under a fixed id.
+type builtIn struct {
+	id     string
+	name   string
+	cron   string
+	action string
+}
+
+// builtIns are the automations every install has.
+var builtIns = []builtIn{
+	{WantedHuntID, "Wanted hunt", wantedHuntCron, ActionHunt},
+	{FullLengthHuntID, "Full-length hunt", fullLengthHuntCron, ActionFullLength},
+}
+
 // EnsureBuiltIns adds the built-in automations that don't exist yet: the
-// daily wanted hunt. One the user disabled stays disabled.
+// daily wanted hunt and full-length hunt. One the user disabled stays
+// disabled.
 func (s *Service) EnsureBuiltIns(ctx context.Context) error {
-	existing, err := s.database.Int(ctx, `SELECT COUNT(*) FROM "Automation" WHERE "id" = $id`, db.Vars{"id": WantedHuntID})
+	for _, automation := range builtIns {
+		if err := s.ensureBuiltIn(ctx, automation); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureBuiltIn adds one built-in automation unless it exists.
+func (s *Service) ensureBuiltIn(ctx context.Context, automation builtIn) error {
+	existing, err := s.database.Int(ctx, `SELECT COUNT(*) FROM "Automation" WHERE "id" = $id`, db.Vars{"id": automation.id})
 	if err != nil || existing > 0 {
 		return err
 	}
-	cronExpression := wantedHuntCron
+	cronExpression := automation.cron
 	_, err = s.database.Insert(ctx, automationTable, schema.Automation{
-		Entity:  schema.Entity{Id: WantedHuntID},
-		Name:    "Wanted hunt",
+		Entity:  schema.Entity{Id: automation.id},
+		Name:    automation.name,
 		Enabled: true,
 		Trigger: schema.Trigger{Kind: schema.TriggerKindSchedule, Cron: &cronExpression},
-		Steps:   []schema.Step{{Action: ActionHunt}},
+		Steps:   []schema.Step{{Action: automation.action}},
 		BuiltIn: true,
 	})
 	return err

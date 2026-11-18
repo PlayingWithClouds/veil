@@ -29,6 +29,7 @@ const (
 // archive and look up, and to add to collections.
 func (f *features) registerActions(base core) {
 	f.automations.RegisterAction(automations.ActionAddToCollection, automations.AddToCollectionAction(collectionAdder{user: base.user}))
+	f.automations.RegisterAction(automations.ActionFullLength, f.automations.FullLengthAction(base.user))
 	f.automations.RegisterAction(actionDownload, f.downloadAction)
 	f.automations.RegisterAction(actionRecord, f.recordAction)
 	f.automations.RegisterAction(actionArchive, f.archiveAction(base.library))
