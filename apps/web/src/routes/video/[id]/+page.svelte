@@ -50,7 +50,8 @@
 	import { siteDisplayName } from '$lib/plugins';
 	import { sites } from '$lib/stores/sites';
 	import { cacheUrl } from '$lib/img';
-	import { galleryUrl, studioUrl, videoUrl } from '$lib/routes';
+	import { galleryUrl, studioUrl, uploaderUrl, videoUrl } from '$lib/routes';
+	import { uploadersOf } from '$lib/uploader';
 	import { isCompact } from '$lib/stores/viewport';
 	import { logEvent } from '$lib/events';
 	import { trackWatch } from '$lib/watchLog';
@@ -109,6 +110,7 @@
 	let poster = $derived(cacheUrl(video?.cover?.uri));
 	let shownTags = $derived(allTags ? (video?.tags ?? []) : (video?.tags ?? []).slice(0, MAIN_TAGS));
 	let quality = $derived(video ? qualityLabel(video.width, video.height) : null);
+	let uploaders = $derived(uploadersOf(video?.sources ?? []));
 
 	showAmbientGlow(() => poster);
 
@@ -371,6 +373,28 @@
 								{video.studio.name}
 							</a>
 						{/if}
+						{#each uploaders as uploader (`${uploader.plugin}|${uploader.url ?? uploader.name}`)}
+							<span class="flex items-center gap-2">
+								Uploaded by
+								{#if uploader.url}
+									<a
+										href={uploaderUrl(uploader.plugin, uploader.url, uploader.name)}
+										class="text-base-content flex items-center gap-2 font-semibold hover:underline"
+									>
+										{#if uploader.image}
+											<img
+												src={cacheUrl(uploader.image)}
+												alt=""
+												class="h-6 w-6 rounded-full object-cover"
+											/>
+										{/if}
+										{uploader.name}
+									</a>
+								{:else}
+									<span class="text-base-content font-semibold">{uploader.name}</span>
+								{/if}
+							</span>
+						{/each}
 						<button type="button" class="chip chip-sm" onclick={() => (changingStudio = true)}>
 							<PencilSimpleIcon size={12} />
 							{video.studio ? 'Change studio' : 'Set studio'}

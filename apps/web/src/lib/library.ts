@@ -80,6 +80,12 @@ export const MEMBER = {
 /** One site a record was found on. */
 export const SOURCE = { plugin: true, url: true, fetchedAt: true } as const;
 
+/** A video's source with who uploaded it to that site (tube sites). */
+const VIDEO_SOURCE = {
+	...SOURCE,
+	uploader: { name: true, url: true, image: { uri: true } }
+} as const;
+
 export const STREAM = {
 	id: true,
 	url: true,
@@ -107,7 +113,7 @@ const VIDEO_DETAIL = {
 	performers: MEMBER,
 	suggestedPerformers: { performer: MEMBER, reason: true },
 	tags: NAMED,
-	sources: SOURCE,
+	sources: VIDEO_SOURCE,
 	streams: STREAM,
 	// Local copies (downloads, cam recordings); they play before any site's stream.
 	files: { id: true, url: true, mimeType: true, quality: true, missing: true },

@@ -21,6 +21,11 @@ export function studioUrl(id: string): string {
 	return `/studios/${encodeURIComponent(id)}`;
 }
 
+/** An uploader's page: their videos, read from their channel page (url) on one site (plugin). */
+export function uploaderUrl(plugin: string, url: string, name: string): string {
+	return `/uploader?${new URLSearchParams({ plugin, url, name })}`;
+}
+
 /** The galleries page. */
 export function galleriesUrl(): string {
 	return '/galleries';
