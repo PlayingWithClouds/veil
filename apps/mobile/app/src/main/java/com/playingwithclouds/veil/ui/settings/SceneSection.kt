@@ -17,8 +17,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.produceState
 import com.playingwithclouds.veil.data.SceneRepository
+import com.playingwithclouds.veil.scenes.SceneModelManifest
 import com.playingwithclouds.veil.scenes.SceneModelState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.playingwithclouds.veil.scenes.SceneModelStore
 import com.playingwithclouds.veil.scenes.SceneScans
 import com.playingwithclouds.veil.scenes.ready
@@ -61,8 +65,13 @@ private fun ModelCard(state: SceneModelState) {
         }
     }
     val installing = state is SceneModelState.Installing
+    val bundledVersion by produceState<String?>(null) { value = withContext(Dispatchers.IO) { SceneModelStore.bundledVersion() } }
     VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
-        Text(modelSummary(state), style = MaterialTheme.typography.bodyLarge, color = VeilColors.content)
+        Text(modelSummary(state, bundledVersion), style = MaterialTheme.typography.bodyLarge, color = VeilColors.content)
+        val bundled = bundledVersion
+        if (bundled != null && state.ready?.manifest?.version != bundled) {
+            SecondaryButton("Use the bundled model", onClick = { scope.launch { SceneModelStore.installBundled() } }, enabled = !installing)
+        }
         VeilTextField(url, onValueChange = { text -> url = text }, label = "Model URL", placeholder = "https://…/model.json or …/model.zip")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
             PrimaryButton("Download", onClick = { scope.launch { SceneModelStore.installFromUrl(url) } }, enabled = url.isNotBlank() && !installing)
@@ -73,20 +82,29 @@ private fun ModelCard(state: SceneModelState) {
         }
         Hint(
             "The scene model recognises acts and positions on the phone: it names sections of a video, picks preview " +
-                "moments, plays compilations and learns which covers you tap. Nothing leaves the phone. A model is " +
-                "model.json with frame.onnx and temporal.onnx beside it, or the three in a zip.",
+                "moments, plays compilations and learns which covers you tap. Nothing leaves the phone. The app brings " +
+                "one; to try another, give a URL to its manifest (graphs beside it) or a zip of the export.",
         )
     }
 }
 
-/** What the model card says about the model. */
-private fun modelSummary(state: SceneModelState): String {
+/** What the model card says about the model; [bundledVersion] marks the one the app brought. */
+private fun modelSummary(state: SceneModelState, bundledVersion: String?): String {
     return when (state) {
         SceneModelState.Missing -> "No scene model installed."
         SceneModelState.Installing -> "Installing the scene model…"
-        is SceneModelState.Ready -> "Scene model ${state.manifest.version}, ${state.manifest.heads.sumOf { head -> head.labels.size }} labels."
+        is SceneModelState.Ready -> readySummary(state.manifest, bundledVersion)
         is SceneModelState.Failed -> "Couldn't install: ${state.message}"
     }
+}
+
+/** "Scene model export-1a2b (bundled), 120 labels." */
+private fun readySummary(manifest: SceneModelManifest, bundledVersion: String?): String {
+    var origin = ""
+    if (manifest.version == bundledVersion) {
+        origin = " (bundled)"
+    }
+    return "Scene model ${manifest.version}$origin, ${manifest.heads.sumOf { head -> head.labels.size }} labels."
 }
 
 /** The background scan's switch and progress. */

@@ -23,6 +23,62 @@ fun veilVersionCode(versionName: String): Int {
     return parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
 }
 
+/**
+ * The scene model export to bundle: `-PsceneModelDir=…` or `VEIL_SCENE_MODEL_DIR`, else the newest
+ * `runs/<export>/onnx` of the classifier repo beside this one (by its manifest's date); null when
+ * none is there, so other machines and CI build without a model.
+ */
+fun sceneModelExport(): File? {
+    val configured = (project.findProperty("sceneModelDir") as String?) ?: System.getenv("VEIL_SCENE_MODEL_DIR")
+    if (configured != null) {
+        return file(configured).takeIf { directory -> File(directory, "manifest.json").isFile }
+    }
+    val runs = rootDir.resolve("../../../nsfw-scene-recognition/runs")
+    val manifests = runs.listFiles().orEmpty().map { run -> File(run, "onnx/manifest.json") }.filter { manifest -> manifest.isFile }
+    return manifests.maxByOrNull { manifest -> manifest.lastModified() }?.parentFile
+}
+
+/** The files the export's manifest.json names (the frame and temporal graphs), with the manifest itself. */
+fun sceneModelFiles(export: File?): List<File> {
+    if (export == null) {
+        return emptyList()
+    }
+    val manifest = File(export, "manifest.json")
+    val graphNames = Regex("\"(frame_model|temporal_model)\"\\s*:\\s*\"([^\"]+)\"").findAll(manifest.readText()).map { match -> match.groupValues[2] }
+    return listOf(manifest) + graphNames.map { name -> File(export, name) }.filter { graph -> graph.isFile }
+}
+
+/** Copies the scene model export into generated assets (`scene-model/`); with no export the folder stays empty. */
+abstract class BundleSceneModel : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val modelFiles: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    /** Replaces the bundled copy with the export's files. */
+    @TaskAction
+    fun copy() {
+        val target = outputDirectory.get().asFile.resolve("scene-model")
+        target.deleteRecursively()
+        target.mkdirs()
+        for (source in modelFiles.files) {
+            source.copyTo(File(target, source.name), overwrite = true)
+        }
+    }
+}
+
+val bundleSceneModel = tasks.register<BundleSceneModel>("bundleSceneModel") {
+    modelFiles.from(sceneModelFiles(sceneModelExport()))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(bundleSceneModel, BundleSceneModel::outputDirectory)
+    }
+}
+
 // Release signing from the environment (CI secrets). Absent locally, so release builds
 // fall back to the debug key there, as before.
 val releaseKeystorePath: String? = System.getenv("VEIL_KEYSTORE_PATH")

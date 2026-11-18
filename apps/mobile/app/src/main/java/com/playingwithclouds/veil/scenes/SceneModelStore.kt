@@ -4,7 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.edit
+import com.playingwithclouds.veil.AppScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -32,6 +35,26 @@ sealed interface SceneModelState {
     data class Failed(val message: String, val installed: Ready?) : SceneModelState
 }
 
+/** When the model bundled with the app replaces the installed one. */
+object BundledModel {
+
+    /**
+     * Whether to install the bundled model: when none is installed, or when the app brought an
+     * export other than the one it last installed and that isn't installed already. A model the
+     * user installed from a URL or zip stays until an app update brings a different export.
+     * Export versions are content hashes, so "different" stands in for "newer".
+     */
+    fun isDue(installedVersion: String?, bundledVersion: String, lastBundledVersion: String?): Boolean {
+        if (installedVersion == null) {
+            return true
+        }
+        if (installedVersion == bundledVersion) {
+            return false
+        }
+        return bundledVersion != lastBundledVersion
+    }
+}
+
 /** The model this state can run, if any. */
 val SceneModelState.ready: SceneModelState.Ready?
     get() = when (this) {
@@ -42,9 +65,10 @@ val SceneModelState.ready: SceneModelState.Ready?
 
 /**
  * The scene model's files in app storage (`files/scene-model`: `model.json`, `frame.onnx`,
- * `temporal.onnx`), installed from a URL (the manifest, whose files sit beside it, or a zip of
- * the three) or a zip picked from storage. An install is unpacked into a fresh directory and only
- * replaces the old model once its manifest reads and its files are there.
+ * `temporal.onnx`): the export bundled with the app (installed on first start and when an update
+ * brings another), or, as an override, from a URL (the manifest, whose files sit beside it, or a
+ * zip of the three) or a zip picked from storage. An install is unpacked into a fresh directory and
+ * only replaces the old model once its manifest reads and its files are there.
  */
 object SceneModelStore {
 
@@ -57,8 +81,15 @@ object SceneModelStore {
     private const val PREFERENCES = "scenes"
     private const val KEY_URL = "modelUrl"
 
+    /** The version of the bundled model last installed (or passed over for a newer one), so an app update with a new export installs it once. */
+    private const val KEY_BUNDLED_VERSION = "bundledVersion"
+
+    /** Where the build puts the export (`bundleSceneModel` in app/build.gradle.kts). */
+    private const val BUNDLED_ASSETS = "scene-model"
+
     private lateinit var root: File
     private lateinit var preferences: SharedPreferences
+    private lateinit var appContext: Context
 
     private val mutableState = MutableStateFlow<SceneModelState>(SceneModelState.Missing)
 
@@ -74,11 +105,53 @@ object SceneModelStore {
     val modelUrl: String
         get() = preferences.getString(KEY_URL, "").orEmpty()
 
-    /** Reads the installed model, if any; called once from the application. */
+    /** Reads the installed model, if any, then installs the bundled one when it's due; called once from the application. */
     fun initialize(context: Context) {
+        appContext = context.applicationContext
         root = context.filesDir
         preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         mutableState.value = readInstalled()
+        AppScope.launch { installBundledIfDue() }
+    }
+
+    /** The version of the model bundled with the app; null when the build had none. */
+    fun bundledVersion(): String? {
+        return runCatching { SceneModelManifest.parse(readAsset(EXPORT_MANIFEST).decodeToString()).version }.getOrNull()
+    }
+
+    /** Installs the bundled model when [BundledModel.isDue] says so. */
+    private suspend fun installBundledIfDue() {
+        val bundled = withContext(Dispatchers.IO) { bundledVersion() } ?: return
+        val installed = mutableState.value.ready?.manifest?.version
+        if (!BundledModel.isDue(installed, bundled, preferences.getString(KEY_BUNDLED_VERSION, null))) {
+            return
+        }
+        installBundled()
+    }
+
+    /** Installs the model bundled with the app, replacing what's installed (Settings' way back from a URL model). */
+    suspend fun installBundled() {
+        val bundled = withContext(Dispatchers.IO) { bundledVersion() } ?: return
+        val installed = install {
+            val incoming = freshIncoming()
+            val manifest = SceneModelManifest.parse(readAsset(EXPORT_MANIFEST).decodeToString())
+            for (name in listOf(EXPORT_MANIFEST) + listOfNotNull(manifest.frame.file, manifest.temporal?.file)) {
+                appContext.assets.open("$BUNDLED_ASSETS/$name").use { input -> File(incoming, safeName(name)).outputStream().use { output -> input.copyTo(output) } }
+            }
+            incoming
+        }
+        if (!installed) {
+            return
+        }
+        preferences.edit {
+            putString(KEY_BUNDLED_VERSION, bundled)
+            putString(KEY_URL, "")
+        }
+    }
+
+    /** A bundled asset's bytes. */
+    private fun readAsset(name: String): ByteArray {
+        return appContext.assets.open("$BUNDLED_ASSETS/$name").use { input -> input.readBytes() }
     }
 
     /** Downloads and installs the model at [url]: a `.zip` of the three files, or the manifest itself. */
@@ -114,16 +187,21 @@ object SceneModelStore {
         mutableState.value = SceneModelState.Missing
     }
 
-    /** Runs an install that unpacks into a directory, checks it and swaps it in; failures keep the old model. */
-    private suspend fun install(unpack: suspend () -> File) {
+    /** Runs an install that unpacks into a directory, checks it and swaps it in; failures keep the old model. True when it worked. */
+    private suspend fun install(unpack: suspend () -> File): Boolean {
         val previous = mutableState.value.ready
         mutableState.value = SceneModelState.Installing
         try {
             val ready = withContext(Dispatchers.IO) { swapIn(checked(unpack())) }
             mutableState.value = ready
+            return true
+        } catch (error: CancellationException) {
+            mutableState.value = previous ?: SceneModelState.Missing
+            throw error
         } catch (error: Exception) {
             File(root, INCOMING).deleteRecursively()
             mutableState.value = SceneModelState.Failed(error.message ?: "The model couldn't be installed", previous)
+            return false
         }
     }
 
