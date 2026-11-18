@@ -5,8 +5,9 @@ package com.playingwithclouds.veil.scenes
  * plays): each grabbed frame's embedding and image-head probabilities, and the video heads' once
  * the frame's whole temporal window is in. [segments] reads what's there at any point; once
  * [complete], it's what a scan from the start would give, since every window is the same.
+ * [rules] say how strict runs are ([SegmentRules.STILLS] for the rough pass over preview stills).
  */
-class ScanTimeline(val times: List<Double>, val stepSeconds: Double, private val window: Int) {
+class ScanTimeline(val times: List<Double>, val stepSeconds: Double, private val window: Int, private val rules: SegmentRules = SegmentRules.STREAM) {
 
     private val embeddings = arrayOfNulls<FloatArray>(times.size)
     private val image = arrayOfNulls<Map<String, FloatArray>>(times.size)
@@ -76,10 +77,41 @@ class ScanTimeline(val times: List<Double>, val stepSeconds: Double, private val
     fun segments(manifest: SceneModelManifest): List<TimedSegment> {
         val found = mutableListOf<TimedSegment>()
         for (run in scannedRuns()) {
-            val frames = run.map { index -> FrameProbabilities.combine(image[index] ?: emptyMap(), video[index], manifest) }
-            found.addAll(SceneSegments.timedSegments(times.subList(run.first, run.last + 1), stepSeconds, byHead(frames), manifest))
+            found.addAll(SceneSegments.timedSegments(times.subList(run.first, run.last + 1), stepSeconds, byHead(combined(run, manifest)), manifest, rules))
         }
         return SceneSegments.mergeTouching(found)
+    }
+
+    /** The broad, display-only sections ([BroadLabels]) of what's scanned so far, run by run as [segments]. */
+    fun broadSegments(manifest: SceneModelManifest): List<TimedSegment> {
+        val found = mutableListOf<TimedSegment>()
+        for (run in scannedRuns()) {
+            found.addAll(BroadLabels.segments(times.subList(run.first, run.last + 1), stepSeconds, combined(run, manifest), manifest, rules))
+        }
+        return SceneSegments.mergeTouching(found)
+    }
+
+    /** The stretches of the video the scanned frames stand for, in seconds, in time order. */
+    fun scannedSpans(): List<ClosedFloatingPointRange<Double>> {
+        return scannedRuns().map { run -> times[run.first]..(times[run.last] + stepSeconds) }
+    }
+
+    /** The [count] most likely "head.label"s over every scanned picture (each label at its highest), for the scan log. */
+    fun strongestOverall(count: Int, manifest: SceneModelManifest): List<Pair<String, Float>> {
+        val best = mutableMapOf<String, Float>()
+        for (index in times.indices) {
+            for ((label, value) in strongestLabels(index, count, manifest)) {
+                best[label] = maxOf(value, best[label] ?: 0f)
+            }
+        }
+        return best.entries.sortedByDescending { entry -> entry.value }.take(count).map { entry -> entry.key to entry.value }
+    }
+
+    /** Each frame of [run] with its image and video readings combined, video heads trimmed to the spacing. */
+    private fun combined(run: IntRange, manifest: SceneModelManifest): List<Map<String, FloatArray>> {
+        return run.map { index ->
+            FrameProbabilities.combine(image[index] ?: emptyMap(), FrameProbabilities.videoAtSpacing(video[index], stepSeconds, manifest), manifest)
+        }
     }
 
     /** The unbroken stretches of scanned frames, in time order. */

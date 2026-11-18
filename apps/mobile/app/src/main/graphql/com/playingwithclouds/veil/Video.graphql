@@ -46,6 +46,10 @@ fragment VideoDetailFields on Video {
   gallery {
     id
   }
+  # The site's stills across the video: the scene scan's rough pass reads them first.
+  previewFrames {
+    url
+  }
   # The same video from other sites, kept apart but shown as one: their sites
   # and streams join this page's.
   copies {

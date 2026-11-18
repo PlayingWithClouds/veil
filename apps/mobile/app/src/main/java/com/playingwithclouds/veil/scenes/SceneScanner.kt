@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.inspector.frame.FrameExtractor
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.playingwithclouds.veil.data.PlayableStream
 import com.playingwithclouds.veil.data.PlayableVideo
 import com.playingwithclouds.veil.data.SceneRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -108,7 +109,11 @@ class SceneScanner(private val context: Context) {
         }
         val timeline = ScanTimeline(times, step, window)
         val order = ScanTimeline.order(times.size, ScanTimeline.indexAt(times, startSeconds))
-        val extractor = withContext(Dispatchers.Main) { extractorFor(video) }
+        val stream = HlsVariants.lowest(video.stream)
+        val lowered = stream.url != video.stream.url
+        Log.i(TAG, "stream scan: ${times.size} frames ${step.toInt()}s apart from ${startSeconds.toInt()}s, hls ${video.stream.isHls}, lowest rendition $lowered")
+        val started = System.currentTimeMillis()
+        val extractor = withContext(Dispatchers.Main) { extractorFor(stream) }
         try {
             for (batch in order.chunked(pace.batchFrames)) {
                 val grabStarted = System.currentTimeMillis()
@@ -126,6 +131,7 @@ class SceneScanner(private val context: Context) {
         } finally {
             withContext(Dispatchers.Main + NonCancellable) { extractor.close() }
         }
+        Log.i(TAG, "stream scan done: ${times.size} frames in ${(System.currentTimeMillis() - started) / MILLISECONDS_PER_SECOND}s")
         return timeline
     }
 
@@ -157,10 +163,17 @@ class SceneScanner(private val context: Context) {
         return withContext(Dispatchers.Main) { extractor.getFrame((seconds * MILLISECONDS_PER_SECOND).toLong()).await().bitmap }
     }
 
-    /** A frame extractor over the video's stream that seeks to key frames and scales frames down. */
-    private fun extractorFor(video: PlayableVideo): FrameExtractor {
-        val item = MediaItem.Builder().setUri(video.stream.url)
-        if (video.stream.isHls) {
+    /**
+     * A frame extractor over [stream] that seeks to key frames and scales frames down. Frames are
+     * asked for in ascending time, so each seek lands ahead of the last: the extractor's one player
+     * stays prepared, its decoder is flushed rather than rebuilt, and with CLOSEST_SYNC only the
+     * key frame opening the segment that holds the time is decoded, i.e. one small segment read per
+     * frame. (A muted player decoding the whole low rendition at high speed would read and decode
+     * every segment: more data and far more decoding at 6 s+ between frames.)
+     */
+    private fun extractorFor(stream: PlayableStream): FrameExtractor {
+        val item = MediaItem.Builder().setUri(stream.url)
+        if (stream.isHls) {
             item.setMimeType(MimeTypes.APPLICATION_M3U8)
         }
         return FrameExtractor.Builder(context, item.build())
@@ -189,21 +202,22 @@ class SceneScanner(private val context: Context) {
     }
 }
 
-/** Where a video is sampled: cheap enough for a phone, dense enough for the segment rules. */
+/**
+ * Where a video is sampled: each frame is a seek into the stream (about half a second on the
+ * phone), so at most [MAX_FRAMES] a video, at least [MIN_STEP_SECONDS] apart; a scene of a minute
+ * or more still spans several frames.
+ */
 object ScanPlan {
 
     /** The most frames one video gets; longer videos are sampled more sparsely. */
-    const val MAX_FRAMES = 900
+    const val MAX_FRAMES = 150
 
-    /** The step between frames: 2 s under 10 minutes, 3 s up to 40, 4 s beyond, more when [MAX_FRAMES] needs it. */
+    /** The closest frames are to each other, for short videos. */
+    const val MIN_STEP_SECONDS = 6.0
+
+    /** The step between frames: [MIN_STEP_SECONDS], or wider so a video has at most [MAX_FRAMES]. */
     fun stepSeconds(durationSeconds: Double): Double {
-        var step = 4.0
-        if (durationSeconds <= 10 * 60) {
-            step = 2.0
-        } else if (durationSeconds <= 40 * 60) {
-            step = 3.0
-        }
-        return maxOf(step, ceil(durationSeconds / MAX_FRAMES))
+        return maxOf(MIN_STEP_SECONDS, ceil(durationSeconds / MAX_FRAMES))
     }
 
     /** The grab times, from the start up to the end. */

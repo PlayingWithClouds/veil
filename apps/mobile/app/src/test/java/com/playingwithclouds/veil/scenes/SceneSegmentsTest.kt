@@ -70,7 +70,8 @@ class SceneSegmentsTest {
                 VideoSegment("b", "Doggystyle", 200.0, 300.0, "ai", "Doggystyle"),
             ),
         )
-        assertEquals(listOf("My scene", "Doggystyle", ""), chapters.map { chapter -> chapter.title })
-        assertEquals(300.0, chapters.last().seconds, 0.0)
+        // The unrecognised stretch before Doggystyle folds into it, which is cut where the user's segment ends.
+        assertEquals(listOf("My scene", "Doggystyle"), chapters.map { chapter -> chapter.title })
+        assertEquals(100.0, chapters.last().seconds, 0.0)
     }
 }

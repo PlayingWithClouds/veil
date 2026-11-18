@@ -44,6 +44,23 @@ object FrameProbabilities {
         return out
     }
 
+    /**
+     * The video heads worth keeping when frames are [stepSeconds] apart. The temporal graph was
+     * trained on frames [SceneModelManifest.frameSeconds] apart (16 × 0.5 s = 8 s); spread wider
+     * than [MAX_WINDOW_STRETCH] times that, its window spans minutes it never saw, so heads the
+     * picture reads too go by the picture alone. Heads only the temporal graph has (the scene
+     * phase, a slow thing that a wide window still suits) stay.
+     */
+    fun videoAtSpacing(video: Map<String, FloatArray>?, stepSeconds: Double, manifest: SceneModelManifest): Map<String, FloatArray>? {
+        if (video == null || stepSeconds <= manifest.frameSeconds * MAX_WINDOW_STRETCH) {
+            return video
+        }
+        return video.filterKeys { name -> name !in manifest.frame.heads }
+    }
+
+    /** How many times wider than trained the temporal graph's frames may be before its overlapping heads are dropped. */
+    const val MAX_WINDOW_STRETCH = 4.0
+
     /** Whether the image heads read a close-up shot. */
     private fun isCloseUp(image: Map<String, FloatArray>, manifest: SceneModelManifest): Boolean {
         val shot = manifest.head("shot") ?: return false

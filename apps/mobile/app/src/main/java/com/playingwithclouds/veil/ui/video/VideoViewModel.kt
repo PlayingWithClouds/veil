@@ -21,11 +21,16 @@ import com.playingwithclouds.veil.scenes.OpenScanDecision
 import com.playingwithclouds.veil.scenes.OpenScanPolicy
 import com.playingwithclouds.veil.scenes.OpenScanProgress
 import com.playingwithclouds.veil.scenes.OpenVideoScan
+import com.playingwithclouds.veil.scenes.RoughReading
+import com.playingwithclouds.veil.scenes.SceneClassifier
 import com.playingwithclouds.veil.scenes.SceneScanner
+import com.playingwithclouds.veil.scenes.SceneSections
+import com.playingwithclouds.veil.scenes.TimedSegment
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +58,9 @@ enum class Verdict { LIKED, DISLIKED }
 
 /** Search pages read for one performer or studio name before the next name's turn. */
 private const val PAGES_PER_NAME = 3
+
+/** After the rough pass, playback gets this long to buffer before the stream scan reads the same stream. */
+private const val STREAM_SCAN_DELAY_MILLISECONDS = 3_000L
 
 /**
  * Where Up next is in its chain: the library's related, then the sites', then the sites' search for
@@ -174,26 +182,38 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
     }
 
     /**
-     * Scans the playing stream for scenes from [positionSeconds] on, once per page, when
-     * [OpenScanPolicy] allows it; the player's sections fill in as it goes. Leaving the page stops it.
+     * Reads the video's scenes once per page, as soon as a stream plays: first the rough pass over
+     * the site's stills (sections within seconds, with any model), then, when [OpenScanPolicy]
+     * allows it, the stream after a moment of buffering for playback, from [playheadSeconds] on;
+     * the player's sections fill in as it goes. Leaving the page stops it.
      */
-    fun scanScenes(context: Context, positionSeconds: Double) {
+    fun scanScenes(context: Context, playheadSeconds: () -> Double) {
         if (sceneScanStarted) {
             return
         }
         val detail = (state.value.detail as? LoadState.Loaded)?.value ?: return
         val active = state.value.active ?: return
-        val localCopy = detail.sources.firstOrNull { source -> source.id == active.sourceId }?.local != null
-        val decision = OpenScanPolicy.decide(context, videoId, localCopy)
-        Log.i(SceneScanner.TAG, "open video $videoId: $decision")
-        if (decision != OpenScanDecision.SCAN) {
+        if (!SceneClassifier.available()) {
             return
         }
         sceneScanStarted = true
+        val localCopy = detail.sources.firstOrNull { source -> source.id == active.sourceId }?.local != null
         val video = PlayableVideo(active.playable, detail.summary.durationSeconds)
         viewModelScope.launch {
             try {
-                OpenVideoScan(context).run(videoId, video, positionSeconds) { progress ->
+                val scan = OpenVideoScan(context)
+                val rough = readRough(scan, detail)
+                val decision = OpenScanPolicy.decide(context, videoId, localCopy)
+                Log.i(SceneScanner.TAG, "open video $videoId: $decision")
+                if (decision != OpenScanDecision.SCAN) {
+                    showRoughOnly(detail, rough)
+                    return@launch
+                }
+                if (rough != null) {
+                    mutableState.update { state -> state.copy(sceneScan = OpenScanProgress(0f, rough.segments, rough.broad, done = false)) }
+                }
+                delay(STREAM_SCAN_DELAY_MILLISECONDS)
+                scan.run(videoId, video, playheadSeconds(), rough) { progress ->
                     mutableState.update { state -> state.copy(sceneScan = progress) }
                 }
             } catch (error: CancellationException) {
@@ -203,6 +223,34 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
                 Log.w(SceneScanner.TAG, "open video $videoId: scan failed", error)
             }
         }
+    }
+
+    /** The rough pass over the video's stills (the cover too when there are few); null when it reads nothing. */
+    private suspend fun readRough(scan: OpenVideoScan, detail: VideoDetail): RoughReading? {
+        val duration = detail.summary.durationSeconds ?: return null
+        try {
+            return scan.rough(detail.previewFrames, detail.summary.coverUrl, duration)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(SceneScanner.TAG, "open video $videoId: rough pass failed", error)
+            return null
+        }
+    }
+
+    /**
+     * Shows the rough pass when the stream isn't scanned now: its broad labels name the gaps, and
+     * its segments stand in only while the video has no ai segments of its own.
+     */
+    private fun showRoughOnly(detail: VideoDetail, rough: RoughReading?) {
+        if (rough == null) {
+            return
+        }
+        var segments: List<TimedSegment>? = null
+        if (detail.segments.none { segment -> segment.origin == SceneSections.ORIGIN_AI }) {
+            segments = rough.segments
+        }
+        mutableState.update { state -> state.copy(sceneScan = OpenScanProgress(1f, segments, rough.broad, done = true)) }
     }
 
     /** Plays the source picked in the source menu. */

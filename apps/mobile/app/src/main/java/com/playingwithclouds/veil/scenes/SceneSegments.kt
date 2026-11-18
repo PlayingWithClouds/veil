@@ -10,6 +10,21 @@ data class LabelRun(val label: String, val start: Int, val end: Int, val score: 
 data class TimedSegment(val tag: String, val startSeconds: Double, val endSeconds: Double)
 
 /**
+ * How strict runs are: the shortest run kept and the frames averaged before an exclusive head's
+ * argmax. [STREAM] is `nsr/segments.py`'s; [STILLS] reads every picture on its own, for a handful
+ * of stills spread over the whole video, where neighbours are minutes apart.
+ */
+data class SegmentRules(val minRunFrames: Int, val smoothFrames: Int) {
+    companion object {
+        /** Frames grabbed from the stream every few seconds. */
+        val STREAM = SegmentRules(SceneSegments.MIN_RUN_FRAMES, SceneSegments.SMOOTH_FRAMES)
+
+        /** The site's preview stills and the cover: each one counts. */
+        val STILLS = SegmentRules(1, 1)
+    }
+}
+
+/**
  * Per-frame probabilities → labelled time segments, a port of the classifier's `nsr/segments.py`
  * (multi-label heads by hysteresis, exclusive heads by a smoothed argmax), and logits →
  * probabilities as `nsr.model.probabilities` computes them.
@@ -35,13 +50,13 @@ object SceneSegments {
     const val SMOOTH_FRAMES = 5
 
     /** Each label's on/off runs of a multi-label head; [probabilities] is one array per frame. */
-    fun multiLabel(probabilities: List<FloatArray>, names: List<String>): List<LabelRun> {
+    fun multiLabel(probabilities: List<FloatArray>, names: List<String>, rules: SegmentRules = SegmentRules.STREAM): List<LabelRun> {
         val out = mutableListOf<LabelRun>()
         for ((column, name) in names.withIndex()) {
             val values = FloatArray(probabilities.size) { frame -> probabilities[frame][column] }
             val on = closeGaps(hysteresis(values, MULTI_HIGH, MULTI_LOW), MAX_GAP_FRAMES)
             for ((start, end) in runs(on)) {
-                if (end - start + 1 >= MIN_RUN_FRAMES) {
+                if (end - start + 1 >= rules.minRunFrames) {
                     out.add(LabelRun(name, start, end, mean(values, start, end)))
                 }
             }
@@ -50,13 +65,13 @@ object SceneSegments {
     }
 
     /** One label per frame of an exclusive head, by smoothed argmax, as runs in start order. */
-    fun exclusive(probabilities: List<FloatArray>, names: List<String>): List<LabelRun> {
-        val best = smoothedArgmax(probabilities, names.size)
+    fun exclusive(probabilities: List<FloatArray>, names: List<String>, rules: SegmentRules = SegmentRules.STREAM): List<LabelRun> {
+        val best = smoothedArgmax(probabilities, names.size, rules.smoothFrames)
         val out = mutableListOf<LabelRun>()
         for ((column, name) in names.withIndex()) {
             val on = BooleanArray(best.size) { frame -> best[frame] == column }
             for ((start, end) in runs(on)) {
-                if (end - start + 1 >= MIN_RUN_FRAMES) {
+                if (end - start + 1 >= rules.minRunFrames) {
                     val values = FloatArray(probabilities.size) { frame -> probabilities[frame][column] }
                     out.add(LabelRun(name, start, end, mean(values, start, end)))
                 }
@@ -70,22 +85,28 @@ object SceneSegments {
      * ([SceneLabels]), frame indices to seconds (frame i was grabbed at [times]`[i]` and stands for
      * the [stepSeconds] after it). Runs of one tag that touch merge, since two labels may share one.
      */
-    fun timedSegments(times: List<Double>, stepSeconds: Double, probabilities: Map<String, List<FloatArray>>, manifest: SceneModelManifest): List<TimedSegment> {
+    fun timedSegments(
+        times: List<Double>,
+        stepSeconds: Double,
+        probabilities: Map<String, List<FloatArray>>,
+        manifest: SceneModelManifest,
+        rules: SegmentRules = SegmentRules.STREAM,
+    ): List<TimedSegment> {
         val found = mutableListOf<TimedSegment>()
         for (headName in SceneLabels.segmentHeads) {
             val head = manifest.head(headName) ?: continue
             val frames = probabilities[headName] ?: continue
-            found.addAll(headSegments(head, frames, times, stepSeconds))
+            found.addAll(headSegments(head, frames, times, stepSeconds, rules))
         }
         return mergeTouching(found)
     }
 
     /** One head's runs as timed segments, labels that never become segments left out. */
-    private fun headSegments(head: ModelHead, frames: List<FloatArray>, times: List<Double>, stepSeconds: Double): List<TimedSegment> {
+    private fun headSegments(head: ModelHead, frames: List<FloatArray>, times: List<Double>, stepSeconds: Double, rules: SegmentRules): List<TimedSegment> {
         val names = head.labels.map { label -> label.name }
-        var labelRuns = multiLabel(frames, names)
+        var labelRuns = multiLabel(frames, names, rules)
         if (head.exclusive) {
-            labelRuns = exclusive(frames, names)
+            labelRuns = exclusive(frames, names, rules)
         }
         return labelRuns.mapNotNull { run ->
             val label = head.labels.first { label -> label.name == run.label }
@@ -113,6 +134,30 @@ object SceneSegments {
             current?.let(out::add)
         }
         return out.sortedWith(compareBy({ segment -> segment.startSeconds }, { segment -> segment.tag }))
+    }
+
+    /** [segments] with the parts inside [spans] cut out. */
+    fun outside(segments: List<TimedSegment>, spans: List<ClosedFloatingPointRange<Double>>): List<TimedSegment> {
+        var pieces = segments
+        for (span in spans) {
+            pieces = pieces.flatMap { piece -> cut(piece, span) }
+        }
+        return pieces
+    }
+
+    /** What's left of [piece] around [span]: all of it, one end, both ends or nothing. */
+    private fun cut(piece: TimedSegment, span: ClosedFloatingPointRange<Double>): List<TimedSegment> {
+        if (span.endInclusive <= piece.startSeconds || span.start >= piece.endSeconds) {
+            return listOf(piece)
+        }
+        val out = mutableListOf<TimedSegment>()
+        if (piece.startSeconds < span.start) {
+            out.add(piece.copy(endSeconds = span.start))
+        }
+        if (span.endInclusive < piece.endSeconds) {
+            out.add(piece.copy(startSeconds = span.endInclusive))
+        }
+        return out
     }
 
     /**
@@ -207,16 +252,16 @@ object SceneSegments {
         return out
     }
 
-    /** Per frame, the best label of the probabilities averaged over [SMOOTH_FRAMES] around it (edges repeated); -1 below [MIN_CONFIDENCE]. */
-    private fun smoothedArgmax(probabilities: List<FloatArray>, labelCount: Int): IntArray {
-        val half = SMOOTH_FRAMES / 2
+    /** Per frame, the best label of the probabilities averaged over [smoothFrames] around it (edges repeated); -1 below [MIN_CONFIDENCE]. */
+    private fun smoothedArgmax(probabilities: List<FloatArray>, labelCount: Int, smoothFrames: Int): IntArray {
+        val half = smoothFrames / 2
         val last = probabilities.size - 1
         return IntArray(probabilities.size) { frame ->
             val averaged = FloatArray(labelCount)
             for (offset in -half..half) {
                 val row = probabilities[(frame + offset).coerceIn(0, last)]
                 for (column in 0 until labelCount) {
-                    averaged[column] += row[column] / SMOOTH_FRAMES
+                    averaged[column] += row[column] / (2 * half + 1)
                 }
             }
             bestAbove(averaged, MIN_CONFIDENCE)

@@ -44,7 +44,6 @@ import com.playingwithclouds.veil.data.PlayQueue
 import com.playingwithclouds.veil.scenes.SceneModelStore
 import com.playingwithclouds.veil.scenes.ready
 import com.playingwithclouds.veil.ui.compilation.CompilationSheet
-import kotlinx.coroutines.delay
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FailedMessage
@@ -65,9 +64,6 @@ private val PreviewSpinnerSize = 20.dp
 
 /** The player box's shape on the page; fullscreen and picture-in-picture fill the screen instead. */
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
-
-/** How long playback runs before the scene scan starts beside it. */
-private const val SCENE_SCAN_DELAY_MILLISECONDS = 5_000L
 
 private const val MILLISECONDS_PER_SECOND = 1000.0
 
@@ -100,9 +96,7 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
         if (state.active == null) {
             return@LaunchedEffect
         }
-        // Playback gets its first seconds of buffer before the scan starts reading the same stream.
-        delay(SCENE_SCAN_DELAY_MILLISECONDS)
-        viewModel.scanScenes(context.applicationContext, player.currentPosition / MILLISECONDS_PER_SECOND)
+        viewModel.scanScenes(context.applicationContext) { player.currentPosition / MILLISECONDS_PER_SECOND }
     }
     PlaybackErrors(player, onError = viewModel::onPlayerError)
     WatchTracking(player, onEvent = viewModel::onWatchEvent)
@@ -172,7 +166,7 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
         }
         Column(columnModifier) {
             val extras = PlayerExtras(
-                markers = markersInPlayOrder(SceneSections.chapters(pageSegments(detail, state.sceneScan))),
+                markers = markersInPlayOrder(pageChapters(detail, state.sceneScan)),
                 onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
                 onBack = navigator::back,
                 onNext = onNext,
@@ -229,13 +223,15 @@ private fun compilationAction(open: () -> Unit): (() -> Unit)? {
     return open
 }
 
-/** The video's segments, the running scan's in place of the stored ai ones. */
-private fun pageSegments(detail: LoadState<VideoDetail>, scan: OpenScanProgress?): List<VideoSegment> {
-    val stored = (detail as? LoadState.Loaded)?.value?.segments.orEmpty()
+/** The player's chapters: the video's segments (the running scan's in place of the stored ai ones), gaps named by the scan's broad labels, over the whole runtime. */
+private fun pageChapters(detail: LoadState<VideoDetail>, scan: OpenScanProgress?): List<VideoSegment> {
+    val loaded = (detail as? LoadState.Loaded)?.value
+    val stored = loaded?.segments.orEmpty()
+    val duration = loaded?.summary?.durationSeconds
     if (scan == null) {
-        return stored
+        return SceneSections.chapters(stored, durationSeconds = duration)
     }
-    return SceneSections.withScanned(stored, scan.segments, scan.done)
+    return SceneSections.chapters(SceneSections.withScanned(stored, scan.segments, scan.done), scan.broad, duration)
 }
 
 /** The video once a source plays, else the cover with a spinner or why nothing plays. */

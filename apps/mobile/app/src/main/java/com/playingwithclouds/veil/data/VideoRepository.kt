@@ -134,6 +134,7 @@ object VideoRepository {
             rating = video.userState.rating,
             oCount = video.oCount,
             galleryId = video.gallery?.id,
+            previewFrames = video.previewFrames.orEmpty().map { frame -> frame.url },
         )
     }
 }

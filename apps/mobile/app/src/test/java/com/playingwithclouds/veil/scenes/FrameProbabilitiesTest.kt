@@ -35,10 +35,12 @@ class FrameProbabilitiesTest {
 
     @Test
     fun scanStepsStayCheap() {
-        assertEquals(2.0, ScanPlan.stepSeconds(300.0), 0.0)
-        assertEquals(3.0, ScanPlan.stepSeconds(1800.0), 0.0)
-        assertEquals(4.0, ScanPlan.stepSeconds(3000.0), 0.0)
-        assertEquals(8.0, ScanPlan.stepSeconds(7200.0), 0.0)
+        assertEquals(6.0, ScanPlan.stepSeconds(300.0), 0.0)
+        assertEquals(6.0, ScanPlan.stepSeconds(900.0), 0.0)
+        assertEquals(12.0, ScanPlan.stepSeconds(1800.0), 0.0)
+        assertEquals(48.0, ScanPlan.stepSeconds(7200.0), 0.0)
+        assertEquals(150, ScanPlan.times(1800.0, ScanPlan.stepSeconds(1800.0)).size)
+        assertEquals(50, ScanPlan.times(300.0, ScanPlan.stepSeconds(300.0)).size)
         assertEquals(listOf(0.0, 3.0, 6.0), ScanPlan.times(10.0, 3.0))
     }
 }

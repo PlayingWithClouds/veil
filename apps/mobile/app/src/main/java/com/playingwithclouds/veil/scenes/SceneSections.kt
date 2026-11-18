@@ -34,19 +34,17 @@ object SceneSections {
 
     /**
      * The chapters to show: the user's and the plugins' segments as they are, then the ai sections
-     * that don't overlap them, each followed by an untitled marker where nothing is recognised for a
-     * while, so the chapter label clears. In start order.
+     * around them (cut where a user or plugin stretch runs, left out where one of their markers
+     * without an end falls), in start order. Every ai section is titled: where the ai segments
+     * recognise nothing, [broad] ([BroadLabels], display only) names the stretch. With
+     * [durationSeconds] the sections run from the start to the end.
      */
-    fun chapters(segments: List<VideoSegment>): List<VideoSegment> {
+    fun chapters(segments: List<VideoSegment>, broad: List<TimedSegment> = emptyList(), durationSeconds: Double? = null): List<VideoSegment> {
         val others = segments.filter { segment -> segment.origin != ORIGIN_AI }
         val found = segments.filter { segment -> segment.origin == ORIGIN_AI }.mapNotNull(::timedOf)
-        val kept = sections(found).filter { section -> others.none { other -> overlaps(section, other) } }
+        val kept = aroundOthers(sections(found, broad, durationSeconds), others)
         val aiChapters = kept.map { section ->
             VideoSegment("ai-${section.startSeconds}", section.title, section.startSeconds, section.endSeconds, ORIGIN_AI)
-        }.toMutableList()
-        val last = kept.lastOrNull()
-        if (last != null && last.title.isNotEmpty()) {
-            aiChapters.add(VideoSegment("ai-end-${last.endSeconds}", "", last.endSeconds, null, ORIGIN_AI))
         }
         return (others + aiChapters).sortedBy { segment -> segment.seconds }
     }
@@ -76,25 +74,83 @@ object SceneSections {
         return TimedSegment(segment.tag ?: segment.title, segment.seconds, end)
     }
 
-    /** Whether an ai section overlaps a user or plugin segment (a marker inside it counts). */
-    private fun overlaps(section: Section, other: VideoSegment): Boolean {
-        val otherEnd = other.endSeconds ?: other.seconds
-        return other.seconds < section.endSeconds && otherEnd >= section.startSeconds
+    /**
+     * [sections] without the ones a user or plugin marker without an end falls in, and cut around
+     * the user's and plugins' stretches; pieces left shorter than [MIN_SECTION_SECONDS] go.
+     */
+    private fun aroundOthers(sections: List<Section>, others: List<VideoSegment>): List<Section> {
+        val markers = others.filter { other -> other.endSeconds == null }
+        val spans = others.mapNotNull { other -> other.endSeconds?.let { end -> other.seconds..end } }
+        val unmarked = sections.filter { section -> markers.none { marker -> marker.seconds >= section.startSeconds && marker.seconds < section.endSeconds } }
+        val asSegments = unmarked.map { section -> TimedSegment(section.title, section.startSeconds, section.endSeconds) }
+        return SceneSegments.outside(asSegments, spans)
+            .map { piece -> Section(piece.tag, piece.startSeconds, piece.endSeconds) }
+            .filter { piece -> piece.length >= MIN_SECTION_SECONDS }
     }
 
     /**
-     * The sections from the first labelled second to the last: per stretch the longest one or two
-     * labels running, equal neighbours joined, short pieces folded into their longer neighbour.
-     * Untitled sections are long gaps.
+     * The sections, all titled: per stretch the longest one or two labels of [segments] running;
+     * where none runs, the [broad] label; equal neighbours joined; short pieces, and stretches
+     * nothing names, folded into their longer neighbour. From the first labelled second to the last,
+     * or from 0 to [durationSeconds] when it's known.
      */
-    fun sections(segments: List<TimedSegment>): List<Section> {
+    fun sections(segments: List<TimedSegment>, broad: List<TimedSegment> = emptyList(), durationSeconds: Double? = null): List<Section> {
         val merged = mergeNear(segments)
-        if (merged.isEmpty()) {
+        val mergedBroad = mergeNear(broad)
+        if (merged.isEmpty() && mergedBroad.isEmpty()) {
             return emptyList()
         }
-        var pieces = elementaryPieces(merged)
-        pieces = absorbShort(joinEqual(pieces))
-        return pieces
+        val specific = elementaryPieces(merged)
+        val pieces = withEnds(specific, mergedBroad, durationSeconds).flatMap { piece -> filled(piece, mergedBroad) }
+        return absorbShort(joinEqual(pieces))
+    }
+
+    /**
+     * [pieces] with untitled ones added before the first and after the last, out to 0 and
+     * [durationSeconds] when known, else to where [broad] starts and ends.
+     */
+    private fun withEnds(pieces: List<Section>, broad: List<TimedSegment>, durationSeconds: Double?): List<Section> {
+        val all = pieces.map { piece -> piece.startSeconds } + broad.map { segment -> segment.startSeconds }
+        val ends = pieces.map { piece -> piece.endSeconds } + broad.map { segment -> segment.endSeconds }
+        var start = all.min()
+        var end = ends.max()
+        if (durationSeconds != null && durationSeconds > 0) {
+            start = 0.0
+            end = max(end, durationSeconds)
+        }
+        if (pieces.isEmpty()) {
+            return listOf(Section("", start, end))
+        }
+        val out = mutableListOf<Section>()
+        if (start < pieces.first().startSeconds) {
+            out.add(Section("", start, pieces.first().startSeconds))
+        }
+        out.addAll(pieces)
+        if (pieces.last().endSeconds < end) {
+            out.add(Section("", pieces.last().endSeconds, end))
+        }
+        return out
+    }
+
+    /** A titled piece as it is; an untitled one cut by the [broad] labels running through it (bits none covers stay untitled). */
+    private fun filled(piece: Section, broad: List<TimedSegment>): List<Section> {
+        if (piece.title.isNotEmpty()) {
+            return listOf(piece)
+        }
+        val inside = broad
+            .filter { segment -> segment.startSeconds < piece.endSeconds && segment.endSeconds > piece.startSeconds }
+            .map { segment -> segment.copy(startSeconds = max(segment.startSeconds, piece.startSeconds), endSeconds = min(segment.endSeconds, piece.endSeconds)) }
+        if (inside.isEmpty()) {
+            return listOf(piece)
+        }
+        val cuts = (listOf(piece.startSeconds, piece.endSeconds) + inside.flatMap { segment -> listOf(segment.startSeconds, segment.endSeconds) }).distinct().sorted()
+        return cuts.zipWithNext().map { (start, end) -> Section(broadTitleOf(inside, start, end), start, end) }
+    }
+
+    /** The longest broad label running from [start] to [end]; empty when none does. */
+    private fun broadTitleOf(broad: List<TimedSegment>, start: Double, end: Double): String {
+        val running = broad.filter { segment -> segment.startSeconds < end && segment.endSeconds > start }
+        return running.maxByOrNull { segment -> segment.endSeconds - segment.startSeconds }?.tag.orEmpty()
     }
 
     /** Joins the runs of one tag that are at most [MERGE_GAP_SECONDS] apart. */
@@ -140,17 +196,31 @@ object SceneSections {
         return out
     }
 
-    /** Folds the shortest piece under [MIN_SECTION_SECONDS] into its longer neighbour until none is left. */
+    /**
+     * Folds pieces into their longer neighbour until every piece is titled and at least
+     * [MIN_SECTION_SECONDS] long: untitled ones first (whatever their length), then the shortest.
+     * Untitled pieces left alone (nothing titled at all) are dropped.
+     */
     private fun absorbShort(start: List<Section>): List<Section> {
         var pieces = start
         while (pieces.size > 1) {
-            val shortest = pieces.withIndex().filter { (_, piece) -> piece.length < MIN_SECTION_SECONDS }.minByOrNull { (_, piece) -> piece.length }
-            if (shortest == null) {
+            val index = nextToFold(pieces)
+            if (index < 0) {
                 break
             }
-            pieces = joinEqual(foldInto(pieces, shortest.index))
+            pieces = joinEqual(foldInto(pieces, index))
         }
-        return pieces.filter { piece -> piece.title.isNotEmpty() || piece.length >= MIN_SECTION_SECONDS }
+        return pieces.filter { piece -> piece.title.isNotEmpty() }
+    }
+
+    /** The piece to fold next: the shortest untitled one, else the shortest under [MIN_SECTION_SECONDS]; -1 when none is. */
+    private fun nextToFold(pieces: List<Section>): Int {
+        val untitled = pieces.withIndex().filter { (_, piece) -> piece.title.isEmpty() }.minByOrNull { (_, piece) -> piece.length }
+        if (untitled != null) {
+            return untitled.index
+        }
+        val short = pieces.withIndex().filter { (_, piece) -> piece.length < MIN_SECTION_SECONDS }.minByOrNull { (_, piece) -> piece.length }
+        return short?.index ?: -1
     }
 
     /** [pieces] with the one at [index] taken over by its longer neighbour. */

@@ -35,7 +35,8 @@ data class VideoSegment(
 
 /**
  * Everything the video page shows. [sources] lists local copies first, then the sites' streams;
- * [rating] is 0..10; [progressSeconds] is the resume point.
+ * [rating] is 0..10; [progressSeconds] is the resume point; [previewFrames] are the site's stills
+ * across the video, in time order.
  */
 data class VideoDetail(
     val summary: VideoSummary,
@@ -52,6 +53,7 @@ data class VideoDetail(
     val rating: Double?,
     val oCount: Int,
     val galleryId: String?,
+    val previewFrames: List<String> = emptyList(),
 ) {
     val id: String get() = summary.id
     val title: String get() = summary.title
