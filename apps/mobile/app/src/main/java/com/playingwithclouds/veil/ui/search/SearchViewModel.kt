@@ -46,6 +46,8 @@ data class SearchState(
     val siteStyles: List<SiteStyle> = emptyList(),
     /** The tags most common among the library's videos matching the filter, offered for hiding. */
     val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
+    /** The POV tag of the filter's Camera group, once looked up. */
+    val povTag: TagSummary? = null,
 )
 
 /** Tags offered for hiding. */
@@ -72,6 +74,10 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
         viewModelScope.launch {
             val choices = runCatching { SearchRepository.siteChoices() }.getOrDefault(emptyList())
             mutableState.update { state -> state.copy(siteChoices = choices, siteStyles = SiteStyles.of(choices)) }
+        }
+        viewModelScope.launch {
+            val povTag = runCatching { SearchRepository.povTag() }.getOrNull()
+            mutableState.update { state -> state.copy(povTag = povTag) }
         }
         loadTagCounts()
         if (initialQuery.isNotBlank()) {

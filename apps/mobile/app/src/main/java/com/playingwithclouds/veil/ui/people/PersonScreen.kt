@@ -185,6 +185,10 @@ class PersonViewModel(private val kind: MemberKind, private val personId: String
             val sites = runCatching { SearchRepository.siteChoices() }.getOrDefault(emptyList())
             choicesState.update { current -> current.copy(siteChoices = sites, siteStyles = SiteStyles.of(sites)) }
         }
+        viewModelScope.launch {
+            val povTag = runCatching { SearchRepository.povTag() }.getOrNull()
+            choicesState.update { current -> current.copy(povTag = povTag) }
+        }
         loadTagCounts()
     }
 

@@ -5,6 +5,7 @@ import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
 import com.playingwithclouds.veil.graphql.RecentSearchesQuery
 import com.playingwithclouds.veil.graphql.SearchResultsSubscription
+import com.playingwithclouds.veil.graphql.TagsNamedQuery
 import com.playingwithclouds.veil.graphql.VideoSitesQuery
 import com.playingwithclouds.veil.graphql.VideoTagCountsQuery
 import com.playingwithclouds.veil.graphql.type.EventKind
@@ -30,6 +31,9 @@ object SearchRepository {
 
     /** Capability of the plugins that list videos. */
     private const val VIDEO_LIST_CAPABILITY = "scene:list"
+
+    /** Tags matching "pov" read to find the one named exactly that. */
+    private const val POV_TAG_LOOKUP_LIMIT = 20
 
     /**
      * One page (0 first) of a video search: each site's answer as it comes; completes when all
@@ -83,6 +87,16 @@ object SearchRepository {
         return VeilApi.client.query(query).execute().dataOrThrow().videoTagCounts.map { entry ->
             TagSummary(entry.tag.id, entry.tag.name) to entry.count
         }
+    }
+
+    /**
+     * The library's POV tag for the Camera filter: the tag named "POV" (any case); null while no site
+     * has tagged anything POV. Once the scene model labels videos, the filter reads its labels instead.
+     */
+    suspend fun povTag(): TagSummary? {
+        val tags = VeilApi.client.query(TagsNamedQuery(Optional.present("pov"), Optional.present(POV_TAG_LOOKUP_LIMIT))).execute().dataOrThrow().tags
+        val tag = tags.firstOrNull { candidate -> candidate.name.trim().equals("pov", ignoreCase = true) } ?: return null
+        return TagSummary(tag.id, tag.name)
     }
 
     /** What the user searched lately, newest first. */

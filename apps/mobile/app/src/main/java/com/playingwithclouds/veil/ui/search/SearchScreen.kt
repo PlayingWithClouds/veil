@@ -100,7 +100,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
             viewModel.searchFor(text)
         })
         if (filtersOpen) {
-            val choices = FilterChoices(state.siteChoices, state.siteStyles, state.tagCounts)
+            val choices = FilterChoices(state.siteChoices, state.siteStyles, state.tagCounts, state.povTag)
             FilterSheet(state.filter, choices, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false })
         }
         if (state.query == null) {

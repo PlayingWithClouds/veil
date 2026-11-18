@@ -43,6 +43,8 @@ data class FilterChoices(
     val siteChoices: List<SiteChoice> = emptyList(),
     val siteStyles: List<SiteStyle> = emptyList(),
     val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
+    /** The POV tag the Camera group picks; the group is left out while the library has none. */
+    val povTag: TagSummary? = null,
 )
 
 /**
@@ -113,6 +115,12 @@ fun FilterSheet(
             FilterGroup("Show only") {
                 FeedChip(unseenLabel, onClick = { onFilter(filter.copy(unwatched = !filter.unwatched)) }, selected = filter.unwatched)
                 FeedChip("Favourites", onClick = { onFilter(filter.copy(favorite = !filter.favorite)) }, selected = filter.favorite)
+            }
+            val povTag = choices.povTag
+            if (forVideos && povTag != null) {
+                FilterGroup("Camera") {
+                    FeedChip("POV", onClick = { onFilter(filter.toggledRequiredTag(povTag)) }, selected = povTag.id in filter.requiredTags)
+                }
             }
             if (forVideos) {
                 SingleChoice("Sort by", SearchFilter.SORT_OPTIONS, filter.sort) { value -> onFilter(filter.copy(sort = value)) }

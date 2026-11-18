@@ -41,6 +41,14 @@ query VideoSites {
   }
 }
 
+# Tags by name, e.g. the POV tag the Camera filter picks.
+query TagsNamed($text: String, $limit: Int) {
+  tags(text: $text, limit: $limit) {
+    id
+    name
+  }
+}
+
 # The tags most common among the videos matching a filter, for hiding.
 query VideoTagCounts($filter: FilterInput, $limit: Int) {
   videoTagCounts(filter: $filter, limit: $limit) {

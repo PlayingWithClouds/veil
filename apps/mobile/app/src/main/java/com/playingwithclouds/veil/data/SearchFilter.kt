@@ -28,11 +28,22 @@ data class SearchFilter(
     val sort: String? = null,
     val sites: Set<String> = emptySet(),
     val hiddenTags: Map<String, String> = emptyMap(),
+    /** Tags every result must carry (by id, with their names), e.g. POV from the Camera group. */
+    val requiredTags: Map<String, String> = emptyMap(),
 ) {
 
     /** How many of the sheet's settings are on, for the Filters chip; hidden tags have their own chips. */
     val panelCount: Int
-        get() = listOfNotNull(length, minHeight, minRating, sort).size + listOf(unwatched, favorite).count { on -> on } + sites.size.coerceAtMost(1)
+        get() = listOfNotNull(length, minHeight, minRating, sort).size + listOf(unwatched, favorite).count { on -> on } +
+            sites.size.coerceAtMost(1) + requiredTags.size
+
+    /** With a required tag added, or taken away when it was required. */
+    fun toggledRequiredTag(tag: TagSummary): SearchFilter {
+        if (tag.id in requiredTags) {
+            return copy(requiredTags = requiredTags - tag.id)
+        }
+        return copy(requiredTags = requiredTags + (tag.id to tag.name))
+    }
 
     /** Whether anything is set at all. */
     val isEmpty: Boolean
@@ -45,6 +56,7 @@ data class SearchFilter(
         return FilterInput(
             sources = Optional.presentIfNotNull(sites.toList().ifEmpty { null }),
             excludeTagIds = Optional.presentIfNotNull(hiddenTags.keys.toList().ifEmpty { null }),
+            includeTagIds = Optional.presentIfNotNull(requiredTags.keys.toList().ifEmpty { null }),
             minDurationSeconds = Optional.presentIfNotNull(bounds?.first),
             maxDurationSeconds = Optional.presentIfNotNull(bounds?.second),
             minHeight = Optional.presentIfNotNull(minHeight?.toIntOrNull()),
