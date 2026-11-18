@@ -32,7 +32,8 @@ object SolverServer {
         if (socket != null) {
             return
         }
-        val bound = ServerSocket(0, BACKLOG, InetAddress.getLoopbackAddress())
+        // IPv4 explicitly: getLoopbackAddress() can be ::1, and the backend dials 127.0.0.1.
+        val bound = ServerSocket(0, BACKLOG, InetAddress.getByName("127.0.0.1"))
         socket = bound
         thread(name = "veil-solver", isDaemon = true) {
             while (!bound.isClosed) {
