@@ -9,7 +9,6 @@ import com.playingwithclouds.veil.graphql.BuiltInCollectionIdQuery
 import com.playingwithclouds.veil.graphql.DownloadMutation
 import com.playingwithclouds.veil.graphql.OpenVideoMutation
 import com.playingwithclouds.veil.graphql.PlayQuery
-import com.playingwithclouds.veil.graphql.RateMutation
 import com.playingwithclouds.veil.graphql.RelatedVideosQuery
 import com.playingwithclouds.veil.graphql.SetBlockedMutation
 import com.playingwithclouds.veil.graphql.SetFavoriteMutation
@@ -60,11 +59,6 @@ object VideoRepository {
     /** Marks a video as a favourite, or not. */
     suspend fun setFavorite(id: String, favorite: Boolean) {
         VeilApi.client.mutation(SetFavoriteMutation(videoRef(id), favorite)).execute().dataOrThrow()
-    }
-
-    /** Rates a video 0..10; null clears the rating. */
-    suspend fun rate(id: String, rating: Double?) {
-        VeilApi.client.mutation(RateMutation(videoRef(id), Optional.present(rating))).execute().dataOrThrow()
     }
 
     /** Puts a video on the watchlist. */

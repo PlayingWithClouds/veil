@@ -44,7 +44,6 @@ import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.Avatar
-import com.playingwithclouds.veil.ui.components.RatingStars
 import com.playingwithclouds.veil.ui.components.TrackShown
 import com.playingwithclouds.veil.ui.components.VideoCard
 import com.playingwithclouds.veil.ui.components.pressClickable
@@ -81,7 +80,7 @@ private val PersonAvatarSize = 56.dp
 private fun upNextKey(videoId: String): String = "up-next:$videoId"
 
 /**
- * Everything under the player: title and facts, the actions, rating, sources, people, tags,
+ * Everything under the player: title and facts, the actions, sources, people, tags,
  * description and where it was found, then Up next, which grows while scrolled to its end.
  */
 @Composable
@@ -116,7 +115,6 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
 private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator) {
     item("title") { TitleBlock(detail) }
     item("actions") { ActionsRow(state, viewModel, player) }
-    item("rating") { RatingStars(state.rating, onRate = viewModel::rate, modifier = Modifier.gutterPadding().padding(top = VeilSpacing.small)) }
     if (detail.sources.size > 1) {
         item("sources") { SourcesRow(detail, state, viewModel) }
     }

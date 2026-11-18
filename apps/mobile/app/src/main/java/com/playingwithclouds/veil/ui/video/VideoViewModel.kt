@@ -64,7 +64,6 @@ data class VideoState(
     val resolving: Boolean = false,
     val problem: String? = null,
     val favorite: Boolean = false,
-    val rating: Double? = null,
     val verdict: Verdict? = null,
     val pendingDislike: Boolean = false,
     val onWatchlist: Boolean = false,
@@ -123,7 +122,7 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
                     return@launch
                 }
                 mutableState.update { state ->
-                    state.copy(detail = LoadState.Loaded(detail), favorite = detail.favorite, rating = detail.rating, oCount = detail.oCount)
+                    state.copy(detail = LoadState.Loaded(detail), favorite = detail.favorite, oCount = detail.oCount)
                 }
                 log(EventKind.view)
                 startNextSource()
@@ -243,12 +242,6 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
         val favorite = !state.value.favorite
         mutableState.update { state -> state.copy(favorite = favorite) }
         runAction("Couldn't save the favourite") { VideoRepository.setFavorite(videoId, favorite) }
-    }
-
-    /** Rates the video 0..10; null clears the rating. */
-    fun rate(rating: Double?) {
-        mutableState.update { state -> state.copy(rating = rating) }
-        runAction("Couldn't save the rating") { VideoRepository.rate(videoId, rating) }
     }
 
     /** Puts the video on the watchlist. */
