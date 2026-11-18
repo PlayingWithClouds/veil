@@ -10,6 +10,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/library"
+	"github.com/playingwithclouds/veil/internal/names"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -34,6 +35,8 @@ type shortCandidate struct {
 	title   string
 	// tagID is a segment's tag, named in its detail once names are read.
 	tagID string
+	// liked marks a scene model segment whose tag the user liked.
+	liked bool
 	score float64
 }
 
@@ -69,6 +72,7 @@ func (e *Engine) shortCandidates(ctx context.Context, filter schema.Filter) ([]*
 	sources := []func(context.Context, schema.Filter) ([]*shortCandidate, error){
 		e.clipShorts,
 		e.segmentShorts,
+		e.aiSegmentShorts,
 		e.momentShorts,
 		e.verticalShorts,
 	}
@@ -127,16 +131,69 @@ func (e *Engine) clipShorts(ctx context.Context, filter schema.Filter) ([]*short
 	return out, nil
 }
 
-// segmentShorts are the videos' segments, each cut to a short; a marker (no
-// end) plays markerShortSeconds.
+// segmentColumns and segmentJoin read the segments of the filtered videos.
+const (
+	segmentColumns = `"segment"."id", "segment"."subjectId", "segment"."startSeconds", "segment"."endSeconds", "segment"."title", "segment"."tag", "media"."durationSeconds"`
+	segmentJoin    = ` JOIN "Segment" AS "segment" ON "segment"."subjectKind" = 'video' AND "segment"."subjectId" = "media"."id" AND "segment"."deletedAt" IS NULL`
+)
+
+// segmentShorts are the videos' user and plugin segments, each cut to a
+// short; a marker (no end) plays markerShortSeconds.
 func (e *Engine) segmentShorts(ctx context.Context, filter schema.Filter) ([]*shortCandidate, error) {
-	rows, err := e.filteredVideoRows(ctx, filter,
-		`"segment"."id", "segment"."subjectId", "segment"."startSeconds", "segment"."endSeconds", "segment"."title", "segment"."tag", "media"."durationSeconds"`,
-		` JOIN "Segment" AS "segment" ON "segment"."subjectKind" = 'video' AND "segment"."subjectId" = "media"."id" AND "segment"."deletedAt" IS NULL`,
-		"", `ORDER BY "segment"."createdAt" DESC LIMIT $limit`, nil)
+	rows, err := e.filteredVideoRows(ctx, filter, segmentColumns, segmentJoin,
+		`"segment"."origin" != 'ai'`, `ORDER BY "segment"."createdAt" DESC LIMIT $limit`, nil)
 	if err != nil {
 		return nil, err
 	}
+	return segmentCandidates(rows), nil
+}
+
+// aiSegmentShorts are the scene model's segments whose tag the user liked
+// (setting likedSceneTags), each cut to a short, the longest first: the
+// model finds far more than anyone tags by hand, so only liked ones play.
+func (e *Engine) aiSegmentShorts(ctx context.Context, filter schema.Filter) ([]*shortCandidate, error) {
+	liked, err := e.likedSceneTagIDs(ctx)
+	if err != nil || len(liked) == 0 {
+		return nil, err
+	}
+	rows, err := e.filteredVideoRows(ctx, filter, segmentColumns, segmentJoin,
+		`"segment"."origin" = 'ai' AND "segment"."tag" IN (SELECT value FROM json_each($liked))`,
+		`ORDER BY "segment"."endSeconds" - "segment"."startSeconds" DESC LIMIT $limit`, db.Vars{"liked": setKeys(liked)})
+	if err != nil {
+		return nil, err
+	}
+	out := segmentCandidates(rows)
+	for _, candidate := range out {
+		candidate.liked = true
+	}
+	return out, nil
+}
+
+// likedSceneTagIDs are the ids of the live tags the user liked as scenes.
+func (e *Engine) likedSceneTagIDs(ctx context.Context) (map[string]bool, error) {
+	if e.likedSceneTags == nil {
+		return nil, nil
+	}
+	keys := []string{}
+	for _, name := range e.likedSceneTags() {
+		if key := names.Key(name); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	ids, err := e.database.Strings(ctx,
+		`SELECT "id" FROM "Tag" WHERE "nameKey" IN (SELECT value FROM json_each($keys)) AND "deletedAt" IS NULL`,
+		db.Vars{"keys": keys})
+	if err != nil {
+		return nil, fmt.Errorf("read liked scene tags: %w", err)
+	}
+	return toSet(ids), nil
+}
+
+// segmentCandidates turns segment rows into shorts.
+func segmentCandidates(rows []db.Row) []*shortCandidate {
 	out := make([]*shortCandidate, 0, len(rows))
 	for _, row := range rows {
 		start := rowFloat(row, "startSeconds")
@@ -154,7 +211,7 @@ func (e *Engine) segmentShorts(ctx context.Context, filter schema.Filter) ([]*sh
 			tagID:   rowString(row, "tag"),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // segmentDetail describes a segment by its title, else by where it starts.
@@ -264,12 +321,19 @@ func (e *Engine) scoreShorts(ctx context.Context, candidates []*shortCandidate) 
 	return nil
 }
 
-// shortScore is a short's kind base, plus the taste match of its video,
-// minus the skip penalty.
+// shortScore is a short's kind base, plus the taste match of its video and
+// of a segment's own tag, plus the bonus of a liked scene, minus the skip
+// penalty.
 func shortScore(candidate *shortCandidate, features map[schema.RecordRef]*mediaFeatures, taste *profile, skipped map[schema.RecordRef]bool) float64 {
 	total := candidate.base
 	if video, found := features[schema.RecordRef{Kind: schema.RecordKindVideo, Id: candidate.videoID}]; found {
 		total += shortAffinityWeight * affinityMatch(video, taste)
+	}
+	if candidate.tagID != "" {
+		total += shortSceneTagWeight * taste.tags[candidate.tagID]
+	}
+	if candidate.liked {
+		total += shortLikedSceneBonus
 	}
 	if skipped[candidate.item] {
 		total -= shortSkipPenalty
@@ -308,10 +372,20 @@ func (e *Engine) nameShortTags(ctx context.Context, candidates []*shortCandidate
 	}
 	for _, candidate := range candidates {
 		if name := names[candidate.tagID]; name != "" && candidate.title == "" {
-			candidate.detail = "Marker: " + name + " at " + formatClock(candidate.window.start)
+			candidate.detail = shortTagDetail(candidate, name)
 		}
 	}
 	return nil
+}
+
+// shortTagDetail describes an untitled segment by its tag: a liked scene the
+// model found as "Blowjob at 12:30", others as markers.
+func shortTagDetail(candidate *shortCandidate, tagName string) string {
+	at := " at " + formatClock(candidate.window.start)
+	if candidate.liked {
+		return tagName + at
+	}
+	return "Marker: " + tagName + at
 }
 
 // spreadShorts orders the shorts best first, at most maxShortsPerVideo per

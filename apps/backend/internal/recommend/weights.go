@@ -200,6 +200,40 @@ const (
 	momentSceneLimit    = 100
 )
 
+// Scene tags: the tags of the ai segments the phone's scene model found,
+// each weighted by the share of the runtime it covers.
+const (
+	// sceneTagWeight is how much of an item's signal its scene tags take, at
+	// a full share of the runtime.
+	sceneTagWeight = 0.5
+	// sceneMatchShare is the part of the tag term of the affinity match the
+	// scene tags take, when a video has any.
+	sceneMatchShare = 0.4
+	// sceneTagMinimumShare drops scene tags covering less of the runtime.
+	sceneTagMinimumShare = 0.03
+)
+
+// Cover tags: the labels the phone's scene model read off the covers it
+// showed (impression and choice data.coverTags), clicked against skipped.
+const (
+	// coverTagWeight scales a tag's click lift (in [-1, 1]) into the tag
+	// affinities before they are normalized: about a liked video's worth.
+	coverTagWeight = 1.5
+	// coverTagPrior is how many showings of evidence a tag's click rate is
+	// pulled toward the overall rate with.
+	coverTagPrior = 5.0
+	// coverTagMinimumShown is the probability mass of showings a tag needs.
+	coverTagMinimumShown = 3.0
+)
+
+// Liked scene tags (setting likedSceneTags) in the shorts feed.
+const (
+	// shortLikedSceneBonus lifts a segment short whose tag the user liked.
+	shortLikedSceneBonus = 0.4
+	// shortSceneTagWeight scales the taste affinity of a segment's own tag.
+	shortSceneTagWeight = 0.3
+)
+
 // Replay heat, built from heatSpan events (and o positions).
 const (
 	// heatBucketSeconds is the resolution of a video's heat.

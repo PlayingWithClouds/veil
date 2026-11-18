@@ -100,6 +100,7 @@ export interface Query {
     pluginView: PluginView
     clips: Clip[]
     clip: (Clip | null)
+    sceneMatches: SceneMatch[]
     plugins: Plugin[]
     plugin: (Plugin | null)
     pluginPackages: PluginPackage[]
@@ -212,6 +213,7 @@ export interface Mutation {
     submitPluginView: PluginViewResult
     addSegment: Segment
     editSegment: Segment
+    replaceAiSegments: Segment[]
     addClip: Clip
     editClip: Clip
     attachClipFile: Clip
@@ -1200,6 +1202,13 @@ export interface Segment {
     __typename: 'Segment'
 }
 
+export interface SceneMatch {
+    video: (Video | null)
+    segments: Segment[]
+    matchingSeconds: Scalars['Float']
+    __typename: 'SceneMatch'
+}
+
 export interface Clip {
     id: Scalars['ID']
     createdAt: Scalars['String']
@@ -1531,6 +1540,7 @@ export interface QueryGenqlSelection{
     pluginView?: (PluginViewGenqlSelection & { __args: {plugin: Scalars['String'], view: Scalars['String'], input?: (Scalars['JSON'] | null)} })
     clips?: (ClipGenqlSelection & { __args?: {videoId?: (Scalars['ID'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     clip?: (ClipGenqlSelection & { __args: {id: Scalars['ID']} })
+    sceneMatches?: (SceneMatchGenqlSelection & { __args: {tags: Scalars['String'][], videoIds?: (Scalars['ID'][] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     plugins?: PluginGenqlSelection
     plugin?: (PluginGenqlSelection & { __args: {name: Scalars['String']} })
     pluginPackages?: (PluginPackageGenqlSelection & { __args?: {query?: (Scalars['String'] | null)} })
@@ -1644,6 +1654,7 @@ export interface MutationGenqlSelection{
     submitPluginView?: (PluginViewResultGenqlSelection & { __args: {plugin: Scalars['String'], view: Scalars['String'], action: Scalars['String'], values?: (Scalars['JSON'] | null), input?: (Scalars['JSON'] | null)} })
     addSegment?: (SegmentGenqlSelection & { __args: {subject: RecordRefInput, input: SegmentInput} })
     editSegment?: (SegmentGenqlSelection & { __args: {id: Scalars['ID'], input: SegmentInput} })
+    replaceAiSegments?: (SegmentGenqlSelection & { __args: {subject: RecordRefInput, segments: AiSegmentInput[]} })
     addClip?: (ClipGenqlSelection & { __args: {videoId: Scalars['ID'], input: ClipInput} })
     editClip?: (ClipGenqlSelection & { __args: {id: Scalars['ID'], input: ClipInput} })
     attachClipFile?: (ClipGenqlSelection & { __args: {clipId: Scalars['ID'], fileId: Scalars['ID']} })
@@ -2724,6 +2735,16 @@ export interface SegmentGenqlSelection{
 
 export interface SegmentInput {startSeconds?: (Scalars['Float'] | null),endSeconds?: (Scalars['Float'] | null),clearEnd?: (Scalars['Boolean'] | null),title?: (Scalars['String'] | null),tagId?: (Scalars['ID'] | null),performerIds?: (Scalars['ID'][] | null)}
 
+export interface AiSegmentInput {startSeconds: Scalars['Float'],endSeconds: Scalars['Float'],tag: Scalars['String']}
+
+export interface SceneMatchGenqlSelection{
+    video?: VideoGenqlSelection
+    segments?: SegmentGenqlSelection
+    matchingSeconds?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface ClipGenqlSelection{
     id?: boolean | number
     createdAt?: boolean | number
@@ -3681,6 +3702,14 @@ export interface SavedFilterGenqlSelection{
     export const isSegment = (obj?: { __typename?: any } | null): obj is Segment => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isSegment"')
       return Segment_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SceneMatch_possibleTypes: string[] = ['SceneMatch']
+    export const isSceneMatch = (obj?: { __typename?: any } | null): obj is SceneMatch => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSceneMatch"')
+      return SceneMatch_possibleTypes.includes(obj.__typename)
     }
     
 

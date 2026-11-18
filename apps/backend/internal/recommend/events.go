@@ -17,6 +17,10 @@ package recommend
 //     teach the engine; others are kept for analysis.
 //   - choice: {"surface": "home", "position": n}. The item was picked from a
 //     surface (a click on its card).
+//   - impression and choice may carry "coverTags": {"Blowjob": 0.83, …}, the
+//     labels the phone's scene model read off the card's cover (tag names,
+//     probability ≥ 0.5). Picked against shown, they lift or lower those
+//     tags in the taste on every surface (covertags.go).
 //   - heatSpan: {"start": seconds, "end": seconds}. A stretch of the video
 //     that actually played, sent when playback of a contiguous stretch ends
 //     (seek, pause, stop). Their sum is how long a watch played; their overlap

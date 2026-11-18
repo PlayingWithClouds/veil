@@ -41,3 +41,12 @@ func trickplayOf(input *model.TrickplayInput) *schema.Trickplay {
 		IntervalSeconds: float32(input.IntervalSeconds),
 	}
 }
+
+// aiSegments maps the API's ai segment inputs to the library's.
+func aiSegments(inputs []*model.AiSegmentInput) []library.AISegment {
+	out := make([]library.AISegment, 0, len(inputs))
+	for _, input := range inputs {
+		out = append(out, library.AISegment{StartSeconds: input.StartSeconds, EndSeconds: input.EndSeconds, Tag: input.Tag})
+	}
+	return out
+}

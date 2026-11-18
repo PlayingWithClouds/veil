@@ -12,6 +12,12 @@ import (
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
+type AiSegmentInput struct {
+	StartSeconds float64 `json:"startSeconds"`
+	EndSeconds   float64 `json:"endSeconds"`
+	Tag          string  `json:"tag"`
+}
+
 type AutomationEditInput struct {
 	Name    *string         `json:"name,omitempty"`
 	Enabled *bool           `json:"enabled,omitempty"`

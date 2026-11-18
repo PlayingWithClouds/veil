@@ -86,6 +86,7 @@ type Query {
   pluginView(plugin: String!, view: String!, input: JSON): PluginView!
   clips(videoId: ID, limit: Int, offset: Int): [Clip!]!
   clip(id: ID!): Clip
+  sceneMatches(tags: [String!]!, videoIds: [ID!], limit: Int, offset: Int): [SceneMatch!]!
   plugins: [Plugin!]!
   plugin(name: String!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
@@ -197,6 +198,7 @@ type Mutation {
   submitPluginView(plugin: String!, view: String!, action: String!, values: JSON, input: JSON): PluginViewResult!
   addSegment(subject: RecordRefInput!, input: SegmentInput!): Segment!
   editSegment(id: ID!, input: SegmentInput!): Segment!
+  replaceAiSegments(subject: RecordRefInput!, segments: [AiSegmentInput!]!): [Segment!]!
   addClip(videoId: ID!, input: ClipInput!): Clip!
   editClip(id: ID!, input: ClipInput!): Clip!
   attachClipFile(clipId: ID!, fileId: ID!): Clip!
@@ -1360,6 +1362,18 @@ input SegmentInput {
   title: String
   tagId: ID
   performerIds: [ID!]
+}
+
+input AiSegmentInput {
+  startSeconds: Float!
+  endSeconds: Float!
+  tag: String!
+}
+
+type SceneMatch {
+  video: Video
+  segments: [Segment!]!
+  matchingSeconds: Float!
 }
 
 type Clip {

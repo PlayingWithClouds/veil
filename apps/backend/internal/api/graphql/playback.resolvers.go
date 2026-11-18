@@ -10,6 +10,7 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/api/graphql/generated"
 	"github.com/playingwithclouds/veil/internal/api/graphql/model"
+	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -66,6 +67,12 @@ func (r *mutationResolver) AddSegment(ctx context.Context, subject schema.Record
 // EditSegment is the resolver for the editSegment field.
 func (r *mutationResolver) EditSegment(ctx context.Context, id string, input model.SegmentInput) (*schema.Segment, error) {
 	return r.library.EditSegment(ctx, id, segmentEdit(input))
+}
+
+// ReplaceAiSegments is the resolver for the replaceAiSegments field.
+func (r *mutationResolver) ReplaceAiSegments(ctx context.Context, subject schema.RecordRef, segments []*model.AiSegmentInput) ([]*schema.Segment, error) {
+	replaced, err := r.library.ReplaceAISegments(ctx, subject.Kind, subject.Id, aiSegments(segments))
+	return pointers(replaced), err
 }
 
 // AddClip is the resolver for the addClip field.
@@ -143,6 +150,18 @@ func (r *queryResolver) Clip(ctx context.Context, id string) (*schema.Clip, erro
 	return r.library.Clip(ctx, id)
 }
 
+// SceneMatches is the resolver for the sceneMatches field.
+func (r *queryResolver) SceneMatches(ctx context.Context, tags []string, videoIds []string, limit *int, offset *int) ([]*library.SceneMatch, error) {
+	size, from := page(limit, offset)
+	matches, err := r.library.SceneMatches(ctx, tags, videoIds, size, from)
+	return pointers(matches), err
+}
+
+// Video is the resolver for the video field.
+func (r *sceneMatchResolver) Video(ctx context.Context, obj *library.SceneMatch) (*schema.Video, error) {
+	return r.library.Video(ctx, obj.VideoID)
+}
+
 // Tag is the resolver for the tag field.
 func (r *segmentResolver) Tag(ctx context.Context, obj *schema.Segment) (*schema.Tag, error) {
 	return loadOptional(ctx, r.library.Tag, obj.Tag)
@@ -190,9 +209,13 @@ func (r *Resolver) Clip() generated.ClipResolver { return &clipResolver{r} }
 // Comment returns generated.CommentResolver implementation.
 func (r *Resolver) Comment() generated.CommentResolver { return &commentResolver{r} }
 
+// SceneMatch returns generated.SceneMatchResolver implementation.
+func (r *Resolver) SceneMatch() generated.SceneMatchResolver { return &sceneMatchResolver{r} }
+
 // Segment returns generated.SegmentResolver implementation.
 func (r *Resolver) Segment() generated.SegmentResolver { return &segmentResolver{r} }
 
 type clipResolver struct{ *Resolver }
 type commentResolver struct{ *Resolver }
+type sceneMatchResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }

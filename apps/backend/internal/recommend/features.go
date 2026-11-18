@@ -32,6 +32,9 @@ type mediaFeatures struct {
 	imageCount      int
 	// companion is the video's gallery or the gallery's video, when linked.
 	companion string
+	// sceneTags are the tags of a video's ai segments with the share of the
+	// runtime each covers (0..1); nil when it has none.
+	sceneTags map[string]float64
 }
 
 // companionRef is the linked gallery of a video or video of a gallery.
@@ -93,6 +96,11 @@ func (e *Engine) queryFeatures(ctx context.Context, kind schema.RecordKind, filt
 	}
 	if err := e.loadSites(ctx, kind, out); err != nil {
 		return nil, err
+	}
+	if kind == schema.RecordKindVideo {
+		if err := e.loadSceneTags(ctx, out); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }

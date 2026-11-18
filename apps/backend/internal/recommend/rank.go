@@ -61,7 +61,7 @@ func score(proposed *candidate, item *mediaFeatures, state *snapshot) (total flo
 // affinities into one value in [-1, 1].
 func affinityMatch(item *mediaFeatures, taste *profile) float64 {
 	match := matchWeightPerformer * castAffinity(item.performers, taste)
-	match += matchWeightTag * tagAffinity(item.tags, taste.tags, taste.rarity)
+	match += matchWeightTag * itemTagAffinity(item, taste)
 	match += matchWeightStudio * taste.studios[item.studio]
 	match += matchWeightSite * taste.sites[item.site]
 	match += matchWeightRuntime * taste.runtimeAffinity(item.durationSeconds)

@@ -241,6 +241,11 @@ models:
   FieldType:
     model: github.com/playingwithclouds/veil/internal/schema.FieldType
   # Playback extras.
+  SceneMatch:
+    model: github.com/playingwithclouds/veil/internal/library.SceneMatch
+    fields:
+      video:
+        resolver: true
   Segment:
     model: github.com/playingwithclouds/veil/internal/schema.Segment
     fields:

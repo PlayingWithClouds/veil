@@ -22,18 +22,18 @@ export default {
         109,
         116,
         125,
-        130,
-        133,
-        144,
-        145,
+        132,
+        135,
+        146,
         147,
         149,
         151,
-        152,
         153,
         154,
-        160,
-        165
+        155,
+        156,
+        162,
+        167
     ],
     "types": {
         "Query": {
@@ -62,13 +62,13 @@ export default {
                 10,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
             ],
             "newSince": [
-                157,
+                159,
                 {
                     "followId": [
                         2,
@@ -221,7 +221,7 @@ export default {
                 42,
                 {
                     "kind": [
-                        153,
+                        155,
                         "MediaKind!"
                     ]
                 }
@@ -251,7 +251,7 @@ export default {
                 45,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -260,7 +260,7 @@ export default {
                 48,
                 {
                     "kind": [
-                        152
+                        154
                     ]
                 }
             ],
@@ -268,7 +268,7 @@ export default {
                 51,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -314,7 +314,7 @@ export default {
                 61,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -328,7 +328,7 @@ export default {
                 61,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "limit": [
@@ -340,7 +340,7 @@ export default {
                 63,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -363,7 +363,7 @@ export default {
                 69,
                 {
                     "kind": [
-                        152,
+                        154,
                         "RecordKind!"
                     ],
                     "limit": [
@@ -378,7 +378,7 @@ export default {
                 68,
                 {
                     "kind": [
-                        152,
+                        154,
                         "RecordKind!"
                     ],
                     "keptId": [
@@ -412,10 +412,10 @@ export default {
                 74
             ],
             "sameMedia": [
-                157,
+                159,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -436,7 +436,7 @@ export default {
                         "[Float!]!"
                     ],
                     "kinds": [
-                        152,
+                        154,
                         "[RecordKind!]"
                     ],
                     "limit": [
@@ -448,7 +448,7 @@ export default {
                 61,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "kind": [
@@ -468,7 +468,7 @@ export default {
                 40,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -482,7 +482,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -490,7 +490,7 @@ export default {
                 92,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -510,7 +510,7 @@ export default {
                 50,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -524,7 +524,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -631,10 +631,10 @@ export default {
                 }
             ],
             "media": [
-                157,
+                159,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -648,7 +648,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -656,11 +656,11 @@ export default {
                 92,
                 {
                     "kind": [
-                        153,
+                        155,
                         "MediaKind!"
                     ],
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -671,7 +671,7 @@ export default {
                 98,
                 {
                     "kind": [
-                        153,
+                        155,
                         "MediaKind!"
                     ],
                     "limit": [
@@ -683,7 +683,7 @@ export default {
                 80,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -697,7 +697,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -726,7 +726,7 @@ export default {
                 110,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -740,7 +740,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -769,7 +769,7 @@ export default {
                 112,
                 {
                     "filter": [
-                        171
+                        173
                     ],
                     "limit": [
                         3
@@ -783,7 +783,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        171
+                        173
                     ]
                 }
             ],
@@ -823,7 +823,7 @@ export default {
                 }
             ],
             "settings": [
-                151
+                153
             ],
             "apiTokens": [
                 114
@@ -851,12 +851,12 @@ export default {
                         "String!"
                     ],
                     "input": [
-                        151
+                        153
                     ]
                 }
             ],
             "clips": [
-                128,
+                130,
                 {
                     "videoId": [
                         2
@@ -870,11 +870,30 @@ export default {
                 }
             ],
             "clip": [
-                128,
+                130,
                 {
                     "id": [
                         2,
                         "ID!"
+                    ]
+                }
+            ],
+            "sceneMatches": [
+                129,
+                {
+                    "tags": [
+                        1,
+                        "[String!]!"
+                    ],
+                    "videoIds": [
+                        2,
+                        "[ID!]"
+                    ],
+                    "limit": [
+                        3
+                    ],
+                    "offset": [
+                        3
                     ]
                 }
             ],
@@ -891,7 +910,7 @@ export default {
                 }
             ],
             "pluginPackages": [
-                137,
+                139,
                 {
                     "query": [
                         1
@@ -899,10 +918,10 @@ export default {
                 }
             ],
             "trash": [
-                143,
+                145,
                 {
                     "kind": [
-                        152,
+                        154,
                         "RecordKind!"
                     ],
                     "limit": [
@@ -914,14 +933,14 @@ export default {
                 }
             ],
             "jobs": [
-                146,
+                148,
                 {
                     "statuses": [
-                        145,
+                        147,
                         "[JobStatus!]"
                     ],
                     "kinds": [
-                        144,
+                        146,
                         "[JobKind!]"
                     ],
                     "limit": [
@@ -933,7 +952,7 @@ export default {
                 }
             ],
             "job": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -942,13 +961,13 @@ export default {
                 }
             ],
             "devices": [
-                148
+                150
             ],
             "currentDevice": [
-                148
+                150
             ],
             "storageLocations": [
-                150,
+                152,
                 {
                     "deviceId": [
                         2
@@ -956,10 +975,10 @@ export default {
                 }
             ],
             "userStates": [
-                158,
+                160,
                 {
                     "filter": [
-                        159
+                        161
                     ],
                     "limit": [
                         3
@@ -970,10 +989,10 @@ export default {
                 }
             ],
             "history": [
-                158,
+                160,
                 {
                     "kind": [
-                        152
+                        154
                     ],
                     "limit": [
                         3
@@ -984,10 +1003,10 @@ export default {
                 }
             ],
             "liked": [
-                157,
+                159,
                 {
                     "kind": [
-                        152,
+                        154,
                         "RecordKind!"
                     ],
                     "limit": [
@@ -999,10 +1018,10 @@ export default {
                 }
             ],
             "events": [
-                162,
+                164,
                 {
                     "filter": [
-                        164
+                        166
                     ],
                     "limit": [
                         3
@@ -1016,7 +1035,7 @@ export default {
                 3,
                 {
                     "filter": [
-                        164
+                        166
                     ]
                 }
             ],
@@ -1029,13 +1048,13 @@ export default {
                 }
             ],
             "sitePreferences": [
-                161
+                163
             ],
             "savedFilters": [
-                172
+                174
             ],
             "savedFilter": [
-                172,
+                174,
                 {
                     "id": [
                         2,
@@ -1070,7 +1089,7 @@ export default {
                 10,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "intervalHours": [
@@ -1128,7 +1147,7 @@ export default {
                 }
             ],
             "runFollow": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -1172,7 +1191,7 @@ export default {
                         "String!"
                     ],
                     "config": [
-                        151
+                        153
                     ],
                     "enabled": [
                         4
@@ -1190,7 +1209,7 @@ export default {
                         1
                     ],
                     "config": [
-                        151
+                        153
                     ],
                     "enabled": [
                         4
@@ -1296,7 +1315,7 @@ export default {
                         "ID!"
                     ],
                     "subjects": [
-                        155,
+                        157,
                         "[RecordRefInput!]"
                     ],
                     "dryRun": [
@@ -1354,7 +1373,7 @@ export default {
                 }
             ],
             "startRecording": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -1458,7 +1477,7 @@ export default {
                         "ID!"
                     ],
                     "subjects": [
-                        155,
+                        157,
                         "[RecordRefInput!]!"
                     ],
                     "position": [
@@ -1474,7 +1493,7 @@ export default {
                         "ID!"
                     ],
                     "subjects": [
-                        155,
+                        157,
                         "[RecordRefInput!]!"
                     ]
                 }
@@ -1487,7 +1506,7 @@ export default {
                         "ID!"
                     ],
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "position": [
@@ -1527,10 +1546,10 @@ export default {
                 }
             ],
             "setFieldValue": [
-                158,
+                160,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "fieldDefId": [
@@ -1538,7 +1557,7 @@ export default {
                         "ID!"
                     ],
                     "value": [
-                        151
+                        153
                     ]
                 }
             ],
@@ -1573,10 +1592,10 @@ export default {
                 }
             ],
             "merge": [
-                157,
+                159,
                 {
                     "kind": [
-                        152,
+                        154,
                         "RecordKind!"
                     ],
                     "keepId": [
@@ -1590,7 +1609,7 @@ export default {
                 }
             ],
             "undoMerge": [
-                157,
+                159,
                 {
                     "id": [
                         2,
@@ -1599,7 +1618,7 @@ export default {
                 }
             ],
             "mergeAlike": [
-                157,
+                159,
                 {
                     "id": [
                         2,
@@ -1660,7 +1679,7 @@ export default {
                 }
             ],
             "scanLibraryRoot": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -1691,10 +1710,10 @@ export default {
                 }
             ],
             "download": [
-                146,
+                148,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "streamId": [
@@ -1715,7 +1734,7 @@ export default {
                 76,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "fileId": [
@@ -1735,7 +1754,7 @@ export default {
                 }
             ],
             "fingerprintFile": [
-                146,
+                148,
                 {
                     "fileId": [
                         2,
@@ -1744,7 +1763,7 @@ export default {
                 }
             ],
             "snapshotSource": [
-                146,
+                148,
                 {
                     "sourceId": [
                         2,
@@ -1965,7 +1984,7 @@ export default {
                 88,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "field": [
@@ -1988,10 +2007,10 @@ export default {
                 }
             ],
             "editMedia": [
-                157,
+                159,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "edit": [
@@ -2001,10 +2020,10 @@ export default {
                 }
             ],
             "fetchMedia": [
-                157,
+                159,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -2023,10 +2042,10 @@ export default {
                 }
             ],
             "updateSettings": [
-                151,
+                153,
                 {
                     "values": [
-                        151,
+                        153,
                         "JSON!"
                     ]
                 }
@@ -2064,7 +2083,7 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        151,
+                        153,
                         "JSON!"
                     ]
                 }
@@ -2116,10 +2135,10 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        151
+                        153
                     ],
                     "input": [
-                        151
+                        153
                     ]
                 }
             ],
@@ -2127,7 +2146,7 @@ export default {
                 126,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "input": [
@@ -2149,34 +2168,47 @@ export default {
                     ]
                 }
             ],
+            "replaceAiSegments": [
+                126,
+                {
+                    "subject": [
+                        157,
+                        "RecordRefInput!"
+                    ],
+                    "segments": [
+                        128,
+                        "[AiSegmentInput!]!"
+                    ]
+                }
+            ],
             "addClip": [
-                128,
+                130,
                 {
                     "videoId": [
                         2,
                         "ID!"
                     ],
                     "input": [
-                        129,
+                        131,
                         "ClipInput!"
                     ]
                 }
             ],
             "editClip": [
-                128,
+                130,
                 {
                     "id": [
                         2,
                         "ID!"
                     ],
                     "input": [
-                        129,
+                        131,
                         "ClipInput!"
                     ]
                 }
             ],
             "attachClipFile": [
-                128,
+                130,
                 {
                     "clipId": [
                         2,
@@ -2189,14 +2221,14 @@ export default {
                 }
             ],
             "addSubtitle": [
-                131,
+                133,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "input": [
-                        132,
+                        134,
                         "SubtitleInput!"
                     ]
                 }
@@ -2211,10 +2243,10 @@ export default {
                 }
             ],
             "addScript": [
-                134,
+                136,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "uri": [
@@ -2243,7 +2275,7 @@ export default {
                         "ID!"
                     ],
                     "trickplay": [
-                        135
+                        137
                     ]
                 }
             ],
@@ -2261,10 +2293,10 @@ export default {
                 }
             ],
             "refreshSources": [
-                157,
+                159,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -2290,7 +2322,7 @@ export default {
                         "String!"
                     ],
                     "values": [
-                        142,
+                        144,
                         "[PluginSettingValueInput!]!"
                     ]
                 }
@@ -2320,7 +2352,7 @@ export default {
                 4,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -2329,7 +2361,7 @@ export default {
                 4,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -2338,7 +2370,7 @@ export default {
                 4,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
@@ -2347,16 +2379,16 @@ export default {
                 3
             ],
             "queueFetch": [
-                146,
+                148,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ]
                 }
             ],
             "cancelJob": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -2365,7 +2397,7 @@ export default {
                 }
             ],
             "retryJob": [
-                146,
+                148,
                 {
                     "id": [
                         2,
@@ -2377,7 +2409,7 @@ export default {
                 3
             ],
             "renameDevice": [
-                148,
+                150,
                 {
                     "id": [
                         2,
@@ -2390,10 +2422,10 @@ export default {
                 }
             ],
             "addStorageLocation": [
-                150,
+                152,
                 {
                     "kind": [
-                        149,
+                        151,
                         "StorageKind!"
                     ],
                     "uri": [
@@ -2406,7 +2438,7 @@ export default {
                 }
             ],
             "setStorageQuota": [
-                150,
+                152,
                 {
                     "id": [
                         2,
@@ -2427,10 +2459,10 @@ export default {
                 }
             ],
             "rate": [
-                158,
+                160,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "rating": [
@@ -2439,10 +2471,10 @@ export default {
                 }
             ],
             "setFavorite": [
-                158,
+                160,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "favorite": [
@@ -2452,10 +2484,10 @@ export default {
                 }
             ],
             "setBlocked": [
-                158,
+                160,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "blocked": [
@@ -2465,10 +2497,10 @@ export default {
                 }
             ],
             "setNotes": [
-                158,
+                160,
                 {
                     "subject": [
-                        155,
+                        157,
                         "RecordRefInput!"
                     ],
                     "notes": [
@@ -2478,10 +2510,10 @@ export default {
                 }
             ],
             "recordEvent": [
-                162,
+                164,
                 {
                     "event": [
-                        163,
+                        165,
                         "EventInput!"
                     ]
                 }
@@ -2490,7 +2522,7 @@ export default {
                 3,
                 {
                     "events": [
-                        163,
+                        165,
                         "[EventInput!]!"
                     ]
                 }
@@ -2499,13 +2531,13 @@ export default {
                 3,
                 {
                     "kinds": [
-                        160,
+                        162,
                         "[EventKind!]"
                     ]
                 }
             ],
             "saveFilter": [
-                172,
+                174,
                 {
                     "id": [
                         2
@@ -2515,7 +2547,7 @@ export default {
                         "String!"
                     ],
                     "filter": [
-                        171,
+                        173,
                         "FilterInput!"
                     ],
                     "pinned": [
@@ -2587,7 +2619,7 @@ export default {
                         "[String!]"
                     ],
                     "filter": [
-                        171
+                        173
                     ],
                     "content": [
                         1
@@ -2606,16 +2638,16 @@ export default {
                 1
             ],
             "filter": [
-                170
+                172
             ],
             "targetKind": [
-                152
+                154
             ],
             "targetId": [
                 2
             ],
             "target": [
-                157
+                159
             ],
             "intervalHours": [
                 3
@@ -2644,7 +2676,7 @@ export default {
                 1
             ],
             "filter": [
-                171
+                173
             ],
             "intervalHours": [
                 3
@@ -2661,7 +2693,7 @@ export default {
                 1
             ],
             "filter": [
-                171
+                173
             ],
             "intervalHours": [
                 3
@@ -2693,10 +2725,10 @@ export default {
                 1
             ],
             "subject": [
-                156
+                158
             ],
             "record": [
-                157
+                159
             ],
             "read": [
                 4
@@ -2717,7 +2749,7 @@ export default {
                 1
             ],
             "config": [
-                151
+                153
             ],
             "enabled": [
                 4
@@ -2798,7 +2830,7 @@ export default {
                 1
             ],
             "filter": [
-                170
+                172
             ],
             "pluginTrigger": [
                 1
@@ -2818,7 +2850,7 @@ export default {
                 1
             ],
             "filter": [
-                171
+                173
             ],
             "pluginTrigger": [
                 1
@@ -2832,10 +2864,10 @@ export default {
                 1
             ],
             "args": [
-                151
+                153
             ],
             "condition": [
-                170
+                172
             ],
             "continueOnError": [
                 4
@@ -2849,10 +2881,10 @@ export default {
                 1
             ],
             "args": [
-                151
+                153
             ],
             "condition": [
-                171
+                173
             ],
             "continueOnError": [
                 4
@@ -2945,7 +2977,7 @@ export default {
                 4
             ],
             "triggerData": [
-                151
+                153
             ],
             "steps": [
                 32
@@ -2962,13 +2994,13 @@ export default {
                 4
             ],
             "output": [
-                151
+                153
             ],
             "error": [
                 1
             ],
             "touched": [
-                156
+                158
             ],
             "__typename": [
                 1
@@ -3059,7 +3091,7 @@ export default {
                 37
             ],
             "userState": [
-                158
+                160
             ],
             "__typename": [
                 1
@@ -3095,7 +3127,7 @@ export default {
         },
         "ActiveRecording": {
             "job": [
-                146
+                148
             ],
             "camModel": [
                 36
@@ -3173,7 +3205,7 @@ export default {
                 94
             ],
             "status": [
-                154
+                156
             ],
             "studio": [
                 103
@@ -3221,7 +3253,7 @@ export default {
                 40
             ],
             "userState": [
-                158
+                160
             ],
             "oCount": [
                 3
@@ -3247,16 +3279,16 @@ export default {
                 126
             ],
             "subtitles": [
-                131
+                133
             ],
             "scripts": [
-                134
+                136
             ],
             "clips": [
-                128
+                130
             ],
             "comments": [
-                136
+                138
             ],
             "__typename": [
                 1
@@ -3383,13 +3415,13 @@ export default {
         },
         "CollectionItem": {
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
             ],
             "record": [
-                157
+                159
             ],
             "position": [
                 3
@@ -3410,7 +3442,7 @@ export default {
                 1
             ],
             "kinds": [
-                152
+                154
             ],
             "fieldType": [
                 47
@@ -3427,7 +3459,7 @@ export default {
                 1
             ],
             "kinds": [
-                152
+                154
             ],
             "fieldType": [
                 47
@@ -3476,7 +3508,7 @@ export default {
                 94
             ],
             "status": [
-                154
+                156
             ],
             "studio": [
                 103
@@ -3500,7 +3532,7 @@ export default {
                 81
             ],
             "userState": [
-                158
+                160
             ],
             "oCount": [
                 3
@@ -3528,7 +3560,7 @@ export default {
                 2
             ],
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
@@ -3554,7 +3586,7 @@ export default {
         },
         "FaceScanInput": {
             "subject": [
-                155
+                157
             ],
             "model": [
                 1
@@ -3580,7 +3612,7 @@ export default {
                 5
             ],
             "region": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -3630,7 +3662,7 @@ export default {
                 5
             ],
             "region": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -3689,10 +3721,10 @@ export default {
         },
         "Match": {
             "item": [
-                156
+                158
             ],
             "record": [
-                157
+                159
             ],
             "score": [
                 5
@@ -3814,7 +3846,7 @@ export default {
                 1
             ],
             "subjectKind": [
-                152
+                154
             ],
             "keptId": [
                 2
@@ -3834,13 +3866,13 @@ export default {
                 2
             ],
             "subjectKind": [
-                152
+                154
             ],
             "first": [
-                157
+                159
             ],
             "second": [
-                157
+                159
             ],
             "score": [
                 5
@@ -3860,7 +3892,7 @@ export default {
                 2
             ],
             "location": [
-                150
+                152
             ],
             "path": [
                 1
@@ -3911,7 +3943,7 @@ export default {
                 2
             ],
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
@@ -3923,7 +3955,7 @@ export default {
                 1
             ],
             "location": [
-                150
+                152
             ],
             "sizeBytes": [
                 3
@@ -3952,7 +3984,7 @@ export default {
         },
         "Download": {
             "job": [
-                146
+                148
             ],
             "file": [
                 73
@@ -3997,7 +4029,7 @@ export default {
                 5
             ],
             "region": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -4005,7 +4037,7 @@ export default {
         },
         "EmbeddingInput": {
             "subject": [
-                155
+                157
             ],
             "kind": [
                 77
@@ -4020,7 +4052,7 @@ export default {
                 5
             ],
             "region": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -4052,7 +4084,7 @@ export default {
                 94
             ],
             "status": [
-                154
+                156
             ],
             "studio": [
                 103
@@ -4073,7 +4105,7 @@ export default {
                 106
             ],
             "userState": [
-                158
+                160
             ],
             "fieldSources": [
                 88
@@ -4093,13 +4125,13 @@ export default {
                 126
             ],
             "subtitles": [
-                131
+                133
             ],
             "scripts": [
-                134
+                136
             ],
             "comments": [
-                136
+                138
             ],
             "__typename": [
                 1
@@ -4183,7 +4215,7 @@ export default {
                 2
             ],
             "status": [
-                154
+                156
             ],
             "vr": [
                 107
@@ -4336,7 +4368,7 @@ export default {
                 1
             ],
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
@@ -4345,10 +4377,10 @@ export default {
                 1
             ],
             "before": [
-                151
+                153
             ],
             "after": [
-                151
+                153
             ],
             "writtenBy": [
                 90
@@ -4520,7 +4552,7 @@ export default {
                 3
             ],
             "userState": [
-                158
+                160
             ],
             "fieldSources": [
                 88
@@ -4670,7 +4702,7 @@ export default {
                 3
             ],
             "userState": [
-                158
+                160
             ],
             "fieldSources": [
                 88
@@ -4707,7 +4739,7 @@ export default {
                 3
             ],
             "userState": [
-                158
+                160
             ],
             "revisions": [
                 89,
@@ -4809,7 +4841,7 @@ export default {
                 94
             ],
             "status": [
-                154
+                156
             ],
             "studio": [
                 103
@@ -4836,7 +4868,7 @@ export default {
                 81
             ],
             "userState": [
-                158
+                160
             ],
             "fieldSources": [
                 88
@@ -4905,7 +4937,7 @@ export default {
                 94
             ],
             "status": [
-                154
+                156
             ],
             "creator": [
                 98
@@ -4917,7 +4949,7 @@ export default {
                 104
             ],
             "attachments": [
-                157
+                159
             ],
             "locked": [
                 4
@@ -4932,7 +4964,7 @@ export default {
                 81
             ],
             "userState": [
-                158
+                160
             ],
             "fieldSources": [
                 88
@@ -5131,7 +5163,7 @@ export default {
                 1
             ],
             "record": [
-                157
+                159
             ],
             "__typename": [
                 1
@@ -5209,16 +5241,16 @@ export default {
                 4
             ],
             "settings": [
-                140
+                142
             ],
             "settingValues": [
-                141
+                143
             ],
             "login": [
-                139
+                141
             ],
             "sites": [
-                138
+                140
             ],
             "__typename": [
                 1
@@ -5230,7 +5262,7 @@ export default {
                 2
             ],
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
@@ -5275,6 +5307,34 @@ export default {
             ],
             "performerIds": [
                 2
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "AiSegmentInput": {
+            "startSeconds": [
+                5
+            ],
+            "endSeconds": [
+                5
+            ],
+            "tag": [
+                1
+            ],
+            "__typename": [
+                1
+            ]
+        },
+        "SceneMatch": {
+            "video": [
+                40
+            ],
+            "segments": [
+                126
+            ],
+            "matchingSeconds": [
+                5
             ],
             "__typename": [
                 1
@@ -5341,7 +5401,7 @@ export default {
                 94
             ],
             "origin": [
-                130
+                132
             ],
             "__typename": [
                 1
@@ -5358,7 +5418,7 @@ export default {
                 1
             ],
             "origin": [
-                130
+                132
             ],
             "__typename": [
                 1
@@ -5370,7 +5430,7 @@ export default {
                 2
             ],
             "kind": [
-                133
+                135
             ],
             "asset": [
                 94
@@ -5476,7 +5536,7 @@ export default {
         },
         "PluginLogin": {
             "fields": [
-                140
+                142
             ],
             "cookies": [
                 4
@@ -5532,7 +5592,7 @@ export default {
         },
         "TrashedRecord": {
             "kind": [
-                152
+                154
             ],
             "id": [
                 2
@@ -5554,19 +5614,19 @@ export default {
                 2
             ],
             "kind": [
-                144
+                146
             ],
             "status": [
-                145
+                147
             ],
             "subject": [
-                156
+                158
             ],
             "plugin": [
                 1
             ],
             "payload": [
-                151
+                153
             ],
             "progress": [
                 5
@@ -5608,7 +5668,7 @@ export default {
                 1
             ],
             "platform": [
-                147
+                149
             ],
             "lastSeenAt": [
                 1
@@ -5632,10 +5692,10 @@ export default {
                 2
             ],
             "device": [
-                148
+                150
             ],
             "kind": [
-                149
+                151
             ],
             "uri": [
                 1
@@ -5656,7 +5716,7 @@ export default {
         "MediaStatus": {},
         "RecordRefInput": {
             "kind": [
-                152
+                154
             ],
             "id": [
                 2
@@ -5667,7 +5727,7 @@ export default {
         },
         "RecordRef": {
             "kind": [
-                152
+                154
             ],
             "id": [
                 2
@@ -5717,7 +5777,7 @@ export default {
                 126
             ],
             "on_Clip": [
-                128
+                130
             ],
             "__typename": [
                 1
@@ -5725,13 +5785,13 @@ export default {
         },
         "UserState": {
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
             ],
             "record": [
-                157
+                159
             ],
             "rating": [
                 5
@@ -5755,7 +5815,7 @@ export default {
                 1
             ],
             "fields": [
-                151
+                153
             ],
             "updatedAt": [
                 1
@@ -5766,7 +5826,7 @@ export default {
         },
         "UserStateFilter": {
             "kind": [
-                152
+                154
             ],
             "favorite": [
                 4
@@ -5810,16 +5870,16 @@ export default {
                 1
             ],
             "kind": [
-                160
+                162
             ],
             "subjectKind": [
-                152
+                154
             ],
             "subjectId": [
                 2
             ],
             "data": [
-                151
+                153
             ],
             "device": [
                 2
@@ -5833,13 +5893,13 @@ export default {
         },
         "EventInput": {
             "kind": [
-                160
+                162
             ],
             "subject": [
-                155
+                157
             ],
             "data": [
-                151
+                153
             ],
             "sessionId": [
                 2
@@ -5850,10 +5910,10 @@ export default {
         },
         "EventFilter": {
             "kinds": [
-                160
+                162
             ],
             "subject": [
-                155
+                157
             ],
             "since": [
                 1
@@ -5868,7 +5928,7 @@ export default {
         "SortField": {},
         "Sort": {
             "field": [
-                165
+                167
             ],
             "descending": [
                 4
@@ -5879,7 +5939,7 @@ export default {
         },
         "SortInput": {
             "field": [
-                165
+                167
             ],
             "descending": [
                 4
@@ -5896,7 +5956,7 @@ export default {
                 1
             ],
             "value": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -5910,7 +5970,7 @@ export default {
                 1
             ],
             "value": [
-                151
+                153
             ],
             "__typename": [
                 1
@@ -5918,7 +5978,7 @@ export default {
         },
         "Filter": {
             "kinds": [
-                153
+                155
             ],
             "text": [
                 1
@@ -5957,7 +6017,7 @@ export default {
                 5
             ],
             "status": [
-                154
+                156
             ],
             "inLibrary": [
                 4
@@ -5975,10 +6035,10 @@ export default {
                 3
             ],
             "fields": [
-                168
+                170
             ],
             "sort": [
-                166
+                168
             ],
             "__typename": [
                 1
@@ -5986,7 +6046,7 @@ export default {
         },
         "FilterInput": {
             "kinds": [
-                153
+                155
             ],
             "text": [
                 1
@@ -6025,7 +6085,7 @@ export default {
                 5
             ],
             "status": [
-                154
+                156
             ],
             "inLibrary": [
                 4
@@ -6043,10 +6103,10 @@ export default {
                 3
             ],
             "fields": [
-                169
+                171
             ],
             "sort": [
-                167
+                169
             ],
             "__typename": [
                 1
@@ -6060,7 +6120,7 @@ export default {
                 1
             ],
             "filter": [
-                170
+                172
             ],
             "pinned": [
                 4

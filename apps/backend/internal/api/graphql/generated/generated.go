@@ -17,6 +17,7 @@ import (
 	"github.com/playingwithclouds/veil/internal/api/graphql/scalars"
 	"github.com/playingwithclouds/veil/internal/cams"
 	"github.com/playingwithclouds/veil/internal/jobs"
+	"github.com/playingwithclouds/veil/internal/library"
 	"github.com/playingwithclouds/veil/internal/limits"
 	"github.com/playingwithclouds/veil/internal/recommend"
 	"github.com/playingwithclouds/veil/internal/schema"
@@ -63,6 +64,7 @@ type ResolverRoot interface {
 	Post() PostResolver
 	Query() QueryResolver
 	Revision() RevisionResolver
+	SceneMatch() SceneMatchResolver
 	Segment() SegmentResolver
 	Short() ShortResolver
 	StorageLocation() StorageLocationResolver
@@ -669,6 +671,7 @@ type ComplexityRoot struct {
 		RemoveSubtitle            func(childComplexity int, id string) int
 		RenameDevice              func(childComplexity int, id string, name string) int
 		ReorderCategories         func(childComplexity int, ids []string) int
+		ReplaceAiSegments         func(childComplexity int, subject schema.RecordRef, segments []*model.AiSegmentInput) int
 		ReportStreamSpeed         func(childComplexity int, streamID string, kilobitsPerSecond int) int
 		RestoreRecord             func(childComplexity int, subject schema.RecordRef) int
 		RetryJob                  func(childComplexity int, id string) int
@@ -991,6 +994,7 @@ type ComplexityRoot struct {
 		SameMedia                func(childComplexity int, subject schema.RecordRef) int
 		SavedFilter              func(childComplexity int, id string) int
 		SavedFilters             func(childComplexity int) int
+		SceneMatches             func(childComplexity int, tags []string, videoIds []string, limit *int, offset *int) int
 		Settings                 func(childComplexity int) int
 		Shorts                   func(childComplexity int, filter *schema.Filter, limit *int) int
 		Similar                  func(childComplexity int, subject schema.RecordRef, kind schema.EmbeddingKind, model string, limit *int) int
@@ -1041,6 +1045,12 @@ type ComplexityRoot struct {
 		Name      func(childComplexity int) int
 		Pinned    func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
+	}
+
+	SceneMatch struct {
+		MatchingSeconds func(childComplexity int) int
+		Segments        func(childComplexity int) int
+		Video           func(childComplexity int) int
 	}
 
 	Scraped struct {
@@ -1561,6 +1571,7 @@ type MutationResolver interface {
 	SubmitPluginView(ctx context.Context, plugin string, view string, action string, values interface{}, input interface{}) (*model.PluginViewResult, error)
 	AddSegment(ctx context.Context, subject schema.RecordRef, input model.SegmentInput) (*schema.Segment, error)
 	EditSegment(ctx context.Context, id string, input model.SegmentInput) (*schema.Segment, error)
+	ReplaceAiSegments(ctx context.Context, subject schema.RecordRef, segments []*model.AiSegmentInput) ([]*schema.Segment, error)
 	AddClip(ctx context.Context, videoID string, input model.ClipInput) (*schema.Clip, error)
 	EditClip(ctx context.Context, id string, input model.ClipInput) (*schema.Clip, error)
 	AttachClipFile(ctx context.Context, clipID string, fileID string) (*schema.Clip, error)
@@ -1717,6 +1728,7 @@ type QueryResolver interface {
 	PluginView(ctx context.Context, plugin string, view string, input interface{}) (*model.PluginView, error)
 	Clips(ctx context.Context, videoID *string, limit *int, offset *int) ([]*schema.Clip, error)
 	Clip(ctx context.Context, id string) (*schema.Clip, error)
+	SceneMatches(ctx context.Context, tags []string, videoIds []string, limit *int, offset *int) ([]*library.SceneMatch, error)
 	Plugins(ctx context.Context) ([]*model.Plugin, error)
 	Plugin(ctx context.Context, name string) (*model.Plugin, error)
 	PluginPackages(ctx context.Context, query *string) ([]*model.PluginPackage, error)
@@ -1738,6 +1750,9 @@ type QueryResolver interface {
 }
 type RevisionResolver interface {
 	Field(ctx context.Context, obj *schema.Revision) (string, error)
+}
+type SceneMatchResolver interface {
+	Video(ctx context.Context, obj *library.SceneMatch) (*schema.Video, error)
 }
 type SegmentResolver interface {
 	Tag(ctx context.Context, obj *schema.Segment) (*schema.Tag, error)
@@ -4921,6 +4936,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReorderCategories(childComplexity, args["ids"].([]string)), true
+	case "Mutation.replaceAiSegments":
+		if e.ComplexityRoot.Mutation.ReplaceAiSegments == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_replaceAiSegments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReplaceAiSegments(childComplexity, args["subject"].(schema.RecordRef), args["segments"].([]*model.AiSegmentInput)), true
 	case "Mutation.reportStreamSpeed":
 		if e.ComplexityRoot.Mutation.ReportStreamSpeed == nil {
 			break
@@ -7017,6 +7043,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SavedFilters(childComplexity), true
+	case "Query.sceneMatches":
+		if e.ComplexityRoot.Query.SceneMatches == nil {
+			break
+		}
+
+		args, err := ec.field_Query_sceneMatches_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SceneMatches(childComplexity, args["tags"].([]string), args["videoIds"].([]string), args["limit"].(*int), args["offset"].(*int)), true
 	case "Query.settings":
 		if e.ComplexityRoot.Query.Settings == nil {
 			break
@@ -7366,6 +7403,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SavedFilter.UpdatedAt(childComplexity), true
+
+	case "SceneMatch.matchingSeconds":
+		if e.ComplexityRoot.SceneMatch.MatchingSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneMatch.MatchingSeconds(childComplexity), true
+	case "SceneMatch.segments":
+		if e.ComplexityRoot.SceneMatch.Segments == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneMatch.Segments(childComplexity), true
+	case "SceneMatch.video":
+		if e.ComplexityRoot.SceneMatch.Video == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneMatch.Video(childComplexity), true
 
 	case "Scraped.id":
 		if e.ComplexityRoot.Scraped.ID == nil {
@@ -8724,6 +8780,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAiSegmentInput,
 		ec.unmarshalInputAutomationEditInput,
 		ec.unmarshalInputAutomationInput,
 		ec.unmarshalInputCamQuery,
@@ -10554,6 +10611,10 @@ extend type Query {
   # Saved clips, newest first, of one video or all.
   clips(videoId: ID, limit: Int, offset: Int): [Clip!]!
   clip(id: ID!): Clip
+  # Videos whose ai segments carry any of the tags (by name), the most
+  # matching seconds first, each with those segments; with videoIds only
+  # those, in their order. For the phone's compilation mode.
+  sceneMatches(tags: [String!]!, videoIds: [ID!], limit: Int, offset: Int): [SceneMatch!]!
 }
 
 extend type Mutation {
@@ -10562,6 +10623,10 @@ extend type Mutation {
   addSegment(subject: RecordRefInput!, input: SegmentInput!): Segment!
   # Changing a plugin's segment makes it the user's.
   editSegment(id: ID!, input: SegmentInput!): Segment!
+  # Replaces the segments a scene model found in a video or audio (origin
+  # ai), tags found or created by name; the user's and the plugins'
+  # segments stay. Returns every segment of the subject.
+  replaceAiSegments(subject: RecordRefInput!, segments: [AiSegmentInput!]!): [Segment!]!
   addClip(videoId: ID!, input: ClipInput!): Clip!
   editClip(id: ID!, input: ClipInput!): Clip!
   # Records a clip's exported file, made and uploaded by a client (the
@@ -10609,6 +10674,22 @@ input SegmentInput {
   title: String
   tagId: ID
   performerIds: [ID!]
+}
+
+# A stretch a scene model labelled; tag is the tag's name, e.g. "Blowjob".
+input AiSegmentInput {
+  startSeconds: Float!
+  endSeconds: Float!
+  tag: String!
+}
+
+# A video whose ai segments match the asked tags.
+type SceneMatch {
+  video: Video
+  # The matching ai segments, in time order.
+  segments: [Segment!]!
+  # Seconds they cover together.
+  matchingSeconds: Float!
 }
 
 # A moment the user saved from a video.
@@ -12674,6 +12755,18 @@ func (ec *executionContext) childFields_SavedFilter(ctx context.Context, field g
 		return ec.fieldContext_SavedFilter_updatedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SavedFilter", field.Name)
+}
+
+func (ec *executionContext) childFields_SceneMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "video":
+		return ec.fieldContext_SceneMatch_video(ctx, field)
+	case "segments":
+		return ec.fieldContext_SceneMatch_segments(ctx, field)
+	case "matchingSeconds":
+		return ec.fieldContext_SceneMatch_matchingSeconds(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SceneMatch", field.Name)
 }
 
 func (ec *executionContext) childFields_Scraped(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -15156,6 +15249,28 @@ func (ec *executionContext) field_Mutation_reorderCategories_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_replaceAiSegments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "subject",
+		func(ctx context.Context, v any) (schema.RecordRef, error) {
+			return ec.unmarshalNRecordRefInput2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐRecordRef(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["subject"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "segments",
+		func(ctx context.Context, v any) ([]*model.AiSegmentInput, error) {
+			return ec.unmarshalNAiSegmentInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐAiSegmentInputᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["segments"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_reportStreamSpeed_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17375,6 +17490,44 @@ func (ec *executionContext) field_Query_savedFilter_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_sceneMatches_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "tags",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["tags"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "videoIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["videoIds"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "offset",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg3
 	return args, nil
 }
 
@@ -30874,6 +31027,50 @@ func (ec *executionContext) fieldContext_Mutation_editSegment(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_replaceAiSegments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_replaceAiSegments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReplaceAiSegments(ctx, fc.Args["subject"].(schema.RecordRef), fc.Args["segments"].([]*model.AiSegmentInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Segment) graphql.Marshaler {
+			return ec.marshalNSegment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegmentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_replaceAiSegments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Segment(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_replaceAiSegments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addClip(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39448,6 +39645,50 @@ func (ec *executionContext) fieldContext_Query_clip(ctx context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sceneMatches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_sceneMatches(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SceneMatches(ctx, fc.Args["tags"].([]string), fc.Args["videoIds"].([]string), fc.Args["limit"].(*int), fc.Args["offset"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*library.SceneMatch) graphql.Marshaler {
+			return ec.marshalNSceneMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋlibraryᚐSceneMatchᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_sceneMatches(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SceneMatch(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_sceneMatches_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_plugins(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40654,6 +40895,93 @@ func (ec *executionContext) _SavedFilter_updatedAt(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_SavedFilter_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("SavedFilter", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneMatch_video(ctx context.Context, field graphql.CollectedField, obj *library.SceneMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneMatch_video(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.SceneMatch().Video(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *schema.Video) graphql.Marshaler {
+			return ec.marshalOVideo2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐVideo(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneMatch_video(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SceneMatch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Video(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SceneMatch_segments(ctx context.Context, field graphql.CollectedField, obj *library.SceneMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneMatch_segments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Segments, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []schema.Segment) graphql.Marshaler {
+			return ec.marshalNSegment2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegmentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneMatch_segments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SceneMatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Segment(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SceneMatch_matchingSeconds(ctx context.Context, field graphql.CollectedField, obj *library.SceneMatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneMatch_matchingSeconds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MatchingSeconds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneMatch_matchingSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneMatch", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
 func (ec *executionContext) _Scraped_kind(ctx context.Context, field graphql.CollectedField, obj *model.Scraped) (ret graphql.Marshaler) {
@@ -47395,6 +47723,50 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 // endregion **************************** field.gotpl *****************************
 
 // region    **************************** input.gotpl *****************************
+
+func (ec *executionContext) unmarshalInputAiSegmentInput(ctx context.Context, obj any) (model.AiSegmentInput, error) {
+	var it model.AiSegmentInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"startSeconds", "endSeconds", "tag"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "startSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startSeconds"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartSeconds = data
+		case "endSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endSeconds"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndSeconds = data
+		case "tag":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tag"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tag = data
+		}
+	}
+	return it, nil
+}
 
 func (ec *executionContext) unmarshalInputAutomationEditInput(ctx context.Context, obj any) (model.AutomationEditInput, error) {
 	var it model.AutomationEditInput
@@ -55320,6 +55692,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "replaceAiSegments":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_replaceAiSegments(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addClip":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addClip(ctx, field)
@@ -59262,6 +59641,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sceneMatches":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sceneMatches(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "plugins":
 			field := field
 
@@ -59865,6 +60266,83 @@ func (ec *executionContext) _SavedFilter(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._SavedFilter_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sceneMatchImplementors = []string{"SceneMatch"}
+
+func (ec *executionContext) _SceneMatch(ctx context.Context, sel ast.SelectionSet, obj *library.SceneMatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sceneMatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SceneMatch")
+		case "video":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SceneMatch_video(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "segments":
+			out.Values[i] = ec._SceneMatch_segments(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "matchingSeconds":
+			out.Values[i] = ec._SceneMatch_matchingSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -63861,6 +64339,26 @@ func (ec *executionContext) marshalNActor2githubᚗcomᚋplayingwithcloudsᚋvei
 	return res
 }
 
+func (ec *executionContext) unmarshalNAiSegmentInput2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐAiSegmentInputᚄ(ctx context.Context, v any) ([]*model.AiSegmentInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.AiSegmentInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAiSegmentInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐAiSegmentInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNAiSegmentInput2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐAiSegmentInput(ctx context.Context, v any) (*model.AiSegmentInput, error) {
+	res, err := ec.unmarshalInputAiSegmentInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNAlikePair2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐAlikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.Alike) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -66318,6 +66816,32 @@ func (ec *executionContext) marshalNSavedFilter2ᚖgithubᚗcomᚋplayingwithclo
 	return ec._SavedFilter(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSceneMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋlibraryᚐSceneMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*library.SceneMatch) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSceneMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋlibraryᚐSceneMatch(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSceneMatch2ᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋlibraryᚐSceneMatch(ctx context.Context, sel ast.SelectionSet, v *library.SceneMatch) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SceneMatch(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNScraped2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐScraped(ctx context.Context, sel ast.SelectionSet, v model.Scraped) graphql.Marshaler {
 	return ec._Scraped(ctx, sel, &v)
 }
@@ -66395,6 +66919,22 @@ func (ec *executionContext) marshalNSearchBatch2ᚖgithubᚗcomᚋplayingwithclo
 
 func (ec *executionContext) marshalNSegment2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegment(ctx context.Context, sel ast.SelectionSet, v schema.Segment) graphql.Marshaler {
 	return ec._Segment(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSegment2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegmentᚄ(ctx context.Context, sel ast.SelectionSet, v []schema.Segment) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSegment2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegment(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNSegment2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐSegmentᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.Segment) graphql.Marshaler {

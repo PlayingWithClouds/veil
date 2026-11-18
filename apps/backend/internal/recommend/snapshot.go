@@ -49,7 +49,11 @@ func (e *Engine) profileAt(ctx context.Context, now time.Time) (*profile, *signa
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	inputs := profileInputs{features: features, blocked: blocked, stats: stats, moments: moments, cams: camRooms}
+	coverTags, err := e.loadCoverTagLifts(ctx, now)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	inputs := profileInputs{features: features, blocked: blocked, stats: stats, moments: moments, cams: camRooms, coverTags: coverTags}
 	return buildProfile(collected, inputs, now), collected, features, nil
 }
 

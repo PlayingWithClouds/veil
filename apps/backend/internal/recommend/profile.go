@@ -65,6 +65,8 @@ type profileInputs struct {
 	moments map[schema.RecordRef][]string
 	// cams describes the signalled cam rooms.
 	cams *camInputs
+	// coverTags is the click lift per tag id of the labels read off covers.
+	coverTags map[string]float64
 }
 
 // newProfile returns a profile with empty affinity maps.
@@ -99,6 +101,7 @@ func buildProfile(collected *signals, inputs profileInputs, now time.Time) *prof
 			continue
 		}
 		taste.addItem(item, weight)
+		taste.addSceneTags(item, weight)
 		taste.addMomentTags(inputs.moments[ref], weight)
 	}
 	for ref, weight := range decayedItemWeights(collected.items, now, true) {
@@ -107,6 +110,7 @@ func buildProfile(collected *signals, inputs profileInputs, now time.Time) *prof
 		}
 	}
 	taste.addEntitySignals(collected.entities, now)
+	taste.addCoverTags(inputs.coverTags)
 	taste.addCamSignals(collected.cams, inputs.cams, now)
 	taste.normalize()
 	taste.normalizeRuntime()

@@ -61,6 +61,11 @@ type Settings struct {
 	// Plugins
 	DisabledPlugins []string `json:"disabledPlugins"`
 
+	// LikedSceneTags are the tag names of the acts and positions the user
+	// picked as liked: they feed the shorts with the scene model's segments
+	// and drive the phone's compilation mode and moment previews.
+	LikedSceneTags []string `json:"likedSceneTags"`
+
 	// Per-plugin settings: pluginName → key → value. Values are injected as env vars.
 	PluginSettings map[string]map[string]string `json:"pluginSettings"`
 
@@ -96,6 +101,7 @@ var defaultValues = map[string]any{
 	"trashRetentionDays":           30,
 	"requireApiToken":              false,
 	"disabledPlugins":              []string{},
+	"likedSceneTags":               []string{},
 	"kindLimits":                   defaultKindLimits,
 }
 
