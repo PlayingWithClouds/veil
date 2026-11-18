@@ -7,6 +7,8 @@ import com.playingwithclouds.veil.habits.HabitPreferences
 import com.playingwithclouds.veil.habits.Habits
 import com.playingwithclouds.veil.privacy.AppLock
 import com.playingwithclouds.veil.privacy.PrivacyPreferences
+import com.playingwithclouds.veil.scenes.SceneModelStore
+import com.playingwithclouds.veil.scenes.SceneScans
 import com.playingwithclouds.veil.update.UpdateChecker
 import com.playingwithclouds.veil.update.UpdatePreferences
 
@@ -15,7 +17,8 @@ class VeilApplication : Application() {
 
     /**
      * Opens the stored settings, starts the embedded backend, a background update check if due, and
-     * the habit tracking (guessed finishes, the subscription check, the usual-time reminder).
+     * the habit tracking (guessed finishes, the subscription check, the usual-time reminder), and
+     * the scene model with its background scan.
      */
     override fun onCreate() {
         super.onCreate()
@@ -27,5 +30,7 @@ class VeilApplication : Application() {
         EmbeddedBackend(this).start()
         UpdateChecker.checkInBackground()
         Habits.start(this)
+        SceneModelStore.initialize(this)
+        SceneScans.start(this)
     }
 }

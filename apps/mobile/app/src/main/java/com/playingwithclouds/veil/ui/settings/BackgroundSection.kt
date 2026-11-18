@@ -48,6 +48,6 @@ private fun WifiOnlyCard() {
     val wifiOnly by HabitPreferences.wifiOnly.collectAsState()
     VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
         SwitchRow("Background work on Wi-Fi only", wifiOnly, HabitPreferences::setWifiOnly)
-        Hint("Subscriptions are checked about every 6 hours. With this on, that waits for Wi-Fi to save mobile data.")
+        Hint("Subscriptions are checked about every 6 hours and videos scanned while charging. With this on, both wait for Wi-Fi to save mobile data.")
     }
 }

@@ -10,7 +10,12 @@ object Routes {
     const val TABS = "tabs"
     const val SETTINGS = "settings"
     const val DESIGN_KIT = "design-kit"
-    const val VIDEO = "video/{id}"
+    /** A video's page; [at] (seconds, optional) is where playback starts instead of the resume point. */
+    const val VIDEO = "video/{id}?at={at}"
+    const val SHORTS = "shorts"
+
+    /** The compilation of the liked scenes; [video] (optional) plays first. */
+    const val COMPILATION = "compilation?video={video}"
     const val CAM = "cam/{id}"
     const val COLLECTION = "collection/{id}"
     const val SEARCH = "search?query={query}"
@@ -42,6 +47,11 @@ object Routes {
     const val UPLOADER = "uploader?plugin={plugin}&url={url}&name={name}"
 
     fun video(id: String): String = "video/${Uri.encode(id)}"
+
+    /** A video's page starting at [seconds]. */
+    fun videoAt(id: String, seconds: Double): String = "video/${Uri.encode(id)}?at=$seconds"
+
+    fun compilation(videoId: String): String = "compilation?video=${Uri.encode(videoId)}"
 
     fun cam(id: String): String = "cam/${Uri.encode(id)}"
 
@@ -105,6 +115,12 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     fun openVideo(id: String) = controller.navigate(Routes.video(id))
 
+    /** A video's page, playing from [seconds] (a short's moment). */
+    fun openVideoAt(id: String, seconds: Double) = controller.navigate(Routes.videoAt(id, seconds))
+
+    /** The compilation of the liked scenes, the queue's matches first. */
+    fun openCompilation() = controller.navigate(Routes.compilation(""))
+
     fun openStudio(id: String) = controller.navigate(Routes.studio(id))
 
     fun openCollection(id: String) = controller.navigate(Routes.collection(id))
@@ -137,6 +153,7 @@ class AppNavigator(private val controller: NavHostController, private val select
     /** The route of a drawer entry without a tab. */
     private fun routeOf(destination: Destination): String {
         return when (destination) {
+            Destination.SHORTS -> Routes.SHORTS
             Destination.GALLERIES -> Routes.GALLERIES
             Destination.AUDIO -> Routes.AUDIOS
             Destination.STORIES -> Routes.STORIES

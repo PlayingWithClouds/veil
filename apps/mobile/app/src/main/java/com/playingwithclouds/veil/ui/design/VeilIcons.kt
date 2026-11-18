@@ -109,6 +109,9 @@ object VeilIcons {
     val Star: ImageVector get() = PhosphorIcons.Regular.Star
     val StarFilled: ImageVector get() = PhosphorIcons.Fill.StarFill
     val FindVideo: ImageVector get() = PhosphorIcons.Regular.FilmStrip
+
+    /** The shorties feed: a strip of moments. */
+    val Shorts: ImageVector get() = PhosphorIcons.Regular.FilmStrip
     val Identify: ImageVector get() = PhosphorIcons.Regular.UserFocus
     val Merge: ImageVector get() = PhosphorIcons.Regular.ArrowsMerge
     val Record: ImageVector get() = PhosphorIcons.Fill.RecordFill

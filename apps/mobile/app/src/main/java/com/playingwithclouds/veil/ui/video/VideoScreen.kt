@@ -53,11 +53,11 @@ private const val PLAYER_ASPECT_RATIO = 16f / 9f
 /**
  * A video's page: the player under the status bar (no bar of its own; Back is in its controls), then what the video is, what to do with it and Up
  * next. Fullscreen and picture-in-picture show only the player. Watching is logged for as long as
- * the page is open.
+ * the page is open. [startSeconds] (a short's moment) starts playback there instead of the resume point.
  */
 @Composable
-fun VideoScreen(videoId: String, navigator: AppNavigator) {
-    val viewModel = viewModel(key = videoId) { VideoViewModel(videoId) }
+fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? = null) {
+    val viewModel = viewModel(key = "$videoId@$startSeconds") { VideoViewModel(videoId, startSeconds) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val player = rememberVideoPlayer()
     val fullscreen = rememberFullscreenState(player)

@@ -50,6 +50,7 @@ enum class DestinationGroup(val label: String) {
 enum class Destination(val label: String, val icon: ImageVector, val group: DestinationGroup, val tab: Tab? = null) {
     HOME("Home", VeilIcons.Home, DestinationGroup.WATCH, Tab.HOME),
     CAMS("Cams", VeilIcons.Cams, DestinationGroup.WATCH, Tab.CAMS),
+    SHORTS("Shorties", VeilIcons.Shorts, DestinationGroup.WATCH),
     GALLERIES("Galleries", VeilIcons.Galleries, DestinationGroup.WATCH),
     AUDIO("Audio", VeilIcons.Audio, DestinationGroup.WATCH),
     STORIES("Stories", VeilIcons.Stories, DestinationGroup.WATCH),

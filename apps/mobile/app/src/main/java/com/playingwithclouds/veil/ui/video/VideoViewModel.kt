@@ -82,7 +82,7 @@ data class VideoState(
  * where it was left. Up next chains the library's related videos, the sites' related lists (once
  * the pages were read), a site search for its performers and studio, and recommendations. Watching goes to the event log with one session id.
  */
-class VideoViewModel(private val videoId: String) : ViewModel() {
+class VideoViewModel(private val videoId: String, private val startSeconds: Double? = null) : ViewModel() {
 
     private val mutableState = MutableStateFlow(VideoState())
     val state: StateFlow<VideoState> = mutableState.asStateFlow()
@@ -136,8 +136,14 @@ class VideoViewModel(private val videoId: String) : ViewModel() {
         }
     }
 
-    /** Where playback starts: the resume point, unless the video was watched (nearly) to the end. */
+    /**
+     * Where playback starts: the moment the page was opened at, else the resume point, unless the
+     * video was watched (nearly) to the end.
+     */
     fun startPositionMilliseconds(): Long {
+        if (startSeconds != null) {
+            return (startSeconds * MILLISECONDS_PER_SECOND).toLong()
+        }
         val detail = (state.value.detail as? LoadState.Loaded)?.value ?: return 0
         val progress = detail.summary.progressSeconds ?: return 0
         val duration = detail.summary.durationSeconds

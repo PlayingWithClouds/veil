@@ -65,6 +65,8 @@ import androidx.navigation.navArgument
 import com.playingwithclouds.veil.ui.settings.SettingsScreen
 import com.playingwithclouds.veil.ui.uploader.UploaderScreen
 import com.playingwithclouds.veil.ui.video.VideoScreen
+import com.playingwithclouds.veil.ui.compilation.CompilationScreen
+import com.playingwithclouds.veil.ui.shorts.ShortsScreen
 import com.playingwithclouds.veil.data.VideoUploader
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -215,7 +217,11 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     }
     composable(Routes.TASTE) { TasteScreen(navigator) }
     composable(Routes.PLUGINS) { PluginsScreen(navigator) }
-    composable(Routes.VIDEO) { entry -> VideoScreen(entry.argument("id"), navigator) }
+    composable(Routes.VIDEO, arguments = listOf(optionalText("at"))) { entry ->
+        VideoScreen(entry.argument("id"), navigator, entry.argument("at").toDoubleOrNull())
+    }
+    composable(Routes.SHORTS) { ShortsScreen(navigator) }
+    composable(Routes.COMPILATION, arguments = listOf(optionalText("video"))) { entry -> CompilationScreen(entry.argument("video"), navigator) }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
     composable(Routes.STORIES) { StoriesScreen(navigator) }
