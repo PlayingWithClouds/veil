@@ -21,6 +21,8 @@ object SceneClassifier {
 
     private var opened: OpenModel? = null
 
+    private const val INTRA_OP_THREADS = 2
+
     /** The sessions of one installed model. */
     private class OpenModel(val directory: File, val manifest: SceneModelManifest, val frame: OrtSession, val temporal: OrtSession?)
 
@@ -105,6 +107,8 @@ object SceneClassifier {
         close()
         val environment = OrtEnvironment.getEnvironment()
         val options = OrtSession.SessionOptions()
+        // A couple of cores leave the rest to the video decoder while the open video is scanned beside playback.
+        options.setIntraOpNumThreads(INTRA_OP_THREADS)
         val frame = environment.createSession(File(ready.directory, ready.manifest.frame.file).path, options)
         val temporalFile = ready.manifest.temporal?.file
         var temporal: OrtSession? = null

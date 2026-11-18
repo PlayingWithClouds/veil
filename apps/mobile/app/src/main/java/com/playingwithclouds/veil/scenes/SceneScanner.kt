@@ -2,6 +2,7 @@ package com.playingwithclouds.veil.scenes
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.Process
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.effect.Presentation
@@ -11,9 +12,14 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.playingwithclouds.veil.data.PlayableVideo
 import com.playingwithclouds.veil.data.SceneRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.ceil
@@ -31,6 +37,37 @@ enum class ScanOutcome {
 }
 
 /**
+ * How hard a scan works: frames per frame-graph call, a pause after each batch, and the thread the
+ * graphs run on. The open video's scan goes gently beside playback; the background one, while
+ * charging, goes at full speed.
+ */
+class ScanPace(val batchFrames: Int, val pauseMilliseconds: Long, val dispatcher: CoroutineDispatcher) {
+    companion object {
+        /** While charging, nothing else on screen. */
+        val BACKGROUND = ScanPace(SceneScanner.BATCH_FRAMES, 0, Dispatchers.Default)
+
+        /** Beside playback: small batches on a background-priority thread, with breaks for the decoder. */
+        val BESIDE_PLAYBACK by lazy { ScanPace(FOREGROUND_BATCH_FRAMES, FOREGROUND_PAUSE_MILLISECONDS, lowPriorityDispatcher()) }
+
+        private const val FOREGROUND_BATCH_FRAMES = 4
+        private const val FOREGROUND_PAUSE_MILLISECONDS = 150L
+
+        /** One thread at Android's background priority, so the graphs yield to the player and the UI. */
+        private fun lowPriorityDispatcher(): CoroutineDispatcher {
+            val executor = Executors.newSingleThreadExecutor { runnable ->
+                val thread = Thread({
+                    Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+                    runnable.run()
+                }, "scene-scan")
+                thread.isDaemon = true
+                thread
+            }
+            return executor.asCoroutineDispatcher()
+        }
+    }
+}
+
+/**
  * Scans one video in small steps: grabs a frame every few seconds across the whole video straight
  * from its stream (Media3's frame extractor seeks to the nearest key frame, scaled down while
  * decoding; no file is downloaded or cut), runs the frame graph in small batches and the temporal
@@ -39,55 +76,68 @@ enum class ScanOutcome {
  */
 class SceneScanner(private val context: Context) {
 
-    /** Scans [videoId]; [onProgress] gets the share done, 0..1. */
+    /** Scans [videoId] from its start; [onProgress] gets the share done, 0..1. */
     suspend fun scan(videoId: String, onProgress: (Float) -> Unit = {}): ScanOutcome {
         val manifest = SceneClassifier.manifest() ?: return ScanOutcome.NO_MODEL
         val video = SceneRepository.playable(videoId, readPages = true) ?: return ScanOutcome.UNPLAYABLE
-        val duration = video.durationSeconds
-        if (duration == null || duration <= 0) {
-            return ScanOutcome.UNPLAYABLE
+        val timeline = scanStream(video, 0.0, ScanPace.BACKGROUND) { partial -> onProgress(partial.progress) } ?: return ScanOutcome.UNPLAYABLE
+        if (!timeline.complete) {
+            return ScanOutcome.NO_MODEL
         }
-        val step = ScanPlan.stepSeconds(duration)
-        val times = ScanPlan.times(duration, step)
-        val probabilities = classify(video, times, manifest, onProgress)
-        val segments = SceneSegments.timedSegments(times, step, probabilities, manifest)
-        SceneRepository.replaceSegments(videoId, segments)
+        SceneRepository.replaceSegments(videoId, timeline.segments(manifest))
         return ScanOutcome.SCANNED
     }
 
-    /** Per head, one probability row per grabbed frame. */
-    private suspend fun classify(video: PlayableVideo, times: List<Double>, manifest: SceneModelManifest, onProgress: (Float) -> Unit): Map<String, List<FloatArray>> {
-        val embeddings = mutableListOf<FloatArray>()
-        val imageProbabilities = mutableListOf<Map<String, FloatArray>>()
-        val extractor = withContext(Dispatchers.Main) { extractorFor(video) }
-        try {
-            for (batch in times.chunked(BATCH_FRAMES)) {
-                val bitmaps = batch.map { seconds -> grab(extractor, seconds) }
-                val outputs = withContext(Dispatchers.Default) { SceneClassifier.frames(bitmaps) } ?: return emptyMap()
-                embeddings.addAll(outputs.embeddings)
-                imageProbabilities.addAll(perFrame(outputs.logits, manifest))
-                onProgress(embeddings.size.toFloat() / times.size)
-            }
-        } finally {
-            withContext(Dispatchers.Main) { extractor.close() }
-        }
-        val videoProbabilities = withContext(Dispatchers.Default) { temporalProbabilities(embeddings, manifest) }
-        return byHead(imageProbabilities.indices.map { frame ->
-            FrameProbabilities.combine(imageProbabilities[frame], videoProbabilities?.get(frame), manifest)
-        })
-    }
-
-    /** The video heads' probabilities per frame, from windows of the embeddings; null without a temporal graph. */
-    private fun temporalProbabilities(embeddings: List<FloatArray>, manifest: SceneModelManifest): List<Map<String, FloatArray>>? {
-        if (manifest.temporal == null || embeddings.isEmpty()) {
+    /**
+     * Grabs and reads [video]'s frames starting at [startSeconds] (to the end, then from the start),
+     * calling [onBatch] after each batch with what's in so far. Null when the runtime is unknown;
+     * a timeline that isn't complete when the model went away midway.
+     */
+    suspend fun scanStream(video: PlayableVideo, startSeconds: Double, pace: ScanPace, onBatch: suspend (ScanTimeline) -> Unit): ScanTimeline? {
+        val manifest = SceneClassifier.manifest() ?: return null
+        val duration = video.durationSeconds
+        if (duration == null || duration <= 0) {
             return null
         }
-        val out = mutableListOf<Map<String, FloatArray>>()
-        for (windows in FrameProbabilities.windows(embeddings, manifest.window).chunked(BATCH_WINDOWS)) {
-            val logits = SceneClassifier.temporal(windows) ?: return null
-            out.addAll(perFrame(logits, manifest))
+        val step = ScanPlan.stepSeconds(duration)
+        val times = ScanPlan.times(duration, step)
+        var window = 0
+        if (manifest.temporal != null) {
+            window = manifest.window
         }
-        return out
+        val timeline = ScanTimeline(times, step, window)
+        val order = ScanTimeline.order(times.size, ScanTimeline.indexAt(times, startSeconds))
+        val extractor = withContext(Dispatchers.Main) { extractorFor(video) }
+        try {
+            for (batch in order.chunked(pace.batchFrames)) {
+                val bitmaps = batch.map { index -> grab(extractor, times[index]) }
+                val read = withContext(pace.dispatcher) { readBatch(timeline, batch, bitmaps, manifest) }
+                if (!read) {
+                    return timeline
+                }
+                onBatch(timeline)
+                delay(pace.pauseMilliseconds)
+            }
+        } finally {
+            withContext(Dispatchers.Main + NonCancellable) { extractor.close() }
+        }
+        return timeline
+    }
+
+    /** Runs one batch through the frame graph, then the temporal graph over the windows that filled; false without a model. */
+    private fun readBatch(timeline: ScanTimeline, batch: List<Int>, bitmaps: List<Bitmap>, manifest: SceneModelManifest): Boolean {
+        val outputs = SceneClassifier.frames(bitmaps) ?: return false
+        val probabilities = perFrame(outputs.logits, manifest)
+        for ((position, index) in batch.withIndex()) {
+            timeline.add(index, outputs.embeddings[position], probabilities[position])
+        }
+        for (indices in timeline.pendingWindows().chunked(BATCH_WINDOWS)) {
+            val logits = SceneClassifier.temporal(indices.map(timeline::windowOf)) ?: return true
+            for ((position, frame) in perFrame(logits, manifest).withIndex()) {
+                timeline.setVideo(indices[position], frame)
+            }
+        }
+        return true
     }
 
     /** Grabs the frame at [seconds] (on the main thread, where the extractor lives). */

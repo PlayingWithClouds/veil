@@ -67,6 +67,8 @@ import com.playingwithclouds.veil.util.formatReleaseDate
 /** Up next asks for more this close to its end. */
 private const val LOAD_MORE_DISTANCE = 5
 
+private const val PERCENT = 100
+
 /** Lines of the description before it's tapped open. */
 private const val DETAILS_COLLAPSED_LINES = 3
 
@@ -114,6 +116,17 @@ fun VideoContent(state: VideoState, viewModel: VideoViewModel, player: Player, n
 /** The part about the video itself, above Up next. */
 private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, viewModel: VideoViewModel, player: Player, navigator: AppNavigator) {
     item("title") { TitleBlock(detail) }
+    val scan = state.sceneScan
+    if (scan != null && !scan.done) {
+        item("scene-scan") {
+            Text(
+                "Finding scenes… ${(scan.progress * PERCENT).toInt()} %",
+                Modifier.gutterPadding().padding(top = VeilSpacing.extraSmall),
+                style = VeilType.cardMeta,
+                color = VeilColors.contentFaint,
+            )
+        }
+    }
     item("actions") { ActionsRow(state, viewModel, player) }
     if (detail.sources.size > 1) {
         item("sources") { SourcesRow(detail, state, viewModel) }

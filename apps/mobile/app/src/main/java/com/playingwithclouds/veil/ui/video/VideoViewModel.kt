@@ -1,5 +1,6 @@
 package com.playingwithclouds.veil.ui.video
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
@@ -13,7 +14,12 @@ import com.playingwithclouds.veil.data.VideoRepository
 import com.playingwithclouds.veil.data.VideoSummary
 import com.playingwithclouds.veil.graphql.type.EventKind
 import com.playingwithclouds.veil.graphql.type.RecordKind
+import com.playingwithclouds.veil.data.PlayableVideo
 import com.playingwithclouds.veil.habits.Habits
+import com.playingwithclouds.veil.scenes.OpenScanDecision
+import com.playingwithclouds.veil.scenes.OpenScanPolicy
+import com.playingwithclouds.veil.scenes.OpenScanProgress
+import com.playingwithclouds.veil.scenes.OpenVideoScan
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -73,6 +79,8 @@ data class VideoState(
     val relatedLoading: Boolean = false,
     val relatedDone: Boolean = false,
     val message: String? = null,
+    /** The scene model reading this video beside playback, with what it found so far; null when it doesn't. */
+    val sceneScan: OpenScanProgress? = null,
 )
 
 /**
@@ -89,6 +97,7 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
     private val sessionId = UUID.randomUUID().toString()
     private val triedSourceIds = mutableSetOf<String>()
     private var relatedStage = RelatedStage.LIBRARY
+    private var sceneScanStarted = false
     private var siteRelatedOffset = 0
 
     /** Names Up next still searches the sites for, read from the opened video when that stage starts. */
@@ -158,6 +167,35 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
             val started = startNextSource()
             if (!started) {
                 mutableState.update { state -> state.copy(active = null, problem = message) }
+            }
+        }
+    }
+
+    /**
+     * Scans the playing stream for scenes from [positionSeconds] on, once per page, when
+     * [OpenScanPolicy] allows it; the player's sections fill in as it goes. Leaving the page stops it.
+     */
+    fun scanScenes(context: Context, positionSeconds: Double) {
+        if (sceneScanStarted) {
+            return
+        }
+        val detail = (state.value.detail as? LoadState.Loaded)?.value ?: return
+        val active = state.value.active ?: return
+        val localCopy = detail.sources.firstOrNull { source -> source.id == active.sourceId }?.local != null
+        if (OpenScanPolicy.decide(context, videoId, localCopy) != OpenScanDecision.SCAN) {
+            return
+        }
+        sceneScanStarted = true
+        val video = PlayableVideo(active.playable, detail.summary.durationSeconds)
+        viewModelScope.launch {
+            try {
+                OpenVideoScan(context).run(videoId, video, positionSeconds) { progress ->
+                    mutableState.update { state -> state.copy(sceneScan = progress) }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                // A stream the frame grabber can't read: the background scan tries again later.
             }
         }
     }

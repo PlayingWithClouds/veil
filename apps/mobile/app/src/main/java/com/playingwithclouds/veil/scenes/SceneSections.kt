@@ -51,6 +51,22 @@ object SceneSections {
         return (others + aiChapters).sortedBy { segment -> segment.seconds }
     }
 
+    /**
+     * The video's segments with the open video's scan in place of its stored ai ones: once the
+     * scan is [done], or as soon as it found something (until then the stored ones, maybe from an
+     * older model, are better than nothing). The user's and the plugins' segments stay.
+     */
+    fun withScanned(segments: List<VideoSegment>, scanned: List<TimedSegment>?, done: Boolean): List<VideoSegment> {
+        if (scanned == null || (scanned.isEmpty() && !done)) {
+            return segments
+        }
+        val others = segments.filter { segment -> segment.origin != ORIGIN_AI }
+        val found = scanned.map { segment ->
+            VideoSegment("scan-${segment.tag}-${segment.startSeconds}", segment.tag, segment.startSeconds, segment.endSeconds, ORIGIN_AI, segment.tag)
+        }
+        return others + found
+    }
+
     /** An ai segment as a timed one, named by its tag; null for a marker without an end. */
     private fun timedOf(segment: VideoSegment): TimedSegment? {
         val end = segment.endSeconds ?: return null

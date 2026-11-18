@@ -28,7 +28,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.compose.ui.platform.LocalContext
+import com.playingwithclouds.veil.data.VideoDetail
+import com.playingwithclouds.veil.data.VideoSegment
+import com.playingwithclouds.veil.scenes.OpenScanProgress
 import com.playingwithclouds.veil.scenes.SceneSections
+import kotlinx.coroutines.delay
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.components.FailedMessage
@@ -49,6 +54,11 @@ private val PreviewSpinnerSize = 20.dp
 
 /** The player box's shape on the page; fullscreen and picture-in-picture fill the screen instead. */
 private const val PLAYER_ASPECT_RATIO = 16f / 9f
+
+/** How long playback runs before the scene scan starts beside it. */
+private const val SCENE_SCAN_DELAY_MILLISECONDS = 5_000L
+
+private const val MILLISECONDS_PER_SECOND = 1000.0
 
 /**
  * A video's page: the player under the status bar (no bar of its own; Back is in its controls), then what the video is, what to do with it and Up
@@ -74,6 +84,15 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
         }
         player.playStream(active.playable, startAt)
     }
+    val context = LocalContext.current
+    LaunchedEffect(state.active != null) {
+        if (state.active == null) {
+            return@LaunchedEffect
+        }
+        // Playback gets its first seconds of buffer before the scan starts reading the same stream.
+        delay(SCENE_SCAN_DELAY_MILLISECONDS)
+        viewModel.scanScenes(context.applicationContext, player.currentPosition / MILLISECONDS_PER_SECOND)
+    }
     PlaybackErrors(player, onError = viewModel::onPlayerError)
     WatchTracking(player, onEvent = viewModel::onWatchEvent)
     VideoSnackbars(state, viewModel, snackbarHostState)
@@ -96,7 +115,7 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
         }
         Column(columnModifier) {
             val extras = PlayerExtras(
-                markers = markersInPlayOrder(SceneSections.chapters((detail as? LoadState.Loaded)?.value?.segments.orEmpty())),
+                markers = markersInPlayOrder(SceneSections.chapters(pageSegments(detail, state.sceneScan))),
                 onEnterPictureInPicture = pictureInPicture::enterPictureInPicture,
                 onBack = navigator::back,
             )
@@ -112,6 +131,15 @@ fun VideoScreen(videoId: String, navigator: AppNavigator, startSeconds: Double? 
             }
         }
     }
+}
+
+/** The video's segments, the running scan's in place of the stored ai ones. */
+private fun pageSegments(detail: LoadState<VideoDetail>, scan: OpenScanProgress?): List<VideoSegment> {
+    val stored = (detail as? LoadState.Loaded)?.value?.segments.orEmpty()
+    if (scan == null) {
+        return stored
+    }
+    return SceneSections.withScanned(stored, scan.segments, scan.done)
 }
 
 /** The video once a source plays, else the cover with a spinner or why nothing plays. */
