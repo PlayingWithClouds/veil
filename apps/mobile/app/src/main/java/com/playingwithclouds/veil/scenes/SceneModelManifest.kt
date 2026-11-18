@@ -58,9 +58,15 @@ data class SceneModelManifest(
 
     companion object {
 
-        /** Reads a manifest; throws [IllegalArgumentException] when it's not one this app can use. */
+        /**
+         * Reads a manifest, either this app's `model.json` or the `manifest.json` export.py writes;
+         * throws [IllegalArgumentException] when it's neither.
+         */
         fun parse(text: String): SceneModelManifest {
             val root = JSONObject(text)
+            if (root.has("frame_model")) {
+                return parseExport(root, text)
+            }
             val format = root.optInt("format", 0)
             require(format == SUPPORTED_MANIFEST_FORMAT) { "Model format $format isn't supported (this app reads $SUPPORTED_MANIFEST_FORMAT)" }
             val input = root.getJSONObject("input")
@@ -86,6 +92,69 @@ data class SceneModelManifest(
 
         /** The frame spacing the temporal head was trained on when the manifest doesn't say: labels are cut at 2 fps. */
         private const val DEFAULT_FRAME_SECONDS = 0.5
+
+        /** Heads taxonomy.yaml marks `context: true`; export.py's manifest doesn't carry the flag. */
+        private val EXPORT_CONTEXT_HEADS = setOf("rating", "participants", "position")
+
+        /** taxonomy.yaml's `closeup_shots`, which export.py's manifest doesn't carry either. */
+        private val EXPORT_CLOSEUP_SHOTS = setOf("extreme_close_up", "close_up")
+
+        /**
+         * Reads export.py's `manifest.json`: graph files under `frame_model`/`temporal_model`, the input
+         * shape and normalisation, `sample_fps`, and the heads keyed by name in output order, each with
+         * `kind` softmax|sigmoid and the graphs it's an output of (`in`). The frame graph's first
+         * output is the embedding. The version is taken from the manifest's content, so a new export
+         * rescans everything.
+         */
+        private fun parseExport(root: JSONObject, text: String): SceneModelManifest {
+            val input = root.getJSONObject("input")
+            val shape = input.getJSONArray("shape")
+            val headsJson = root.getJSONObject("heads")
+            val heads = mutableListOf<ModelHead>()
+            val frameHeads = mutableListOf<String>()
+            val temporalHeads = mutableListOf<String>()
+            for (name in headsJson.keys()) {
+                val head = headsJson.getJSONObject(name)
+                val labels = strings(head.getJSONArray("labels")).map { label -> ModelLabel(label, "", false) }
+                heads.add(ModelHead(name, head.getString("kind") == "softmax", "", name in EXPORT_CONTEXT_HEADS, null, labels))
+                val graphs = strings(head.optJSONArray("in"))
+                if ("frame" in graphs) {
+                    frameHeads.add(name)
+                }
+                if ("temporal" in graphs) {
+                    temporalHeads.add(name)
+                }
+            }
+            val temporalJson = root.optJSONObject("temporal")
+            val temporalFile = root.optString("temporal_model", "")
+            var temporal: ModelGraph? = null
+            var window = 0
+            if (temporalJson != null && temporalFile.isNotEmpty()) {
+                temporal = ModelGraph(temporalFile, temporalJson.optString("input", "embeddings"), temporalHeads)
+                window = temporalJson.getJSONArray("shape").getInt(1)
+            }
+            var frameSeconds = DEFAULT_FRAME_SECONDS
+            val sampleFps = root.optDouble("sample_fps", 0.0)
+            if (sampleFps > 0) {
+                frameSeconds = 1 / sampleFps
+            }
+            val manifest = SceneModelManifest(
+                version = "export-" + Integer.toHexString(text.hashCode()),
+                taxonomyVersion = 0,
+                inputSize = shape.getInt(shape.length() - 1),
+                mean = floats(input.getJSONArray("mean")),
+                std = floats(input.getJSONArray("std")),
+                frame = ModelGraph(root.getString("frame_model"), input.optString("name", "images"), frameHeads),
+                embedding = "embedding",
+                temporal = temporal,
+                window = window,
+                frameSeconds = frameSeconds,
+                heads = heads,
+                closeupShots = EXPORT_CLOSEUP_SHOTS,
+            )
+            validate(manifest)
+            return manifest
+        }
 
         /** Fails when the graphs name heads the manifest doesn't describe, or the normalisation isn't RGB. */
         private fun validate(manifest: SceneModelManifest) {

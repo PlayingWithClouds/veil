@@ -61,7 +61,8 @@ Commands (in `apps/mobile`): `bun run build` (arm64 backend into `jniLibs` + rel
 The classifier from the `nsfw-scene-recognition` repo (MobileNetV4-S fine-tune) runs on the phone with ONNX Runtime (`SceneClassifier`). Without a model everything below stays hidden or off; Shorties still work from clips, segments and replays.
 
 - Install (`SceneModelStore`): a URL to `model.json` (graph files resolved beside it) or to a zip of the three files, or a zip picked from storage; unpacked into `files/scene-model-incoming`, checked, then swapped into `files/scene-model`. A failed install keeps the old model.
-- `model.json` contract (export.py writes it next to `frame.onnx` and `temporal.onnx`; `SceneModelManifest` reads it, refusing other `format`s):
+- export.py actually writes `manifest.json` (`frame_model`, `temporal_model`, `input.shape/mean/std`, `sample_fps`, `heads` keyed by name with `kind` softmax|sigmoid and `in` frame|temporal): `SceneModelManifest.parseExport` reads it (context heads and close-up shots filled in from taxonomy.yaml; version from the content's hash) and the store renames it to `model.json`. Outputs are read by name, so key order doesn't matter.
+- `model.json` contract (the app's own format; `SceneModelManifest` reads it, refusing other `format`s):
   - `format` 1; `version` (export name: a new one rescans everything); `taxonomyVersion`.
   - `input`: `size` (square side), `mean` and `std` (RGB, 0..1 scale). Frames are centre-cropped, scaled, CHW.
   - `frame`: `file`, `input` (`images`, N×3×size×size), `embedding` (first output, N×D), `heads` = the other outputs in order (N×labels logits).

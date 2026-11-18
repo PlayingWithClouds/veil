@@ -51,6 +51,9 @@ object SceneModelStore {
     private const val DIRECTORY = "scene-model"
     private const val INCOMING = "scene-model-incoming"
     private const val MANIFEST = "model.json"
+
+    /** The manifest export.py writes, read as well (`SceneModelManifest.parse` takes both formats). */
+    private const val EXPORT_MANIFEST = "manifest.json"
     private const val PREFERENCES = "scenes"
     private const val KEY_URL = "modelUrl"
 
@@ -132,9 +135,16 @@ object SceneModelStore {
         return incoming
     }
 
-    /** Fails unless [directory] holds a readable manifest and the graphs it names. */
+    /**
+     * Fails unless [directory] holds a readable manifest and the graphs it names. An export's own
+     * `manifest.json` is renamed to [MANIFEST] first.
+     */
     private fun checked(directory: File): File {
         val manifestFile = File(directory, MANIFEST)
+        val exportManifest = File(directory, EXPORT_MANIFEST)
+        if (!manifestFile.isFile && exportManifest.isFile) {
+            exportManifest.renameTo(manifestFile)
+        }
         if (!manifestFile.isFile) {
             throw IOException("No $MANIFEST in the model")
         }
