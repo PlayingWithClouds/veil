@@ -33,6 +33,19 @@ class ScanTimeline(val times: List<Double>, val stepSeconds: Double, private val
         image[index] = imageProbabilities
     }
 
+    /** The [count] most likely "head.label"s of one frame's picture, strongest first, for the scan log. */
+    fun strongestLabels(index: Int, count: Int, manifest: SceneModelManifest): List<Pair<String, Float>> {
+        val probabilities = image[index] ?: return emptyList()
+        val all = mutableListOf<Pair<String, Float>>()
+        for ((headName, values) in probabilities) {
+            val head = manifest.head(headName) ?: continue
+            for ((labelIndex, value) in values.withIndex()) {
+                all.add("$headName.${head.labels.getOrNull(labelIndex)?.name ?: labelIndex}" to value)
+            }
+        }
+        return all.sortedByDescending { (_, value) -> value }.take(count)
+    }
+
     /** Frames whose video heads can be read now: their whole window is in and they weren't read yet. None without a temporal graph. */
     fun pendingWindows(): List<Int> {
         if (window <= 0) {

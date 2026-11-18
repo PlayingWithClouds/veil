@@ -1,6 +1,7 @@
 package com.playingwithclouds.veil.ui.video
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
@@ -20,6 +21,7 @@ import com.playingwithclouds.veil.scenes.OpenScanDecision
 import com.playingwithclouds.veil.scenes.OpenScanPolicy
 import com.playingwithclouds.veil.scenes.OpenScanProgress
 import com.playingwithclouds.veil.scenes.OpenVideoScan
+import com.playingwithclouds.veil.scenes.SceneScanner
 import com.playingwithclouds.veil.ui.LoadState
 import com.playingwithclouds.veil.ui.displayMessage
 import kotlinx.coroutines.CancellationException
@@ -182,7 +184,9 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
         val detail = (state.value.detail as? LoadState.Loaded)?.value ?: return
         val active = state.value.active ?: return
         val localCopy = detail.sources.firstOrNull { source -> source.id == active.sourceId }?.local != null
-        if (OpenScanPolicy.decide(context, videoId, localCopy) != OpenScanDecision.SCAN) {
+        val decision = OpenScanPolicy.decide(context, videoId, localCopy)
+        Log.i(SceneScanner.TAG, "open video $videoId: $decision")
+        if (decision != OpenScanDecision.SCAN) {
             return
         }
         sceneScanStarted = true
@@ -196,6 +200,7 @@ class VideoViewModel(private val videoId: String, private val startSeconds: Doub
                 throw error
             } catch (error: Exception) {
                 // A stream the frame grabber can't read: the background scan tries again later.
+                Log.w(SceneScanner.TAG, "open video $videoId: scan failed", error)
             }
         }
     }

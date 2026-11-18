@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.scenes
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Process
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.effect.Presentation
@@ -110,11 +111,15 @@ class SceneScanner(private val context: Context) {
         val extractor = withContext(Dispatchers.Main) { extractorFor(video) }
         try {
             for (batch in order.chunked(pace.batchFrames)) {
+                val grabStarted = System.currentTimeMillis()
                 val bitmaps = batch.map { index -> grab(extractor, times[index]) }
+                val readStarted = System.currentTimeMillis()
                 val read = withContext(pace.dispatcher) { readBatch(timeline, batch, bitmaps, manifest) }
                 if (!read) {
+                    Log.w(TAG, "model went away mid-scan")
                     return timeline
                 }
+                logBatch(timeline, batch, readStarted - grabStarted, System.currentTimeMillis() - readStarted, manifest)
                 onBatch(timeline)
                 delay(pace.pauseMilliseconds)
             }
@@ -138,6 +143,13 @@ class SceneScanner(private val context: Context) {
             }
         }
         return true
+    }
+
+    /** Logs a batch: where it was, how long grabbing and reading took, and the strongest labels of its first frame. */
+    private fun logBatch(timeline: ScanTimeline, batch: List<Int>, grabMilliseconds: Long, readMilliseconds: Long, manifest: SceneModelManifest) {
+        val first = batch.firstOrNull() ?: return
+        val strongest = timeline.strongestLabels(first, LOGGED_LABELS, manifest).joinToString { (label, probability) -> "$label ${"%.2f".format(probability)}" }
+        Log.i(TAG, "frames ${batch.size} at ${timeline.times[first].toInt()}s: grab ${grabMilliseconds}ms, model ${readMilliseconds}ms, ${(timeline.progress * 100).toInt()}% done; top: $strongest")
     }
 
     /** Grabs the frame at [seconds] (on the main thread, where the extractor lives). */
@@ -168,6 +180,12 @@ class SceneScanner(private val context: Context) {
         const val FRAME_HEIGHT = 288
 
         private const val MILLISECONDS_PER_SECOND = 1000.0
+
+        /** Log tag of the scans. */
+        const val TAG = "VeilScan"
+
+        /** Labels named per logged batch. */
+        private const val LOGGED_LABELS = 5
     }
 }
 
