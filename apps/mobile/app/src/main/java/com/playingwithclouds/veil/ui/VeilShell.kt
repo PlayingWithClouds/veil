@@ -63,7 +63,9 @@ import com.playingwithclouds.veil.ui.search.SearchScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.playingwithclouds.veil.ui.settings.SettingsScreen
+import com.playingwithclouds.veil.ui.uploader.UploaderScreen
 import com.playingwithclouds.veil.ui.video.VideoScreen
+import com.playingwithclouds.veil.data.VideoUploader
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
@@ -231,6 +233,9 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
     composable(Routes.STUDIO) { entry -> PersonScreen(MemberKind.STUDIOS, entry.argument("id"), navigator) }
     composable(Routes.SEARCH, arguments = listOf(optionalText("query"))) { entry -> SearchScreen(entry.argument("query"), navigator) }
     composable(Routes.CAMS_TAGGED) { entry -> CamsScreen(entry.argument("tag"), navigator) }
+    composable(Routes.UPLOADER, arguments = listOf(optionalText("plugin"), optionalText("url"), optionalText("name"))) { entry ->
+        UploaderScreen(VideoUploader(entry.argument("plugin"), entry.argument("name"), entry.argument("url")), navigator)
+    }
 }
 
 /** Scrolled this far, in pixels, the glow is gone (the web fades it over 700 px). */

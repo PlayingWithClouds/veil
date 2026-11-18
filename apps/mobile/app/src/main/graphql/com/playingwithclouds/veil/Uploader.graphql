@@ -1,0 +1,21 @@
+# Who uploaded a video to a tube site, and their videos from their channel page.
+
+# The uploader each site named for a video, kept on its source.
+query VideoUploader($id: ID!) {
+  video(id: $id) {
+    sources {
+      plugin
+      uploader {
+        name
+        url
+      }
+    }
+  }
+}
+
+# Reads one page of the videos on an uploader's channel page from the site and stores them.
+mutation FetchUploader($plugin: String!, $url: String!, $name: String!, $limit: Int, $offset: Int) {
+  fetchUploader(plugin: $plugin, url: $url, name: $name, limit: $limit, offset: $offset) {
+    ...VideoCardFields
+  }
+}

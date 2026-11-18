@@ -38,6 +38,9 @@ object Routes {
     /** The live rooms with one tag; the Cams tab lists them all. */
     const val CAMS_TAGGED = "cams/tag/{tag}"
 
+    /** An uploader's videos on one site: the plugin, their channel page and their name (the title). */
+    const val UPLOADER = "uploader?plugin={plugin}&url={url}&name={name}"
+
     fun video(id: String): String = "video/${Uri.encode(id)}"
 
     fun cam(id: String): String = "cam/${Uri.encode(id)}"
@@ -64,6 +67,10 @@ object Routes {
     fun category(id: String, name: String): String = "category/${Uri.encode(id)}?name=${Uri.encode(name)}"
 
     fun tag(id: String, name: String): String = "tag/${Uri.encode(id)}?name=${Uri.encode(name)}"
+
+    fun uploader(plugin: String, url: String, name: String): String {
+        return "uploader?plugin=${Uri.encode(plugin)}&url=${Uri.encode(url)}&name=${Uri.encode(name)}"
+    }
 }
 
 /** Navigation actions that screens call, so they never touch route strings. [selectTab] turns the tab pager to a page. */
@@ -123,6 +130,9 @@ class AppNavigator(private val controller: NavHostController, private val select
     fun openAudio(id: String) = controller.navigate(Routes.audio(id))
 
     fun openPerformer(id: String) = controller.navigate(Routes.performer(id))
+
+    /** An uploader's videos, listed from their channel page [url] on [plugin]'s site. */
+    fun openUploader(plugin: String, url: String, name: String) = controller.navigate(Routes.uploader(plugin, url, name))
 
     /** The route of a drawer entry without a tab. */
     private fun routeOf(destination: Destination): String {

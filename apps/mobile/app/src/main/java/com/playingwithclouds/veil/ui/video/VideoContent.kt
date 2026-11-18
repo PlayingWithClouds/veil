@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -35,7 +36,10 @@ import androidx.media3.common.Player
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.PerformerSummary
+import com.playingwithclouds.veil.data.UploaderRepository
 import com.playingwithclouds.veil.data.VideoDetail
+import com.playingwithclouds.veil.data.VideoUploader
+import kotlinx.coroutines.CancellationException
 import com.playingwithclouds.veil.graphql.type.RecordKind
 import com.playingwithclouds.veil.ui.AppNavigator
 import com.playingwithclouds.veil.ui.LoadState
@@ -116,6 +120,7 @@ private fun LazyListScope.aboutVideo(detail: VideoDetail, state: VideoState, vie
     if (detail.sources.size > 1) {
         item("sources") { SourcesRow(detail, state, viewModel) }
     }
+    item("uploader") { UploaderChip(detail.id, navigator) }
     val people = listOfNotNull(detail.studio) + detail.performers
     if (people.isNotEmpty()) {
         item("people") {
@@ -336,6 +341,38 @@ private fun PeopleRow(detail: VideoDetail, onOpen: (PerformerSummary) -> Unit) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Who uploaded the video to the site it came from, read once the page has opened (the sites name
+ * them on the pages it reads). A chip that opens their videos when their channel page is known,
+ * else a plain line; nothing when no site names an uploader.
+ */
+@Composable
+private fun UploaderChip(videoId: String, navigator: AppNavigator) {
+    val uploader by produceState<VideoUploader?>(null, videoId) {
+        value = try {
+            UploaderRepository.ofVideo(videoId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            null
+        }
+    }
+    val shown = uploader ?: return
+    val url = shown.url
+    if (url == null) {
+        Text(
+            "Uploaded by ${shown.name}",
+            Modifier.gutterPadding().padding(top = VeilSpacing.large),
+            style = VeilType.cardMeta,
+            color = VeilColors.contentMuted,
+        )
+        return
+    }
+    Row(Modifier.gutterPadding().padding(top = VeilSpacing.large), verticalAlignment = Alignment.CenterVertically) {
+        Pill(shown.name, onClick = { navigator.openUploader(shown.plugin, url, shown.name) }, icon = VeilIcons.Performer)
     }
 }
 
