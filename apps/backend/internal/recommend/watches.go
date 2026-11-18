@@ -221,3 +221,23 @@ func (e *Engine) loadWatchStates(ctx context.Context, watches []watch) (map[sche
 	}
 	return out, nil
 }
+
+// justWatchedWindow is how long a video or gallery stays out of the feed and
+// out of what's related after it was opened: the user has just seen it.
+const justWatchedWindow = 24 * time.Hour
+
+// justWatched lists the media opened within justWatchedWindow.
+func (e *Engine) justWatched(ctx context.Context) (map[schema.RecordRef]bool, error) {
+	rows, err := e.database.Query(ctx,
+		`SELECT "subjectKind", "subjectId" FROM "UserState"
+		 WHERE "lastViewedAt" >= $since AND "deletedAt" IS NULL AND "subjectKind" IN (SELECT value FROM json_each($mediaKinds))`,
+		db.Vars{"since": db.FormatTime(e.now().Add(-justWatchedWindow)), "mediaKinds": mediaKinds})
+	if err != nil {
+		return nil, fmt.Errorf("read just watched: %w", err)
+	}
+	out := make(map[schema.RecordRef]bool, len(rows))
+	for _, row := range rows {
+		out[rowRef(row, "subjectKind", "subjectId")] = true
+	}
+	return out, nil
+}

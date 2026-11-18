@@ -20,6 +20,8 @@ data class VideoSummary(
     val studio: PerformerSummary? = null,
     val favorite: Boolean = false,
     val sourceUrl: String? = null,
+    /** Whether it was opened before, for the card's Seen badge. */
+    val seen: Boolean = false,
 )
 
 /** A recommended video and why it's picked, e.g. "Because you watched …". */

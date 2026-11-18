@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/schema"
@@ -50,6 +51,28 @@ func TestRelatedFindsCompanionsCreditsAndLookalikes(t *testing.T) {
 	}
 	if !hasEvidence(matches, samePerformer, "Same performer: Shared Star") || !hasEvidence(matches, lookalike, "Looks similar") {
 		t.Errorf("evidence = %+v", matches)
+	}
+}
+
+// TestRelatedLeavesOutJustWatched keeps a video opened within the last day
+// out of Up next, while one opened days ago stays.
+func TestRelatedLeavesOutJustWatched(t *testing.T) {
+	f := newFixture(t)
+	performer := f.named("Performer", "Shared Star")
+	target := f.video(mediaRow{title: "Target", performers: []string{performer}, duration: 900})
+	fresh := f.video(mediaRow{title: "Seen an hour ago", performers: []string{performer}, duration: 900})
+	older := f.video(mediaRow{title: "Seen last week", performers: []string{performer}, duration: 900})
+	f.state(schema.RecordKindVideo, fresh, db.Vars{"viewCount": 1, "lastViewedAt": db.FormatTime(f.now.Add(-time.Hour))})
+	f.state(schema.RecordKindVideo, older, db.Vars{"viewCount": 1, "lastViewedAt": db.FormatTime(f.now.Add(-7 * 24 * time.Hour))})
+	matches, err := f.engine.Related(f.ctx, schema.RecordRef{Kind: schema.RecordKindVideo, Id: target}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if positionOf(matches, fresh) >= 0 {
+		t.Errorf("just watched video is related: %+v", matches)
+	}
+	if positionOf(matches, older) < 0 {
+		t.Errorf("video watched last week missing: %+v", matches)
 	}
 }
 

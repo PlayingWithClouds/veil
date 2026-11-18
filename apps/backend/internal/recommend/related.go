@@ -59,7 +59,27 @@ func (e *Engine) Related(ctx context.Context, item schema.RecordRef, limit int) 
 	if err != nil {
 		return nil, err
 	}
+	ranked, err = e.withoutJustWatched(ctx, ranked)
+	if err != nil {
+		return nil, err
+	}
 	return e.relatedMatches(ctx, ranked[:min(limit, len(ranked))])
+}
+
+// withoutJustWatched drops what was opened within justWatchedWindow, so Up
+// next doesn't offer what the user has just seen.
+func (e *Engine) withoutJustWatched(ctx context.Context, ranked []*relatedItem) ([]*relatedItem, error) {
+	justWatched, err := e.justWatched(ctx)
+	if err != nil {
+		return nil, err
+	}
+	kept := make([]*relatedItem, 0, len(ranked))
+	for _, item := range ranked {
+		if !justWatched[item.ref] {
+			kept = append(kept, item)
+		}
+	}
+	return kept, nil
 }
 
 // gatherRelated runs every relation and collects what it found.

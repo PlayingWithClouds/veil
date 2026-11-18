@@ -128,6 +128,10 @@ private fun VideoCardContent(
             if (runtime != null) {
                 Badge(runtime, Modifier.align(Alignment.BottomEnd).padding(VeilSpacing.small))
             }
+            // Part-watched videos show their progress instead.
+            if (video.seen && watchedFraction(video) == null) {
+                Badge("Seen", Modifier.align(Alignment.TopStart).padding(VeilSpacing.small))
+            }
             val watched = watchedFraction(video)
             if (watched != null) {
                 ProgressBar(watched, Modifier.align(Alignment.BottomStart), trackColor = VeilColors.imageTrack, height = ResumeBarHeight)

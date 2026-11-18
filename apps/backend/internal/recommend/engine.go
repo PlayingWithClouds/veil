@@ -192,9 +192,13 @@ func (e *Engine) stillEligible(ctx context.Context, items []scoredItem, filter s
 	if err != nil {
 		return nil, err
 	}
+	justWatched, err := e.justWatched(ctx)
+	if err != nil {
+		return nil, err
+	}
 	kept := make([]scoredItem, 0, len(items))
 	for _, item := range items {
-		if eligible[item.item] {
+		if eligible[item.item] && !justWatched[item.item] {
 			kept = append(kept, item)
 		}
 	}

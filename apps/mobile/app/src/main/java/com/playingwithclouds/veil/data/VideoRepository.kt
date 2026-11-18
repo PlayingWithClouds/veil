@@ -155,5 +155,6 @@ internal fun VideoCardFields.toSummary(): VideoSummary {
         studio = creditedStudio?.let { credited -> PerformerSummary(credited.id, credited.name, credited.image?.url) },
         favorite = userState.favorite,
         sourceUrl = sources.firstOrNull()?.url,
+        seen = userState.viewCount > 0,
     )
 }
