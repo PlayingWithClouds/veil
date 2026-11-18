@@ -32,7 +32,6 @@ import com.playingwithclouds.veil.ui.design.SecondaryButton
 import com.playingwithclouds.veil.ui.design.TextAction
 import com.playingwithclouds.veil.ui.design.VeilCard
 import com.playingwithclouds.veil.ui.design.VeilTextField
-import com.playingwithclouds.veil.ui.scenes.LikedScenesSheet
 import com.playingwithclouds.veil.ui.theme.VeilColors
 import com.playingwithclouds.veil.ui.theme.VeilSpacing
 import kotlinx.coroutines.launch
@@ -135,25 +134,21 @@ private fun scanSummary(running: Boolean, progress: Float, scannedCount: Int): S
     return "$scannedCount videos scanned with this model."
 }
 
-/** The liked scenes with the picker, and the compilation and shorties they play. */
+/** The liked scenes (said yes to in Your taste), and the compilation and shorties they play. */
 @Composable
 private fun LikedScenesCard(navigator: AppNavigator) {
     val liked by SceneRepository.likedTags.collectAsState()
-    var picking by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { SceneRepository.refreshLikedTags() } }
-    if (picking) {
-        LikedScenesSheet(onDismiss = { picking = false })
-    }
     VeilCard(verticalArrangement = Arrangement.spacedBy(VeilSpacing.medium)) {
-        var summary = "No scenes picked yet."
+        var summary = "No scenes liked yet."
         if (liked.isNotEmpty()) {
             summary = liked.sorted().joinToString(", ")
         }
         Text(summary, style = MaterialTheme.typography.bodyMedium, color = VeilColors.content)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small)) {
-            SecondaryButton("Pick scenes", onClick = { picking = true })
+            SecondaryButton("Your taste", onClick = navigator::openTaste)
             PrimaryButton("Play compilation", onClick = navigator::openCompilation, enabled = liked.isNotEmpty())
         }
-        Hint("The scenes you like make the compilation, lead the shorties and choose the moments card previews jump through.")
+        Hint("Say yes to scenes in Your taste: they make the compilation, lead the shorties and choose the moments card previews jump through.")
     }
 }

@@ -14,8 +14,8 @@ object Routes {
     const val VIDEO = "video/{id}?at={at}"
     const val SHORTS = "shorts"
 
-    /** The compilation of the liked scenes; [video] (optional) plays first. */
-    const val COMPILATION = "compilation?video={video}"
+    /** The compilation of the liked scenes, or of [tags] (names, comma-separated) when given; [video] (optional) plays first. */
+    const val COMPILATION = "compilation?video={video}&tags={tags}"
     const val CAM = "cam/{id}"
     const val COLLECTION = "collection/{id}"
     const val SEARCH = "search?query={query}"
@@ -51,7 +51,9 @@ object Routes {
     /** A video's page starting at [seconds]. */
     fun videoAt(id: String, seconds: Double): String = "video/${Uri.encode(id)}?at=$seconds"
 
-    fun compilation(videoId: String): String = "compilation?video=${Uri.encode(videoId)}"
+    fun compilation(videoId: String, tags: Set<String> = emptySet()): String {
+        return "compilation?video=${Uri.encode(videoId)}&tags=${Uri.encode(tags.sorted().joinToString(","))}"
+    }
 
     fun cam(id: String): String = "cam/${Uri.encode(id)}"
 
@@ -120,6 +122,12 @@ class AppNavigator(private val controller: NavHostController, private val select
 
     /** The compilation of the liked scenes, the queue's matches first. */
     fun openCompilation() = controller.navigate(Routes.compilation(""))
+
+    /** A compilation of only the scenes with [tags] (names). */
+    fun openCompilationOf(tags: Set<String>) = controller.navigate(Routes.compilation("", tags))
+
+    /** The user's taste: what they're into, avoid, and the labels to answer about. */
+    fun openTaste() = controller.navigate(Routes.TASTE)
 
     fun openStudio(id: String) = controller.navigate(Routes.studio(id))
 

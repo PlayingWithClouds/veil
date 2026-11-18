@@ -221,7 +221,10 @@ private fun NavGraphBuilder.detailScreens(navigator: AppNavigator) {
         VideoScreen(entry.argument("id"), navigator, entry.argument("at").toDoubleOrNull())
     }
     composable(Routes.SHORTS) { ShortsScreen(navigator) }
-    composable(Routes.COMPILATION, arguments = listOf(optionalText("video"))) { entry -> CompilationScreen(entry.argument("video"), navigator) }
+    composable(Routes.COMPILATION, arguments = listOf(optionalText("video"), optionalText("tags"))) { entry ->
+        val tags = entry.argument("tags").split(",").filter { tag -> tag.isNotBlank() }.toSet()
+        CompilationScreen(entry.argument("video"), navigator, tags)
+    }
     composable(Routes.CAM) { entry -> CamRoomScreen(entry.argument("id"), navigator) }
     composable(Routes.COLLECTION) { entry -> CollectionScreen(entry.argument("id"), navigator) }
     composable(Routes.STORIES) { StoriesScreen(navigator) }

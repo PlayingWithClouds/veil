@@ -58,7 +58,7 @@ enum class Destination(val label: String, val icon: ImageVector, val group: Dest
     PERFORMERS("Performers", VeilIcons.Performers, DestinationGroup.LIBRARY),
     STUDIOS("Studios", VeilIcons.Studios, DestinationGroup.LIBRARY),
     LIBRARY("Library", VeilIcons.Library, DestinationGroup.YOU, Tab.LIBRARY),
-    TASTE("Taste", VeilIcons.Heart, DestinationGroup.YOU),
+    TASTE("Your taste", VeilIcons.Heart, DestinationGroup.YOU),
     PLUGINS("Plugins", VeilIcons.Plugins, DestinationGroup.YOU),
 }
 

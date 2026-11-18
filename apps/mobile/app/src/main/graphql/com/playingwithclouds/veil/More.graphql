@@ -21,6 +21,7 @@ fragment TasteEntryFields on TasteEntry {
   id
   name
   weight
+  confirmed
   image {
     url
   }
@@ -29,6 +30,17 @@ fragment TasteEntryFields on TasteEntry {
 query Taste {
   taste {
     signalCount
+    sceneLabels {
+      tag {
+        id
+        name
+      }
+      score
+      certainty
+      evidence
+      confirmed
+      videoCount
+    }
     tags {
       ...TasteEntryFields
     }

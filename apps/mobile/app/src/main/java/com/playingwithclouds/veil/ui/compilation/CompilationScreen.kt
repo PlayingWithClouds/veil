@@ -60,8 +60,8 @@ private val LoadingSpinnerSize = 20.dp
  * Tap the picture to pause; Next scene skips; Open the video goes to the whole video at that point.
  */
 @Composable
-fun CompilationScreen(firstVideoId: String, navigator: AppNavigator) {
-    val viewModel = viewModel(key = "compilation:$firstVideoId") { CompilationViewModel(firstVideoId) }
+fun CompilationScreen(firstVideoId: String, navigator: AppNavigator, onlyTags: Set<String> = emptySet()) {
+    val viewModel = viewModel(key = "compilation:$firstVideoId:${onlyTags.sorted()}") { CompilationViewModel(firstVideoId, onlyTags) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val player = rememberVideoPlayer()
     var playingIndex by remember { mutableIntStateOf(0) }

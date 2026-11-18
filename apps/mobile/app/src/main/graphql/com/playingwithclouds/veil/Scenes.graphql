@@ -1,5 +1,5 @@
 # The on-phone scene model's reads and writes: what to scan, where a video streams from, the ai
-# segments, the liked scenes (setting likedSceneTags), compilations and the shorts feed.
+# segments, the liked scenes (labels said yes to), compilations and the shorts feed.
 
 fragment SceneSegmentFields on Segment {
   id
@@ -89,13 +89,36 @@ mutation ReplaceAiSegments($subject: RecordRefInput!, $segments: [AiSegmentInput
   }
 }
 
-# Every global setting; the phone reads likedSceneTags.
+# Every global setting; the scan reads it to check the backend answers.
 query SceneSettings {
   settings
 }
 
-mutation UpdateSceneSettings($values: JSON!) {
-  updateSettings(values: $values)
+# The liked scenes: scene labels the user said yes to on the taste page.
+query LikedSceneTags {
+  likedSceneTags {
+    id
+    name
+  }
+}
+
+# The scene labels in the library, most common first, for the search filter.
+query SceneLabelCounts($limit: Int) {
+  sceneLabelCounts(limit: $limit) {
+    count
+    tag {
+      id
+      name
+    }
+  }
+}
+
+# One like on a record (a site: no subject, data.site) sent at once, outside the batched event log:
+# the taste page's answers must land even while incognito and before the page reloads.
+mutation TasteAnswer($event: EventInput!) {
+  recordEvent(event: $event) {
+    id
+  }
 }
 
 # Videos with ai segments of the liked tags, with those segments, for a compilation.

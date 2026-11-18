@@ -4,16 +4,16 @@ import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.ServerSettings
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.LikedSceneTagsQuery
 import com.playingwithclouds.veil.graphql.ReplaceAiSegmentsMutation
 import com.playingwithclouds.veil.graphql.SceneFetchSourcesMutation
+import com.playingwithclouds.veil.graphql.SceneLabelCountsQuery
 import com.playingwithclouds.veil.graphql.SceneMatchesQuery
 import com.playingwithclouds.veil.graphql.ScenePreviewPlanQuery
 import com.playingwithclouds.veil.graphql.SceneQueueQuery
 import com.playingwithclouds.veil.graphql.SceneScanCandidatesQuery
-import com.playingwithclouds.veil.graphql.SceneSettingsQuery
 import com.playingwithclouds.veil.graphql.SceneVideoSourcesQuery
 import com.playingwithclouds.veil.graphql.ShortsQuery
-import com.playingwithclouds.veil.graphql.UpdateSceneSettingsMutation
 import com.playingwithclouds.veil.graphql.fragment.SceneSegmentFields
 import com.playingwithclouds.veil.graphql.fragment.SceneSourceFields
 import com.playingwithclouds.veil.graphql.type.AiSegmentInput
@@ -51,12 +51,10 @@ data class ShortItem(
 
 /**
  * The scene model's reads and writes against the backend: what to scan, playable streams without
- * opening the video page, the ai segments, the liked scenes (the global setting
- * `likedSceneTags`, shared with the web), compilations and the shorts feed.
+ * opening the video page, the ai segments, the liked scenes (the scene labels the user said yes to
+ * on the taste page, `likedSceneTags`), compilations and the shorts feed.
  */
 object SceneRepository {
-
-    private const val LIKED_SETTING = "likedSceneTags"
 
     private val mutableLikedTags = MutableStateFlow<Set<String>>(emptySet())
 
@@ -75,18 +73,35 @@ object SceneRepository {
 
     /** Reads the liked scenes from the backend. */
     suspend fun refreshLikedTags(): Set<String> {
-        val settings = VeilApi.client.query(SceneSettingsQuery()).execute().dataOrThrow().settings as? Map<*, *>
-        val liked = (settings?.get(LIKED_SETTING) as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+        val liked = VeilApi.client.query(LikedSceneTagsQuery()).execute().dataOrThrow().likedSceneTags.map { tag -> tag.name }.toSet()
         mutableLikedTags.value = liked
         likedTagsRead = true
         return liked
     }
 
-    /** Saves the liked scenes. */
-    suspend fun setLikedTags(tags: Set<String>) {
-        mutableLikedTags.value = tags
-        likedTagsRead = true
-        VeilApi.client.mutation(UpdateSceneSettingsMutation(mapOf(LIKED_SETTING to tags.sorted()))).execute().dataOrThrow()
+    /** Takes a yes ([liked]) or anything else on the label [tagName] into the liked scenes at once, before the backend is read again. */
+    fun noteLabelAnswer(tagName: String, liked: Boolean) {
+        if (liked) {
+            mutableLikedTags.value = mutableLikedTags.value + tagName
+            return
+        }
+        mutableLikedTags.value = mutableLikedTags.value - tagName
+    }
+
+    /** The scene labels in the library with how many videos have each, most common first. */
+    suspend fun labelCounts(limit: Int): List<Pair<TagSummary, Int>> {
+        val data = VeilApi.client.query(SceneLabelCountsQuery(Optional.present(limit))).execute().dataOrThrow()
+        return data.sceneLabelCounts.map { count -> TagSummary(count.tag.id, count.tag.name) to count.count }
+    }
+
+    /** Where the first ai segment of [tagNames] starts in the video; null when it has none. */
+    suspend fun firstSceneStart(videoId: String, tagNames: Collection<String>): Double? {
+        if (tagNames.isEmpty()) {
+            return null
+        }
+        val query = SceneMatchesQuery(tagNames.toList(), Optional.present(listOf(videoId)), Optional.present(1), Optional.present(0))
+        val match = VeilApi.client.query(query).execute().dataOrThrow().sceneMatches.firstOrNull() ?: return null
+        return match.segments.minOfOrNull { segment -> segment.sceneSegmentFields.startSeconds }
     }
 
     /**

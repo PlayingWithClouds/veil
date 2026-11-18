@@ -42,8 +42,9 @@ data class CompilationState(
  * The compilation mode: only the stretches of liked scenes, from [firstVideoId] (when the page
  * was opened from a video), then the queue's videos in order, then the videos with the most
  * matching seconds. Videos resolve to streams one at a time, a few clips ahead of playback.
+ * [onlyTags] (names), when given, plays those scenes instead of the liked ones.
  */
-class CompilationViewModel(private val firstVideoId: String) : ViewModel() {
+class CompilationViewModel(private val firstVideoId: String, private val onlyTags: Set<String> = emptySet()) : ViewModel() {
 
     private val mutableState = MutableStateFlow(CompilationState())
     val state: StateFlow<CompilationState> = mutableState.asStateFlow()
@@ -63,10 +64,13 @@ class CompilationViewModel(private val firstVideoId: String) : ViewModel() {
     /** Reads the liked scenes and prepares the first clips. */
     private suspend fun start() {
         try {
-            val liked = SceneRepository.refreshLikedTags()
+            var liked = onlyTags
+            if (liked.isEmpty()) {
+                liked = SceneRepository.refreshLikedTags()
+            }
             mutableState.update { state -> state.copy(likedTags = liked) }
             if (liked.isEmpty()) {
-                mutableState.update { state -> state.copy(loading = false, finished = true, problem = "Pick the scenes you like in Settings first.") }
+                mutableState.update { state -> state.copy(loading = false, finished = true, problem = "Say yes to the scenes you like in Your taste first.") }
                 return
             }
             prepareMore()
