@@ -157,6 +157,25 @@ func (r *queryResolver) SceneMatches(ctx context.Context, tags []string, videoId
 	return pointers(matches), err
 }
 
+// SceneLabelCounts is the resolver for the sceneLabelCounts field.
+func (r *queryResolver) SceneLabelCounts(ctx context.Context, limit *int) ([]*model.TagCount, error) {
+	size := 50
+	if limit != nil {
+		size = *limit
+	}
+	counts, err := r.library.SceneLabelCounts(ctx, size)
+	if err != nil {
+		return nil, err
+	}
+	return tagCounts(counts), nil
+}
+
+// LikedSceneTags is the resolver for the likedSceneTags field.
+func (r *queryResolver) LikedSceneTags(ctx context.Context) ([]*schema.Tag, error) {
+	tags, err := r.recommend.LikedSceneTags(ctx)
+	return pointers(tags), err
+}
+
 // Video is the resolver for the video field.
 func (r *sceneMatchResolver) Video(ctx context.Context, obj *library.SceneMatch) (*schema.Video, error) {
 	return r.library.Video(ctx, obj.VideoID)

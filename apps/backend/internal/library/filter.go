@@ -44,6 +44,7 @@ func filterConditions(kind schema.RecordKind, filter schema.Filter) ([]string, d
 	addUserConditions(builder, filter)
 	if hasDuration(kind) {
 		addDurationConditions(builder, filter)
+		addSceneConditions(builder, filter)
 	}
 	if kind == schema.RecordKindVideo {
 		addVideoConditions(builder, filter)
@@ -201,6 +202,27 @@ func addDurationConditions(builder *conditionBuilder, filter schema.Filter) {
 	}
 }
 
+// sceneSegmentsOf is the FROM and WHERE of the live ai segments of the media
+// row carrying one of $sceneTagIds.
+const sceneSegmentsOf = ` FROM "Segment" AS "scene"
+	WHERE "scene"."subjectKind" = $mediaKind AND "scene"."subjectId" = "media"."id"
+		AND "scene"."origin" = 'ai' AND "scene"."deletedAt" IS NULL
+		AND "scene"."tag" IN (SELECT value FROM json_each($sceneTagIds))`
+
+// addSceneConditions keeps the media whose ai segments carry every scene
+// label of the filter.
+func addSceneConditions(builder *conditionBuilder, filter schema.Filter) {
+	if len(filter.SceneTagIds) == 0 {
+		return
+	}
+	builder.bind(`NOT EXISTS (SELECT 1 FROM json_each($sceneTagIds) AS "wanted"
+		WHERE NOT EXISTS (SELECT 1`+sceneSegmentsOf+` AND "scene"."tag" = "wanted".value))`, "sceneTagIds", filter.SceneTagIds)
+}
+
+// sceneSeconds is how long the media row's ai segments of the filter's scene
+// labels last together; overlapping labels each count.
+const sceneSeconds = `(SELECT COALESCE(SUM(COALESCE("scene"."endSeconds", "scene"."startSeconds") - "scene"."startSeconds"), 0)` + sceneSegmentsOf + `)`
+
 // addVideoConditions filters videos by VR and resolution. Resolution is the
 // frame's shorter side, so a portrait 1080×1920 video counts as 1080p.
 func addVideoConditions(builder *conditionBuilder, filter schema.Filter) {
@@ -266,6 +288,19 @@ var sortColumns = map[schema.SortField]string{
 	schema.SortFieldRating:       `"state"."rating"`,
 	schema.SortFieldViewCount:    `COALESCE("state"."viewCount", 0)`,
 	schema.SortFieldLastViewedAt: `"state"."lastViewedAt"`,
+}
+
+// filterOrder is the ORDER BY of a filtered list: the filter's sort, but with
+// scene labels and no sort other than relevance, the media with the most
+// matching seconds first.
+func filterOrder(kind schema.RecordKind, filter schema.Filter) string {
+	if len(filter.SceneTagIds) == 0 || !hasDuration(kind) {
+		return orderBy(kind, filter.Sort)
+	}
+	if filter.Sort != nil && filter.Sort.Field != schema.SortFieldRelevance {
+		return orderBy(kind, filter.Sort)
+	}
+	return sceneSeconds + ` DESC, "media".rowid DESC`
 }
 
 // orderBy renders the ORDER BY of a filter's sort; by default newest added

@@ -58,14 +58,36 @@ type Taste {
   performers: [TasteEntry!]!
   studios: [TasteEntry!]!
   sites: [TasteEntry!]!
+  # The scene model's labels, best liked first, with why.
+  sceneLabels: [SceneLabelTaste!]!
 }
 
 # One liked (weight > 0) or disliked (< 0) tag, performer, studio or site.
+# The user answers with a like event on the record (a site: a like without
+# subject, data {site, value}): value 1 yes, -1 not really, 0 takes it back.
 type TasteEntry {
   id: ID!
   name: String!
   image: Asset
   weight: Float!
+  # The user's answer: true yes, false not really, null not asked.
+  confirmed: Boolean
+}
+
+# How much the user seems to like one scene label, from what they play,
+# replay, skip and finish to, the covers they pick and the tag's taste.
+type SceneLabelTaste {
+  tag: Tag!
+  # -1..1: above 0 into it, below 0 avoided.
+  score: Float!
+  # 0..1: how much the score rests on; low means a guess worth asking about.
+  certainty: Float!
+  # Sentences such as "You replay doggystyle scenes 3× more than others".
+  evidence: [String!]!
+  # The user's answer (a like on the tag): true yes, false not really.
+  confirmed: Boolean
+  # How many videos have the label.
+  videoCount: Int!
 }
 
 input LookupInput {

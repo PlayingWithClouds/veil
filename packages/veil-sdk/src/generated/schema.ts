@@ -101,6 +101,8 @@ export interface Query {
     clips: Clip[]
     clip: (Clip | null)
     sceneMatches: SceneMatch[]
+    sceneLabelCounts: TagCount[]
+    likedSceneTags: Tag[]
     plugins: Plugin[]
     plugin: (Plugin | null)
     pluginPackages: PluginPackage[]
@@ -669,6 +671,7 @@ export interface Taste {
     performers: TasteEntry[]
     studios: TasteEntry[]
     sites: TasteEntry[]
+    sceneLabels: SceneLabelTaste[]
     __typename: 'Taste'
 }
 
@@ -677,7 +680,18 @@ export interface TasteEntry {
     name: Scalars['String']
     image: (Asset | null)
     weight: Scalars['Float']
+    confirmed: (Scalars['Boolean'] | null)
     __typename: 'TasteEntry'
+}
+
+export interface SceneLabelTaste {
+    tag: Tag
+    score: Scalars['Float']
+    certainty: Scalars['Float']
+    evidence: Scalars['String'][]
+    confirmed: (Scalars['Boolean'] | null)
+    videoCount: Scalars['Int']
+    __typename: 'SceneLabelTaste'
 }
 
 export interface LookupResult {
@@ -1439,6 +1453,7 @@ export interface Filter {
     minHeight: (Scalars['Int'] | null)
     fields: (FieldCondition[] | null)
     sort: (Sort | null)
+    sceneTagIds: (Scalars['ID'][] | null)
     __typename: 'Filter'
 }
 
@@ -1541,6 +1556,8 @@ export interface QueryGenqlSelection{
     clips?: (ClipGenqlSelection & { __args?: {videoId?: (Scalars['ID'] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
     clip?: (ClipGenqlSelection & { __args: {id: Scalars['ID']} })
     sceneMatches?: (SceneMatchGenqlSelection & { __args: {tags: Scalars['String'][], videoIds?: (Scalars['ID'][] | null), limit?: (Scalars['Int'] | null), offset?: (Scalars['Int'] | null)} })
+    sceneLabelCounts?: (TagCountGenqlSelection & { __args?: {limit?: (Scalars['Int'] | null)} })
+    likedSceneTags?: TagGenqlSelection
     plugins?: PluginGenqlSelection
     plugin?: (PluginGenqlSelection & { __args: {name: Scalars['String']} })
     pluginPackages?: (PluginPackageGenqlSelection & { __args?: {query?: (Scalars['String'] | null)} })
@@ -2152,6 +2169,7 @@ export interface TasteGenqlSelection{
     performers?: TasteEntryGenqlSelection
     studios?: TasteEntryGenqlSelection
     sites?: TasteEntryGenqlSelection
+    sceneLabels?: SceneLabelTasteGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2161,6 +2179,18 @@ export interface TasteEntryGenqlSelection{
     name?: boolean | number
     image?: AssetGenqlSelection
     weight?: boolean | number
+    confirmed?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface SceneLabelTasteGenqlSelection{
+    tag?: TagGenqlSelection
+    score?: boolean | number
+    certainty?: boolean | number
+    evidence?: boolean | number
+    confirmed?: boolean | number
+    videoCount?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -3008,11 +3038,12 @@ export interface FilterGenqlSelection{
     minHeight?: boolean | number
     fields?: FieldConditionGenqlSelection
     sort?: SortGenqlSelection
+    sceneTagIds?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
 
-export interface FilterInput {kinds?: (MediaKind[] | null),text?: (Scalars['String'] | null),performerIds?: (Scalars['ID'][] | null),studioIds?: (Scalars['ID'][] | null),categoryIds?: (Scalars['ID'][] | null),includeTagIds?: (Scalars['ID'][] | null),excludeTagIds?: (Scalars['ID'][] | null),sources?: (Scalars['String'][] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),minDurationSeconds?: (Scalars['Int'] | null),maxDurationSeconds?: (Scalars['Int'] | null),minRating?: (Scalars['Float'] | null),status?: (MediaStatus[] | null),inLibrary?: (Scalars['Boolean'] | null),favorite?: (Scalars['Boolean'] | null),unwatched?: (Scalars['Boolean'] | null),vr?: (Scalars['Boolean'] | null),minHeight?: (Scalars['Int'] | null),fields?: (FieldConditionInput[] | null),sort?: (SortInput | null)}
+export interface FilterInput {kinds?: (MediaKind[] | null),text?: (Scalars['String'] | null),performerIds?: (Scalars['ID'][] | null),studioIds?: (Scalars['ID'][] | null),categoryIds?: (Scalars['ID'][] | null),includeTagIds?: (Scalars['ID'][] | null),excludeTagIds?: (Scalars['ID'][] | null),sources?: (Scalars['String'][] | null),dateFrom?: (Scalars['String'] | null),dateTo?: (Scalars['String'] | null),minDurationSeconds?: (Scalars['Int'] | null),maxDurationSeconds?: (Scalars['Int'] | null),minRating?: (Scalars['Float'] | null),status?: (MediaStatus[] | null),inLibrary?: (Scalars['Boolean'] | null),favorite?: (Scalars['Boolean'] | null),unwatched?: (Scalars['Boolean'] | null),vr?: (Scalars['Boolean'] | null),minHeight?: (Scalars['Int'] | null),fields?: (FieldConditionInput[] | null),sort?: (SortInput | null),sceneTagIds?: (Scalars['ID'][] | null)}
 
 export interface SavedFilterGenqlSelection{
     id?: boolean | number
@@ -3350,6 +3381,14 @@ export interface SavedFilterGenqlSelection{
     export const isTasteEntry = (obj?: { __typename?: any } | null): obj is TasteEntry => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isTasteEntry"')
       return TasteEntry_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const SceneLabelTaste_possibleTypes: string[] = ['SceneLabelTaste']
+    export const isSceneLabelTaste = (obj?: { __typename?: any } | null): obj is SceneLabelTaste => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isSceneLabelTaste"')
+      return SceneLabelTaste_possibleTypes.includes(obj.__typename)
     }
     
 

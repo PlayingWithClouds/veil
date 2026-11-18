@@ -87,6 +87,8 @@ type Query {
   clips(videoId: ID, limit: Int, offset: Int): [Clip!]!
   clip(id: ID!): Clip
   sceneMatches(tags: [String!]!, videoIds: [ID!], limit: Int, offset: Int): [SceneMatch!]!
+  sceneLabelCounts(limit: Int): [TagCount!]!
+  likedSceneTags: [Tag!]!
   plugins: [Plugin!]!
   plugin(name: String!): Plugin
   pluginPackages(query: String): [PluginPackage!]!
@@ -745,6 +747,7 @@ type Taste {
   performers: [TasteEntry!]!
   studios: [TasteEntry!]!
   sites: [TasteEntry!]!
+  sceneLabels: [SceneLabelTaste!]!
 }
 
 type TasteEntry {
@@ -752,6 +755,16 @@ type TasteEntry {
   name: String!
   image: Asset
   weight: Float!
+  confirmed: Boolean
+}
+
+type SceneLabelTaste {
+  tag: Tag!
+  score: Float!
+  certainty: Float!
+  evidence: [String!]!
+  confirmed: Boolean
+  videoCount: Int!
 }
 
 input LookupInput {
@@ -1738,6 +1751,7 @@ type Filter {
   minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
+  sceneTagIds: [ID!]
 }
 
 input FilterInput {
@@ -1762,6 +1776,7 @@ input FilterInput {
   minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
+  sceneTagIds: [ID!]
 }
 
 type SavedFilter {

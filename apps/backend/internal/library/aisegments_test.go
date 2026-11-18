@@ -76,6 +76,55 @@ func TestSceneMatchesRanksByMatchingSeconds(t *testing.T) {
 	}
 }
 
+// TestSceneLabelFilterNeedsEveryLabel keeps the videos whose ai segments carry
+// every asked label, the most matching seconds first, and counts the labels.
+func TestSceneLabelFilterNeedsEveryLabel(t *testing.T) {
+	ctx := context.Background()
+	library := openTestLibrary(t)
+	first, err := library.IngestFound(ctx, "site", foundScene())
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := foundScene()
+	second[0].Scene.ExternalID = "v2"
+	second[0].Scene.SourceURL = "https://site.test/v2"
+	second[0].Scene.Title = "Another evening entirely"
+	second[0].Scene.PosterPath = "https://cdn.test/v2.jpg"
+	second[0].Scene.Performers = []plugins.ScenePerformer{{Name: "Cleo"}}
+	other, err := library.IngestFound(ctx, "site", second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustReplace(t, library, first.Id, []AISegment{{StartSeconds: 0, EndSeconds: 30, Tag: "Blowjob"}, {StartSeconds: 0, EndSeconds: 30, Tag: "POV"}})
+	mustReplace(t, library, other.Id, []AISegment{{StartSeconds: 0, EndSeconds: 300, Tag: "Blowjob"}, {StartSeconds: 0, EndSeconds: 10, Tag: "POV"}})
+	counts, err := library.SceneLabelCounts(ctx, 10)
+	if err != nil || len(counts) != 2 || counts[0].Count != 2 {
+		t.Fatalf("counts = %+v, err %v", counts, err)
+	}
+	blowjob, pov := tagIDNamed(t, counts, "Blowjob"), tagIDNamed(t, counts, "POV")
+	both, err := library.Videos(ctx, MediaQuery{Filter: schema.Filter{SceneTagIds: []string{blowjob, pov}}, Limit: 10})
+	if err != nil || len(both) != 2 || both[0].Id != other.Id {
+		t.Fatalf("both labels = %+v, err %v", both, err)
+	}
+	mustReplace(t, library, other.Id, []AISegment{{StartSeconds: 0, EndSeconds: 300, Tag: "Blowjob"}})
+	narrowed, err := library.Videos(ctx, MediaQuery{Filter: schema.Filter{SceneTagIds: []string{blowjob, pov}}, Limit: 10})
+	if err != nil || len(narrowed) != 1 || narrowed[0].Id != first.Id {
+		t.Errorf("after losing POV = %+v, err %v", narrowed, err)
+	}
+}
+
+// tagIDNamed is the id of the counted tag with name, or fails the test.
+func tagIDNamed(t *testing.T, counts []TagCount, name string) string {
+	t.Helper()
+	for _, count := range counts {
+		if count.Name == name {
+			return count.Id
+		}
+	}
+	t.Fatalf("no tag %q in %+v", name, counts)
+	return ""
+}
+
 // mustReplace stores a video's ai segments or fails the test.
 func mustReplace(t *testing.T, library *Library, videoID string, segments []AISegment) {
 	t.Helper()

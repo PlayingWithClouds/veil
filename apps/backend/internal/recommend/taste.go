@@ -18,6 +18,9 @@ type TasteEntry struct {
 	Image *schema.Asset
 	// Weight is the affinity in [-1, 1], normalized within its dimension.
 	Weight float64
+	// Confirmed is the user's own answer: true for yes, false for not
+	// really, nil when they haven't said.
+	Confirmed *bool
 }
 
 // Taste is the user's profile for display: per dimension the strongest liked
@@ -31,40 +34,58 @@ type Taste struct {
 	Performers  []TasteEntry
 	Studios     []TasteEntry
 	Sites       []TasteEntry
+	// SceneLabels are the scene model's labels, best liked first.
+	SceneLabels []SceneLabelTaste
 }
 
-// Taste summarizes the current profile, names and pictures resolved.
+// Taste summarizes the current profile, names and pictures resolved, with
+// the user's answers on each entry.
 func (e *Engine) Taste(ctx context.Context) (Taste, error) {
-	taste, _, _, err := e.profileAt(ctx, e.now())
+	now := e.now()
+	taste, _, _, err := e.profileAt(ctx, now)
 	if err != nil {
 		return Taste{}, err
 	}
-	summary := Taste{SignalCount: taste.signalCount, Sites: siteEntries(taste.sites)}
+	answers, err := e.loadVerdicts(ctx)
+	if err != nil {
+		return Taste{}, err
+	}
+	summary := Taste{SignalCount: taste.signalCount, Sites: siteEntries(taste.sites, answers)}
 	dimensions := []struct {
-		table      string
+		kind       schema.RecordKind
 		affinities map[string]float64
 		target     *[]TasteEntry
 	}{
-		{"Tag", taste.tags, &summary.Tags},
-		{"Performer", taste.performers, &summary.Performers},
-		{"Studio", taste.studios, &summary.Studios},
+		{schema.RecordKindTag, taste.tags, &summary.Tags},
+		{schema.RecordKindPerformer, taste.performers, &summary.Performers},
+		{schema.RecordKindStudio, taste.studios, &summary.Studios},
 	}
 	for _, dimension := range dimensions {
-		entries, err := e.tasteEntries(ctx, dimension.table, dimension.affinities)
+		entries, err := e.tasteEntries(ctx, dimension.kind, dimension.affinities, answers)
 		if err != nil {
 			return Taste{}, err
 		}
 		*dimension.target = entries
 	}
+	summary.SceneLabels, err = e.sceneLabels(ctx, taste, answers, now)
+	if err != nil {
+		return Taste{}, err
+	}
 	return summary, nil
 }
 
-// pictureColumn is the picture column of each taste table; tags have none.
-var pictureColumn = map[string]string{"Performer": `"image"`, "Studio": `"image"`, "Tag": `NULL`}
+// tasteTables is the table and picture column of each taste dimension; tags
+// have no picture.
+var tasteTables = map[schema.RecordKind]struct{ table, picture string }{
+	schema.RecordKindPerformer: {"Performer", `"image"`},
+	schema.RecordKindStudio:    {"Studio", `"image"`},
+	schema.RecordKindTag:       {"Tag", `NULL`},
+}
 
-// tasteEntries picks the strongest liked and disliked ids of one table and
-// resolves their names and pictures; ids whose record is gone are skipped.
-func (e *Engine) tasteEntries(ctx context.Context, table string, affinities map[string]float64) ([]TasteEntry, error) {
+// tasteEntries picks the strongest liked and disliked ids of one kind and
+// resolves their names, pictures and the user's answers; ids whose record is
+// gone are skipped.
+func (e *Engine) tasteEntries(ctx context.Context, kind schema.RecordKind, affinities map[string]float64, answers *verdicts) ([]TasteEntry, error) {
 	picked := strongestFirst(affinities)
 	if len(picked) == 0 {
 		return []TasteEntry{}, nil
@@ -73,12 +94,13 @@ func (e *Engine) tasteEntries(ctx context.Context, table string, affinities map[
 	for _, entry := range picked {
 		ids = append(ids, entry.Id)
 	}
+	table := tasteTables[kind]
 	rows, err := e.database.Query(ctx,
-		`SELECT "id", "name", `+pictureColumn[table]+` AS "image" FROM `+db.Quote(table)+`
+		`SELECT "id", "name", `+table.picture+` AS "image" FROM `+db.Quote(table.table)+`
 		 WHERE "id" IN (SELECT value FROM json_each($ids)) AND "deletedAt" IS NULL`,
 		db.Vars{"ids": ids})
 	if err != nil {
-		return nil, fmt.Errorf("taste %s: %w", table, err)
+		return nil, fmt.Errorf("taste %s: %w", table.table, err)
 	}
 	known := map[string]db.Row{}
 	for _, row := range rows {
@@ -92,6 +114,7 @@ func (e *Engine) tasteEntries(ctx context.Context, table string, affinities map[
 		}
 		entry.Name = rowString(row, "name")
 		entry.Image = rowAsset(row, "image")
+		entry.Confirmed = answers.of(kind, entry.Id)
 		out = append(out, entry)
 	}
 	return out, nil
@@ -110,12 +133,13 @@ func rowAsset(row db.Row, column string) *schema.Asset {
 	return &asset
 }
 
-// siteEntries lists the strongest liked and disliked sites; a site's id and
-// name are both its plugin name.
-func siteEntries(affinities map[string]float64) []TasteEntry {
+// siteEntries lists the strongest liked and disliked sites with the user's
+// answers; a site's id and name are both its plugin name.
+func siteEntries(affinities map[string]float64, answers *verdicts) []TasteEntry {
 	picked := strongestFirst(affinities)
 	for index := range picked {
 		picked[index].Name = picked[index].Id
+		picked[index].Confirmed = answerOf(answers.sites[picked[index].Id])
 	}
 	return picked
 }

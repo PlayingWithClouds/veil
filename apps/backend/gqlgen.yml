@@ -326,6 +326,8 @@ models:
     model: github.com/playingwithclouds/veil/internal/recommend.Taste
   TasteEntry:
     model: github.com/playingwithclouds/veil/internal/recommend.TasteEntry
+  SceneLabelTaste:
+    model: github.com/playingwithclouds/veil/internal/recommend.SceneLabelTaste
   # Following, notifications, limits, automations.
   Follow:
     model: github.com/playingwithclouds/veil/internal/schema.Follow

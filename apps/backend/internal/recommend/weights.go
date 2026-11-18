@@ -226,7 +226,43 @@ const (
 	coverTagMinimumShown = 3.0
 )
 
-// Liked scene tags (setting likedSceneTags) in the shorts feed.
+// Scene label taste (scenelabels.go): how each label the scene model gives
+// stretches of videos fares in what the user watches, replays, skips and
+// finishes to, combined into one score in [-1, 1].
+const (
+	// Each part's share of the score; a part is a ratio against the other
+	// labels (see ratioTerm), the cover lift or the tag's taste affinity.
+	labelWatchWeight   = 0.2
+	labelReplayWeight  = 0.25
+	labelSkipWeight    = 0.2
+	labelFinishWeight  = 0.3
+	labelCoverWeight   = 0.15
+	labelProfileWeight = 0.2
+	// A part counts in full once it rests on this much: seconds watched,
+	// seconds replayed, sections passed through, finishes.
+	labelFullWatchSeconds  = 600.0
+	labelFullReplaySeconds = 120.0
+	labelFullPasses        = 5.0
+	labelFullFinishes      = 3.0
+	// labelSkipPlayedShare: a section passed through with less of it played
+	// was skipped.
+	labelSkipPlayedShare = 0.2
+	// labelFinishGraceSeconds: a finish this soon after a section ended
+	// still happened during it (the phone guesses the moment late).
+	labelFinishGraceSeconds = 10.0
+	// labelCoverCertainty is the certainty a cover lift alone gives.
+	labelCoverCertainty = 0.25
+	// labelEvidenceRatio is how far from the others a ratio must be (×, or
+	// ÷ for less) before the evidence names it.
+	labelEvidenceRatio = 1.4
+	// labelEvidenceLift is how far a cover lift or tag affinity must be from
+	// 0 before the evidence names it.
+	labelEvidenceLift = 0.25
+	// sceneLabelLimit caps the labels the taste lists.
+	sceneLabelLimit = 80
+)
+
+// Liked scene tags (tags liked as scenes, see verdicts.go) in the shorts feed.
 const (
 	// shortLikedSceneBonus lifts a segment short whose tag the user liked.
 	shortLikedSceneBonus = 0.4

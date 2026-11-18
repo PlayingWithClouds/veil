@@ -89,7 +89,7 @@ func newProfile(signalCount int) *profile {
 
 // buildProfile turns signals into per-entity affinities.
 func buildProfile(collected *signals, inputs profileInputs, now time.Time) *profile {
-	taste := newProfile(len(collected.items) + len(collected.entities) + len(collected.cams))
+	taste := newProfile(len(collected.items) + len(collected.entities) + len(collected.sites) + len(collected.cams))
 	if inputs.stats != nil {
 		taste.rarity = inputs.stats.rarity
 		taste.performerLooks = inputs.stats.attributes
@@ -110,6 +110,7 @@ func buildProfile(collected *signals, inputs profileInputs, now time.Time) *prof
 		}
 	}
 	taste.addEntitySignals(collected.entities, now)
+	taste.addSiteSignals(collected.sites, now)
 	taste.addCoverTags(inputs.coverTags)
 	taste.addCamSignals(collected.cams, inputs.cams, now)
 	taste.normalize()
@@ -194,9 +195,21 @@ func (taste *profile) addMomentTags(tags []string, weight float64) {
 // themselves, decayed like explicit verdicts.
 func (taste *profile) addEntitySignals(entities []entitySignal, now time.Time) {
 	for _, entry := range entities {
-		decay := math.Max(decayFactor(now.Sub(entry.at), affinityHalfLife), explicitDecayFloor)
-		taste.dimension(entry.kind)[entry.id] += entry.weight * decay
+		taste.dimension(entry.kind)[entry.id] += entry.weight * verdictDecay(entry, now)
 	}
+}
+
+// addSiteSignals adds the verdicts on sites, decayed like explicit verdicts.
+func (taste *profile) addSiteSignals(sites []entitySignal, now time.Time) {
+	for _, entry := range sites {
+		taste.sites[entry.id] += entry.weight * verdictDecay(entry, now)
+	}
+}
+
+// verdictDecay is the share of its weight a verdict keeps at now: it fades
+// like any signal but never below explicitDecayFloor.
+func verdictDecay(entry entitySignal, now time.Time) float64 {
+	return math.Max(decayFactor(now.Sub(entry.at), affinityHalfLife), explicitDecayFloor)
 }
 
 // dimension is the affinity map of an entity kind.

@@ -42,6 +42,9 @@ type entitySignal struct {
 type signals struct {
 	items    []signal
 	entities []entitySignal
+	// sites are the verdicts on sites (like events naming data.site), the
+	// plugin name as id.
+	sites []entitySignal
 	// watches are the video watches of the window, for the watched penalty.
 	watches []watch
 	// ignored counts the showings no open followed, per item.
@@ -136,14 +139,23 @@ func isTruthy(value any) bool {
 	return false
 }
 
-// likeSignals turns like events into likes and dislikes of media, and into
-// direct verdicts on performers, studios and tags.
+// latestLikeQuery picks the latest like event of each subject since $since
+// (a record, or a site named by data.site), as the liked list does: a later
+// thumbs down replaces a thumbs up, and value 0 takes the verdict back.
+const latestLikeQuery = `SELECT "subjectKind", "subjectId", "site", "at", "value" FROM (
+	SELECT "subjectKind", "subjectId", json_extract("data", '` + pathSite + `') AS "site", "at",
+		json_extract("data", '` + pathValue + `') AS "value",
+		ROW_NUMBER() OVER (PARTITION BY "subjectKind", "subjectId", json_extract("data", '` + pathSite + `')
+			ORDER BY "at" DESC, rowid DESC) AS "latest"
+	FROM "Event"
+	WHERE "kind" = 'like' AND "at" >= $since AND "deletedAt" IS NULL
+	  AND ("subjectKind" IS NOT NULL OR json_extract("data", '` + pathSite + `') IS NOT NULL)
+) WHERE "latest" = 1 AND "value" != 0 ORDER BY "at" DESC LIMIT $limit`
+
+// likeSignals turns the latest like event of each subject into a like or
+// dislike of media, or a direct verdict on a performer, studio, tag or site.
 func (e *Engine) likeSignals(ctx context.Context, collected *signals, since string, now time.Time) error {
-	rows, err := e.database.Query(ctx,
-		`SELECT "subjectKind", "subjectId", "at", json_extract("data", '`+pathValue+`') AS "value" FROM "Event"
-		 WHERE "kind" = 'like' AND "at" >= $since AND "deletedAt" IS NULL AND "subjectKind" IS NOT NULL
-		 ORDER BY "at" DESC LIMIT $limit`,
-		db.Vars{"since": since, "limit": eventReadLimit})
+	rows, err := e.database.Query(ctx, latestLikeQuery, db.Vars{"since": since, "limit": eventReadLimit})
 	if err != nil {
 		return fmt.Errorf("read like signals: %w", err)
 	}
@@ -151,6 +163,11 @@ func (e *Engine) likeSignals(ctx context.Context, collected *signals, since stri
 		weight := weightLike
 		if rowFloat(row, "value") < 0 {
 			weight = weightDislike
+		}
+		site := rowString(row, "site")
+		if row["subjectKind"] == nil && site != "" {
+			collected.sites = append(collected.sites, entitySignal{id: site, weight: weight, at: rowTime(row, "at")})
+			continue
 		}
 		addVerdict(collected, rowRef(row, "subjectKind", "subjectId"), weight, rowTime(row, "at"), false)
 	}

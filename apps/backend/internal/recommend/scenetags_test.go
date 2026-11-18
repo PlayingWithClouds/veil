@@ -119,7 +119,7 @@ func TestShortsTakeOnlyLikedAISegments(t *testing.T) {
 	if err != nil || len(shorts) != 0 {
 		t.Fatalf("shorts without liked tags = %+v, err %v", shorts, err)
 	}
-	f.engine.UseLikedSceneTags(func() []string { return []string{"reverse cowgirl"} })
+	f.event(schema.EventKindLike, schema.RecordKindTag, liked, time.Hour, map[string]any{"value": 1})
 	shorts, err = f.engine.Shorts(f.ctx, schema.Filter{}, 20)
 	if err != nil {
 		t.Fatal(err)

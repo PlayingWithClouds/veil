@@ -418,6 +418,7 @@ type ComplexityRoot struct {
 		MinHeight          func(childComplexity int) int
 		MinRating          func(childComplexity int) int
 		PerformerIds       func(childComplexity int) int
+		SceneTagIds        func(childComplexity int) int
 		Sort               func(childComplexity int) int
 		Sources            func(childComplexity int) int
 		Status             func(childComplexity int) int
@@ -964,6 +965,7 @@ type ComplexityRoot struct {
 		LibraryRoot              func(childComplexity int, id string) int
 		LibraryRoots             func(childComplexity int) int
 		Liked                    func(childComplexity int, kind schema.RecordKind, limit *int, offset *int) int
+		LikedSceneTags           func(childComplexity int) int
 		LimitStatus              func(childComplexity int) int
 		Limits                   func(childComplexity int) int
 		Media                    func(childComplexity int, filter *schema.Filter, limit *int, offset *int) int
@@ -994,6 +996,7 @@ type ComplexityRoot struct {
 		SameMedia                func(childComplexity int, subject schema.RecordRef) int
 		SavedFilter              func(childComplexity int, id string) int
 		SavedFilters             func(childComplexity int) int
+		SceneLabelCounts         func(childComplexity int, limit *int) int
 		SceneMatches             func(childComplexity int, tags []string, videoIds []string, limit *int, offset *int) int
 		Settings                 func(childComplexity int) int
 		Shorts                   func(childComplexity int, filter *schema.Filter, limit *int) int
@@ -1045,6 +1048,15 @@ type ComplexityRoot struct {
 		Name      func(childComplexity int) int
 		Pinned    func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
+	}
+
+	SceneLabelTaste struct {
+		Certainty  func(childComplexity int) int
+		Confirmed  func(childComplexity int) int
+		Evidence   func(childComplexity int) int
+		Score      func(childComplexity int) int
+		Tag        func(childComplexity int) int
+		VideoCount func(childComplexity int) int
 	}
 
 	SceneMatch struct {
@@ -1236,6 +1248,7 @@ type ComplexityRoot struct {
 
 	Taste struct {
 		Performers  func(childComplexity int) int
+		SceneLabels func(childComplexity int) int
 		SignalCount func(childComplexity int) int
 		Sites       func(childComplexity int) int
 		Studios     func(childComplexity int) int
@@ -1243,10 +1256,11 @@ type ComplexityRoot struct {
 	}
 
 	TasteEntry struct {
-		Id     func(childComplexity int) int
-		Image  func(childComplexity int) int
-		Name   func(childComplexity int) int
-		Weight func(childComplexity int) int
+		Confirmed func(childComplexity int) int
+		Id        func(childComplexity int) int
+		Image     func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Weight    func(childComplexity int) int
 	}
 
 	TrashedRecord struct {
@@ -1729,6 +1743,8 @@ type QueryResolver interface {
 	Clips(ctx context.Context, videoID *string, limit *int, offset *int) ([]*schema.Clip, error)
 	Clip(ctx context.Context, id string) (*schema.Clip, error)
 	SceneMatches(ctx context.Context, tags []string, videoIds []string, limit *int, offset *int) ([]*library.SceneMatch, error)
+	SceneLabelCounts(ctx context.Context, limit *int) ([]*model.TagCount, error)
+	LikedSceneTags(ctx context.Context) ([]*schema.Tag, error)
 	Plugins(ctx context.Context) ([]*model.Plugin, error)
 	Plugin(ctx context.Context, name string) (*model.Plugin, error)
 	PluginPackages(ctx context.Context, query *string) ([]*model.PluginPackage, error)
@@ -3258,6 +3274,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Filter.PerformerIds(childComplexity), true
+	case "Filter.sceneTagIds":
+		if e.ComplexityRoot.Filter.SceneTagIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Filter.SceneTagIds(childComplexity), true
 	case "Filter.sort":
 		if e.ComplexityRoot.Filter.Sort == nil {
 			break
@@ -6738,6 +6760,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Liked(childComplexity, args["kind"].(schema.RecordKind), args["limit"].(*int), args["offset"].(*int)), true
+	case "Query.likedSceneTags":
+		if e.ComplexityRoot.Query.LikedSceneTags == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.LikedSceneTags(childComplexity), true
 	case "Query.limitStatus":
 		if e.ComplexityRoot.Query.LimitStatus == nil {
 			break
@@ -7043,6 +7071,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SavedFilters(childComplexity), true
+	case "Query.sceneLabelCounts":
+		if e.ComplexityRoot.Query.SceneLabelCounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_sceneLabelCounts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SceneLabelCounts(childComplexity, args["limit"].(*int)), true
 	case "Query.sceneMatches":
 		if e.ComplexityRoot.Query.SceneMatches == nil {
 			break
@@ -7403,6 +7442,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SavedFilter.UpdatedAt(childComplexity), true
+
+	case "SceneLabelTaste.certainty":
+		if e.ComplexityRoot.SceneLabelTaste.Certainty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.Certainty(childComplexity), true
+	case "SceneLabelTaste.confirmed":
+		if e.ComplexityRoot.SceneLabelTaste.Confirmed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.Confirmed(childComplexity), true
+	case "SceneLabelTaste.evidence":
+		if e.ComplexityRoot.SceneLabelTaste.Evidence == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.Evidence(childComplexity), true
+	case "SceneLabelTaste.score":
+		if e.ComplexityRoot.SceneLabelTaste.Score == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.Score(childComplexity), true
+	case "SceneLabelTaste.tag":
+		if e.ComplexityRoot.SceneLabelTaste.Tag == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.Tag(childComplexity), true
+	case "SceneLabelTaste.videoCount":
+		if e.ComplexityRoot.SceneLabelTaste.VideoCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SceneLabelTaste.VideoCount(childComplexity), true
 
 	case "SceneMatch.matchingSeconds":
 		if e.ComplexityRoot.SceneMatch.MatchingSeconds == nil {
@@ -8212,6 +8288,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Taste.Performers(childComplexity), true
+	case "Taste.sceneLabels":
+		if e.ComplexityRoot.Taste.SceneLabels == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Taste.SceneLabels(childComplexity), true
 	case "Taste.signalCount":
 		if e.ComplexityRoot.Taste.SignalCount == nil {
 			break
@@ -8237,6 +8319,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Taste.Tags(childComplexity), true
 
+	case "TasteEntry.confirmed":
+		if e.ComplexityRoot.TasteEntry.Confirmed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TasteEntry.Confirmed(childComplexity), true
 	case "TasteEntry.id":
 		if e.ComplexityRoot.TasteEntry.Id == nil {
 			break
@@ -9640,14 +9728,36 @@ type Taste {
   performers: [TasteEntry!]!
   studios: [TasteEntry!]!
   sites: [TasteEntry!]!
+  # The scene model's labels, best liked first, with why.
+  sceneLabels: [SceneLabelTaste!]!
 }
 
 # One liked (weight > 0) or disliked (< 0) tag, performer, studio or site.
+# The user answers with a like event on the record (a site: a like without
+# subject, data {site, value}): value 1 yes, -1 not really, 0 takes it back.
 type TasteEntry {
   id: ID!
   name: String!
   image: Asset
   weight: Float!
+  # The user's answer: true yes, false not really, null not asked.
+  confirmed: Boolean
+}
+
+# How much the user seems to like one scene label, from what they play,
+# replay, skip and finish to, the covers they pick and the tag's taste.
+type SceneLabelTaste {
+  tag: Tag!
+  # -1..1: above 0 into it, below 0 avoided.
+  score: Float!
+  # 0..1: how much the score rests on; low means a guess worth asking about.
+  certainty: Float!
+  # Sentences such as "You replay doggystyle scenes 3× more than others".
+  evidence: [String!]!
+  # The user's answer (a like on the tag): true yes, false not really.
+  confirmed: Boolean
+  # How many videos have the label.
+  videoCount: Int!
 }
 
 input LookupInput {
@@ -10615,6 +10725,13 @@ extend type Query {
   # matching seconds first, each with those segments; with videoIds only
   # those, in their order. For the phone's compilation mode.
   sceneMatches(tags: [String!]!, videoIds: [ID!], limit: Int, offset: Int): [SceneMatch!]!
+  # The scene labels (tags of ai segments) with how many videos have each,
+  # most common first (default 50).
+  sceneLabelCounts(limit: Int): [TagCount!]!
+  # The liked scenes: scene labels the user said yes to (their latest like
+  # on the tag is a thumbs up), by name. They drive the shorts, the
+  # compilation and the phone's card previews.
+  likedSceneTags: [Tag!]!
 }
 
 extend type Mutation {
@@ -11261,6 +11378,7 @@ type Filter {
   minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
+  sceneTagIds: [ID!]
 }
 
 input FilterInput {
@@ -11286,6 +11404,9 @@ input FilterInput {
   minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
+  # Scene labels (tags of ai segments) every result must have; videos and
+  # audio only. Without another sort the most matching seconds come first.
+  sceneTagIds: [ID!]
 }
 
 type SavedFilter {
@@ -11991,6 +12112,8 @@ func (ec *executionContext) childFields_Filter(ctx context.Context, field graphq
 		return ec.fieldContext_Filter_fields(ctx, field)
 	case "sort":
 		return ec.fieldContext_Filter_sort(ctx, field)
+	case "sceneTagIds":
+		return ec.fieldContext_Filter_sceneTagIds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Filter", field.Name)
 }
@@ -12757,6 +12880,24 @@ func (ec *executionContext) childFields_SavedFilter(ctx context.Context, field g
 	return nil, fmt.Errorf("no field named %q was found under type SavedFilter", field.Name)
 }
 
+func (ec *executionContext) childFields_SceneLabelTaste(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "tag":
+		return ec.fieldContext_SceneLabelTaste_tag(ctx, field)
+	case "score":
+		return ec.fieldContext_SceneLabelTaste_score(ctx, field)
+	case "certainty":
+		return ec.fieldContext_SceneLabelTaste_certainty(ctx, field)
+	case "evidence":
+		return ec.fieldContext_SceneLabelTaste_evidence(ctx, field)
+	case "confirmed":
+		return ec.fieldContext_SceneLabelTaste_confirmed(ctx, field)
+	case "videoCount":
+		return ec.fieldContext_SceneLabelTaste_videoCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SceneLabelTaste", field.Name)
+}
+
 func (ec *executionContext) childFields_SceneMatch(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "video":
@@ -13133,6 +13274,8 @@ func (ec *executionContext) childFields_Taste(ctx context.Context, field graphql
 		return ec.fieldContext_Taste_studios(ctx, field)
 	case "sites":
 		return ec.fieldContext_Taste_sites(ctx, field)
+	case "sceneLabels":
+		return ec.fieldContext_Taste_sceneLabels(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Taste", field.Name)
 }
@@ -13147,6 +13290,8 @@ func (ec *executionContext) childFields_TasteEntry(ctx context.Context, field gr
 		return ec.fieldContext_TasteEntry_image(ctx, field)
 	case "weight":
 		return ec.fieldContext_TasteEntry_weight(ctx, field)
+	case "confirmed":
+		return ec.fieldContext_TasteEntry_confirmed(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TasteEntry", field.Name)
 }
@@ -17490,6 +17635,20 @@ func (ec *executionContext) field_Query_savedFilter_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_sceneLabelCounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
 	return args, nil
 }
 
@@ -24120,6 +24279,29 @@ func (ec *executionContext) fieldContext_Filter_sort(_ context.Context, field gr
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Filter_sceneTagIds(ctx context.Context, field graphql.CollectedField, obj *schema.Filter) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Filter_sceneTagIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SceneTagIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalOID2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Filter_sceneTagIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Filter", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _Fingerprint_id(ctx context.Context, field graphql.CollectedField, obj *schema.Fingerprint) (ret graphql.Marshaler) {
@@ -39689,6 +39871,82 @@ func (ec *executionContext) fieldContext_Query_sceneMatches(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sceneLabelCounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_sceneLabelCounts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SceneLabelCounts(ctx, fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TagCount) graphql.Marshaler {
+			return ec.marshalNTagCount2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋapiᚋgraphqlᚋmodelᚐTagCountᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_sceneLabelCounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TagCount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_sceneLabelCounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_likedSceneTags(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_likedSceneTags(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().LikedSceneTags(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*schema.Tag) graphql.Marshaler {
+			return ec.marshalNTag2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐTagᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_likedSceneTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Tag(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_plugins(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40895,6 +41153,153 @@ func (ec *executionContext) _SavedFilter_updatedAt(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_SavedFilter_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("SavedFilter", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneLabelTaste_tag(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_tag(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Tag, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v schema.Tag) graphql.Marshaler {
+			return ec.marshalNTag2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐTag(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_tag(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SceneLabelTaste",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Tag(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SceneLabelTaste_score(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_score(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Score, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_score(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneLabelTaste", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _SceneLabelTaste_certainty(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_certainty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Certainty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_certainty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneLabelTaste", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _SceneLabelTaste_evidence(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_evidence(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Evidence, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_evidence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneLabelTaste", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SceneLabelTaste_confirmed(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_confirmed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Confirmed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *bool) graphql.Marshaler {
+			return ec.marshalOBoolean2ᚖbool(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_confirmed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneLabelTaste", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _SceneLabelTaste_videoCount(ctx context.Context, field graphql.CollectedField, obj *recommend.SceneLabelTaste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SceneLabelTaste_videoCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VideoCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SceneLabelTaste_videoCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SceneLabelTaste", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _SceneMatch_video(ctx context.Context, field graphql.CollectedField, obj *library.SceneMatch) (ret graphql.Marshaler) {
@@ -44350,6 +44755,38 @@ func (ec *executionContext) fieldContext_Taste_sites(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Taste_sceneLabels(ctx context.Context, field graphql.CollectedField, obj *recommend.Taste) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Taste_sceneLabels(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SceneLabels, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []recommend.SceneLabelTaste) graphql.Marshaler {
+			return ec.marshalNSceneLabelTaste2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋrecommendᚐSceneLabelTasteᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Taste_sceneLabels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Taste",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SceneLabelTaste(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TasteEntry_id(ctx context.Context, field graphql.CollectedField, obj *recommend.TasteEntry) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44449,6 +44886,29 @@ func (ec *executionContext) _TasteEntry_weight(ctx context.Context, field graphq
 }
 func (ec *executionContext) fieldContext_TasteEntry_weight(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _TasteEntry_confirmed(ctx context.Context, field graphql.CollectedField, obj *recommend.TasteEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TasteEntry_confirmed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Confirmed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *bool) graphql.Marshaler {
+			return ec.marshalOBoolean2ᚖbool(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TasteEntry_confirmed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TasteEntry", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _TrashedRecord_kind(ctx context.Context, field graphql.CollectedField, obj *model.TrashedRecord) (ret graphql.Marshaler) {
@@ -48484,7 +48944,7 @@ func (ec *executionContext) unmarshalInputFilterInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"kinds", "text", "performerIds", "studioIds", "categoryIds", "includeTagIds", "excludeTagIds", "sources", "dateFrom", "dateTo", "minDurationSeconds", "maxDurationSeconds", "minRating", "status", "inLibrary", "favorite", "unwatched", "vr", "minHeight", "fields", "sort"}
+	fieldsInOrder := [...]string{"kinds", "text", "performerIds", "studioIds", "categoryIds", "includeTagIds", "excludeTagIds", "sources", "dateFrom", "dateTo", "minDurationSeconds", "maxDurationSeconds", "minRating", "status", "inLibrary", "favorite", "unwatched", "vr", "minHeight", "fields", "sort", "sceneTagIds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -48638,6 +49098,13 @@ func (ec *executionContext) unmarshalInputFilterInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.Sort = data
+		case "sceneTagIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sceneTagIds"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SceneTagIds = data
 		}
 	}
 	return it, nil
@@ -53232,6 +53699,8 @@ func (ec *executionContext) _Filter(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Filter_fields(ctx, field, obj)
 		case "sort":
 			out.Values[i] = ec._Filter_sort(ctx, field, obj)
+		case "sceneTagIds":
+			out.Values[i] = ec._Filter_sceneTagIds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -59663,6 +60132,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sceneLabelCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sceneLabelCounts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "likedSceneTags":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_likedSceneTags(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "plugins":
 			field := field
 
@@ -60264,6 +60777,67 @@ func (ec *executionContext) _SavedFilter(ctx context.Context, sel ast.SelectionS
 			}
 		case "updatedAt":
 			out.Values[i] = ec._SavedFilter_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sceneLabelTasteImplementors = []string{"SceneLabelTaste"}
+
+func (ec *executionContext) _SceneLabelTaste(ctx context.Context, sel ast.SelectionSet, obj *recommend.SceneLabelTaste) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sceneLabelTasteImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SceneLabelTaste")
+		case "tag":
+			out.Values[i] = ec._SceneLabelTaste_tag(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "score":
+			out.Values[i] = ec._SceneLabelTaste_score(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "certainty":
+			out.Values[i] = ec._SceneLabelTaste_certainty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "evidence":
+			out.Values[i] = ec._SceneLabelTaste_evidence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "confirmed":
+			out.Values[i] = ec._SceneLabelTaste_confirmed(ctx, field, obj)
+		case "videoCount":
+			out.Values[i] = ec._SceneLabelTaste_videoCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -62314,6 +62888,11 @@ func (ec *executionContext) _Taste(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "sceneLabels":
+			out.Values[i] = ec._Taste_sceneLabels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62365,6 +62944,8 @@ func (ec *executionContext) _TasteEntry(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "confirmed":
+			out.Values[i] = ec._TasteEntry_confirmed(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -66816,6 +67397,26 @@ func (ec *executionContext) marshalNSavedFilter2ᚖgithubᚗcomᚋplayingwithclo
 	return ec._SavedFilter(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSceneLabelTaste2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋrecommendᚐSceneLabelTaste(ctx context.Context, sel ast.SelectionSet, v recommend.SceneLabelTaste) graphql.Marshaler {
+	return ec._SceneLabelTaste(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSceneLabelTaste2ᚕgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋrecommendᚐSceneLabelTasteᚄ(ctx context.Context, sel ast.SelectionSet, v []recommend.SceneLabelTaste) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSceneLabelTaste2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋrecommendᚐSceneLabelTaste(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNSceneMatch2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋlibraryᚐSceneMatchᚄ(ctx context.Context, sel ast.SelectionSet, v []*library.SceneMatch) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -67396,6 +67997,10 @@ func (ec *executionContext) marshalNSubtitleOrigin2githubᚗcomᚋplayingwithclo
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTag2githubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐTag(ctx context.Context, sel ast.SelectionSet, v schema.Tag) graphql.Marshaler {
+	return ec._Tag(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTag2ᚕᚖgithubᚗcomᚋplayingwithcloudsᚋveilᚋinternalᚋschemaᚐTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*schema.Tag) graphql.Marshaler {

@@ -239,6 +239,7 @@ type Filter {
   minHeight: Int
   fields: [FieldCondition!]
   sort: Sort
+  sceneTagIds: [ID!]
 }
 
 input FilterInput {
@@ -264,6 +265,9 @@ input FilterInput {
   minHeight: Int
   fields: [FieldConditionInput!]
   sort: SortInput
+  # Scene labels (tags of ai segments) every result must have; videos and
+  # audio only. Without another sort the most matching seconds come first.
+  sceneTagIds: [ID!]
 }
 
 type SavedFilter {

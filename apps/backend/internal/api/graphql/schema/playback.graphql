@@ -9,6 +9,13 @@ extend type Query {
   # matching seconds first, each with those segments; with videoIds only
   # those, in their order. For the phone's compilation mode.
   sceneMatches(tags: [String!]!, videoIds: [ID!], limit: Int, offset: Int): [SceneMatch!]!
+  # The scene labels (tags of ai segments) with how many videos have each,
+  # most common first (default 50).
+  sceneLabelCounts(limit: Int): [TagCount!]!
+  # The liked scenes: scene labels the user said yes to (their latest like
+  # on the tag is a thumbs up), by name. They drive the shorts, the
+  # compilation and the phone's card previews.
+  likedSceneTags: [Tag!]!
 }
 
 extend type Mutation {

@@ -148,7 +148,7 @@ func mediaQuery(kind schema.RecordKind, query MediaQuery) (string, db.Vars) {
 	conditions, vars := filterConditions(kind, query.Filter)
 	vars["limit"], vars["offset"] = pageBounds(query.Limit, query.Offset)
 	return `SELECT "media".*` + mediaSelect(kind) + ` WHERE ` + strings.Join(conditions, " AND ") +
-		` ORDER BY ` + orderBy(kind, query.Filter.Sort) + ` LIMIT $limit OFFSET $offset`, vars
+		` ORDER BY ` + filterOrder(kind, query.Filter) + ` LIMIT $limit OFFSET $offset`, vars
 }
 
 // nameQuery builds the SELECT for a page of performers, studios or tags by

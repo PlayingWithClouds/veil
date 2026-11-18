@@ -2,9 +2,9 @@
   "lockfileVersion": 1,
   "generator": "openschema 0.1.0",
   "createdAt": "2026-11-01T18:16:57.204Z",
-  "updatedAt": "2026-11-18T00:01:55.522Z",
+  "updatedAt": "2026-11-18T01:07:46.410Z",
   "baseline": false,
-  "digest": "sha256-fdb915ab054a7da4c270fe849ea61ab49bea20bd53829bdb994e8ed2aef57257",
+  "digest": "sha256-6f5ce414d2cb404ddb8154e1c2e6d50fe7e44e556b3c3cd079923748194e2de6",
   "spaces": {
     "enum:veil.AccountStatus": {
       "kind": "enum",
@@ -2371,6 +2371,13 @@
           "type": "i32?",
           "encoding": "singular:varint",
           "since": "2026-11-02T18:30:09.179Z"
+        },
+        "22": {
+          "state": "active",
+          "name": "sceneTagIds",
+          "type": "[uuid]?",
+          "encoding": "wrapper:repeated",
+          "since": "2026-11-18T01:07:46.410Z"
         }
       }
     },

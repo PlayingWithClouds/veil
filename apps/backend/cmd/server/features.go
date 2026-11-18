@@ -84,7 +84,7 @@ func openFeatures(ctx context.Context, base core) *features {
 		tokens:     tokens.New(base.database),
 		accounts:   openAccounts(base),
 	}
-	built.recommend.UseLikedSceneTags(func() []string { return base.settings.Cached().LikedSceneTags })
+	adoptLikedSceneSetting(ctx, base)
 	base.runner.SetAccountProvider(built.accounts)
 	base.pipeline.SetNotifier(built.notify)
 	built.automations = automations.New(automations.Options{Library: base.library, Queue: base.queue, Notifier: built.notify, Searcher: base.pipeline})
@@ -103,6 +103,32 @@ func openFeatures(ctx context.Context, base core) *features {
 		}
 	})
 	return built
+}
+
+// adoptLikedSceneSetting turns the scenes picked in the likedSceneTags
+// setting into likes on their tags, where liked scenes are read from, then
+// empties the setting so it happens once.
+func adoptLikedSceneSetting(ctx context.Context, base core) {
+	picked := base.settings.Cached().LikedSceneTags
+	if len(picked) == 0 {
+		return
+	}
+	tagIDs, err := base.library.TagIDs(ctx, picked)
+	if err != nil {
+		log.Printf("liked scenes: %v", err)
+		return
+	}
+	tagKind := schema.RecordKindTag
+	for _, tagID := range tagIDs {
+		event := user.NewEvent{Kind: schema.EventKindLike, SubjectKind: &tagKind, SubjectID: &tagID, Data: map[string]any{"value": 1}}
+		if _, err := base.user.Record(ctx, event); err != nil {
+			log.Printf("liked scenes: %v", err)
+			return
+		}
+	}
+	if _, err := base.settings.Update(ctx, map[string]any{"likedSceneTags": []string{}}); err != nil {
+		log.Printf("liked scenes: %v", err)
+	}
 }
 
 // openAccounts builds the account store with its sealing key.

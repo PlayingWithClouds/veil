@@ -117,6 +117,20 @@ func (l *Library) SceneMatches(ctx context.Context, tagNames []string, videoIDs 
 	return pageSceneMatches(matches, limit, offset), nil
 }
 
+// SceneLabelCounts lists the tags of the videos' ai segments with how many
+// listable videos carry each, most common first, at most limit.
+func (l *Library) SceneLabelCounts(ctx context.Context, limit int) ([]TagCount, error) {
+	conditions, vars := filterConditions(schema.RecordKindVideo, schema.Filter{})
+	conditions = append(conditions, `"tag"."deletedAt" IS NULL`)
+	vars["limit"], _ = pageBounds(limit, 0)
+	return db.QueryAs[TagCount](ctx, l.database, `SELECT "tag".*, COUNT(DISTINCT "media"."id") AS "count"`+mediaSelect(schema.RecordKindVideo)+`
+		JOIN "Segment" AS "segment" ON "segment"."subjectKind" = 'video' AND "segment"."subjectId" = "media"."id"
+			AND "segment"."origin" = 'ai' AND "segment"."deletedAt" IS NULL
+		JOIN "Tag" AS "tag" ON "tag"."id" = "segment"."tag"
+		WHERE `+strings.Join(conditions, " AND ")+`
+		GROUP BY "tag"."id" ORDER BY "count" DESC, "tag"."name" LIMIT $limit`, vars)
+}
+
 // existingTagIDs are the ids of the live tags with the names; names no tag
 // has are left out (nothing is created).
 func (l *Library) existingTagIDs(ctx context.Context, tagNames []string) ([]string, error) {

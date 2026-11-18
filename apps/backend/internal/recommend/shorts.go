@@ -10,7 +10,6 @@ import (
 
 	"github.com/playingwithclouds/veil/internal/db"
 	"github.com/playingwithclouds/veil/internal/library"
-	"github.com/playingwithclouds/veil/internal/names"
 	"github.com/playingwithclouds/veil/internal/schema"
 )
 
@@ -149,7 +148,7 @@ func (e *Engine) segmentShorts(ctx context.Context, filter schema.Filter) ([]*sh
 }
 
 // aiSegmentShorts are the scene model's segments whose tag the user liked
-// (setting likedSceneTags), each cut to a short, the longest first: the
+// (LikedSceneTags), each cut to a short, the longest first: the
 // model finds far more than anyone tags by hand, so only liked ones play.
 func (e *Engine) aiSegmentShorts(ctx context.Context, filter schema.Filter) ([]*shortCandidate, error) {
 	liked, err := e.likedSceneTagIDs(ctx)
@@ -171,25 +170,15 @@ func (e *Engine) aiSegmentShorts(ctx context.Context, filter schema.Filter) ([]*
 
 // likedSceneTagIDs are the ids of the live tags the user liked as scenes.
 func (e *Engine) likedSceneTagIDs(ctx context.Context) (map[string]bool, error) {
-	if e.likedSceneTags == nil {
-		return nil, nil
-	}
-	keys := []string{}
-	for _, name := range e.likedSceneTags() {
-		if key := names.Key(name); key != "" {
-			keys = append(keys, key)
-		}
-	}
-	if len(keys) == 0 {
-		return nil, nil
-	}
-	ids, err := e.database.Strings(ctx,
-		`SELECT "id" FROM "Tag" WHERE "nameKey" IN (SELECT value FROM json_each($keys)) AND "deletedAt" IS NULL`,
-		db.Vars{"keys": keys})
+	tags, err := e.LikedSceneTags(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("read liked scene tags: %w", err)
+		return nil, err
 	}
-	return toSet(ids), nil
+	ids := map[string]bool{}
+	for _, tag := range tags {
+		ids[tag.Id] = true
+	}
+	return ids, nil
 }
 
 // segmentCandidates turns segment rows into shorts.

@@ -275,6 +275,7 @@ export interface Filter {
   fields?: FieldCondition[];
   sort?: Sort;
   minHeight?: number;
+  sceneTagIds?: string[];
 }
 
 export interface SavedFilter extends Entity {

@@ -30,7 +30,9 @@ package recommend
 //     seconds of playing.
 //   - like: {"value": 1} or {"value": -1}. Thumbs up or down on a video,
 //     gallery, performer, studio or tag. A thumbs-down item is never
-//     recommended.
+//     recommended. Only a subject's latest like counts; {"value": 0} takes
+//     the verdict back. A site has no record: its like has no subject and
+//     names it as {"site": "plugin", "value": 1}.
 //
 // Cam rooms (subject kind camModel) send their own data:
 //
@@ -51,6 +53,8 @@ const (
 	pathValue    = "$.value"
 	pathText     = "$.text"
 	pathWatched  = "$.watched"
+	pathSite     = "$.site"
+	pathInferred = "$.inferred"
 )
 
 // Surfaces.

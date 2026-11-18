@@ -61,9 +61,9 @@ type Settings struct {
 	// Plugins
 	DisabledPlugins []string `json:"disabledPlugins"`
 
-	// LikedSceneTags are the tag names of the acts and positions the user
-	// picked as liked: they feed the shorts with the scene model's segments
-	// and drive the phone's compilation mode and moment previews.
+	// LikedSceneTags are tag names of scenes picked as liked before likes on
+	// tags were the liked scenes (recommend.LikedSceneTags): at start each
+	// becomes a like on its tag and the list is emptied.
 	LikedSceneTags []string `json:"likedSceneTags"`
 
 	// Per-plugin settings: pluginName → key → value. Values are injected as env vars.

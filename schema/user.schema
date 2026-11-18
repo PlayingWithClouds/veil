@@ -121,6 +121,11 @@ model Filter {
 
   /// Lowest frame height in pixels (720, 1080, 2160); narrows videos only.
   21 minHeight: i32?
+
+  /// Scene labels: tags the scene model gave stretches of a video (ai
+  /// segments); all must be there. Narrows videos and audio only; with no
+  /// other sort, the most matching seconds come first.
+  22 sceneTagIds: [uuid]?
 }
 
 /// A named filter. Every saved filter can also be played as a smart playlist.

@@ -39,9 +39,6 @@ type Engine struct {
 	stats statsCache
 	// camTaste caches the taste cam rooms are ranked by.
 	camTaste camTasteCache
-	// likedSceneTags reads the tag names the user picked as liked scenes
-	// (setting likedSceneTags); nil reads none.
-	likedSceneTags func() []string
 
 	mutex sync.Mutex
 	// rankings holds one ranking per set of kinds (rankingKey): the mixed
@@ -58,12 +55,6 @@ type ranking struct {
 // New returns an engine over the database.
 func New(database *db.DB) *Engine {
 	return &Engine{database: database, now: time.Now, random: rand.New(rand.NewSource(time.Now().UnixNano())), rankings: map[string]*ranking{}}
-}
-
-// UseLikedSceneTags sets where the liked scene tag names are read from; call
-// once before serving.
-func (e *Engine) UseLikedSceneTags(source func() []string) {
-	e.likedSceneTags = source
 }
 
 // rankedKinds is what a ranking proposes when the filter names no kind.

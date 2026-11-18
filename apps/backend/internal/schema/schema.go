@@ -397,6 +397,10 @@ type Filter struct {
 	Sort      *Sort            `json:"sort,omitempty"`
 	// Lowest frame height in pixels (720, 1080, 2160); narrows videos only.
 	MinHeight *int32 `json:"minHeight,omitempty"`
+	// Scene labels: tags the scene model gave stretches of a video (ai
+	// segments); all must be there. Narrows videos and audio only; with no
+	// other sort, the most matching seconds come first.
+	SceneTagIds []string `json:"sceneTagIds,omitempty"`
 }
 
 // A named filter. Every saved filter can also be played as a smart playlist.
