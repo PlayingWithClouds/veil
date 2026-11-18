@@ -1,5 +1,7 @@
 package com.playingwithclouds.veil.ui.cams
 
+import com.playingwithclouds.veil.cams.CamSceneRule
+import com.playingwithclouds.veil.cams.RecordStop
 import com.playingwithclouds.veil.data.CamRepository
 import kotlin.math.roundToInt
 
@@ -46,6 +48,26 @@ fun recordStarts(bufferedSeconds: Double, lagSeconds: Double): List<RecordStart>
 }
 
 private const val SECONDS_PER_MINUTE = 60
+
+/** "Seen 10 s → notify, record 10 min · rest 15 min · every room", what a scene rule does. */
+fun ruleSummary(rule: CamSceneRule): String {
+    val actions = mutableListOf<String>()
+    if (rule.notify) {
+        actions.add("notify")
+    }
+    if (rule.record && rule.recordStop == RecordStop.FIXED) {
+        actions.add("record ${rule.recordMinutes} min")
+    }
+    if (rule.record && rule.recordStop == RecordStop.UNTIL_GONE) {
+        actions.add("record until gone ${rule.goneMinutes} min")
+    }
+    var scope = "every room"
+    val roomName = rule.roomName
+    if (rule.roomId != null) {
+        scope = roomName ?: "one room"
+    }
+    return "Seen ${rule.seenSeconds} s → ${actions.joinToString(", ")} · rest ${rule.cooldownMinutes} min · $scope"
+}
 
 /** "Source", or "480p" for a stored recording quality. */
 fun recordQualityLabel(quality: String): String {

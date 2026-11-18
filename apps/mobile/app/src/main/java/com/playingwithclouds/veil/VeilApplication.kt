@@ -14,6 +14,8 @@ import com.playingwithclouds.veil.privacy.PrivacyPreferences
 import com.playingwithclouds.veil.scenes.CoverLabels
 import com.playingwithclouds.veil.scenes.SceneModelStore
 import com.playingwithclouds.veil.scenes.SceneScans
+import com.playingwithclouds.veil.solver.SolverServer
+import com.playingwithclouds.veil.solver.WebSolver
 import com.playingwithclouds.veil.update.UpdateChecker
 import com.playingwithclouds.veil.update.UpdatePreferences
 
@@ -32,6 +34,9 @@ class VeilApplication : Application() {
         AppLock.initialize()
         UpdatePreferences.initialize(this)
         HabitPreferences.initialize(this)
+        // Before the backend: its FLARESOLVERR_URL is the solver's loopback address.
+        WebSolver.initialize(this)
+        SolverServer.start()
         EmbeddedBackend(this).start()
         UpdateChecker.checkInBackground()
         Habits.start(this)

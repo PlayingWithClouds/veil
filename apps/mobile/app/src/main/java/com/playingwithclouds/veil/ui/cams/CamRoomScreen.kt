@@ -21,6 +21,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import com.playingwithclouds.veil.cams.CamRuleStore
+import com.playingwithclouds.veil.cams.CamWatch
+import com.playingwithclouds.veil.cams.WatchOrigin
+import com.playingwithclouds.veil.scenes.SceneModelStore
+import com.playingwithclouds.veil.scenes.ready
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -135,6 +141,11 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
             viewModel.startRecording(quality, fromSecondsAgo)
         }, onDismiss = { showingRecordMenu = false })
     }
+    var showingRules by remember { mutableStateOf(false) }
+    val sceneModel by SceneModelStore.state.collectAsState()
+    val rules by CamRuleStore.rules.collectAsState()
+    val live = state.stream != null && !state.offline
+    WatchForSceneRules(camModelId, live && sceneModel.ready != null && rules.any { rule -> rule.appliesTo(camModelId) })
 
     val model = state.model
     if (model is LoadState.Failed) {
@@ -144,6 +155,13 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
         return
     }
     val room = (model as? LoadState.Loaded)?.value
+    if (showingRules && room != null) {
+        CamRulesSheet(room.id, room.displayName, onDismiss = { showingRules = false })
+    }
+    var onOpenRules: (() -> Unit)? = null
+    if (sceneModel.ready != null) {
+        onOpenRules = { showingRules = true }
+    }
     ShowAmbientGlow(room?.thumbnailUrl)
     val immersive = fullscreen.isFullscreen || pictureInPicture.isActive
     Scaffold(snackbarHost = { VeilSnackbarHost(snackbarHostState) }) { padding ->
@@ -183,9 +201,23 @@ fun CamRoomScreen(camModelId: String, navigator: AppNavigator) {
                 }
             }
             if (!immersive && room != null) {
-                RoomContent(room, state, viewModel, navigator, onOpenRecordMenu = { showingRecordMenu = true })
+                RoomContent(room, state, viewModel, navigator, onOpenRecordMenu = { showingRecordMenu = true }, onOpenRules = onOpenRules)
             }
         }
+    }
+}
+
+/**
+ * While [wanted] (the room is live, a scene rule covers it and a model is installed), the room is
+ * watched for the rules as long as its page is open, whatever the network: it's playing anyway.
+ */
+@Composable
+private fun WatchForSceneRules(roomId: String, wanted: Boolean) {
+    DisposableEffect(roomId, wanted) {
+        if (wanted) {
+            CamWatch.watch(roomId, WatchOrigin.IN_APP)
+        }
+        onDispose { CamWatch.unwatch(roomId, WatchOrigin.IN_APP) }
     }
 }
 
@@ -237,10 +269,17 @@ private fun RoomPlaceholder(room: CamModel?, state: CamRoomState, onRetry: () ->
 
 /** Everything below the player: who, the actions, auto-record, tags and recordings. */
 @Composable
-private fun RoomContent(room: CamModel, state: CamRoomState, viewModel: CamRoomViewModel, navigator: AppNavigator, onOpenRecordMenu: () -> Unit) {
+private fun RoomContent(
+    room: CamModel,
+    state: CamRoomState,
+    viewModel: CamRoomViewModel,
+    navigator: AppNavigator,
+    onOpenRecordMenu: () -> Unit,
+    onOpenRules: (() -> Unit)?,
+) {
     LazyColumn(contentPadding = PaddingValues(bottom = VeilSpacing.large)) {
         item { RoomTitleBlock(room, state.recording) }
-        item { RoomActions(room, state, viewModel, onOpenRecordMenu) }
+        item { RoomActions(room, state, viewModel, onOpenRecordMenu, onOpenRules) }
         if (room.autoRecord) {
             item { AutoRecordQuality(room, state.autoRecordBusy, viewModel) }
         }
@@ -337,9 +376,10 @@ private fun rememberRecordingSeconds(recording: CamRecording): Double {
     return maxOf(recording.durationSeconds, elapsed)
 }
 
-/** Follow, record (or stop) and auto-record. */
+/** Follow, record (or stop), auto-record and, with a scene model, the room's scene rules (lit while it's watched for them). */
 @Composable
-private fun RoomActions(room: CamModel, state: CamRoomState, viewModel: CamRoomViewModel, onOpenRecordMenu: () -> Unit) {
+private fun RoomActions(room: CamModel, state: CamRoomState, viewModel: CamRoomViewModel, onOpenRecordMenu: () -> Unit, onOpenRules: (() -> Unit)?) {
+    val watching by CamWatch.watching.collectAsState()
     LazyRow(contentPadding = PaddingValues(horizontal = ReactionRowInset), horizontalArrangement = Arrangement.spacedBy(VeilSpacing.hairline)) {
         item {
             var label = "Follow"
@@ -355,6 +395,9 @@ private fun RoomActions(room: CamModel, state: CamRoomState, viewModel: CamRoomV
                     viewModel.setAutoRecord(!room.autoRecord)
                 }
             }
+        }
+        if (onOpenRules != null) {
+            item { ReactionButton(VeilIcons.Scenes, "Scene rules", active = room.id in watching, onClick = onOpenRules) }
         }
     }
 }

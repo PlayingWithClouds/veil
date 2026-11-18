@@ -41,6 +41,8 @@ fun SettingsScreen(navigator: AppNavigator) {
             BackgroundSection()
             SectionHeading("Scene model")
             SceneSection(navigator)
+            SectionHeading("Cams")
+            CamsSection()
             SectionHeading("Appearance")
             SecondaryButton("Design kit", onClick = navigator::openDesignKit)
             SectionHeading("Updates")

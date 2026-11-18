@@ -28,6 +28,12 @@
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density" />
 
+        <!-- A site's browser check, shown only when it wants a tap (solver/WebSolver.kt). -->
+        <activity
+            android:name=".solver.ChallengeActivity"
+            android:exported="false"
+            android:excludeFromRecents="true" />
+
         <!-- Watches followed live cam rooms for the user's scene rules while the app is closed. -->
         <service
             android:name=".cams.CamWatchService"
