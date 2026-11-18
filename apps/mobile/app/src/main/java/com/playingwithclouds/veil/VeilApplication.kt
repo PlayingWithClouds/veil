@@ -3,6 +3,9 @@ package com.playingwithclouds.veil
 import android.app.Application
 import com.playingwithclouds.veil.api.ServerSettings
 import com.playingwithclouds.veil.backend.EmbeddedBackend
+import com.playingwithclouds.veil.cams.CamRuleStore
+import com.playingwithclouds.veil.cams.CamWatch
+import com.playingwithclouds.veil.cams.CamWatchBackground
 import com.playingwithclouds.veil.data.PlayQueue
 import com.playingwithclouds.veil.habits.HabitPreferences
 import com.playingwithclouds.veil.habits.Habits
@@ -36,5 +39,8 @@ class VeilApplication : Application() {
         SceneModelStore.initialize(this)
         CoverLabels.initialize(this)
         SceneScans.start(this)
+        CamRuleStore.initialize(this)
+        CamWatch.initialize(this)
+        CamWatchBackground.start(this)
     }
 }

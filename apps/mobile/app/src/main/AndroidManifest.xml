@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- The one discreet reminder before the usual time (habits/HabitWorkers.kt); asked for when it's switched on. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Background watching of cam rooms for scene rules (cams/CamWatchService.kt). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:name=".VeilApplication"
@@ -24,6 +27,16 @@
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density" />
+
+        <!-- Watches followed live cam rooms for the user's scene rules while the app is closed. -->
+        <service
+            android:name=".cams.CamWatchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Watches live streams the user follows and classifies frames on the device for user-defined alerts and recordings." />
+        </service>
 
         <!-- Installer session results for the self-updater; reached only through the app's own PendingIntent. -->
         <receiver

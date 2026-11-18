@@ -11,6 +11,7 @@ import com.playingwithclouds.veil.BuildConfig
 import com.playingwithclouds.veil.privacy.BlobKeys
 import com.playingwithclouds.veil.privacy.PrivacyPreferences
 import java.io.File
+import com.playingwithclouds.veil.solver.SolverServer
 import java.io.IOException
 import java.io.InputStream
 import kotlin.concurrent.thread
@@ -64,6 +65,7 @@ class EmbeddedBackend(context: Context) {
                 tempDir = context.cacheDir.absolutePath,
                 port = BuildConfig.BACKEND_PORT,
                 blobEncryption = BlobEncryption(BlobKeys.encodedKey(context), PrivacyPreferences.encryptDownloads.value),
+                solverUrl = SolverServer.endpoint,
             ),
         )
         return try {

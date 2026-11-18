@@ -25,6 +25,7 @@ object BackendEnvironment {
         tempDir: String,
         port: Int,
         blobEncryption: BlobEncryption? = null,
+        solverUrl: String? = null,
     ): Map<String, String> {
         val variables = mutableMapOf(
             "DATA_DIR" to dataDir,
@@ -37,6 +38,10 @@ object BackendEnvironment {
             // Go's os.TempDir defaults to /data/local/tmp, which apps can't write.
             "TMPDIR" to tempDir,
         )
+        // The app's own browser check solver (solver/SolverServer), so Cloudflare-guarded plugins run.
+        if (solverUrl != null) {
+            variables["FLARESOLVERR_URL"] = solverUrl
+        }
         if (blobEncryption != null) {
             variables["BLOB_ENCRYPTION_KEY"] = blobEncryption.encodedKey
             if (!blobEncryption.encryptNewBlobs) {
