@@ -30,12 +30,22 @@ data class SearchFilter(
     val hiddenTags: Map<String, String> = emptyMap(),
     /** Tags every result must carry (by id, with their names), e.g. POV from the Camera group. */
     val requiredTags: Map<String, String> = emptyMap(),
+    /** Scene labels every result's ai segments must have (tag id to name), from "What's in it". */
+    val sceneLabels: Map<String, String> = emptyMap(),
 ) {
 
-    /** How many of the sheet's settings are on, for the Filters chip; hidden tags have their own chips. */
+    /** How many of the sheet's settings are on, for the Filters chip; hidden tags and scene labels have their own chips. */
     val panelCount: Int
         get() = listOfNotNull(length, minHeight, minRating, sort).size + listOf(unwatched, favorite).count { on -> on } +
             sites.size.coerceAtMost(1) + requiredTags.size
+
+    /** With a scene label added, or taken away when it was asked for. */
+    fun toggledSceneLabel(tag: TagSummary): SearchFilter {
+        if (tag.id in sceneLabels) {
+            return copy(sceneLabels = sceneLabels - tag.id)
+        }
+        return copy(sceneLabels = sceneLabels + (tag.id to tag.name))
+    }
 
     /** With a required tag added, or taken away when it was required. */
     fun toggledRequiredTag(tag: TagSummary): SearchFilter {
@@ -57,6 +67,7 @@ data class SearchFilter(
             sources = Optional.presentIfNotNull(sites.toList().ifEmpty { null }),
             excludeTagIds = Optional.presentIfNotNull(hiddenTags.keys.toList().ifEmpty { null }),
             includeTagIds = Optional.presentIfNotNull(requiredTags.keys.toList().ifEmpty { null }),
+            sceneTagIds = Optional.presentIfNotNull(sceneLabels.keys.toList().ifEmpty { null }),
             minDurationSeconds = Optional.presentIfNotNull(bounds?.first),
             maxDurationSeconds = Optional.presentIfNotNull(bounds?.second),
             minHeight = Optional.presentIfNotNull(minHeight?.toIntOrNull()),

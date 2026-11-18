@@ -45,11 +45,13 @@ data class FilterChoices(
     val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
     /** The POV tag the Camera group picks; the group is left out while the library has none. */
     val povTag: TagSummary? = null,
+    /** The scene labels in the library with how many videos have each, most common first; "What's in it" is left out without them. */
+    val sceneLabels: List<Pair<TagSummary, Int>> = emptyList(),
 )
 
 /**
  * The chip row under the search box, as the desktop's: Filters (with how many of its settings are
- * on), the hidden tags (tap to show them again), then the recent searches.
+ * on), the scene labels asked for and the hidden tags (tap one to drop it), then the recent searches.
  */
 @Composable
 fun FilterChipRow(
@@ -69,6 +71,9 @@ fun FilterChipRow(
         horizontalArrangement = Arrangement.spacedBy(VeilSpacing.small),
     ) {
         item("filters") { FeedChip(filtersLabel, onClick = onOpenFilters, selected = filter.panelCount > 0, icon = VeilIcons.Tune) }
+        items(filter.sceneLabels.entries.toList(), key = { entry -> "scene-${entry.key}" }) { entry ->
+            FeedChip(entry.value, onClick = { onFilter(filter.copy(sceneLabels = filter.sceneLabels - entry.key)) }, selected = true, icon = VeilIcons.Close)
+        }
         items(filter.hiddenTags.entries.toList(), key = { entry -> "hidden-${entry.key}" }) { entry ->
             FeedChip("Not ${entry.value}", onClick = { onFilter(filter.copy(hiddenTags = filter.hiddenTags - entry.key)) }, selected = true, icon = VeilIcons.Close)
         }
@@ -115,6 +120,13 @@ fun FilterSheet(
             FilterGroup("Show only") {
                 FeedChip(unseenLabel, onClick = { onFilter(filter.copy(unwatched = !filter.unwatched)) }, selected = filter.unwatched)
                 FeedChip("Favourites", onClick = { onFilter(filter.copy(favorite = !filter.favorite)) }, selected = filter.favorite)
+            }
+            if (forVideos && choices.sceneLabels.isNotEmpty()) {
+                FilterGroup("What's in it") {
+                    for ((label, count) in choices.sceneLabels) {
+                        FeedChip("${label.name} · $count", onClick = { onFilter(filter.toggledSceneLabel(label)) }, selected = label.id in filter.sceneLabels)
+                    }
+                }
             }
             val povTag = choices.povTag
             if (forVideos && povTag != null) {

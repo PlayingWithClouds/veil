@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.playingwithclouds.veil.data.AppServices
 import com.playingwithclouds.veil.data.ImpressionSurface
 import com.playingwithclouds.veil.data.PerformerSummary
+import com.playingwithclouds.veil.data.SceneLabelWords
+import com.playingwithclouds.veil.data.SceneRepository
 import com.playingwithclouds.veil.data.SearchBatch
 import com.playingwithclouds.veil.data.SearchFilter
 import com.playingwithclouds.veil.data.SearchRepository
@@ -48,14 +50,29 @@ data class SearchState(
     val tagCounts: List<Pair<TagSummary, Int>> = emptyList(),
     /** The POV tag of the filter's Camera group, once looked up. */
     val povTag: TagSummary? = null,
+    /** The scene labels in the library, most common first, for "What's in it" and typed words. */
+    val sceneLabels: List<Pair<TagSummary, Int>> = emptyList(),
+    /** The library's videos with the filter's scene labels (and the text), most matching first. */
+    val sceneVideos: List<VideoSummary> = emptyList(),
+    /** While the library's scene videos are read. */
+    val loadingScenes: Boolean = false,
 )
 
 /** Tags offered for hiding. */
 private const val TAG_COUNT_LIMIT = 24
 
+/** Scene labels offered in the filter. */
+private const val SCENE_LABEL_LIMIT = 40
+
+/** Library videos shown for scene labels. */
+private const val SCENE_VIDEO_LIMIT = 60
+
 /**
  * Searches the sites a page at a time, as the web's search page does: each site's results join
  * the list as it answers; scrolling to the end asks for the next page until every site ran out.
+ * Scene labels (picked in "What's in it", or typed: "pov blowjob") also list the library's scanned
+ * videos that have them; only the other words go to the sites, and none are left when every word
+ * named a label.
  */
 class SearchViewModel(initialQuery: String) : ViewModel() {
 
@@ -63,6 +80,7 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
     val state: StateFlow<SearchState> = mutableState.asStateFlow()
 
     private var pageJob: Job? = null
+    private var sceneJob: Job? = null
     private var page = 0
     private val exhaustedSites = mutableSetOf<String>()
 
@@ -80,16 +98,26 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
             mutableState.update { state -> state.copy(povTag = povTag) }
         }
         loadTagCounts()
-        if (initialQuery.isNotBlank()) {
-            submit()
+        // The labels are read before the first search, so typed label words are recognised.
+        viewModelScope.launch {
+            val labels = runCatching { SceneRepository.labelCounts(SCENE_LABEL_LIMIT) }.getOrDefault(emptyList())
+            mutableState.update { state -> state.copy(sceneLabels = labels) }
+            if (initialQuery.isNotBlank()) {
+                submit()
+            }
         }
     }
 
-    /** Takes a changed filter and searches again with it when a search is shown. */
+    /** Takes a changed filter and searches again with it when a search is shown or scene labels are asked for. */
     fun setFilter(filter: SearchFilter) {
         mutableState.update { state -> state.copy(filter = filter) }
         loadTagCounts()
-        if (state.value.query != null) {
+        val query = state.value.query
+        if (query == "" && filter.sceneLabels.isEmpty()) {
+            mutableState.update { state -> state.copy(query = null, sceneVideos = emptyList()) }
+            return
+        }
+        if (query != null || filter.sceneLabels.isNotEmpty()) {
             submit()
         }
     }
@@ -114,27 +142,74 @@ class SearchViewModel(initialQuery: String) : ViewModel() {
         submit()
     }
 
-    /** Starts a search for the box's text, replacing the one before. */
+    /**
+     * Starts a search for the box's text, replacing the one before. Words naming scene labels join
+     * the filter; the rest is asked of the sites. With labels and no other words only the library
+     * is listed.
+     */
     fun submit() {
-        val query = state.value.text.trim()
-        if (query.isEmpty()) {
+        val typed = state.value.text.trim()
+        val words = SceneLabelWords.match(typed, state.value.sceneLabels.map { (label, _) -> label })
+        var filter = state.value.filter
+        for (label in words.labels) {
+            if (label.id !in filter.sceneLabels) {
+                filter = filter.toggledSceneLabel(label)
+            }
+        }
+        val query = words.text
+        if (query.isEmpty() && filter.sceneLabels.isEmpty()) {
             return
         }
         pageJob?.cancel()
         page = 0
         exhaustedSites.clear()
         AppServices.impressions.resetShown(ImpressionSurface.SEARCH)
-        SearchRepository.logSearch(query)
-        mutableState.update { state ->
-            state.copy(query = query, videos = emptyList(), performers = emptyList(), done = false, error = null)
+        if (typed.isNotEmpty()) {
+            SearchRepository.logSearch(typed)
         }
-        askPage()
+        mutableState.update { state ->
+            state.copy(text = query, query = query, filter = filter, videos = emptyList(), performers = emptyList(), done = query.isEmpty(), error = null)
+        }
+        loadSceneVideos()
+        if (query.isNotEmpty()) {
+            askPage()
+        }
+    }
+
+    /** Lists the library's videos with the filter's scene labels and the query's words. */
+    private fun loadSceneVideos() {
+        val current = state.value
+        sceneJob?.cancel()
+        if (current.filter.sceneLabels.isEmpty()) {
+            mutableState.update { state -> state.copy(sceneVideos = emptyList(), loadingScenes = false) }
+            return
+        }
+        mutableState.update { state -> state.copy(loadingScenes = true) }
+        sceneJob = viewModelScope.launch {
+            val videos = runCatching { SearchRepository.sceneVideos(current.query.orEmpty(), current.filter, SCENE_VIDEO_LIMIT) }.getOrDefault(emptyList())
+            mutableState.update { state -> state.copy(sceneVideos = videos, loadingScenes = false) }
+        }
+    }
+
+    /**
+     * Opens a result: at its first scene with the filter's labels when any are asked for, else
+     * from where it would start anyway ([onOpen] gets null).
+     */
+    fun openResult(videoId: String, onOpen: (Double?) -> Unit) {
+        val labels = state.value.filter.sceneLabels.values
+        if (labels.isEmpty()) {
+            onOpen(null)
+            return
+        }
+        viewModelScope.launch {
+            onOpen(runCatching { SceneRepository.firstSceneStart(videoId, labels) }.getOrNull())
+        }
     }
 
     /** Asks for the next page, unless one is being asked or every site ran out. */
     fun loadMore() {
         val current = state.value
-        if (current.query == null || current.searching || current.done) {
+        if (current.query.isNullOrEmpty() || current.searching || current.done) {
             return
         }
         page++

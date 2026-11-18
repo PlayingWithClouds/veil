@@ -3,6 +3,7 @@ package com.playingwithclouds.veil.data
 import com.apollographql.apollo.api.Optional
 import com.playingwithclouds.veil.api.VeilApi
 import com.playingwithclouds.veil.api.dataOrThrow
+import com.playingwithclouds.veil.graphql.FilteredVideosQuery
 import com.playingwithclouds.veil.graphql.RecentSearchesQuery
 import com.playingwithclouds.veil.graphql.SearchResultsSubscription
 import com.playingwithclouds.veil.graphql.TagsNamedQuery
@@ -97,6 +98,16 @@ object SearchRepository {
         val tags = VeilApi.client.query(TagsNamedQuery(Optional.present("pov"), Optional.present(POV_TAG_LOOKUP_LIMIT))).execute().dataOrThrow().tags
         val tag = tags.firstOrNull { candidate -> candidate.name.trim().equals("pov", ignoreCase = true) } ?: return null
         return TagSummary(tag.id, tag.name)
+    }
+
+    /**
+     * The library's videos with the filter's scene labels and [text] (blank searches no text), the
+     * most matching seconds first unless the filter sorts otherwise.
+     */
+    suspend fun sceneVideos(text: String, filter: SearchFilter, limit: Int): List<VideoSummary> {
+        val input = filter.toInput().copy(text = Optional.presentIfNotNull(text.ifBlank { null }))
+        val query = FilteredVideosQuery(Optional.present(input), Optional.present(limit), Optional.present(0))
+        return VeilApi.client.query(query).execute().dataOrThrow().videos.map { video -> video.videoCardFields.toSummary() }
     }
 
     /** What the user searched lately, newest first. */

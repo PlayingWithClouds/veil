@@ -100,7 +100,7 @@ fun SearchScreen(initialQuery: String, navigator: AppNavigator) {
             viewModel.searchFor(text)
         })
         if (filtersOpen) {
-            val choices = FilterChoices(state.siteChoices, state.siteStyles, state.tagCounts, state.povTag)
+            val choices = FilterChoices(state.siteChoices, state.siteStyles, state.tagCounts, state.povTag, state.sceneLabels)
             FilterSheet(state.filter, choices, onFilter = viewModel::setFilter, onDismiss = { filtersOpen = false })
         }
         if (state.query == null) {
@@ -151,13 +151,29 @@ private fun Results(state: SearchState, viewModel: SearchViewModel, navigator: A
     TrackShown(listState, videos.map { video -> resultKey(video.id) }) { position ->
         AppServices.impressions.recordShown(videos[position].id, RecordKind.video, ImpressionSurface.SEARCH, position)
     }
-    if (!state.searching && videos.isEmpty() && state.performers.isEmpty()) {
-        EmptyMessage(state.error ?: "No site found anything for “${state.query}”. Try fewer words, or another spelling.")
+    /** Opens a video, at its first asked-for scene when the filter has scene labels. */
+    val openVideo = { videoId: String ->
+        viewModel.openResult(videoId) { seconds ->
+            if (seconds == null) {
+                navigator.openVideo(videoId)
+            } else {
+                navigator.openVideoAt(videoId, seconds)
+            }
+        }
+    }
+    if (!state.searching && !state.loadingScenes && videos.isEmpty() && state.performers.isEmpty() && state.sceneVideos.isEmpty()) {
+        EmptyMessage(state.error ?: emptyText(state))
         return
     }
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = VeilSpacing.huge)) {
         if (state.searching) {
             item("progress") { SearchProgress(state) }
+        }
+        if (state.sceneVideos.isNotEmpty()) {
+            item("scenes-heading") { SectionHeading("In your library", modifier = Modifier.gutterPadding()) }
+        }
+        items(state.sceneVideos, key = { video -> "scene:${video.id}" }) { video ->
+            VideoCard(video, onClick = { openVideo(video.id) }, edgeToEdge = true)
         }
         if (state.performers.isNotEmpty()) {
             item("performers") {
@@ -174,12 +190,20 @@ private fun Results(state: SearchState, viewModel: SearchViewModel, navigator: A
                 video,
                 onClick = {
                     AppServices.impressions.recordClicked(video.id, RecordKind.video, ImpressionSurface.SEARCH, position)
-                    navigator.openVideo(video.id)
+                    openVideo(video.id)
                 },
                 edgeToEdge = true,
             )
         }
     }
+}
+
+/** What an empty result says: nothing scanned has the scenes, or no site found the words. */
+private fun emptyText(state: SearchState): String {
+    if (state.query.isNullOrEmpty()) {
+        return "No scanned video has these scenes yet. Videos are scanned while the phone charges."
+    }
+    return "No site found anything for “${state.query}”. Try fewer words, or another spelling."
 }
 
 /** "Asking 12 sites · 5 answered" over a sweeping bar, while a page is being asked. */

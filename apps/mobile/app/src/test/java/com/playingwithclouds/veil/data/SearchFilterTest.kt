@@ -73,4 +73,12 @@ class SearchFilterTest {
     fun theFiltersChipCountsSitesAsOneSetting() {
         assertEquals(3, SearchFilter(length = "short", unwatched = true, sites = setOf("a", "b")).panelCount)
     }
+
+    @Test
+    fun sceneLabelsToggleAndBecomeSceneTagIds() {
+        val pov = TagSummary("t1", "POV")
+        val filter = SearchFilter().toggledSceneLabel(pov)
+        assertEquals(Optional.present(listOf("t1")), filter.toInput().sceneTagIds)
+        assertTrue(filter.toggledSceneLabel(pov).isEmpty)
+    }
 }
